@@ -52,6 +52,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -61,7 +62,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 # Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
-# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+# beats_models.py, align.py, align_models.py, mix.py, eleven.py and standin.py: change all seven together.
 DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
 #                torch's: 91)
 
@@ -201,7 +202,7 @@ def note(msg: str) -> None:
 
 
 # Where files go. Where, has_videos, find_project, video_of, in_video and where are the same code in
-# eleven.py, beats.py, mix.py and align.py: change all four together.
+# eleven.py, beats.py, mix.py, align.py and standin.py: change all five together.
 
 
 @dataclass
@@ -306,8 +307,8 @@ def find_input(p: str, w: Where, subs: tuple[str, ...], what: str) -> Path:
     raise Fail(2, f"{what} not found: {p}{extra}")
 
 
-# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
-# three together.
+# The cache. CACHE_DIRS, user_cache, cache_root, SIZE_BUDGET_S, file_sizes, folder_bytes and uv_cache are the same
+# code in beats.py, mix.py, align.py and standin.py: change all four together.
 
 CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
               "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
@@ -358,8 +359,50 @@ def cache_root(w: Where) -> tuple[Path, bool]:
     return root, True
 
 
+SIZE_BUDGET_S = 5.0  # uv's cache is counted for 5 s at most: one that every project shares can hold millions of files
+#                      (19 GB in 1.8 million took 57 s here); a sandbox's (1.1 GB in 48,000 files) takes about 1 s
+
+
+def file_sizes(p: Path):
+    """The size of every file under p, each file once: uv hard-links its environments to its archive, so a sum over
+    every path counts most of a uv cache twice (an eval run read 2.04 GB for a folder of 1.08 GB). Walked the long
+    way on Windows: a cache in a deep project holds paths past 260 characters, which a plain walk skips (in one 181
+    characters deep, 4,137 of its 8,354 files)."""
+    seen = set()
+    for d, _, names in os.walk(verbatim(str(p)) if sys.platform == "win32" else str(p)):
+        for name in names:
+            try:
+                st = os.stat(os.path.join(d, name))
+            except OSError:  # (removed meanwhile, or unreadable)
+                continue
+            if stat.S_ISREG(st.st_mode) and not (st.st_ino and (st.st_dev, st.st_ino) in seen):
+                seen.add((st.st_dev, st.st_ino))
+                yield st.st_size
+
+
 def folder_bytes(p: Path) -> int:
-    return sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) if p.exists() else 0
+    return sum(file_sizes(p))
+
+
+def uv_cache() -> dict | None:
+    """uv's cache when UV_CACHE_DIR moves it (for a sandbox, or a short path: SKILL.md): where it is and its size on
+    disk, for the hand-off. None when UV_CACHE_DIR is not set: uv's own cache is shared by every project."""
+    env = os.environ.get("UV_CACHE_DIR", "").strip()
+    d = Path(env).resolve() if env else None  # (a relative one from the current folder, as uv reads it)
+    if d is None or not d.is_dir():
+        return None
+    n, done, stop = 0, True, time.monotonic() + SIZE_BUDGET_S
+    for size in file_sizes(d):
+        n += size
+        if time.monotonic() > stop:
+            done = False
+            break
+    size = f"{n / 1e9:.2f} GB" if n >= 1e9 else f"{n / 1e6:.0f} MB" if n >= 1e6 else f"{n / 1e3:.0f} KB"
+    return {"path": str(d), "bytes": n, "counted": done,
+            "note": f"uv's cache (UV_CACHE_DIR): {d}, {size if done else 'over ' + size} on disk"
+                    + ("" if done else f" (counting stopped after {SIZE_BUDGET_S:g} s)")
+                    + ", each file counted once (its environments share their files with its downloads); it can be "
+                      "deleted once no script is running, and uv downloads what it needs again"}
 
 
 def tool(name: str) -> str:
@@ -433,7 +476,7 @@ def time_note(name: str, delay: float) -> str:
 
 # ---------------------------------------------------------------------------------------------
 # Phrase edges: the waveform's pauses matched to the gaps between words. Sound, runs, analyze, W,
-# Edge, Report, match, snap and fit_syl are the same code in eleven.py and align.py: change both.
+# Edge, Report, match, snap and fit_syl are the same code in eleven.py, align.py and standin.py: change all three.
 
 
 @dataclass
@@ -1092,7 +1135,7 @@ def read_lyrics(path: Path) -> list[str]:
 
 
 # The say map. Group, say_key, is_acronym, SayEntry, rel_to, read_say, edges_of, sentence_punct and
-# respell are the same code in eleven.py and align.py: change both together.
+# respell are the same code in eleven.py, align.py and standin.py: change all three together.
 
 
 @dataclass
@@ -1782,7 +1825,7 @@ def run_song(args) -> dict:
             None if lic.lower() in ("mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause", "cc-by-4.0", "cc0-1.0")
             else f"LICENSE: {label} is under '{lic}': check that it allows your use before relying on it."),
         "downloads": downloads, "cache": str(cache),
-        "cache_bytes_in_project": folder_bytes(cache) if in_project else None,
+        "cache_bytes_in_project": folder_bytes(cache) if in_project else None, "uv_cache": uv_cache(),
         "times_s": {**res.get("times", {}), "align": round(t_align, 1), "total": round(time.time() - t_start, 1)},
         "conf_median": round(float(np.median([tk.conf for tk in toks])), 3), "fricative_starts_moved": n_fric,
         "phrase_edges_snapped": n_snap if speech else None,
@@ -1820,7 +1863,11 @@ def print_song(r: dict) -> None:
         for d in r["downloads"]:
             say(f"  {d['what']}: {human_bytes(d['bytes'])}" + (f" ({d['license']})" if d.get("license") else ""))
     if r["cache_bytes_in_project"] is not None:
-        say(f"cache inside the project (git-ignored): {r['cache']} = {human_bytes(r['cache_bytes_in_project'])}")
+        with_uv = bool(r.get("uv_cache")) and Path(r["uv_cache"]["path"]).is_relative_to(Path(r["cache"]).resolve())
+        say(f"cache inside the project (git-ignored): {r['cache']} = {human_bytes(r['cache_bytes_in_project'])} on "
+            f"disk" + (", uv's cache below included" if with_uv else ""))
+    if r.get("uv_cache"):
+        say(r["uv_cache"]["note"])
     t = r["times_s"]
     say("time: " + ", ".join(f"{k} {v:.0f} s" if v >= 10 else f"{k} {v:.1f} s" for k, v in t.items()))
     heard = f"; Whisper heard {r['whisper_heard']} of the {r['words']} words as written" if m["whisper"] else ""

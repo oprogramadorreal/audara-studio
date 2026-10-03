@@ -7,7 +7,8 @@
 // Every key becomes a GLSL constant (`accent2` -> C_ACCENT2, `deepRed` -> C_DEEP_RED, linear RGB),
 // an entry of LIN (linear triplets for GL uniforms) and a name for rgba(key, alpha) in Canvas2D
 // (src/engine/palette.ts). Keep `bg` and `fg` (the engine's flash, invert and crop marks use them);
-// add or rename the others freely, scenes refer to them by name.
+// add or rename the others freely, scenes refer to them by name. The example video uses none of them:
+// it draws with a test card of its own (videos/example/scenes/_palette.ts), whatever this palette becomes.
 import type { PostParams } from './engine/post';
 
 export const PALETTE = {

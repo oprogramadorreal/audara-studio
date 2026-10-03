@@ -22,6 +22,10 @@ transition, about half a second before it, so it plays into the change; after mo
 sides. In the preview, `c` copies the link to what's on screen. This rule is fixed, not a default: a link
 is how the director checks your change in seconds instead of hunting for it.
 
+A note can read two ways ("it comes in too fast": too soon, or too quick). Make the likelier change, say
+which reading you took and offer the other in a line. A change that moves something the director set (the
+length, a cut on a word) says so and offers the version that keeps it.
+
 A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
 when the director asks.
 
@@ -50,7 +54,8 @@ choose:
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
 costs nothing. Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't
 overwrite them, put their paths in your reply, and don't clear them out at the end: they are the
-director's view of what you checked, and without them a reply is only claims.
+director's view of what you checked, and without them a reply is only claims. Scripts and data you write to
+check go in `.audara-cache/`, never `out/`.
 
 - A sheet is scaled down when you look at it whole, and past about 2000 px a side its thumbnails stop
   being readable. So `sheet` gives every thumbnail the same area whatever the frame's shape (480×270 for
@@ -92,9 +97,10 @@ session that built the video passed it after looking at one frame and an eight-f
   them, and ends with SHIP or ONE MORE PASS (at most three fixes).
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame, or taste the director hasn't raised), or
   when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
-  round and one verification). The director outranks the critic: a
-  finding that goes against their words, or against a choice the treatment argues for, is reported, not
-  acted on.
+  round and one verification). After SHIP, what's left goes to the director as open findings, not into
+  the picture: a change after the last round means a new full-cut round at delivery. The director
+  outranks the critic: a finding that goes against their words, or against a choice the treatment argues
+  for, is reported, not acted on.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
@@ -121,7 +127,8 @@ fresh critic. Keep your own reasoning out of them.
 The tools block:
 
 ```text
-You judge; you don't fix. Work in <project>; write only under out/<video>/critique/r<N>/.
+You judge; you don't fix. Work in <project>. Stills, sheets and your report go under
+out/<video>/critique/r<N>/; any script or data you write to measure goes under .audara-cache/critique/r<N>/.
 - Stills, full size, to crop into: bun scripts/render.ts stills --video <video> --t 0,4.5,12 --out out/<video>/critique/r<N>
 - A sheet at times you choose, each frame labelled with its time and scene:
   bun scripts/render.ts sheet --video <video> --times 1,2.5,4 --out out/<video>/critique/r<N>/<sheet>.png
@@ -133,7 +140,7 @@ You judge; you don't fix. Work in <project>; write only under out/<video>/critiq
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
 - Measured checks on any MP4 (holds, blank frames, loudness, color tags):
   uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
-  if a sandbox stops uv writing its cache, set UV_CACHE_DIR=.audara-cache/uv, never a folder under out/)
+  only if uv can't write its own cache, set UV_CACHE_DIR=.audara-cache/uv, never a folder under out/)
 - The timing data: videos/<video>/data/audio.json (beats, downbeats, sections) and data/words.json (timed lines).
 About 24 frames fit a sheet; a longer one goes on in <sheet>-2.png, <sheet>-3.png: look at every page.
 Check type sizes on full-size stills.
@@ -198,10 +205,13 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)?
-3. Transitions and layout: empty or blinking frames at cuts, collisions, a carried element that jumps,
+3. Transitions and layout: empty or blinking frames at cuts, collisions and near-collisions (unrelated
+   lines closer than about a third of their type size), marks an offset copy or a glow adds to letters
+   (two i-dots read as ï), a carried element that jumps,
    type too small for where it will be watched or outside the format's safe area (the Layout tables in
    <skill>/references/style-template.md, checked on full-size stills), frame 0, the last frame.
-4. Holds and pace: qc.py's holds the treatment doesn't call for; stretches where only a detail moves.
+4. Holds and pace: each hold qc.py reports that the treatment doesn't mark is a finding, not taste (its
+   time, its cause in code, a fix); stretches where only a detail moves.
 5. The numbers: loudness against the treatment's target, color tags, duration.
 6. The top 6-8 changes by impact, concrete enough to make in code.
 End with SHIP or ONE MORE PASS. Be blunt; no padding.

@@ -10,6 +10,7 @@ import { Scene, type Frame } from '../../../src/engine/scene';
 import { FSPass, Layer2D } from '../../../src/engine/gl';
 import { ease, lerp, prog, pulse } from '../../../src/engine/util';
 import { drawLabel } from './_label';
+import { GLSL_PALETTE } from './_palette';
 
 const LABEL = 'FSPass · fullscreen GLSL · videos/example/scenes/fspass.ts';
 
@@ -21,6 +22,9 @@ const CORE = 2 * S, ROUND = 18;
 const barIndex = (bar: number) => Math.floor(bar + 1e-6);
 
 const FRAG = /* glsl */ `
+// C_BG, C_LINE ... C_ACCENT2: the example's own test card (_palette.ts), in place of the project's palette.
+// A shader of the project's leaves this line out: its C_<KEY> are the project's (src/look.ts).
+${GLSL_PALETTE}
 uniform vec2 uRes;       // the logical frame (px)
 uniform float uPhase;    // ring drift (px): one spacing per bar
 uniform float uRound;    // the core's corner radius (px): CORE is a disc

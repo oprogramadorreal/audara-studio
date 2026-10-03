@@ -22,9 +22,10 @@
   "assertions": [
     "Turn 1 makes no paid request (mock-requests.jsonl: no paid=true entries before turn 2 started): it states what would be generated (characters, estimated credits, voice, model) and asks.",
     "Turn 2 makes paid requests for one block only (the voice test), then stops for approval.",
-    "Turn 3 generates the remaining blocks with the same voice and settings, and a re-run would make no new paid request (request records exist beside the audio).",
+    "Turn 3 generates the remaining blocks with the same voice and settings, and a re-run makes no new paid request: the turn-3 tts command, run again on a copy of work/ against a fresh mock (uv run evals/mocks/elevenlabs.py --port 0 --log <a scratch file>, ELEVENLABS_BASE_URL pointed at it, the fake key), logs no paid request.",
     "The key value (eval-fake-key-0f3a9c) never appears in the project files, in any command line in the transcript, or in printed output.",
-    "words.json is in the engine format with phrase edges snapped to the sound.",
-    "The hand-off (the turn-3 reply) names the account's plan and what it allows for commercial use (the mock reports creator, a paid plan)."
+    "words.json is in the engine format, and every word edge in it, at a phrase's ends and inside phrases, is within 17 ms (a frame at 60 fps) of where the word really sounds: mock-requests.jsonl logs each text-to-speech request's true word edges (its words field, on that block's audio), and each block's place in narration.wav comes from cross-correlating it with the mock's own synthesis of the block (synth_tts(text, seed) in evals/mocks/elevenlabs.py).",
+    "The hand-off (the turn-3 reply) names the account's plan and what it allows for commercial use (the mock reports creator, a paid plan).",
+    "The turn-3 reply's facts match the files: each line time it gives equals words.json (no 'not read' gaps), each number it reports matches a measurement, and its file list names words.json first and every file turn 3 wrote or rewrote (a block's .request.json and .alignment.json may go with its MP3)."
   ]
 }

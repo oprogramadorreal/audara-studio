@@ -855,7 +855,9 @@ header of each says what it shows.
 | Canvas2D type (`Layer2D`) | `layer2d.ts` | Karaoke of lines found with `words.get()`: glyphs and width/weight steps from `Words.wordProgress` at `frameTime`, the layout gliding at `t`, `glyphX` splitting a word without losing its kerning, the gap between runs in two fonts, cheap uploads (still parts once, each line only when it changes, moving parts in a small strip) |
 | GPU lines (`LineBatch`) and stroke fonts | `linebatch.ts` | One batch with blend `max` for a lattice, an inked figure and a word, `strokeText` and `writtenLength` writing a glyph per beat, a pen that surges on each beat, a head above 1.0 that the bloom makes glow, a shimmer keyed to `frameIdx`, a dashed preview so the first frame is already a composition |
 
-`_label.ts` is a helper the four share (named exports only): a label in the title-safe area.
+`_label.ts` is a helper the four share (named exports only): a label in the title-safe area. `_palette.ts`
+is their own test-card palette (`LIN`, `rgba` and the `C_<KEY>` constants), so a project's new look never
+breaks them; the project's own scenes take theirs from `src/look.ts`.
 
 ## Pitfalls
 

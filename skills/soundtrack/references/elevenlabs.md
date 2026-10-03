@@ -30,10 +30,10 @@ to direct the voice, the music and the effects. Paths are relative to the skill'
   would add and its cost, as the script printed them; name the free paths below and go on with the
   one that fits, unless they pick another:
   - the user's own audio (`beats.py`, `align.py`);
-  - a local stand-in voice under an open license, named as a stand-in with its license (for
-    example Kokoro-82M, Apache-2.0). Scenes find words by text, so they keep their sync when the
-    real voice replaces it. Level it as `tts` levels narration (-16 LUFS, true peak at or under
-    -1 dBTP; `mix.py measure` reads both) and end its generator with `align.py check --fix`;
+  - a local stand-in voice: `uv run scripts/standin.py script.txt` makes one with Kokoro-82M
+    (Apache-2.0, commercial use allowed) in the same blocks, levelled and snapped as `tts` does it.
+    Name it as a stand-in with its license; scenes find words by text, so they keep their sync when
+    the real voice replaces it;
   - music you synthesize in a seeded script, with its grid and cues from `beats.py grid`;
   - a silent placeholder: `"audio": null` and a `"duration"` in the video's `video.json`.
 - A rejected key also exits 3. Some keys are limited to certain endpoints or carry a credit quota:
@@ -176,7 +176,8 @@ ElevenLabs"), and `tts` is built around them.
   character is timed from 0.0 (in ElevenLabs' own sample it spans 0.19 s), and another TTS service
   tested for this skill (Microsoft's edge voices, in a baseline run) led the sound by about 110 ms at
   every sentence. An MP3 without a gapless header would also put every time about 25 ms early (the
-  encoder and decoder delay, 1.5 frames at 60 fps); whether ElevenLabs' MP3s carry one is untested.
+  encoder and decoder delay, 1.5 frames at 60 fps); ElevenLabs' MP3s carry one (an Info tag with the
+  delay, 1105 samples at 44.1 kHz, measured on a real narration block), so the gapless decode drops it.
   So after every run `tts` measures each phrase's start and end against the waveform, reports the
   worst error in ms and in frames at 30 and 60 fps, and moves those edges onto the sound (free; the
   same code as `align.py check --fix`; `--no-snap` keeps the API's times). Words inside a phrase

@@ -3,7 +3,7 @@
 // title-safe area (5% in from the edges: 96 px at the sides and 54 px at the bottom of a 1920x1080 frame)
 // at 36 px, the project's smallest size for text meant to be read at 1920x1080 (docs/STYLE.md).
 import { F, font, measure } from '../../../src/engine/type';
-import { rgba } from '../../../src/engine/palette';
+import { rgba } from './_palette'; // the example's own test card (the project's scenes import src/engine/palette)
 
 const SIZE = 36;
 const FAMILY = F.mono(400);

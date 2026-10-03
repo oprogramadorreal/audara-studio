@@ -14,10 +14,11 @@
   ],
   "assertions": [
     "A treatment (videos/<name>/TREATMENT.md or the reply) exists, and no scene module or MP4 for this video was written before it (transcript order or file times). The turn ends awaiting approval, or says why it went ahead.",
-    "The treatment as shown for approval (in the reply, or the file before the first scene module) is sized to a 30-s piece (the template's spot size, about fifteen lines, not the full skeleton): it states the song window as start and end times, the aspect ratio, and a storyboard with time ranges, what is seen and the transition out.",
-    "The window starts within 33 ms of a ground-truth downbeat ($EVAL_SONG_DATA/audio.json), ends on a downbeat, with a fade that lands on one or with the song's own end, lasts 29-31 s, and the reply says why this part of the song.",
-    "Storyboard rows change where the song sections change inside the window (within one beat of each ground-truth section boundary; a boundary within a bar of the window's ends is not counted).",
-    "The turn asks at most 3 questions, only about what the prompt leaves open, each with a default; it does not ask for a length or a style (stating the bar-rounded length, with a default, is expected).",
+    "The plan shown for approval (the reply's; TREATMENT.md when the reply only links it) is spot-sized: at most about 15 non-blank lines and 350 words, questions excluded, with none of the skeleton's Sync, Words on screen or Scenes sections (a one-line list of scene modules, as in the template's example, is fine). It gives the song window as start and end times, the aspect ratio, and storyboard rows that each give a time range, what is seen and the transition out (a hard cut said as one counts).",
+    "The window starts within 33 ms of a ground-truth downbeat, or of the beat before a sung pickup's first word ($EVAL_SONG_DATA: audio.json, lyrics.json), ends on a downbeat, with a fade that lands on one or with the song's own end, and lasts 29-31 s; the reply states that length in bars and seconds.",
+    "The final message itself (not only a progress message or TREATMENT.md) says why this part of the song, and what it says about the music there is true of the song ($EVAL_SONG_DATA).",
+    "Storyboard rows change where the song's sections change inside the window: within one beat of each ground-truth boundary that starts a section of 2 bars or more ($EVAL_SONG_DATA/audio.json; beats.py merges shorter ones, such as a one-bar fill, on purpose), or on the downbeat that a pickup bar at that boundary leads into. A boundary within a bar of the window's ends is not counted.",
+    "The turn asks at most 3 questions, only about what the prompt leaves open, each with a default and none about style; confirming the bar-rounded length counts as one of them.",
     "No image, video, music or voice generation runs (no image_gen call, no ElevenLabs request); if the plan proposes one, it asks first and names the cost."
   ]
 }

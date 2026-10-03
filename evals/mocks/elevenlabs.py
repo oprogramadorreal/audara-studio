@@ -15,9 +15,13 @@ shapes (OpenAPI / docs, digest of 2026-10-02). Never contacts the real API.
 The TTS audio is speech-like (voiced tones per letter, real silences at , and .) and its
 alignment has the biases real TTS timestamps show: the first character starts at 0.0 although
 the voice starts 150 ms in, a word after a pause is reported 90 ms early, a word before a pause
-ends 50 ms late, and the last character runs to the end of the file. Every request is logged to
-the --log file (method, path, whether the key matched, and a text-to-speech request's request id;
-never the key itself). The key it accepts is $MOCK_KEY (default: the eval harness fake key).
+ends 50 ms late, and the last character runs to the end of the file. Its MP3s carry the gapless
+header ElevenLabs' do (a real narration block measured: an 'Info' tag whose encoder delay makes
+ffprobe report skip_samples 1105 at 44.1 kHz), so a gapless decode (ffmpeg, browsers) drops the
+25 ms of priming and starts where the alignment's times start. Every request is logged to the
+--log file (method, path, whether the key matched, and a text-to-speech request's request id with
+the true start and end of each word on its audio, to check word timings against; never the key
+itself). The key it accepts is $MOCK_KEY (default: the eval harness fake key).
 
 What a session sees looks like a real creator account: voice names, ids and labels, preview links,
 request ids and song metadata in ElevenLabs' formats. Agents that spotted a mock (voices named
@@ -35,6 +39,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -94,19 +99,25 @@ def err(code: int, typ: str, ecode: str, msg: str, status: str | None = None) ->
 
 
 def mp3(y: np.ndarray, channels: int = 1) -> bytes:
-    r = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", str(channels), "-i", "-",
-                        "-c:a", "libmp3lame", "-b:a", "128k", "-f", "mp3", "-"],
-                       input=np.ascontiguousarray(y, dtype="<f4").tobytes(), capture_output=True)
-    if r.returncode:
-        raise RuntimeError(r.stderr.decode())
-    return r.stdout
+    # (into a file, not a pipe: ffmpeg writes the Info header, with the encoder delay, only where it can
+    # seek back to it once the frames are counted; a file a virus scanner still holds is left to the OS)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        path = Path(d) / "audio.mp3"
+        r = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", str(channels), "-i", "-",
+                            "-c:a", "libmp3lame", "-b:a", "128k", str(path)],
+                           input=np.ascontiguousarray(y, dtype="<f4").tobytes(), capture_output=True)
+        if r.returncode:
+            raise RuntimeError(r.stderr.decode())
+        return path.read_bytes()
 
 
 # ---------------------------------------------------------------------------------------------
 # text-to-speech
 
 
-def synth_tts(text: str, seed: int) -> tuple[np.ndarray, dict]:
+def synth_tts(text: str, seed: int) -> tuple[np.ndarray, dict, list]:
+    """The audio, its alignment as the API reports it, and where each word (letters and digits) really
+    sounds: [[word, start, end], ...] in seconds on the audio."""
     rng = np.random.default_rng((seed or 0) * 7919 + len(text))
     lead, tail = 0.15, 0.40
     f0 = 118.0 + 9.0 * ((seed or 0) % 5)
@@ -175,7 +186,12 @@ def synth_tts(text: str, seed: int) -> tuple[np.ndarray, dict]:
     en[-1] = total  # the last character absorbs the tail
     al = {"characters": chars, "character_start_times_seconds": [round(x, 3) for x in st],
           "character_end_times_seconds": [round(x, 3) for x in en]}
-    return y.astype(np.float32), al
+    words = []
+    for m in re.finditer(r"\S+", text):
+        ks = [k for k in range(m.start(), m.end()) if text[k].isalnum()]
+        if ks:  # (a dash between spaces is a pause, not a word)
+            words.append([m.group(), round(segs[ks[0]][1], 3), round(segs[ks[-1]][2], 3)])
+    return y.astype(np.float32), al, words
 
 
 # ---------------------------------------------------------------------------------------------
@@ -367,7 +383,7 @@ class H(BaseHTTPRequestHandler):
                 c, b = err(429, "rate_limit_error", "concurrent_limit_exceeded", "Too many concurrent requests.")
                 self._log(c, True)
                 return self._json(c, b)
-            y, al = synth_tts(text, int(body.get("seed") or 0))
+            y, al, words = synth_tts(text, int(body.get("seed") or 0))
             audio = mp3(y)
             with LOCK:
                 if text not in STATE["tts_texts"]:
@@ -375,7 +391,7 @@ class H(BaseHTTPRequestHandler):
             rid = request_id()  # (eleven.py keeps it in the block's request record)
             self._log(200, True, {"chars": len(text), "seed": body.get("seed"), "model": body.get("model_id"),
                                   "voice_settings": body.get("voice_settings"), "format": q.get("output_format"),
-                                  "request_id": rid})
+                                  "request_id": rid, "words": words})
             return self._json(200, {"audio_base64": base64.b64encode(audio).decode(), "alignment": al,
                                     "normalized_alignment": al},
                               {"request-id": rid, "character-cost": str(len(text))})

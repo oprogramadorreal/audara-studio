@@ -97,9 +97,9 @@ cut and a hit do.>
   every other key for its job in this piece, so scenes say what a colour is for and a palette change
   restyles every scene; the test card's `surface`, `line`, `muted`, `accent` and `accent2` are one way to
   name roles, not a set to fill.
-- Renaming or deleting a key breaks every scene that uses it (`C_<KEY>`, `LIN.<key>`, `rgba('<key>')`),
-  the example video's included: update those scenes, or delete `videos/example/` once the project has a
-  video of its own (`init` leaves it deleted).
+- Renaming or deleting a key breaks every scene that uses it (`C_<KEY>`, `LIN.<key>`, `rgba('<key>')`):
+  update those scenes. The template's example video (`videos/example/`) keeps its own palette, so a
+  new palette never breaks it: leave it, or delete it when the director asks.
 - **Glow.** Bloom works on linear values: it picks up a pixel's brightest channel from about 0.7 and grows
   above 1 (`bloomThreshold` 1, soft knee 0.3). A palette hex reaches 1.0 at most (a channel at FF), where
   it barely blooms, so glow means a scene pushing a key above 1, as in `C_ACCENT * 3.0`. Name the keys
@@ -179,7 +179,8 @@ Generic "AI video" looks:
 
 Archetypes models converge on when nothing steers them:
 
-- a navy or near-black ground with ivory type and one amber accent, or teal, amber and violet on navy;
+- a navy or near-black ground (any tint) with ivory or bone type and one warm accent (amber, orange, red),
+  often glowing; or teal, amber and violet on navy;
 - the genre's emblem as the whole idea: a turning record for jazz, a skyline at night for lo-fi, a neon
   sign for synthwave, a rocket for a launch;
 - starfields, drifting glow blobs, dot grids;

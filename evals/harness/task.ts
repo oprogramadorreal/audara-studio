@@ -8,16 +8,21 @@
 //
 // A case folder holds case.json:
 //   { "id", "skill", "setup": { "files": [fixture name | "<path, $ENV allowed> => <name>"], "project": "init" | null,
-//       "from": "<dir to copy>", "env": {...}, "mock": "elevenlabs", "decoy": <port> }, "turns": [{ "prompt": "..." }, ...],
-//     "timeoutMinutes": 45, "assertions": ["..."] }
+//       "from": "<dir to copy>", "env": {...}, "mock": "elevenlabs", "key": false, "decoy": <port> },
+//     "turns": [{ "prompt": "..." }, ...], "timeoutMinutes": 45, "assertions": ["..."] }
 // The first turn starts a session; each later turn resumes it, as a director replying would. "mock":
 // "elevenlabs" starts evals/mocks/elevenlabs.py on a free port and points ELEVENLABS_BASE_URL at it (with a
-// fake key), so a case can check that nothing is spent before the user says yes. "decoy": <port> keeps an
-// unrelated Vite app answering on 127.0.0.1:<port> for the whole run, so a case can check that the agent
-// links its own project's preview, not whatever answers on the port.
+// fake key), so a case can check that nothing is spent before the user says yes; with "key": false the session
+// has no key, and the mock logs any request made without one (a key found elsewhere reaches the mock, not
+// ElevenLabs). "decoy": <port> keeps an unrelated Vite app answering on 127.0.0.1:<port> for the whole run, so
+// a case can check that the agent links its own project's preview, not whatever answers on the port.
 //
-// result.json also lists the audara previews that answered during the run and the folder each serves (they
-// die with the session). A Codex run's session files, its sub-agents' included, are copied to
+// Claude Code turns run with no MCP servers (--strict-mcp-config, and without the claude.ai connectors), so the
+// user's connectors don't ask for authorization in the replies. Both tools keep the user's caches (uv's, and
+// AUDARA_CACHE's models): a fresh one per run would download gigabytes each time.
+//
+// result.json also lists the audara previews that answered during the run and the folder each serves (the
+// harness stops this run's at the end). A Codex run's session files, its sub-agents' included, are copied to
 // codex-sessions/: `codex exec --json` leaves some tool calls out of the transcripts.
 import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, cpSync, existsSync, readdirSync, statSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -33,7 +38,7 @@ const flag = (k: string) => argv.includes(`--${k}`);
 const REPO = path.resolve(import.meta.dir, '..', '..');
 const CASE_DIR = path.resolve(opt('case')!);
 const CASE = JSON.parse(readFileSync(path.join(CASE_DIR, 'case.json'), 'utf8')) as {
-  id: string; skill: string; setup?: { files?: string[]; project?: 'init' | null; from?: string; env?: Record<string, string>; mock?: 'elevenlabs'; decoy?: number };
+  id: string; skill: string; setup?: { files?: string[]; project?: 'init' | null; from?: string; env?: Record<string, string>; mock?: 'elevenlabs'; key?: false; decoy?: number };
   turns: { prompt: string }[]; timeoutMinutes?: number; assertions: string[];
 };
 const TOOL = opt('tool', 'claude') as 'claude' | 'codex';
@@ -87,9 +92,10 @@ if (ARM === 'with') {
 
 // ---------------------------------------------------------------- previews
 // The audara previews on Vite's ports (5173-5199), each with the folder it serves (its /__audara), looked
-// for every 10 s during the turns and once after the last: a session's preview dies with it (Claude Code
-// stops its background shells when `claude -p` exits), and runs going at once can reach each other's
-// previews, so only the root tells this run's apart.
+// for every 10 s during the turns and once after the last: one started in a background shell dies with the
+// turn (Claude Code stops its background shells when `claude -p` exits), one started by `render.ts preview`
+// runs until the harness stops it, and runs going at once can reach each other's previews, so only the root
+// tells this run's apart.
 const previews = new Map<string, { port: number; root: string; thisRun: boolean; turns: number[]; atEnd: boolean }>();
 /** The folder the audara preview on 127.0.0.1:<port> serves; null when nothing, or another kind of server, answers. */
 async function previewRoot(port: number) {
@@ -128,8 +134,13 @@ async function lookForPreviews(turn: number | 'end') {
 // ---------------------------------------------------------------- turns
 const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}) };
 delete env.ELEVENLABS_API_KEY; // a case decides whether there is a key; never the real one
+// (and no claude.ai connectors, which Claude Code fetches itself: --strict-mcp-config is documented for
+// configured servers only)
+if (TOOL === 'claude') env.ENABLE_CLAUDEAI_MCP_SERVERS = 'false';
 let mock: ReturnType<typeof Bun.spawn> | null = null;
 if (CASE.setup?.mock === 'elevenlabs') {
+  // (there from the start, so an empty log reads as a mock nobody asked anything)
+  writeFileSync(path.join(RUN, 'mock-requests.jsonl'), '');
   const m = Bun.spawn(['uv', 'run', path.join(REPO, 'evals', 'mocks', 'elevenlabs.py'), '--port', '0', '--log', path.join(RUN, 'mock-requests.jsonl')], { stdout: 'pipe', stderr: 'pipe' });
   mock = m;
   // it prints "PORT <n>" once it listens: waiting for that line rather than sending a request keeps the
@@ -149,7 +160,7 @@ if (CASE.setup?.mock === 'elevenlabs') {
   ]);
   if (!port) { stopTree(m.pid); throw new Error(`the ElevenLabs mock did not start:\n${await new Response(m.stderr).text()}`); }
   env.ELEVENLABS_BASE_URL = `http://127.0.0.1:${port}`;
-  env.ELEVENLABS_API_KEY = 'eval-fake-key-0f3a9c';
+  if (CASE.setup.key !== false) env.ELEVENLABS_API_KEY = 'eval-fake-key-0f3a9c';
 }
 
 // "decoy": what another project's Vite dev server, left running on a developer's machine, answers: its
@@ -201,11 +212,11 @@ if (decoy) {
 }
 
 let session: string | null = null;
-const turns: { prompt: string; started: string; exit: number | null; seconds: number; transcript: string; timedOut?: boolean }[] = [];
+const turns: { prompt: string; started: string; ended: string; exit: number | null; seconds: number; transcript: string; timedOut?: boolean }[] = [];
 for (const [i, t] of CASE.turns.entries()) {
   const first = i === 0;
   const cmd = TOOL === 'claude'
-    ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto',
+    ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--strict-mcp-config',
        ...(MODEL ? ['--model', MODEL] : []), ...(first ? [] : ['--resume', session!])]
     // (codex is a .cmd shim on Windows: prompts go on stdin)
     : first
@@ -220,13 +231,15 @@ for (const [i, t] of CASE.turns.entries()) {
   const out = await new Response(p.stdout).text();
   const err = await new Response(p.stderr).text();
   const exit = await p.exited;
+  // (the times themselves, to the millisecond: a request the mock logged belongs to the turn whose window holds it)
+  const ended = new Date().toISOString();
   clearTimeout(timer);
   clearInterval(watch);
   const file = path.join(RUN, `turn-${i + 1}.jsonl`);
   writeFileSync(file, out);
   if (err.trim()) writeFileSync(path.join(RUN, `turn-${i + 1}.stderr.txt`), err);
   // (marked: a turn stopped at the timeout has no reply, and the next prompt answers one nobody saw)
-  turns.push({ prompt: t.prompt, started, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file), ...(timedOut ? { timedOut } : {}) });
+  turns.push({ prompt: t.prompt, started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file), ...(timedOut ? { timedOut } : {}) });
   console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}`);
   if (first) {
     for (const line of out.split('\n')) {
@@ -257,10 +270,10 @@ writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
 }, null, 1));
 
 // ---------------------------------------------------------------- stop what the run left running
-// The skill tells the agent to keep the preview running in the background, so a headless session ends with
-// its dev server still up; and killing `uv` alone leaves the mock's Python running (on Windows a child
-// outlives its parent), holding this process open. Stop every process started from the run's folder, the
-// mock with its whole tree, and the decoy.
+// The skill keeps the preview running after the session (`render.ts preview` starts the project's own
+// node_modules/vite, so its command line names the run's folder); and killing `uv` alone leaves the mock's
+// Python running (on Windows a child outlives its parent), holding this process open. Stop every process
+// started from the run's folder, the mock with its whole tree, and the decoy.
 function stopTree(pid: number) {
   if (process.platform === 'win32') Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' });
   else Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]), process.kill(pid);
@@ -277,6 +290,20 @@ if (mock?.pid) stopTree(mock.pid);
 clearInterval(decoyRetry);
 decoyServer?.stop(true);
 stopUnder(WORK);
+// (a preview of this run that still answers, started by a command line that doesn't name the folder: stopped
+// through its port, so previews left over from earlier runs don't fill 5173-5199)
+const still: number[] = [];
+for (const p of previews.values()) {
+  const root = p.thisRun ? await previewRoot(p.port) : null;
+  if (root && isWork(root)) still.push(p.port);
+}
+if (still.length) {
+  const pids = process.platform === 'win32'
+    ? Bun.spawnSync(['powershell', '-NoProfile', '-Command',
+        `Get-NetTCPConnection -State Listen -LocalPort ${still.join(',')} -ErrorAction SilentlyContinue | ForEach-Object { $_.OwningProcess }`]).stdout.toString()
+    : Bun.spawnSync(['lsof', '-t', '-sTCP:LISTEN', ...still.flatMap((p) => ['-i', `TCP:${p}`])]).stdout.toString();
+  for (const p of new Set(pids.split(/\s+/).filter(Boolean).map(Number))) if (p !== process.pid) stopTree(p);
+}
 
 // ---------------------------------------------------------------- Codex's own record of the session
 // `codex exec --json` leaves some tool calls out of the transcripts (spawn_agent, view_image), and each

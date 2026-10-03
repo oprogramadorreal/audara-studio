@@ -434,10 +434,10 @@ function agentsSection(): string {
     ...rows,
     '',
     `- **Shared look:** \`docs/STYLE.md\` in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
-    "- **Preview:** `bunx vite` in the background (keep it running; a new session starts it again). `bun scripts/render.ts link --video <video> --t <seconds>` prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Every change gets a link.",
+    "- **Preview:** `bun scripts/render.ts preview --video <video> --t <seconds>` starts it unless it runs and prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Run it yourself (the director doesn't run commands), before the first scene and again in a new session; the preview runs in a process of its own, so it outlives your turn, until `preview --stop`. Every change gets a link.",
     '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look; a full `video` render takes minutes: wait for it before replying). Before calling work done: `bun run check` and `verify`.',
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
-    '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
+    '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set (a length), the version that keeps it; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
     '',
     'Keep this file current as videos are added: running init again (`--video <video>` for a new one) rewrites this section from `videos/*/video.json`.',
     END,
@@ -542,8 +542,10 @@ if (!force && !hadEngine && !listVideos().length && existsSync(path.join(P, 'pac
   fail(`${P} already holds another project (${clash.join(', ')}). A video project brings its own package.json, index.html, vite.config.ts and src/, so it needs a folder of its own: ` +
     `run init on a new subfolder, e.g. bun ${import.meta.path} ${path.join(P, 'video')} (its videos can still use files from here). --force puts it here anyway and replaces those files (keeping each as <file>.orig).`);
 }
-// An initialized project that removed the example keeps it removed (--video example restores it).
-const withExample = !hadEngine || existsSync(path.join(P, 'videos', 'example')) || newVideos.includes('example');
+// An initialized project that removed the example keeps it removed (--video example restores it). The example
+// counts as there only with its video.json: a delete cut short (a sandbox that refused part of it) can leave a
+// file or two behind.
+const withExample = !hadEngine || existsSync(path.join(P, 'videos', 'example', 'video.json')) || newVideos.includes('example');
 
 log(`Project${created ? ' (new folder)' : ''}`);
 copyTemplate(files, hadEngine, withExample);
@@ -567,11 +569,10 @@ const vids = listVideos().map((v) => v.name);
 const show = newVideos.at(-1) ?? defaultVideo(vids);
 const here = path.relative(process.cwd(), P) === '';
 // (one command per line: Windows PowerShell 5.1 has no &&)
-log('\nNext: start the preview and keep it running:');
+log('\nNext: start the preview and get its link (it keeps running on its own, until `bun scripts/render.ts preview --stop`):');
 if (!here) log(`  cd "${P}"`);
 if (needInstall) log('  bun install');
-log('  bunx vite');
-log(`then get its link (it checks the server is this project's): bun scripts/render.ts link --video ${show ?? '<video>'}`);
+log(`  bun scripts/render.ts preview --video ${show ?? '<video>'}`);
 if (problems.length) {
   log(`\ninit finished with ${problems.length} problem${problems.length > 1 ? 's' : ''}:`);
   for (const p of problems) log(`  - ${p}`);

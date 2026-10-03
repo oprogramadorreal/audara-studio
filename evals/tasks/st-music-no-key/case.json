@@ -2,7 +2,9 @@
   "id": "st-music-no-key",
   "skill": "soundtrack",
   "setup": {
-    "files": []
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
   },
   "timeoutMinutes": 40,
   "turns": [
@@ -11,14 +13,14 @@
     }
   ],
   "assertions": [
-    "The turn tells the user, in the reply or a progress message, that no ElevenLabs key is set (without printing any key) and what a key would add, and makes no paid request.",
-    "A WAV of 30.000 +/- 0.010 s ending at digital silence is delivered, with the hit onset at 20.000 +/- 0.010 s, found where the hit's energy rises (spectral flux, or the first 5-10 ms block within 10 dB of the hit's peak), not as the largest 1 ms level jump, which bass zero crossings fool.",
+    "The turn tells the user, in the reply or a progress message, that no ElevenLabs key is set (without printing any key), what a key would add (a produced take composed to the plan) and its cost, and the session makes no ElevenLabs request (mock-requests.jsonl is empty).",
+    "A WAV of 30.000 +/- 0.010 s ending at digital silence is delivered, with the hit onset at 20.000 +/- 0.010 s, found where the hit's energy rises: the first 5 ms block of the run of blocks within 10 dB of the hit's peak that ends at the peak (scanning back from it), or spectral flux with a hop of 2 ms or less; not the largest 1 ms level jump, which bass zero crossings fool.",
     "Hit contrast: the max momentary loudness just after 20 s is at least 3 LU above the 4 s before it, at full range and through a 300 Hz high-pass (mix.py measure or the grader's check).",
-    "Build: the K-weighted loudness of 12-19.8 s is at least 5 LU above 0-8 s.",
-    "Delivery level: integrated -18 to -13 LUFS and true peak <= -1.0 dBTP.",
+    "Build: the ungated K-weighted loudness of 12-19.8 s is at least 5 LU above that of 0-8 s.",
+    "Delivery level: integrated -18 to -13 LUFS and true peak <= -1.0 dBTP, as mix.py measure or ffmpeg ebur128 reads them.",
     "A timing JSON in the engine format sits with the audio: tempo, beats, downbeats, named sections covering 0-30 s and a hit cue at 20.0 s.",
     "The generator script is kept, and re-running it reproduces the WAV bit-exactly.",
-    "The final reply states the measured length, hit time and contrast, the build into the hit, integrated loudness and true peak.",
-    "Every number the final reply states about the delivered files matches the measurement (within 10 ms, 1 LU, 0.3 dB)."
+    "The final reply states the measured length (30.000 s, not just '30-second'), hit time and contrast, the build into the hit, integrated loudness and true peak.",
+    "Every number the final reply states about the delivered files matches the measurement (within 10 ms, 1 LU, 0.3 dB; counts exact, sizes within 5%)."
   ]
 }

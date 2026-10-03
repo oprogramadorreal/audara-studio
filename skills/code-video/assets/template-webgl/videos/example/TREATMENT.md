@@ -3,8 +3,8 @@
 A 17-second test card over the demo track (120 BPM, 4/4, 8 bars and a one-second ring-out). It shows
 what the engine draws with, one technique per two bars, each scene labelled with its technique and
 file so a viewer can map what they see to the code. It is a calibration chart, not a style: neutral
-palette (`src/look.ts`), plain geometry, no mood. Take from it what each scene shows about the engine, not
-its look, structure or pacing (a treatment's format is the code-video skill's
+palette (its own, not the project's), plain geometry, no mood. Take from it what each scene shows about
+the engine, not its look, structure or pacing (a treatment's format is the code-video skill's
 `references/treatment-template.md`). One motif runs through it: the kick sends something outward (a front
 through the field, a ring through the columns, the lit pool around the pen).
 
@@ -15,8 +15,11 @@ through the field, a ring through the columns, the lit pool around the pen).
   text meant to be read at 1920×1080. The other annotations (legends, notes under words, the ruler) are
   13–15 px: texture that rewards a pause in the preview, never something the viewer must read. Archivo
   for the lyric; the `readable` stroke font for the pen.
-- **Palette:** `bg` ground, `fg` marks, `line` and `muted` for structure, `accent` for what reacts to
-  the music, `accent2` for one other channel per scene (the snare, the kick's source).
+- **Palette:** the template's test card, kept in `scenes/_palette.ts` rather than taken from
+  `src/look.ts`, so the project can recolour its palette and rename or drop any key but `bg` and `fg`
+  (the engine needs those) while the example stays as it is. `bg` ground, `fg` marks, `line` and `muted`
+  for structure, `accent` for what reacts to the music, `accent2` for one other channel per scene (the
+  snare, the kick's source).
 - **Rules:** every motion is a function of `t` and the beat grid; cuts are hard, on downbeats; each scene
   holds a finished composition on its first frame; nothing crosses the labels.
 - **Assumed:** the demo track has no voice: `data/words.json` times the lyric to its beats, as an

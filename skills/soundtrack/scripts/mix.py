@@ -59,14 +59,16 @@ import math
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
+import time
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 # Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
-# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+# beats_models.py, align.py, align_models.py, mix.py, eleven.py and standin.py: change all seven together.
 DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
 #                torch's: 91)
 
@@ -423,7 +425,7 @@ def write_json(path: Path, obj) -> None:
 # ------------------------------------------------------------------------------------------------ places
 
 # Where files go. Where, has_videos, find_project, video_of, in_video and where are the same code in
-# eleven.py, beats.py, mix.py and align.py: change all four together.
+# eleven.py, beats.py, mix.py, align.py and standin.py: change all five together.
 
 
 @dataclass
@@ -515,8 +517,8 @@ def where(video: str | None, out: str | None, inputs=(), writes: bool = True) ->
     return Where(None, None, None, base / "audio", base / "data", base / "out", base)
 
 
-# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
-# three together.
+# The cache. CACHE_DIRS, user_cache, cache_root, SIZE_BUDGET_S, file_sizes, folder_bytes and uv_cache are the same
+# code in beats.py, mix.py, align.py and standin.py: change all four together.
 
 CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
               "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
@@ -567,6 +569,52 @@ def cache_root(w: Where) -> tuple[Path, bool]:
     return root, True
 
 
+SIZE_BUDGET_S = 5.0  # uv's cache is counted for 5 s at most: one that every project shares can hold millions of files
+#                      (19 GB in 1.8 million took 57 s here); a sandbox's (1.1 GB in 48,000 files) takes about 1 s
+
+
+def file_sizes(p: Path):
+    """The size of every file under p, each file once: uv hard-links its environments to its archive, so a sum over
+    every path counts most of a uv cache twice (an eval run read 2.04 GB for a folder of 1.08 GB). Walked the long
+    way on Windows: a cache in a deep project holds paths past 260 characters, which a plain walk skips (in one 181
+    characters deep, 4,137 of its 8,354 files)."""
+    seen = set()
+    for d, _, names in os.walk(verbatim(str(p)) if sys.platform == "win32" else str(p)):
+        for name in names:
+            try:
+                st = os.stat(os.path.join(d, name))
+            except OSError:  # (removed meanwhile, or unreadable)
+                continue
+            if stat.S_ISREG(st.st_mode) and not (st.st_ino and (st.st_dev, st.st_ino) in seen):
+                seen.add((st.st_dev, st.st_ino))
+                yield st.st_size
+
+
+def folder_bytes(p: Path) -> int:
+    return sum(file_sizes(p))
+
+
+def uv_cache() -> dict | None:
+    """uv's cache when UV_CACHE_DIR moves it (for a sandbox, or a short path: SKILL.md): where it is and its size on
+    disk, for the hand-off. None when UV_CACHE_DIR is not set: uv's own cache is shared by every project."""
+    env = os.environ.get("UV_CACHE_DIR", "").strip()
+    d = Path(env).resolve() if env else None  # (a relative one from the current folder, as uv reads it)
+    if d is None or not d.is_dir():
+        return None
+    n, done, stop = 0, True, time.monotonic() + SIZE_BUDGET_S
+    for size in file_sizes(d):
+        n += size
+        if time.monotonic() > stop:
+            done = False
+            break
+    size = f"{n / 1e9:.2f} GB" if n >= 1e9 else f"{n / 1e6:.0f} MB" if n >= 1e6 else f"{n / 1e3:.0f} KB"
+    return {"path": str(d), "bytes": n, "counted": done,
+            "note": f"uv's cache (UV_CACHE_DIR): {d}, {size if done else 'over ' + size} on disk"
+                    + ("" if done else f" (counting stopped after {SIZE_BUDGET_S:g} s)")
+                    + ", each file counted once (its environments share their files with its downloads); it can be "
+                      "deleted once no script is running, and uv downloads what it needs again"}
+
+
 def mpl_cache(w: Where) -> Path | None:
     """matplotlib's font cache, the only cache mix.py writes, goes into the audara cache (cache_root). Returns
     the cache's folder when it is inside the project (its size is reported), else None."""
@@ -582,10 +630,13 @@ def mpl_cache(w: Where) -> Path | None:
 def cache_size_note(root: Path | None, w: Where) -> str | None:
     if root is None:
         return None
-    size = sum(f.stat().st_size for f in root.rglob("*") if f.is_file())
+    size = folder_bytes(root)
+    env = os.environ.get("UV_CACHE_DIR", "").strip()  # uv's cache inside this one (.audara-cache/uv): its note follows
+    with_uv = bool(env) and Path(env).resolve().is_dir() and Path(env).resolve().is_relative_to(root.resolve())
     why = ("AUDARA_CACHE puts the cache" if root == user_cache() else  # (set inside the project: cache_root)
            "the user cache is not writable here, so the cache is")
-    return f"{why} inside the project, in {relpath(root, w.project)}/ ({size / 1e6:.2f} MB; it ignores itself in git)"
+    return (f"{why} inside the project, in {relpath(root, w.project)}/ ({size / 1e6:.2f} MB on disk"
+            + (", uv's cache below included" if with_uv else "") + "; it ignores itself in git)")
 
 
 # ------------------------------------------------------------------------------------------------ audio in and out
@@ -1021,10 +1072,38 @@ def analyze(x: np.ndarray, sections: list[dict], hits: list[float], k: KEnergy |
     return rep, curves, k
 
 
+def narration_tail(path: Path) -> tuple[float, str] | None:
+    """(seconds, tool): the silence a narration leaves after its last word on purpose (--tail), as the settings
+    beside narration.wav record it: standin.py's audio/standin/standin.json when it wrote this very file, else
+    eleven.py's audio/narration/narration.json. None for any other file."""
+    if path.name != "narration.wav":
+        return None
+    for rec, tool in ((path.parent / "standin" / "standin.json", "standin.py"),
+                      (path.parent / "narration" / "narration.json", "eleven.py")):
+        try:
+            cfg = json.loads(rec.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(cfg, dict) or (tool == "standin.py" and cfg.get("narration_sha256") != sha256(path)):
+            continue  # (a stand-in the real voice has replaced since)
+        t = cfg.get("tail")  # (the record that made this file decides: --tail 0 asked for no silence)
+        return (float(t), tool) if isinstance(t, (int, float)) and not isinstance(t, bool) and t > 0 else None
+    return None
+
+
+def tail_label(asked: dict) -> str:
+    """What the silence at a narration's end is, when its tool was asked for it (measure's narration_tail): 'the
+    narration's 1.0 s tail (eleven.py --tail)'."""
+    secs = f"{asked['s']:.1f}" if asked["s"] == round(asked["s"], 1) else f"{asked['s']:g}"
+    return f"the narration's {secs} s tail ({asked['by']} --tail)"
+
+
 def summary_flags(rep: dict) -> list[str]:
     out = []
     if rep.get("dead_tail_s") is not None and rep["dead_tail_s"] >= NOTE_DEAD_S:
-        out.append(f"dead tail: the last {rep['dead_tail_s']:.2f} s stay under {DEAD_DBFS:.0f} dBFS")
+        asked = rep.get("narration_tail")  # (measure on a narration.wav: the tail its tool was asked for)
+        out.append((tail_label(asked) if asked else "dead tail")
+                   + f": the last {rep['dead_tail_s']:.2f} s stay under {DEAD_DBFS:.0f} dBFS")
     if rep.get("quiet_intro_s") is not None and rep["quiet_intro_s"] >= 1.0:
         out.append(f"near-silent intro: the first {rep['quiet_intro_s']:.2f} s sit more than {QUIET_INTRO_LU:.0f} LU "
                    "under the integrated loudness")
@@ -1086,8 +1165,12 @@ def draw_png(path: Path, title: str, rep: dict, curves: dict, extra: dict | None
             lab = s["name"] + (f"  {s['lufs']:.1f}" if s.get("lufs") is not None else "")
             ax.text(a + 0.004 * dur, 0.985, lab, transform=ax.get_xaxis_transform(), va="top", ha="left",
                     fontsize=8, color=C["ink2"], clip_on=True)
-    tail = rep.get("dead_tail_s")
-    if tail is not None and tail >= NOTE_DEAD_S:
+    tail, asked = rep.get("dead_tail_s"), rep.get("narration_tail")
+    if tail is not None and tail >= NOTE_DEAD_S and asked:  # (silence on purpose: no warning colour)
+        ax.axvspan(dur - tail, dur, color=C["muted"], alpha=0.12, lw=0, zorder=0)
+        ax.text(dur, 0.08, tail_label(asked) + " ", transform=ax.get_xaxis_transform(), fontsize=8, color=C["ink2"],
+                va="bottom", ha="right")
+    elif tail is not None and tail >= NOTE_DEAD_S:
         ax.axvspan(dur - tail, dur, color=C["warn"], alpha=0.22, lw=0, zorder=0)
         ax.text(dur - tail, 0.08, f" dead tail {tail:.2f} s", transform=ax.get_xaxis_transform(), fontsize=8,
                 color=C["ink2"], va="bottom", ha="left")
@@ -1954,7 +2037,8 @@ def cmd_build(args) -> dict:
             and old.get("outputs", {}).get("music-only.wav") == sha256(mo_path)):
         rs = old.get("resolved") or {}
         return {"ok": True, "status": "up to date", "round": old.get("round"), "record": old, "ctx": ctx,
-                "hints": video_hints(ctx, video, float(rs.get("duration") or 0), str(rs.get("duration_source")), data)}
+                "hints": video_hints(ctx, video, float(rs.get("duration") or 0), str(rs.get("duration_source")), data),
+                "uv_cache": uv_cache()}
 
     # Decode everything once (ffmpeg's gapless decode, 48 kHz stereo).
     note(f"mix: decoding {len(inputs)} input file(s)")
@@ -2292,7 +2376,7 @@ def cmd_build(args) -> dict:
     title = (f"{tag} / mix.wav   {dur:.2f} s   I {rep['integrated_lufs']:.1f} LUFS (target {target:g})   "
              f"LRA {rep['lra_lu']:.1f} LU   true peak {rep['true_peak_dbtp']:.1f} dBTP")
     draw_png(png, title, rep, curves, {"marks": marks, "duck": duck_panel})
-    if cache_size_note(in_project_cache, ctx["w"]):
+    if in_project_cache:
         notes.append(cache_size_note(in_project_cache, ctx["w"]))
     rep_out = {"file": relpath(mix_path, root), **rep, "png": relpath(png, root), "time_origin": TIME_ORIGIN}
     write_json(jpath, rep_out)
@@ -2330,7 +2414,8 @@ def cmd_build(args) -> dict:
     }
     write_json(rec_path, record)
     return {"ok": True, "status": "built", "round": rnd, "record": record, "ctx": ctx, "rep": rep,
-            "archived": rnd_note, "hints": hints, "png": png, "json": jpath, "files": [mix_path, mo_path, rec_path]}
+            "archived": rnd_note, "hints": hints, "png": png, "json": jpath, "files": [mix_path, mo_path, rec_path],
+            "uv_cache": uv_cache()}
 
 
 def print_build(res: dict) -> None:
@@ -2348,7 +2433,7 @@ def print_build(res: dict) -> None:
               f"  report: {relpath(png, root)} is gone (out/ is not kept): --force rebuilds it, or run measure on mix.wav")
         for s in rec.get("warnings") or []:
             print(f"  {s}")
-        for s in rec.get("notes") or []:
+        for s in (rec.get("notes") or []) + ([res["uv_cache"]["note"]] if res.get("uv_cache") else []):
             print(f"  note: {s}")
         for h in res.get("hints") or []:
             print(f"  next: {h}")
@@ -2432,7 +2517,7 @@ def print_build(res: dict) -> None:
     print(f"  stems: music-only.wav is the music exactly as in the mix (same gain, ducking and limiter); mix minus it "
           f"leaves voice and effects (residual {rec['stems_residual_dbfs']} dBFS)")
     flags = summary_flags(res["rep"])
-    for s in flags + rec["notes"]:
+    for s in flags + rec["notes"] + ([res["uv_cache"]["note"]] if res.get("uv_cache") else []):
         print(f"  note: {s}")
     files = [relpath(p, root) for p in res["files"]]
     print(f"  wrote: {', '.join(files)}; {relpath(res['png'], root)} (+ .json)")
@@ -2510,13 +2595,18 @@ def cmd_measure(args) -> dict:
             raise usage(f"{flag} must be between 0 (no warning) and 40 LU, got {v:g}")
     rep, curves, _ = analyze(x, sections, hits, hit_lu=args.hit_lu, build_lu=args.build_lu)
     rep = {"file": relpath(path, proj), **rep, **ebur128(path), "sections_from": ssrc}
+    asked = narration_tail(path)
+    if asked:
+        rep["narration_tail"] = {"s": asked[0], "by": asked[1]}
     in_project_cache = mpl_cache(w)
     png = out_dir / f"loudness-{path.stem}.png"
     title = (f"{path.name}   {dur:.2f} s   I {rep['integrated_lufs']:.1f} LUFS   LRA {rep['lra_lu']:.1f} LU   "
              f"true peak {rep['true_peak_dbtp']:.1f} dBTP")
     draw_png(png, title, rep, curves)
     rep["png"] = relpath(png, proj)
-    rep["notes"] = summary_flags(rep) + ([cache_size_note(in_project_cache, w)] if in_project_cache else [])
+    rep["uv_cache"] = uv_cache()
+    rep["notes"] = (summary_flags(rep) + ([cache_size_note(in_project_cache, w)] if in_project_cache else [])
+                    + ([rep["uv_cache"]["note"]] if rep["uv_cache"] else []))
     rep["time_origin"] = time_note(path.name, priming(path))
     jpath = out_dir / f"loudness-{path.stem}.json"
     write_json(jpath, rep)
@@ -2698,6 +2788,7 @@ def main(argv=None) -> int:
                 out["hints"] = res.get("hints") or []
                 out.update({k: res["record"].get(k) for k in ("measured", "balance", "hits", "warnings", "sync",
                                                               "notes", "changed_since_previous", "resolved")})
+                out["uv_cache"] = res.get("uv_cache")
                 print(json.dumps(clean(out), indent=1, ensure_ascii=False))
             else:
                 print_build(res)

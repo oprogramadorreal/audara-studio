@@ -19,21 +19,26 @@ Deliverables · Example: a 15-second pool reopening teaser
 The treatment grows with the piece, not with this template:
 
 - **A loop, a sting or a title card (up to ~15 s): a few lines.** The idea in a sentence or two, the
-  format, a timed line per moment, the look in a line, what you assumed. A loop also says how it closes:
-  its last frame leads back into its first.
+  format, a timed line per moment, the look in a line (palette and typeface), what you assumed. A loop also
+  says how it closes: its last frame leads back into its first. Its reply fits in about 15 lines, the
+  questions included, with Also considered in one line at most.
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
-  window with its start and end times), a row per moment with its time, what's seen and its transition
-  out (a hard cut says so), the moments that must land, and "never claim" when it states facts.
-- **A music video, a long explainer, or anything several scene authors make at once: the whole
-  skeleton,** with scene briefs.
+  window with its start and end times and why that part), a row per moment with its time, what's seen and
+  its transition out (a hard cut says so), the moments that must land, and "never claim" when it states
+  facts.
+- **A whole-song music video, a long explainer, or anything several scene authors make at once: the
+  whole skeleton,** with scene briefs. Length decides, not the kind of video: a 30-s cut of a song is a
+  spot.
 
-A short treatment goes into the reply whole; for a long one, the idea, the song window and the storyboard.
+A short treatment goes into the reply whole; for a long one, the idea, the song window and the storyboard
+with its rows whole, transitions out included. Analysis numbers, file lists and status stay out of it.
 
 ## Ask only what's missing
 
 Read everything the director gave (the request, files, a brand picture or URL, the song) and ask only about
-what it leaves open: at most three questions, so one line can answer them, each with the default you'll
-use, in the same reply as the draft so that one answer approves both. Don't re-ask what the request says.
+what it leaves open: at most three questions, so one line can answer them, each asked as a question with
+the default you'll use ("Where will it play? Default: YouTube, 16:9, 1920×1080"), in the same reply as
+the draft so that one answer approves both. Don't re-ask what the request says.
 
 | Open question | Ask when | Default |
 |---|---|---|
@@ -65,7 +70,8 @@ the city map", not "a morph transition"); name the persistent actor if there is 
 - **Sound:** <the song window below | narration | none: no audio track>.
 - **Look:** `docs/STYLE.md`<, plus what this video changes and why. When the director asked for something
   unlike the usual, name the usual and how this avoids it.>
-- **Assumed:** <every decision the director didn't make>.
+- **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
+  lines, two colours>.
 - **Never claim:** <what would be false or unprovable here; how illustrative values are labelled>. (When
   the piece states facts.)
 - **Preset:** commercial. (Only when the director chose it.)
@@ -136,7 +142,8 @@ several rows.
 - **Time** in the music's terms, then the seconds they resolve to: `bars 5–8 · chorus 1 (0:09.60–0:19.20)`,
   `"who are you" (0:21.30)`. `timeline.ts` computes the seconds from the data (`bar(5)`,
   `cut('who are you')`), so they are a reading, not a setting. A silent piece can pace itself on a grid too
-  (`bpm` in `video.json`), and music added later then fits the timeline.
+  (`bpm` in `video.json`), and music added later then fits the timeline. Times read as written: `1.5 s`
+  or `0:01.50`, never `1:30` for 1.5 s.
 - **What the viewer sees,** concretely: what is where, how big, what moves.
 - **The moment's job:** what it tells, sets up or pays off. A row without one is filler.
 - **Transition out:** how it hands over and what crosses the cut: an object, a shape, a colour, a direction
@@ -191,8 +198,10 @@ treatment's call.
 
 ## Scene briefs for scene authors
 
-When several scene authors work at once, each scene gets a brief that stands alone: its author reads it
-and the files SKILL.md's Build step lists, not the rest of the treatment.
+When several scene authors work at once, each scene gets a brief that stands alone: its author reads it,
+`docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
+(give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
+the lead for engine changes.
 
 ```markdown
 ### `<id>` · <owner, e.g. B2> · bars <a–b>, <section> (<m:ss–m:ss>)

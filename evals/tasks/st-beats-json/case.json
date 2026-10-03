@@ -13,13 +13,14 @@
     }
   ],
   "assertions": [
-    "A JSON file in the engine format is written (duration, bpm, beats, downbeats, sections; features and onsets), at data/audio.json or where the user can find it, and the reply names it.",
+    "The beats and downbeats are written as a JSON file the reply names, at data/audio.json or where the user can find it.",
+    "That JSON is in the engine format (duration, bpm, beats, downbeats, sections; features and onsets), and beats.py check passes on it (run it on a copy, with --audio song.mp3).",
     "Beats: at least 344 of 345 ground-truth beats ($EVAL_SONG_DATA/audio.json) matched within +/-50 ms and at least 98% within +/-17 ms; coverage runs to within one beat of the end of the file.",
     "bpm is within +/-0.1 of 132.007 and agrees with the beats array.",
     "Downbeats: at least 86 of 87 within +/-50 ms, all on the right bar phase.",
-    "The reply states the time origin once, with no advice to shift every time by an encoder delay (offering a WAV for a player that keeps the delay is not such advice).",
+    "The reply says what t = 0 is: the first sample of the decoded audio, as browsers and ffmpeg play it (words that name that decode count; 'from playback start' alone doesn't say which), with no advice to shift every time by an encoder delay (offering a WAV for a player that keeps the delay is not such advice).",
     "A verification artifact (a beat sheet PNG and/or a click preview) exists and is named, with measured numbers: tempo, fit residual or phase deviation, first and last beat.",
-    "Every number in the final message matches the delivered file.",
-    "git status lists only deliverables, and no caches, venvs, model weights or decoded intermediates are left in the folder, except one git-ignored .audara-cache/ (the skill's place for uv's cache when a sandbox blocks the user's) whose location and size the last reply states."
+    "Every number in the final message is right as measured, with the meaning the file or the script gives it: a 16-beat window's median is not a bound on every beat, an rms is not an average, and a cache's size is its size on disk.",
+    "git status lists only deliverables, and no caches, venvs, model weights or decoded intermediates are left in the folder, except one git-ignored .audara-cache/ (the skill's place for uv's cache when a sandbox blocks the user's); any cache the run created, wherever it is (.audara-cache/, %TEMP%, a UV_CACHE_DIR it set), has its location and its size on disk (hard links counted once) stated in the last reply."
   ]
 }

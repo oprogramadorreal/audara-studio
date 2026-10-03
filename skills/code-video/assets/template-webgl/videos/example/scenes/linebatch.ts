@@ -9,11 +9,11 @@ import type * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../../../src/engine/scene';
 import { Layer2D, clearRT } from '../../../src/engine/gl';
 import { LineBatch } from '../../../src/engine/lines';
-import { LIN, rgba } from '../../../src/engine/palette';
 import { strokeText, writtenLength, type StrokeText } from '../../../src/engine/stroke';
 import { F, font } from '../../../src/engine/type';
 import { ease, frameIdx, hash, lerp, pointAtLength, polylineLengths, prog, smootherstep, type V2 } from '../../../src/engine/util';
 import { drawLabel, labelBox } from './_label';
+import { LIN, rgba } from './_palette'; // the example's own test card (the project's scenes import src/engine/palette)
 
 const LABEL = 'LineBatch + stroke font · videos/example/scenes/linebatch.ts';
 

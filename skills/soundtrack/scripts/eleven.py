@@ -69,7 +69,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 # Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
-# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+# beats_models.py, align.py, align_models.py, mix.py, eleven.py and standin.py: change all seven together.
 DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
 #                torch's: 91)
 
@@ -281,7 +281,7 @@ def num(n: float) -> str:
 
 
 # Where files go. Where, has_videos, find_project, video_of, in_video and where are the same code in
-# eleven.py, beats.py, mix.py and align.py: change all four together.
+# eleven.py, beats.py, mix.py, align.py and standin.py: change all five together.
 
 
 @dataclass
@@ -648,7 +648,7 @@ def fmt_lufs(x: float) -> str:
 
 # ---------------------------------------------------------------------------------------------
 # Phrase edges: the waveform's pauses matched to the gaps between words. Sound, runs, analyze, W,
-# Edge, Report, match, snap and fit_syl are the same code in eleven.py and align.py: change both.
+# Edge, Report, match, snap and fit_syl are the same code in eleven.py, align.py and standin.py: change all three.
 
 
 @dataclass
@@ -922,8 +922,10 @@ def get_key() -> str | None:
     return k or None
 
 
-def no_key(what: str, cost: list[str] | None = None, done: str = "generated",
-           lead: str = "This request would cost: ") -> Fail:
+def no_key(what: str, kind: str, cost: list[str] | None = None, done: str = "generated",
+           lead: str = "This request would cost: ", standin: list[str] | None = None) -> Fail:
+    """`kind` (tts, music, sfx or stt) picks the free paths named; `standin`: the arguments the stand-in voice's
+    command repeats (the script and where it goes)."""
     lines = [f"{KEY_ENV} is not set in this environment, so {what} was not {done} and nothing was spent."]
     if cost:
         lines += [lead + cost[0]] + ["  " + c for c in cost[1:]]
@@ -936,13 +938,32 @@ def no_key(what: str, cost: list[str] | None = None, done: str = "generated",
         "Commercial use needs a paid plan: free-plan output is non-commercial and must credit ElevenLabs.",
         f"To use a key: set {KEY_ENV} in this terminal's environment (never in a project file), then run the "
         "same command again.",
-        "Without a key the picture doesn't wait. Go on with one of:",
-        "  - the user's own audio (beats.py for a song, align.py for its words);",
-        "  - a local stand-in voice under an open license, e.g. Kokoro-82M (Apache-2.0), named as a stand-in:",
-        "    scenes find words by text, so they keep their sync when the real voice replaces it;",
-        "  - a silent placeholder: \"audio\": null and \"duration\": <seconds> in the video's video.json.",
-    ]
+    ] + free_paths(kind, standin)
     return Fail(NO_KEY, "\n".join(lines), {"status": "no_key", "estimate": cost or []})
+
+
+def free_paths(kind: str, standin: list[str] | None = None) -> list[str]:
+    """What the picture goes on with while there is no key, for this kind of audio (SKILL.md, No key)."""
+    if kind == "stt":
+        return ["Without a key, check it by ear: listen to it with its text in hand (align.py check measures where "
+                "the words sit, not what they say)."]
+    silent = "  - a silent placeholder: \"audio\": null and \"duration\": <seconds> in the video's video.json."
+    head = "Without a key the picture doesn't wait. Go on with one of:"
+    if kind == "music":
+        return [head, "  - a track the user owns or licenses (beats.py analyzes it);",
+                "  - music synthesized in a seeded script, its grid and cues written with beats.py grid (mix.py build "
+                "levels it);", silent]
+    if kind == "sfx":
+        return [head, "  - an effect the user owns or licenses (sfx --screen <file> measures it, free);",
+                "  - an effect synthesized in a seeded script;", "  - none yet: the mix is made without it."]
+    run = (f"uv run {q(script_path('standin.py'))} " + (" ".join(q(x) for x in standin) if standin else "<script>")
+           if Path(__file__).resolve().with_name("standin.py").is_file() else None)
+    return [head, "  - the user's own recording of the script (align.py song <recording> --lyrics <script> "
+                  "--no-separate times its words);",
+            (f"  - a local stand-in voice: {run} (Kokoro-82M, Apache-2.0: commercial use allowed), named as a "
+             "stand-in:" if run else
+             "  - a local stand-in voice under an open license, e.g. Kokoro-82M (Apache-2.0), named as a stand-in:"),
+            "    scenes find words by their text, so they keep their sync when the real voice replaces it;", silent]
 
 
 class Api:
@@ -1173,7 +1194,7 @@ def read_script(path: Path) -> list[tuple[str, str | None]]:
 
 
 # The say map. Group, say_key, is_acronym, SayEntry, rel_to, read_say, edges_of, sentence_punct and
-# respell are the same code in eleven.py and align.py: change both together.
+# respell are the same code in eleven.py, align.py and standin.py: change all three together.
 
 
 @dataclass
@@ -1458,7 +1479,7 @@ def attach_marks(words: list[dict]) -> list[dict]:
 def cmd_voices(a, out: Out) -> None:
     key = get_key()
     if not key:
-        raise no_key("the voice list", done="fetched")
+        raise no_key("the voice list", "tts", done="fetched")
     api = Api(key)
     voices: list[dict] = []
     token = None
@@ -1581,6 +1602,7 @@ def cmd_tts(a, out: Out) -> None:
     tdir = ndir / "takes"
     cfg_path = ndir / "narration.json"
     cfg = read_json(cfg_path) or {}
+    before = snapshot(w, ndir)  # (the summary ends with what this run wrote)
 
     voice = a.voice or cfg.get("voice_id")
     if not voice and (get_key() or a.pick is not None):
@@ -1743,7 +1765,8 @@ def cmd_tts(a, out: Out) -> None:
         if not key:
             voice_note = [f"no voice chosen yet: with a key, choose one with the director from {me('voices')} (its "
                           f"preview links play for free), then add --voice ID"] if no_voice else []
-            raise no_key("the narration", [est_text] + plan + free + voice_note)
+            raise no_key("the narration", "tts", [est_text] + plan + free + voice_note,
+                         standin=[a.script, *place_args(a)])
         api = Api(key)
         vinfo = api.call("GET", f"/v1/voices/{voice}", "looking up the voice").json()
         vname = vinfo.get("name") or voice
@@ -1850,20 +1873,72 @@ def cmd_tts(a, out: Out) -> None:
                 f"block come with the rest in {rel(w.data_dir / 'words.json')}, so nothing needs exporting now.")
             report_takes(out, b, [main_path(b)], base, title=f"Block {b.n} (for approving the voice):")
             report_plan(out, "block", [(b.n, main_path(b))], "tts")
+            out.data["names"] = names_to_hear(b)
+            if out.data["names"]:  # (references/elevenlabs.md: "Listen to the names before approving a file")
+                out(f"Listen for the names before approving: {', '.join(out.data['names'])}.")
             out(f"Approve the voice by ear, then make the rest: {me(*base)} (shows the cost; add --yes)")
         elif a.takes is not None and jobs:  # takes just made: the plan they were made on
             b = blocks[a.block - 1]
             report_plan(out, "take", [(k, take_path(b, k)) for k in range(1, a.takes + 1)], "tts")
         out.data["missing_blocks"] = [b.n for b in missing]
+        report_wrote(out, before, snapshot(w, ndir))
         return
     tidy(out, ndir, [main_path(b) for b in blocks])
     made = [b.n for b, path, *_ in jobs if path.parent == ndir]  # main files paid for in this run: nobody heard them
     words_sha = assemble_narration(out, w, script, blocks, [main_path(b) for b in blocks], voice, vname, model, vs,
                                    gap, lead, tail, snap_on, lufs, base, cfg.get("words_sha256"), made)
     write_json(cfg_path, cfg_doc(words_sha))
+    report_wrote(out, before, snapshot(w, ndir))
 
 
 TTS_SIDES = (".request.json", ".alignment.json")
+
+
+def snapshot(w: Where, ndir: Path) -> dict[Path, int]:
+    """The narration's files as they stand (path -> mtime), so the run can say which it wrote: words.json,
+    narration.wav, the blocks, takes and settings in audio/narration/, an edited words.json kept aside."""
+    files = [w.data_dir / "words.json", w.audio_dir / "narration.wav", *sorted(ndir.glob("*")),
+             *sorted((ndir / "takes").glob("*")), *sorted(w.review_dir.glob("words.edited-*.json"))]
+    return {p: p.stat().st_mtime_ns for p in files if p.is_file()}
+
+
+def report_wrote(out: Out, before: dict[Path, int], now: dict[Path, int]) -> None:
+    """The run's last line: every file it created or rewrote, the data file first, then the narration, its
+    settings and the audio files (their request records and timings said once, when every one has both)."""
+    first = {"words.json": 0, "narration.wav": 1, "narration.json": 2}  # (then other files, the audio files last:
+    #                                                                       the phrase on their records follows them)
+    new = sorted((p for p in now if before.get(p) != now[p]),
+                 key=lambda p: (first.get(p.name, 4 if p.suffix in (".mp3", ".wav") else 3), str(p)))
+    audio = [p for p in new if p.suffix in (".mp3", ".wav") and p.name != "narration.wav"]
+    both = bool(audio) and all(side(p, s) in new for p in audio for s in TTS_SIDES)
+    shown = [p for p in new if not (both and any(p == side(x, s) for x in audio for s in TTS_SIDES))]
+    out.data["wrote"] = [rel(p) for p in new]
+    if not new:
+        out("Wrote nothing: every file was up to date.")
+        return
+    out("Wrote: " + ", ".join(rel(p) for p in shown) + (
+        "" if not both else " (with its .request.json and .alignment.json)" if len(audio) == 1 else
+        " (each audio file with its .request.json and .alignment.json)") + ".")
+
+
+def names_to_hear(b: Block) -> list[str]:
+    """What the director should hear said before approving the voice on block b: its capitalised words that don't
+    start a sentence (names, products, acronyms) and the say map's entries, as respelled."""
+    said = {i: g for g in b.groups if g.shown for i in g.idx}
+    found: list[str] = []
+    for i, tok in enumerate(b.tokens):
+        g = said.get(i)
+        if g is not None:
+            if i == g.idx[0]:
+                found.append(f"{g.shown} (said \"{g.say}\")")
+            continue
+        word = bare(tok)
+        if word.count("(") > word.count(")") and tok[tok.find(word) + len(word):].startswith(")"):
+            word += ")"  # P(doom), not P(doom
+        after_stop = i == 0 or b.tokens[i - 1].rstrip("\"'”’)»]").endswith((".", "!", "?", "…"))
+        if word[:1].isupper() and not after_stop and not re.fullmatch(r"I(['’](m|ll|ve|d))?", word):
+            found.append(word)
+    return list(dict.fromkeys(found))
 
 
 def tidy(out: Out, ndir: Path, paths: list[Path]) -> None:
@@ -2057,13 +2132,22 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
     new_sha = sha256_bytes(new_bytes)
     disk = words_path.read_bytes() if words_path.is_file() else None
     disk_sha = sha256_bytes(disk) if disk is not None else None
-    edited = disk is not None and words_sha_prev is not None and disk_sha not in (words_sha_prev, new_sha)
+    # another tool's words.json (a stand-in's from standin.py, align.py's) is not a hand fix of this one: it
+    # is replaced, with a copy kept in the review folder
+    try:
+        disk_tool = ((json.loads(disk) or {}).get("source") or {}).get("tool") if disk is not None else None
+    except (ValueError, AttributeError):
+        disk_tool = None
+    foreign = isinstance(disk_tool, str) and disk_tool != TOOL
+    edited = (disk is not None and words_sha_prev is not None and disk_sha not in (words_sha_prev, new_sha)
+              and not foreign)
     kept_copy = None
     if edited and new_sha == words_sha_prev:
         words_state, written_sha = "kept", words_sha_prev
     else:
-        if edited:
-            kept_copy = w.review_dir / f"words.edited-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        if edited or (foreign and disk_sha != new_sha):
+            label = "edited" if edited else Path(disk_tool).stem
+            kept_copy = w.review_dir / f"words.{label}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
             write_bytes(kept_copy, disk)
         words_state = "unchanged" if disk_sha == new_sha else ("written" if disk is None else "updated")
         write_bytes(words_path, new_bytes)
@@ -2084,9 +2168,21 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
     else:
         out(f"Word timings: {rel(words_path)} ({words_state}; lines = blocks; scenes find words by what is shown: "
             f"words.get('{lines[0]['words'][0]['w']}'), words.findWords('...'))")
-        if kept_copy is not None:
+        if kept_copy is not None and foreign:
+            out(f"  it was {disk_tool}'s, for another narration: replaced by this one's; the old copy is "
+                f"{rel(kept_copy)}")
+        elif kept_copy is not None:
             out(f"  it had been edited since eleven.py wrote it, and the narration changed, so it was rewritten: the "
                 f"edited copy is {rel(kept_copy)}")
+    try:  # each line's span as the file the picture reads has it (a hand-edited one when it was kept)
+        in_use = json.loads(disk) if words_state == "kept" else words_doc
+    except ValueError:
+        in_use = None
+    in_use = in_use if isinstance(in_use, dict) else words_doc
+    spans = [(x.get("block", k + 1), x.get("start"), x.get("end")) for k, x in enumerate(in_use.get("lines") or [])
+             if isinstance(x, dict)]
+    out("  lines: " + "; ".join(f"{n} {s:.2f}-{e:.2f} s" for n, s, e in spans
+                                if isinstance(s, (int, float)) and isinstance(e, (int, float))))
     out(f"Phrase edges vs the waveform: {edge_line(before, 'before snapping' if snap_on else '')}.")
     if snap_on and rep.edges:
         out(f"  snapped: moved {moved} words onto the measured sound; re-measured: {edge_line(after)}.")
@@ -2376,7 +2472,7 @@ def cmd_music_plan(a, out: Out) -> None:
                     music_estimate(1, total_ms / 1000)[0] + ", with --takes 1",
                     "what a key adds: a produced take composed to this plan, which the director reviews first (the "
                     "plan is free; compose shows the cost and asks before spending)"]
-        raise no_key("the composition plan (a free call, but it needs a key)", cost, done="made",
+        raise no_key("the composition plan (a free call, but it needs a key)", "music", cost, done="made",
                      lead="Composing this plan would cost: ")
     api = Api(key)
     body = {"prompt": prompt, "model_id": MUSIC_MODEL}
@@ -2646,7 +2742,7 @@ def cmd_music_compose(a, out: Out) -> None:
         cost, est = music_estimate(len(todo), total)
         key = get_key()
         if not key:
-            raise no_key("the music", [cost])
+            raise no_key("the music", "music", [cost])
         api = Api(key)
         if not a.yes:
             out(f"Would compose {cost}, {MUSIC_MODEL}, seeds {', '.join(str(seed0 + k - 1) for k in todo)}, "
@@ -2905,7 +3001,7 @@ def cmd_sfx(a, out: Out) -> None:
                 + ("" if a.duration else f", counting {SFX_AUTO_S:g} s each") + ")")
         key = get_key()
         if not key:
-            raise no_key("the sound effect", [cost])
+            raise no_key("the sound effect", "sfx", [cost])
         api = Api(key)
         if not a.yes:
             out(f"Would generate {cost} for \"{a.prompt}\" ({SFX_MODEL}, prompt influence {a.influence:g}"
@@ -2986,7 +3082,7 @@ def cmd_stt(a, out: Out) -> None:
         cost = f"{secs:.1f} s of audio = about {num(est['credits'])} credits"
         key = get_key()
         if not key:
-            raise no_key("the transcription", [cost])
+            raise no_key("the transcription", "stt", [cost])
         api = Api(key)
         if not a.yes:
             out(f"Would transcribe {rel(audio)} with {STT_MODEL}: {cost}.")

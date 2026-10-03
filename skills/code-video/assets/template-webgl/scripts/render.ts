@@ -36,10 +36,16 @@
 //   gpu:     bun scripts/render.ts gpu   (the GPU Chrome renders with)
 //   link:    bun scripts/render.ts link [--video <video>] [--t <seconds>]   (the live preview's link, to give the
 //            director: http://127.0.0.1:<port>/?v=<video>&t=<seconds>, no &t= without --t. <port> is the first of
-//            5173-5199, where `bunx vite` serves, whose dev server serves this folder: 5173 is Vite's default, so
+//            5173-5199, where the preview serves, whose dev server serves this folder: 5173 is Vite's default, so
 //            another app or another project's preview may hold it. Starts no server and no browser. Exit code 1
-//            when none serves this project: start `bunx vite` in the background, then run link again)
-// Every mode (link takes only --video):
+//            when none serves this project: run preview, which starts one)
+//   preview: bun scripts/render.ts preview [--video <video>] [--t <seconds>] [--stop]   (link, starting this project's
+//            preview first when none runs: the project's own Vite, in a process of its own that outlives this
+//            command, your turn and the shell that ran it, on the first free port of 5173-5199, its output in
+//            .audara-cache/preview.log. It waits until the server answers for this folder, 20 s at most (exit
+//            code 1 and the end of that log when it doesn't), then prints the link. Starts no browser. --stop
+//            ends this project's preview, the dev servers of this folder on those ports and nothing else)
+// Every mode (link and preview take only --video):
 //   --video <video> which video (default: the only one, else the first that isn't `example`, else `example`)
 //   --only a,b      load only these timeline entries (the others render black)
 //   --scale N       N x the video's size (--scale 2: 3840x2160 for a 1920x1080 video): stills, posters and
@@ -56,14 +62,14 @@
 //                   server never reloads: a file saved by anyone mid-run can't break the run)
 //   --headed        show the browser
 // Output goes under out/<video>/ unless --out says otherwise.
-// (playwright-core itself is loaded by launch(), when a browser is needed: link needs none, and starts in less
-// than half the time without it)
+// (playwright-core itself is loaded by launch(), when a browser is needed: link and preview need none, and
+// start in less than half the time without it)
 import type { Browser, Page } from 'playwright-core';
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 const argv = process.argv.slice(2);
-const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu', 'link'];
+const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu', 'link', 'preview'];
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'stills';
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const flag = (k: string) => argv.includes(`--${k}`);
@@ -162,17 +168,19 @@ const samePath = (a: string, b: string) => {
 };
 
 /**
- * What a server says at GET /__audara: the folder it serves, from a dev server of a project like this one
- * (vite.config.ts); 'another app' from anything else; 'no answer' when something took the connection but said
- * nothing in time; null when nothing listens there.
+ * What a server says at GET /__audara: the folder it serves and its process (a vite.config.ts older than
+ * `preview` doesn't say), from a dev server of a project like this one (vite.config.ts); 'another app' from
+ * anything else; 'no answer' when something took the connection but said nothing in time; null when nothing
+ * listens there.
  */
-type Answer = { root: string } | 'another app' | 'no answer' | null;
+type Served = { root: string; pid?: number };
+type Answer = Served | 'another app' | 'no answer' | null;
 /** Asks the server at `url`, waiting `ms` at most. */
 async function askServer(url: string, ms: number): Promise<Answer> {
   try {
     const r = await fetch(`${url}/__audara`, { signal: AbortSignal.timeout(ms) });
-    const j = r.ok && (r.headers.get('content-type') ?? '').includes('json') ? ((await r.json().catch(() => null)) as { root?: unknown } | null) : null;
-    return typeof j?.root === 'string' ? { root: j.root } : 'another app';
+    const j = r.ok && (r.headers.get('content-type') ?? '').includes('json') ? ((await r.json().catch(() => null)) as { root?: unknown; pid?: unknown } | null) : null;
+    return typeof j?.root === 'string' ? { root: j.root, ...(typeof j.pid === 'number' ? { pid: j.pid } : {}) } : 'another app';
   } catch (e) { return (e as Error)?.name === 'TimeoutError' ? 'no answer' : null; }
 }
 
@@ -193,7 +201,7 @@ async function ensureServer(): Promise<Server> {
   const given = opt('url')?.replace(/\/+$/, '');
   if (given) {
     const ok = await servesThisProject(given);
-    if (ok === null) fail(`nothing answers at ${given} (--url): start the preview (bunx vite) or leave --url out`);
+    if (ok === null) fail(`nothing answers at ${given} (--url): start the preview (bun scripts/render.ts preview) or leave --url out`);
     if (!ok) fail(`the server at ${given} serves another project, not ${PROJECT}: leave --url out to start a private server`);
     return { url: given, stop: () => {}, deps: () => undefined };
   }
@@ -224,46 +232,137 @@ async function ensureServer(): Promise<Server> {
 }
 
 /**
- * Where `bunx vite` serves the live preview: on 127.0.0.1 alone (vite.config.ts binds it there, so `localhost`
- * may reach another app on the same port), at 5173 or, when that is taken, the next free port.
+ * Where the live preview serves: on 127.0.0.1 alone (vite.config.ts binds it there, so `localhost` may reach
+ * another app on the same port), at 5173 or, when that is taken, the next free port.
  */
 const PREVIEW_HOST = '127.0.0.1', PREVIEW_PORTS = Array.from({ length: 27 }, (_, i) => 5173 + i);
+const PREVIEW_RANGE = `${PREVIEW_HOST}, ports ${PREVIEW_PORTS[0]}-${PREVIEW_PORTS.at(-1)}`;
+/** What the preview started by `preview` prints (.audara-cache/ is git-ignored, and the preview doesn't watch it). */
+const PREVIEW_LOG = path.join(PROJECT, '.audara-cache', 'preview.log');
 
+/** Every preview port asked at once, each with a short timeout (one where nothing listens refuses at once). */
+const askPorts = () => PREVIEW_PORTS.map((port) => askServer(`http://${PREVIEW_HOST}:${port}`, 500));
+/** A dev server of this folder. */
+const servesThis = (a: Answer): a is Served => !!a && typeof a === 'object' && samePath(a.root, PROJECT);
 /**
- * link: the address of this project's live preview, at --t when given. Every port is asked at once, each with
- * a short timeout (one where nothing listens refuses at once); the lowest that serves this folder wins. When
- * none does, exit code 1, with what holds those ports instead.
+ * A dev server of this folder, under this path or another: a server started in it by its 8.3 short name
+ * (JOHNSM~1, common in %TEMP%) answers with that name, and refuses every page there (Vite's 403).
  */
-async function link(video: string) {
-  const t = opt('t') === undefined ? null : timesOf('t', opt('t')!);
-  if (t && (t.length !== 1 || t[0]! < 0)) fail(`--t ${opt('t')}: a link starts at one time, in seconds from 0`);
-  const asked = PREVIEW_PORTS.map((port) => askServer(`http://${PREVIEW_HOST}:${port}`, 500));
+const servesHere = (a: Answer): a is Served => { try { return !!a && typeof a === 'object' && samePath(realpathSync.native(a.root), PROJECT); } catch { return false; } };
+/** This project's preview: the lowest port whose dev server serves this folder, and what it said; null when none does. */
+async function thisPreview(asked = askPorts()) {
   for (const [i, a] of asked.entries()) {
     const r = await a;
-    if (!r || typeof r !== 'object' || !samePath(r.root, PROJECT)) continue;
-    // (t as the preview writes it into its own links)
-    const q = new URLSearchParams({ v: video, ...(t ? { t: String(+t[0]!.toFixed(3)) } : {}) });
-    console.log(`http://${PREVIEW_HOST}:${PREVIEW_PORTS[i]}/?${q}`);
-    return;
+    if (servesThis(r)) return { port: PREVIEW_PORTS[i]!, ...r };
   }
+  return null;
+}
+/** --t: the one time a link starts at, or null. */
+function linkTime() {
+  const t = opt('t') === undefined ? null : timesOf('t', opt('t')!);
+  if (t && (t.length !== 1 || t[0]! < 0)) fail(`--t ${opt('t')}: a link starts at one time, in seconds from 0`);
+  return t ? t[0]! : null;
+}
+/** The link to give the director (t as the preview writes it into its own links). */
+const linkTo = (port: number, video: string, t: number | null) =>
+  `http://${PREVIEW_HOST}:${port}/?${new URLSearchParams({ v: video, ...(t === null ? {} : { t: String(+t.toFixed(3)) }) })}`;
+
+/**
+ * link: the address of this project's live preview, at --t when given; the lowest port that serves this
+ * folder wins. When none does, exit code 1, with what holds those ports instead.
+ */
+async function link(video: string) {
+  const t = linkTime(), asked = askPorts();
+  const found = await thisPreview(asked);
+  if (found) return void console.log(linkTo(found.port, video, t));
   const said = await Promise.all(asked);
   /** The ports whose answer `is` picks, in a few words ('5175 and 5176 are ...'), or nothing. */
   const held = (is: (a: Answer) => boolean, one: string, many: string) => {
     const ps = PREVIEW_PORTS.filter((_, i) => is(said[i]!));
     return !ps.length ? [] : [ps.length > 1 ? `${ps.slice(0, -1).join(', ')} and ${ps.at(-1)} ${many}` : `${ps[0]} ${one}`];
   };
-  // (this folder through another path: a server started in it by its 8.3 short name (JOHNSM~1, common in
-  // %TEMP%) answers with that name, and refuses every page there: Vite's 403)
-  const here = (a: Answer) => { try { return !!a && typeof a === 'object' && samePath(realpathSync.native(a.root), PROJECT); } catch { return false; } };
-  const restart = (it: string) => `(such as its 8.3 short name, under which Vite refuses every page): stop ${it} and start \`bunx vite\` in ${PROJECT}`;
+  const stale = (it: string) => `(such as its 8.3 short name, under which Vite refuses every page): \`bun scripts/render.ts preview --stop\` stops ${it}`;
   const what = [
     ...held((a) => a === 'another app', 'serves another app', 'serve other apps'),
-    ...held((a) => !!a && typeof a === 'object' && !here(a), "is another project's preview", "are other projects' previews"),
+    ...held((a) => !!a && typeof a === 'object' && !servesHere(a), "is another project's preview", "are other projects' previews"),
     ...held((a) => a === 'no answer', 'took the connection but did not answer', 'took the connection but did not answer'),
-    ...held(here, `serves this folder through another path ${restart('it')}`, `serve this folder through other paths ${restart('them')}`),
+    ...held(servesHere, `serves this folder through another path ${stale('it')}`, `serve this folder through other paths ${stale('them')}`),
   ];
-  fail('no preview of this project is running: start `bunx vite` in the background (it takes the next free port), then run this again once it is up\n'
-    + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_HOST}, ports ${PREVIEW_PORTS[0]}-${PREVIEW_PORTS.at(-1)}.`}`);
+  fail(`no preview of this project is running: run \`bun scripts/render.ts preview --video ${video}${t === null ? '' : ` --t ${+t.toFixed(3)}`}\` yourself (the director doesn't run commands); it starts one that keeps running, and prints its link\n`
+    + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_RANGE}.`}`);
+}
+
+/** The last lines of a log, indented, for a message; stack frames left out (the error above them says more). */
+function logTail(file: string, n = 15) {
+  let lines: string[] = [];
+  try { lines = readFileSync(file, 'utf8').split(/\r?\n/).filter((l) => l.trim() && !/^\s+at /.test(l)); } catch {}
+  return lines.length ? lines.slice(-n).map((l) => `  ${l}`).join('\n') : '  (empty)';
+}
+
+/**
+ * preview: link, starting this project's preview first when none runs. It runs the project's own Vite
+ * (node_modules/vite, on node when there is one, as `bunx vite` would, else on bun) in a process of its own:
+ * detached (a process group of its own, and on Windows no console), its output in PREVIEW_LOG, not waited
+ * for. A host ends a turn by killing the shell's process tree (taskkill /T /F on Windows); once this command
+ * is done, Vite is no longer in that tree, and it keeps serving. It is found as link finds it, by asking the
+ * ports until one answers for this folder.
+ */
+async function preview(video: string) {
+  const t = linkTime();
+  const found = await thisPreview();
+  if (found) return void console.log(linkTo(found.port, video, t));
+  const vite = path.join(PROJECT, 'node_modules', 'vite');
+  let bin: unknown;
+  try { bin = (JSON.parse(readFileSync(path.join(vite, 'package.json'), 'utf8')) as { bin?: unknown }).bin; }
+  catch { return fail(`vite is not installed in ${PROJECT}: run "bun install" there first`); }
+  const entry = path.join(vite, typeof bin === 'string' ? bin : (bin as Record<string, string> | undefined)?.vite ?? 'bin/vite.js');
+  let out: number;
+  try { mkdirSync(path.dirname(PREVIEW_LOG), { recursive: true }); out = openSync(PREVIEW_LOG, 'w'); }
+  catch (e) { return fail(`can't write the preview's log, ${PREVIEW_LOG}: ${(e as Error).message}`); }
+  // (a log without color codes; and AUDARA_NO_HMR would stop the preview reloading when a file changes)
+  const env: Record<string, string | undefined> = { ...process.env, NO_COLOR: '1' };
+  delete env.AUDARA_NO_HMR;
+  const server = Bun.spawn([Bun.which('node') ?? process.execPath, entry], { cwd: PROJECT, env, stdio: ['ignore', out, out], detached: true, windowsHide: true });
+  closeSync(out);
+  server.unref();
+  const t0 = Date.now();
+  for (;;) {
+    await Bun.sleep(250);
+    const up = await thisPreview();
+    if (up) {
+      // (--stop ends the process the server names: a vite.config.ts older than `preview` names none)
+      const until = up.pid === undefined
+        ? `until process ${server.pid} is ended (this project's vite.config.ts, older than render.ts's preview, doesn't say which process serves it, so \`preview --stop\` can't stop it)`
+        : 'until `bun scripts/render.ts preview --stop`';
+      console.log(`started this project's preview (Vite on port ${up.port}, process ${up.pid ?? server.pid}; its log: .audara-cache/preview.log). It keeps running after this command and your turn, ${until}.`);
+      return void console.log(linkTo(up.port, video, t));
+    }
+    const code = server.exitCode;
+    if (code === null && Date.now() - t0 < 20000) continue;
+    if (code === null) server.kill();
+    fail(`the preview did not start: ${code === null ? `Vite didn't answer for this folder on ${PREVIEW_RANGE} within 20 s, so it was stopped` : `Vite exited (code ${code})`}. The end of its log, .audara-cache/preview.log (stack frames left out):\n${logTail(PREVIEW_LOG)}`);
+  }
+}
+
+/**
+ * preview --stop: ends this project's preview: every dev server of this folder on the preview's ports (under
+ * this path or another), through the process it names. Another app or project is never touched.
+ */
+async function stopPreview() {
+  const said = await Promise.all(askPorts());
+  const ours = PREVIEW_PORTS.flatMap((port, i) => { const a = said[i]!; return servesHere(a) ? [{ port, pid: a.pid }] : []; });
+  if (!ours.length) return void console.log(`no preview of this project is running on ${PREVIEW_RANGE}: nothing to stop`);
+  for (const { port, pid } of ours) {
+    if (pid === undefined)
+      fail(`the dev server on port ${port} serves this folder but doesn't say which process it is (its vite.config.ts is older than render.ts's preview): stop it where it was started, or end the process that listens on ${PREVIEW_HOST}:${port}`);
+    try { process.kill(pid!); }
+    catch (e) { fail(`could not stop this project's preview on port ${port} (process ${pid}): ${(e as Error).message}`); }
+    for (let k = 0; servesHere(await askServer(`http://${PREVIEW_HOST}:${port}`, 500)); k++) {
+      if (k === 50) fail(`process ${pid} was told to stop, but port ${port} still serves this folder`);
+      await Bun.sleep(100);
+    }
+    console.log(`stopped this project's preview on port ${port} (process ${pid})`);
+  }
 }
 
 // ------------------------------------------------------------------ browser
@@ -852,12 +951,15 @@ async function main() {
   parseSampling();
   if (mode === 'verify' && (SAMPLES_GIVEN || opt('shutter') !== undefined))
     console.log("verify: --samples and --shutter don't apply (its renders are fixed: one sub-frame, and four over the whole frame time at the cuts)");
+  // (stopping needs no video)
+  if (mode === 'preview' && flag('stop')) return stopPreview();
   const videos = listVideos();
   const name = opt('video') ?? defaultVideo(videos);
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
   if (mode === 'link') return link(name!);
+  if (mode === 'preview') return preview(name!);
   const OUT = path.join(PROJECT, 'out', name!);
   console.log(`video: ${name}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
 

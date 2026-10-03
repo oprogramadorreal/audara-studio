@@ -10,11 +10,11 @@
 import type * as THREE from 'three';
 import { Scene, type Frame } from '../../../src/engine/scene';
 import { Layer2D, clearRT } from '../../../src/engine/gl';
-import { LIN, rgba } from '../../../src/engine/palette';
 import { F, font, glyphX, measure } from '../../../src/engine/type';
 import { Words, type Line, type Word } from '../../../src/engine/words';
 import { frameTime, pulse, smootherstep } from '../../../src/engine/util';
 import { drawLabel } from './_label';
+import { LIN, rgba } from './_palette'; // the example's own test card (the project's scenes import src/engine/palette)
 
 const LABEL = 'Layer2D · Canvas2D type · videos/example/scenes/layer2d.ts';
 /** The lines this scene sets, looked up in data/words.json by their text. */

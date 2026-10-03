@@ -7,3 +7,4 @@ dist/
 .cache/
 *.tsbuildinfo
 .audara-cache/
+*.log

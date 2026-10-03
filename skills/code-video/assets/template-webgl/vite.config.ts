@@ -11,9 +11,10 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  * - A new or changed file under videos/<video>/data/, audio/ or assets/ (fetched at boot, not imported)
  *   reloads the page, so fresh timing data, a new soundtrack or a changed image or model shows up without a
  *   manual reload.
- * - GET /__audara answers with the folder this server serves: scripts/render.ts checks it before
- *   using a server given with --url, and `render.ts link` asks every port for it to find this project's
- *   preview, so another project's preview is never rendered or linked by mistake.
+ * - GET /__audara answers with the folder this server serves and its process: scripts/render.ts checks it
+ *   before using a server given with --url, and `render.ts link` and `preview` ask every port for it to
+ *   find this project's preview, so another project's preview is never rendered, linked or stopped by
+ *   mistake (`preview --stop` ends the process it names).
  * - A watcher error is logged, not fatal: on Windows a file being rewritten (Windows PowerShell's
  *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */
@@ -30,7 +31,7 @@ function audara(): Plugin {
       server.watcher.on('error', (e) => server.config.logger.warn(`audara: the file watcher reported ${String((e as Error)?.message ?? e)}; the preview goes on`));
       server.middlewares.use('/__audara', (_req, res) => {
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ root }));
+        res.end(JSON.stringify({ root, pid: process.pid }));
       });
     },
     transform(code, id) {
@@ -82,8 +83,10 @@ export default defineConfig({
     strictPort: false,
     // AUDARA_NO_HMR=1: no live reload (an export render must not reload mid-run when a file changes)
     hmr: process.env.AUDARA_NO_HMR ? false : undefined,
-    // renders write into out/: never watch them
-    watch: { ignored: ['**/out/**'] },
+    // never watched: the renders in out/, and .audara-cache/ (uv's cache, models, the preview's own log). On
+    // Windows a watched folder makes uv's renames inside it fail ("Access is denied (os error 5)"), which
+    // leaves half-extracted packages behind
+    watch: { ignored: ['**/out/**', '**/.audara-cache/**'] },
   },
   build: { target: 'esnext', assetsInlineLimit: 0 },
 });

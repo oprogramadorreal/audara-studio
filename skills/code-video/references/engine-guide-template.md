@@ -11,14 +11,17 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
 
 ## Running things
 
-- **Preview**: a dev server may be running already, and it is this project's only if
-  `bun scripts/render.ts link` finds it: 5173, Vite's default port, often serves another app or another
-  project's preview. `bun scripts/render.ts link --video <video> --t 23.5` prints the link to give,
-  `http://127.0.0.1:5173/?v=<video>&t=23.5` (another port when 5173 was taken; no `&t=` without `--t`),
-  from the server that serves this folder. It starts nothing: when no server of this project answers, it
-  says what holds those ports and exits 1; then start `bunx vite` in the background (it takes the next
-  free port) and run link again once it is up. The server listens on 127.0.0.1 only, so the link uses
-  that address: `localhost` may reach another app on the same port. `?v=` picks the video (default: the
+- **Preview**: you start it, before the first scene (the director doesn't run commands):
+  `bun scripts/render.ts preview --video <video> --t 23.5` starts this project's preview unless it is
+  running, and prints the link to give, `http://127.0.0.1:5173/?v=<video>&t=23.5` (another port when 5173
+  was taken; no `&t=` without `--t`). It runs the project's own Vite in a process of its own, its output in
+  `.audara-cache/preview.log`, so the preview outlives the command, your turn and the shell that ran it.
+  In a new session run the same command: it starts nothing when the preview is up, and only prints the
+  link. `bun scripts/render.ts preview --stop` ends it. `link`, with the same `--video` and `--t`, prints
+  the link without starting anything: a dev server is this project's only if link finds it, since 5173,
+  Vite's default port, often serves another app or another project's preview; when none answers, link
+  says what holds those ports and exits 1. The server listens on 127.0.0.1 only, so the link uses that
+  address: `localhost` may reach another app on the same port. `?v=` picks the video (default: the
   only one, else the first that isn't `example`); `?t=` starts at that time. Keys: space play/pause,
   ←/→ ±1 s (shift ±5 s), `,`/`.` ±1 frame, `[`/`]` previous/next timeline entry, `l` loop the current
   entry, `h` hide the UI, `c` copy a link to this moment. While paused or seeking, the address bar's `?t=`
@@ -301,9 +304,10 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   `comp.draw(..., { rect })` (the example's `layer2d.ts` does all three). Precompute in `init()`.
 - What a render costs: every frame is read back (about 15 ms at 1080p, which perf shows apart), sent to
   ffmpeg and encoded, about 60 ms a frame at 1080p in all before any sub-frames, and the motion blur
-  multiplies the scenes' share by the sub-frames (12 for a still frame, up to 324 for a whip). The
-  17-second example takes about a minute as a `--draft` and two as the render. Tell the director before
-  starting a long one.
+  multiplies the scenes' share by the sub-frames (12 for a still frame, up to 324 for a whip). So a
+  render takes a multiple of this video's `--draft` time that grows with fast motion: 2× for the
+  17-second example, 7× for a 20-second Canvas2D piece whose flips took 108-324 sub-frames. Estimate it
+  from this video's draft, tell the director before starting, and firm it up with the render's `eta`.
 - A scene too heavy for real time gets a cheaper preview path, not a simpler idea. `ctx.export` is false
   in the live preview and true whenever render.ts renders (stills, sheets, verify, the video), so the
   scene can trade quality for speed in the preview alone: a lower internal resolution (render into

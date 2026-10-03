@@ -18,13 +18,15 @@
   ],
   "assertions": [
     "After turn 1 there is no scene file for this video and no rendered MP4 (init and the template example may exist): nothing is built before approval.",
-    "The turn-1 reply is a brief for approval, of about 15 lines or fewer, with a time-coded beat list covering 0-15 s (times that read as written: 1.25 s or 0:01.25, never 1:25) and the look (palette and type). Any on-screen text beyond \"Night Signals\", or any restyling of the name, is listed as an assumption.",
+    "The turn-1 reply is a brief for approval of at most 15 non-blank lines and about 250 words, questions included, with a time-coded beat list covering 0-15 s and the look naming a palette and a typeface. Times read as written (1.25 s or 0:01.25, never 1:25), in the reply and in TREATMENT.md when the reply points to it. Any on-screen text beyond \"Night Signals\", or any restyling of the name (capitals, a split over lines, two colours), is listed as an assumption.",
     "Turn 1 asks at most 3 questions, each with a default, and one of them is about format or where the card will be shown.",
-    "After turn 2 the folder is an audara project (src/engine/, videos/<name>/video.json, AGENTS.md, CLAUDE.md) and the reply gives a preview URL with ?v=<name> and at least one link with &t=.",
+    "After turn 2 the folder is an audara project (src/engine/, videos/<name>/video.json, AGENTS.md, CLAUDE.md), and a turn-2 message (progress messages count) gives this project's preview URL with ?v=<name> and at least one &t= link at a time other than 0 (the address served this work folder during the run: result.json previews).",
     "After turn 3, ffprobe on out/<name>/<name>.mp4 reports 15.00 +/- 0.04 s, 1920x1080, no audio stream, and color_primaries, color_transfer and color_space all bt709; any other size made beside it (a 4K master, say) has the same length, color tags and no audio, at 16:9.",
     "The video shows the words Night Signals (any case) and no other words, unless the brief listed them as an assumption.",
-    "The final reply itself (turn 3, even when an earlier turn named them) links a contact sheet PNG, a poster PNG and QC numbers (frozen time or longest hold, near-black or near-empty frames), and every linked file exists.",
-    "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list (the navy/ivory/amber one both baseline models converged on among them) unless the brief names it and says why.",
-    "render.ts verify passes for the video (run it); the project root has no stray caches, npm folders or check images outside out/ and git-ignored paths, out/ holds only renders, stills, sheets and reports, and any cache is in the git-ignored .audara-cache/."
+    "The final reply itself (turn 3, even when an earlier turn named them) links a contact sheet PNG, a poster PNG and QC numbers (frozen time or longest hold, near-black or near-empty frames), and every linked file exists (a path, or a file name under a folder the reply names, counts as a link).",
+    "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
+    "render.ts verify passes for the video (run it).",
+    "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders, stills, sheets and reports (verify.json, qc.json, a critic's report and images under out/<name>/critique/); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
+    "No final render before the director asks for it: when turn 3 starts (result.json turn times), out/<name>/<name>.mp4 does not exist yet and no full-length render has run without --draft (the transcripts)."
   ]
 }

@@ -12,10 +12,10 @@
 import * as THREE from 'three';
 import { Scene, type Frame } from '../../../src/engine/scene';
 import { Layer2D, clearRT, makeRT } from '../../../src/engine/gl';
-import { LIN, rgba } from '../../../src/engine/palette';
 import { F, font } from '../../../src/engine/type';
 import { keys, lerp, smoothKeys, smoothstep } from '../../../src/engine/util';
 import { drawLabel } from './_label';
+import { LIN, rgba } from './_palette'; // the example's own test card (the project's scenes import src/engine/palette)
 
 const LABEL = 'three.js · InstancedMesh · videos/example/scenes/three.ts';
 

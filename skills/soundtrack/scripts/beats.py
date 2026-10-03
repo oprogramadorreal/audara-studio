@@ -31,7 +31,7 @@
            window on the music (whole bars, what is sung at each end), cuts it to the sample as
            audio/<stem>-window.wav and writes its audio.json and words.json in video time from the
            whole song's, which stay in data/song/ for the next window (the song is analyzed there
-           first when it has no analysis yet).
+           first when it has no analysis yet), and its click track.
 
 Files: with --video <video>, inside an audara project (the nearest folder above with videos/):
 audio.json goes to videos/<video>/data/, review files (beats.png, clicks.m4a, window.png) to
@@ -62,6 +62,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -70,7 +71,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
-# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+# beats_models.py, align.py, align_models.py, mix.py, eleven.py and standin.py: change all seven together.
 DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
 #                torch's: 91)
 
@@ -133,6 +134,8 @@ ATTACK_TOL = 0.050  # attacks within 50 ms of a beat vote on its phase: the trac
 ATTACK_MIN_BEATS = 8  # the phase moves only when at least 8 beats...
 ATTACK_MIN_FRAC = 0.25  # ...and a quarter of all beats have an attack near them
 ATTACK_MAX_SHIFT = 0.040  # a larger median offset means the attacks are not on the beat: leave it
+ON_BEAT = 0.020  # beats.png counts a beat as heard when an attack lies within 20 ms of it: at ATTACK_TOL's 50 ms (wide
+#                  enough to vote on the phase) pdoom's drumless breakdown read 14 of its 16 beats, at 20 ms 6
 JUMP_PENALTY = 12.0  # nats a bar-phase change costs: it takes about 3 bars of the tracker's
 #                      confident contrary downbeats, so one stray detection never moves the bars
 MIN_SECTION_BARS = 2  # audio-novelty boundaries closer than 2 bars merge (a fill is not a section)
@@ -196,7 +199,7 @@ def clock(t: float) -> str:
 
 
 # Where files go. Where, has_videos, find_project, video_of, in_video and where are the same code in
-# eleven.py, beats.py, mix.py and align.py: change all four together.
+# eleven.py, beats.py, mix.py, align.py and standin.py: change all five together.
 
 
 @dataclass
@@ -394,8 +397,8 @@ def find_input(p: str, w: Where, sub: str, what: str) -> Path:
     raise Fail(2, f"{what} not found: {p}{extra}")
 
 
-# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
-# three together.
+# The cache. CACHE_DIRS, user_cache, cache_root, SIZE_BUDGET_S, file_sizes, folder_bytes and uv_cache are the same
+# code in beats.py, mix.py, align.py and standin.py: change all four together.
 
 CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
               "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
@@ -446,6 +449,52 @@ def cache_root(w: Where) -> tuple[Path, bool]:
     return root, True
 
 
+SIZE_BUDGET_S = 5.0  # uv's cache is counted for 5 s at most: one that every project shares can hold millions of files
+#                      (19 GB in 1.8 million took 57 s here); a sandbox's (1.1 GB in 48,000 files) takes about 1 s
+
+
+def file_sizes(p: Path):
+    """The size of every file under p, each file once: uv hard-links its environments to its archive, so a sum over
+    every path counts most of a uv cache twice (an eval run read 2.04 GB for a folder of 1.08 GB). Walked the long
+    way on Windows: a cache in a deep project holds paths past 260 characters, which a plain walk skips (in one 181
+    characters deep, 4,137 of its 8,354 files)."""
+    seen = set()
+    for d, _, names in os.walk(verbatim(str(p)) if sys.platform == "win32" else str(p)):
+        for name in names:
+            try:
+                st = os.stat(os.path.join(d, name))
+            except OSError:  # (removed meanwhile, or unreadable)
+                continue
+            if stat.S_ISREG(st.st_mode) and not (st.st_ino and (st.st_dev, st.st_ino) in seen):
+                seen.add((st.st_dev, st.st_ino))
+                yield st.st_size
+
+
+def folder_bytes(p: Path) -> int:
+    return sum(file_sizes(p))
+
+
+def uv_cache() -> dict | None:
+    """uv's cache when UV_CACHE_DIR moves it (for a sandbox, or a short path: SKILL.md): where it is and its size on
+    disk, for the hand-off. None when UV_CACHE_DIR is not set: uv's own cache is shared by every project."""
+    env = os.environ.get("UV_CACHE_DIR", "").strip()
+    d = Path(env).resolve() if env else None  # (a relative one from the current folder, as uv reads it)
+    if d is None or not d.is_dir():
+        return None
+    n, done, stop = 0, True, time.monotonic() + SIZE_BUDGET_S
+    for size in file_sizes(d):
+        n += size
+        if time.monotonic() > stop:
+            done = False
+            break
+    size = f"{n / 1e9:.2f} GB" if n >= 1e9 else f"{n / 1e6:.0f} MB" if n >= 1e6 else f"{n / 1e3:.0f} KB"
+    return {"path": str(d), "bytes": n, "counted": done,
+            "note": f"uv's cache (UV_CACHE_DIR): {d}, {size if done else 'over ' + size} on disk"
+                    + ("" if done else f" (counting stopped after {SIZE_BUDGET_S:g} s)")
+                    + ", each file counted once (its environments share their files with its downloads); it can be "
+                      "deleted once no script is running, and uv downloads what it needs again"}
+
+
 def use_cache(root: Path) -> None:
     """Point the model downloads (torch hub, Hugging Face) and numba's JIT cache at the audara cache.
     numba's own default is beside each module in uv's environment, which can lie deep in a project
@@ -457,10 +506,6 @@ def use_cache(root: Path) -> None:
     if not os.environ.get("NUMBA_CACHE_DIR"):  # (read when numba is first imported, after this)
         nb = str((root / "numba").resolve())
         os.environ["NUMBA_CACHE_DIR"] = verbatim(nb) if sys.platform == "win32" else nb
-
-
-def folder_bytes(p: Path) -> int:
-    return sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) if p.exists() else 0
 
 
 def tool(name: str) -> str:
@@ -863,6 +908,7 @@ class Beats:
     trange: tuple = ()
     runs: list = field(default_factory=list)
     level: str = ""  # "doubled" or "halved" by --tempo-hint
+    att: np.ndarray = field(default_factory=lambda: np.zeros(0))  # the mix's attacks (s): the phase, beats.png's counts
 
 
 def resolve_beats(det: np.ndarray, heights: np.ndarray, a: Audio, hint: float | None) -> Beats:
@@ -870,8 +916,11 @@ def resolve_beats(det: np.ndarray, heights: np.ndarray, a: Audio, hint: float | 
     if len(det) < 4:
         P = 60.0 / (hint or 120.0)
         b = np.arange(0.0, a.duration, P)
+        att = np.sort(np.concatenate([attacks(a.mono44, SR, None, 150), attacks(a.mono44, SR, 1500, 5000),
+                                      attacks(a.mono44, SR, 7000, None)]))  # (no phase to set: beats.png counts them)
         return Beats(b, det, "nominal", 60.0 / P, f"only {len(det)} beats found: a nominal {60 / P:.0f} BPM grid "
-                     f"stands in (no pulse to follow). For music with a known tempo use: beats.py grid --bpm N")
+                     f"stands in (no pulse to follow). For music with a known tempo use: beats.py grid --bpm N",
+                     att=att)
     lv, hv, level = to_level(det, heights, hint) if hint else (det, heights, "")
     out = fit_beats(lv, hv, a)
     out.raw, out.level = det, level  # beatsRaw stays the tracker's own output
@@ -901,14 +950,15 @@ def fit_beats(det: np.ndarray, heights: np.ndarray, a: Audio) -> Beats:
             k0, k1 = math.ceil((-START_SLACK - a0) / P), math.floor((duration - 1e-6 - a0) / P)
             grid = a0 + P * np.arange(k0, k1 + 1)
         grid = np.maximum(grid, 0.0)
-        why = (f"steady: in every 16-beat window the detections sit within {fit['windowMs'][0]:+.1f}.."
-               f"{fit['windowMs'][1]:+.1f} ms of one least-squares grid (limit +-{GRID_TOL * 1000:.0f} ms), "
-               f"so the grid replaces them and runs over the whole file")
+        why = (f"steady: one least-squares grid fits the {fit['beats']} detected beats at {fit['rmsMs']} ms rms "
+               f"({fit['maxMs']} ms at worst), and the median of every 16-beat window sits within "
+               f"{fit['windowMs'][0]:+.1f}..{fit['windowMs'][1]:+.1f} ms of it (limit +-{GRID_TOL * 1000:.0f} ms), so "
+               f"the grid replaces them and runs over the whole file")
         inside = (grid >= clean[0] - P / 2) & (grid <= clean[-1] + P / 2)
         out = Beats(grid, det, "grid", 60.0 / P, why, fit, devs, (int((grid < clean[0] - P / 2).sum()),
                     int((grid > clean[-1] + P / 2).sum())), int(filled.sum()), dropped,
                     s if ok else 0.0, {"medianMs": round(1000 * s, 1), "beatsWithAttack": hit, "applied": ok,
-                                       "beatsConsidered": int(inside.sum())})
+                                       "beatsConsidered": int(inside.sum())}, att=att)
         return out
     # not steady: keep the detections, write a tempo map
     s, hit, ok = phase_shift(clean, att)
@@ -922,9 +972,10 @@ def fit_beats(det: np.ndarray, heights: np.ndarray, a: Audio) -> Beats:
                 "bpmTo": round(y["bpm"], 1)} for x, y in zip(runs, runs[1:])
                if abs(y["bpm"] / x["bpm"] - 1) >= TEMPO_CHANGE_MIN]
     avg = 60.0 * (len(full) - 1) / (full[-1] - full[0])  # the delivered beats' average tempo
-    why = (f"not steady: one least-squares grid misses the detections by up to {abs(worst[1]) * 1000:.0f} ms "
-           f"(16-beat window around {clock(worst[0])}; limit +-{GRID_TOL * 1000:.0f} ms), so the detected beats "
-           f"are kept and bpm is their average") if len(clean) >= MIN_GRID_BEATS else (
+    why = (f"not steady: the median of the 16-beat window around {clock(worst[0])} sits "
+           f"{abs(worst[1]) * 1000:.0f} ms from one least-squares grid through the detected beats (limit "
+           f"+-{GRID_TOL * 1000:.0f} ms), so the detected beats are kept and bpm is their average"
+           ) if len(clean) >= MIN_GRID_BEATS else (
         f"too short to test: {len(clean)} beats (a steady tempo needs {MIN_GRID_BEATS} to show), so the detected "
         f"beats are kept and bpm is their average")
     return Beats(full, det, "detected", avg, why, fit, devs, (nb, na), int(filled.sum()), dropped,
@@ -933,7 +984,7 @@ def fit_beats(det: np.ndarray, heights: np.ndarray, a: Audio) -> Beats:
                  [[round(float(x), 3), round(float(b), 1)] for x, b in zip(full, loc)], changes,
                  (round(float(np.percentile(loc_det, 5)), 1), round(float(np.percentile(loc_det, 95)), 1)),
                  [{"start": round(x["start"], 3), "end": round(x["end"], 3), "bpm": round(x["bpm"], 2)}
-                  for x in runs])
+                  for x in runs], att=att)
 
 
 def to_level(det: np.ndarray, h: np.ndarray, hint: float) -> tuple[np.ndarray, np.ndarray, str]:
@@ -1668,6 +1719,9 @@ def plot_review(path: Path, a: Audio, doc: dict, B: Beats, title: str, phase_cha
         ax2.set_ylabel("local tempo (BPM, 9-beat fit)", color=red, fontsize=8)
     ax2.tick_params(labelsize=8, colors=red)
     ax.set_title(title, fontsize=10, loc="left", pad=6)
+    att = np.asarray(B.att, float)
+    rest = "the tracker places the rest" if B.mode == "detected" else "the grid carries the rest"
+    shown, titles = [], []
     for k, (label, t0, t1) in enumerate(passages):
         axp = fig.add_subplot(gs[1 + k // 2, k % 2])
         m = (te >= t0) & (te <= t1)
@@ -1675,7 +1729,11 @@ def plot_review(path: Path, a: Audio, doc: dict, B: Beats, title: str, phase_cha
         mr = (tr >= t0) & (tr <= t1)
         axp.plot(tr[mr], rms[mr], color="0.3", lw=0.8)
         xt = axp.get_xaxis_transform()
-        for t in beats[(beats >= t0) & (beats <= t1)]:
+        inp = beats[(beats >= t0) & (beats <= t1)]
+        hit = sum(1 for t in inp if len(att) and float(np.min(np.abs(att - t))) <= ON_BEAT)
+        on_att = f"attacks at {hit} of {len(inp)} beats" + (f"; {rest}" if hit < len(inp) else "")
+        shown.append(f"{k + 1}. {label} {clock(t0)}: {on_att}")
+        for t in inp:
             isd = bool(len(downs)) and np.min(np.abs(downs - t)) < 1e-6
             # a beat within 35 ms of a detection was heard (pdoom's grid beats sit within 22 ms of theirs); the
             # others, extrapolated past the detections or refilled between them, are dashed, grid or not
@@ -1695,14 +1753,23 @@ def plot_review(path: Path, a: Audio, doc: dict, B: Beats, title: str, phase_cha
         axp.set_ylim(0, 1.18)
         axp.set_yticks([])
         axp.tick_params(labelsize=7, pad=1)
-        axp.set_title(f"{k + 1}. {label}: {clock(t0)}-{clock(t1)}", fontsize=9, loc="left", pad=11)
-    fig.text(0.05, 0.12 / H, "blue: onset strength; grey line: rms; black lines: downbeats (bar numbers above); "
-             "grey lines: beats (dashed = extrapolated or refilled); orange triangles: the tracker's raw detections "
-             "(phase-corrected); red: section starts", fontsize=8)
+        titles.append((axp, axp.set_title(f"{k + 1}. {label}: {clock(t0)}-{clock(t1)}; {on_att}", fontsize=9,
+                                          loc="left", pad=11)))
+    renderer = fig.canvas.get_renderer()
+    for axp, ttl in titles:  # a long label ("largest grid deviation (+7.5 ms)") would run into the next panel
+        while ttl.get_window_extent(renderer).width > axp.get_window_extent(renderer).width and ttl.get_fontsize() > 6:
+            ttl.set_fontsize(ttl.get_fontsize() - 0.5)
+    stems = bool((doc.get("analysis") or {}).get("stems"))
+    fig.text(0.05, 0.08 / H, "blue: onset strength of the whole mix ("
+             + ("not the drum stem" if stems else "no drum stems without --stems") + "); grey line: rms; black lines: "
+             "downbeats (bar numbers above); grey lines: beats (dashed = extrapolated or refilled)\norange triangles: "
+             "the tracker's raw detections (phase-corrected); red: section starts; titles: the beats with an attack "
+             f"within {ON_BEAT * 1000:.0f} ms (a fast rise in the mix's kick, snare or hat band)", fontsize=8,
+             va="bottom", linespacing=1.4)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=100)
     plt.close(fig)
-    return [f"{k + 1}. {label} {clock(t0)}" for k, (label, t0, _) in enumerate(passages)]
+    return shown
 
 
 def write_clicks(path: Path, a: Audio, beats: list[float], downs: list[float]) -> None:
@@ -2037,9 +2104,10 @@ def run_analyze(args, w: Where | None = None) -> dict:
     notes = [time_note(audio.name, a.delay)]
     if B.mode == "grid":
         notes.append(f"Beats: constant {B.bpm:.3f} BPM, a least-squares grid through the {B.fit['beats']} beats "
-                     f"{'Beat This!' if args.tracker == 'beat-this' else 'the librosa tracker'} detected (residual {B.fit['rmsMs']} ms rms; 16-beat windows within "
-                     f"{B.fit['windowMs'][0]:+.1f}..{B.fit['windowMs'][1]:+.1f} ms), extrapolated over the whole file; "
-                     f"the raw detections are in beatsRaw.")
+                     f"{'Beat This!' if args.tracker == 'beat-this' else 'the librosa tracker'} detected (residual "
+                     f"{B.fit['rmsMs']} ms rms, {B.fit['maxMs']} ms at worst; the median of every 16-beat window "
+                     f"within {B.fit['windowMs'][0]:+.1f}..{B.fit['windowMs'][1]:+.1f} ms of it), extrapolated over the "
+                     f"whole file; the raw detections are in beatsRaw.")
     elif B.mode == "detected":
         notes.append("Beats: the tempo changes, so these are the detected beats (refilled where one was missed, "
                      "extrapolated past both ends at the local tempo); bpm is their average, tempo.map the local "
@@ -2106,7 +2174,7 @@ def run_analyze(args, w: Where | None = None) -> dict:
     bt = np.asarray(back["beats"])
     period = float(bt[-1] - bt[-2])  # the beat at the end of the file: tempo may move elsewhere
     P_fit = float(np.polyfit(np.arange(len(bt), dtype=float), bt, 1)[0])
-    cache_info = {"root": str(root), "inProject": in_project}
+    cache_info = {"root": str(root), "inProject": in_project, "uv": uv_cache()}
     if in_project:
         cache_info["bytes"] = folder_bytes(root)
     mdl = None
@@ -2161,8 +2229,9 @@ def print_analyze(r: dict) -> None:
     say(f"             why: {r['why']}")
     if r["fit"]:
         f = r["fit"]
-        say(f"             one-grid fit: residual {f['rmsMs']} ms rms, {f['maxMs']} ms max over {f['beats']} beats; "
-            f"16-beat windows {f['windowMs'][0]:+.1f}..{f['windowMs'][1]:+.1f} ms")
+        say(f"             one-grid fit: residual {f['rmsMs']} ms rms, {f['maxMs']} ms at worst, over {f['beats']} "
+            f"beats; the median of each 16-beat window within {f['windowMs'][0]:+.1f}..{f['windowMs'][1]:+.1f} ms of "
+            f"the grid")
     if r["mode"] == "detected":
         lo, hi = r["tempoRange"]
         say(f"             local tempo (9-beat fits, 5th-95th percentile) {lo:.1f}..{hi:.1f} BPM"
@@ -2222,7 +2291,10 @@ def print_analyze(r: dict) -> None:
                                                                          if ck["warnings"] else ""))
     rv = r["review"]
     if "png" in rv:
-        say(f"  review     {rv['png']['path']} ({kb(rv['png']['bytes'])}): {', '.join(rv['png']['passages'])}")
+        say(f"  review     {rv['png']['path']} ({kb(rv['png']['bytes'])}); its passages, counting an attack (a fast "
+            f"rise in the mix's kick, snare or hat band) within {ON_BEAT * 1000:.0f} ms of a beat:")
+        for x in rv["png"]["passages"]:
+            say(f"               {x}")
     if "clicks" in rv:
         c = rv["clicks"]
         say(f"  {'review     ' if 'png' not in rv else '           '}{c['path']} ({kb(c['bytes'])}, "
@@ -2243,7 +2315,12 @@ def print_analyze(r: dict) -> None:
                 f"at {s.get('weights')} ({'downloaded now' if s.get('downloaded') else 'already cached'}); "
                 f"{s.get('seconds')} s on CPU")
     c = r["cache"]
-    say(f"  cache      {c['root']}" + (f" (inside the project, git-ignored, {kb(c['bytes'])})" if c["inProject"] else ""))
+    with_uv = bool(c.get("uv")) and Path(c["uv"]["path"]).is_relative_to(Path(c["root"]).resolve())
+    inside = ", uv's cache below included" if with_uv else ""  # (UV_CACHE_DIR=.audara-cache/uv, for a sandbox)
+    say(f"  cache      {c['root']}" + (f" (inside the project, git-ignored, {kb(c['bytes'])} on disk{inside})"
+                                       if c["inProject"] else ""))
+    if c.get("uv"):
+        say(f"             {c['uv']['note']}")
     for x in r.get("notes", []):
         say(f"  note       {x}")
     for x in r["warnings"]:
@@ -3311,7 +3388,8 @@ def run_window(args) -> dict:
                             f"({b:.3f} s, {bars} bars, --exact): end on "
                             + " or ".join(f"{at_text(t)} ({span_text(a, t)})" for t in near_)
                             + ("" if fade else ", or with a --fade that lands there")
-                            + " (without --exact it moves to the nearer)")
+                            + " (without --exact it moves to the nearer); a length asked in seconds is no reason for "
+                              "--exact: tell the director the whole-bar length")
     clean_starts, clean_ends = [], []
     if song_w is not None:
         def clean(t: float) -> bool:
@@ -3451,6 +3529,23 @@ def run_window(args) -> dict:
                   for t, k in drum_changes(np.asarray(drums_, float), downs, song_a.get("fps") or FPS)
                   if a + ON_DOWNBEAT < t < b - ON_DOWNBEAT] if (
         len(secs_in) == 1 and stems and isinstance(drums_, list) and len(downs) > 2) else []
+    # what is left where the drums stop, until they come in again or the window ends: the mix's level against the
+    # drummed bar before (rms power), and the share of it where the vocal stem sounds (a line sung over a band stop
+    # is not silence), from the song's envelopes
+    rms_, fps_d = feats_.get("rms") or song_a.get("rms"), song_a.get("fps") or FPS
+    for i, m in enumerate(drum_marks):
+        if m["drums"] != "out":
+            continue
+        t, j = m["song"], nearest(downs, m["song"])
+        end_ = next((x["song"] for x in drum_marks[i + 1:] if x["drums"] == "in"), b)
+        m.update({"until": round(end_ - a, 3), "bars": round(float(bar_at(end_, downs) - bar_at(t, downs)), 2)})
+        if isinstance(rms_, list) and j > 0:
+            pw = [float(np.mean(np.square(np.asarray(rms_[int(round(x0 * fps_d)):int(round(x1 * fps_d))], float))))
+                  for x0, x1 in ((float(downs[j - 1]), t), (t, end_))]
+            m["mixDb"] = round(10 * math.log10(pw[1] / pw[0]), 1) if min(pw) > 0 else None
+        if isinstance(vocal_, list):
+            v = np.asarray(vocal_[int(round(t * fps_d)):int(round(end_ * fps_d))], float)
+            m["voice"] = round(float(np.mean(v > VOICE_ON)), 2) if len(v) else None
 
     # ---- the window's data
     fps = song_a.get("fps") or FPS
@@ -3514,6 +3609,10 @@ def run_window(args) -> dict:
                     f"{song.name}: window {a:.3f}-{b:.3f} s = " + (f"{bars:g} bars, " if bars is not None else "")
                     + f"{dur_w:.3f} s -> {win_rel}")
         review["png"] = {"path": str(png), "bytes": png.stat().st_size}
+    if not args.no_clicks:  # (the window as the video plays it, fade included, with a click on each of its beats)
+        m4a = w.review_dir / "clicks.m4a"
+        write_clicks(m4a, load_audio(win_path), back.get("beats") or [], back.get("downbeats") or [])
+        review["clicks"] = {"path": str(m4a), "bytes": m4a.stat().st_size, "seconds": probe_duration(m4a)}
 
     # ---- what video.json still needs
     hints = []
@@ -3620,9 +3719,20 @@ def print_window(r: dict) -> None:
             return f"{s['name']} {s['start']:.3f}{whole}{part}"
         say(f"  sections   {', '.join(sec(s) for s in r['sections'])} (window time)")
     if r.get("drums"):
-        say("  drums      " + ", ".join(f"{x['drums']} at {x['t']:.3f} s" for x in r["drums"])
-            + " (window time; bar by bar on the drum stem: the window holds one section, and its parts may change at "
-              "these)")
+        def drums(x):
+            if x["drums"] != "out" or x.get("bars") is None:
+                return f"{x['drums']} at {x['t']:.3f} s"
+            left = ([] if x.get("mixDb") is None else
+                    ["the mix as loud as the bar before" if abs(x["mixDb"]) < 0.5 else
+                     f"the mix {abs(x['mixDb']):.0f} dB {'under' if x['mixDb'] < 0 else 'over'} the bar before"])
+            if x.get("voice") is not None:
+                left.append(f"a voice in {x['voice']:.0%} of it" if x["voice"] else "no voice")
+            end_ = " to the window's end" if abs(x["until"] - wd["duration"]) < 0.0015 else ""
+            return (f"out at {x['t']:.3f} s for {x['bars']:g} bar{'s' * (x['bars'] != 1)}{end_}"
+                    + (": " + ", ".join(left) if left else ""))
+        say("  drums      " + "; ".join(drums(x) for x in r["drums"])
+            + f" (window time; bar by bar on the drum stem; the mix by its rms, a voice where the vocal stem is over "
+              f"{VOICE_ON:g}: the window holds one section, and its parts may change at these)")
     da = r["data"]["audio.json"]
     on = ", ".join(f"{k} {v}" for k, v in da["onsets"].items())
     say(f"  data       {sh(da['path'])}: {da['beats']} beats, {da['downbeats']} downbeats, {len(da['sections'])} sections"
@@ -3651,6 +3761,10 @@ def print_window(r: dict) -> None:
     if r["review"].get("png"):
         p = r["review"]["png"]
         say(f"  review     {sh(p['path'])} ({kb(p['bytes'])}): the window on the song, and each cut up close")
+    if r["review"].get("clicks"):
+        c = r["review"]["clicks"]
+        say(f"  {'           ' if r['review'].get('png') else 'review     '}{sh(c['path'])} ({kb(c['bytes'])}, "
+            f"{c['seconds'] or 0:.1f} s): the window with a click on every beat, higher on downbeats (video time)")
     for x in r["notes"]:
         say(f"  note       {x}")
     for x in r["warnings"]:
@@ -3720,6 +3834,8 @@ else data/song/; else the song is analyzed into data/song/ first) it writes, in 
                             duration the window's; a "window" record of where it came from; over a
                             --fade the loudness envelopes and onset strengths fade with the audio
   data/words.json           lines, words and syllables inside; a word cut by an edge keeps its part
+  out/<video>/clicks.m4a    the window with a click on every beat, higher on downbeats, to hear the
+                            grid with the brief (--no-clicks skips it); window.png beside it
 Before cutting it checks the window on the music and warns, with the fix: an end left off the
 downbeats by --exact, how many bars, the sections it holds, and a word, held note or line that an
 edge cuts, naming starts or ends within 4 bars where nothing is sung (or the fade, when there are
@@ -3831,6 +3947,8 @@ def make_parser() -> Parser:
     wn.add_argument("--tracker", choices=("beat-this", "librosa"), default="beat-this",
                     help="the tracker for the song's analysis, when it has none yet (as in analyze)")
     wn.add_argument("--no-plot", action="store_true", help="skip out/<video>/window.png")
+    wn.add_argument("--no-clicks", action="store_true", help="skip out/<video>/clicks.m4a: the window with a click on "
+                                                             "every beat (higher on downbeats), in video time")
     wn.add_argument("--json", action="store_true", help="print the result as JSON")
     return p
 
