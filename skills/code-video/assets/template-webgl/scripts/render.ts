@@ -300,12 +300,44 @@ function logTail(file: string, n = 15) {
 }
 
 /**
+ * Windows: makes every handle of this process non-inheritable, so the process it starts next gets its stdio
+ * and nothing else. libuv starts a process with bInheritHandles=TRUE, which hands it every inheritable handle
+ * of its parent. Bun makes its own std handles non-inheritable, but a shell that runs this command can pass
+ * handles of its own: Windows PowerShell passes the pipe its caller reads the output from. A Vite that
+ * inherited that pipe kept it open as long as it ran, so a caller that reads the output to its end (Codex
+ * runs commands through PowerShell) waited for the preview to stop. Returns why it couldn't, or nothing.
+ */
+async function inheritNothing(): Promise<string | undefined> {
+  try {
+    const { dlopen, FFIType } = await import('bun:ffi');
+    const k = dlopen('kernel32.dll', {
+      GetProcessHandleCount: { args: [FFIType.i64, FFIType.ptr], returns: FFIType.bool },
+      GetHandleInformation: { args: [FFIType.u64, FFIType.ptr], returns: FFIType.bool },
+      SetHandleInformation: { args: [FFIType.u64, FFIType.u32, FFIType.u32], returns: FFIType.bool },
+    });
+    try {
+      // (the arrays themselves go to each call, which takes their address then: an address kept from ptr()
+      // goes stale if the array's storage moves)
+      const count = new Uint32Array(1), flags = new Uint32Array(1);
+      if (!k.symbols.GetProcessHandleCount(-1, count)) return 'GetProcessHandleCount failed';
+      // (handles are multiples of 4: the scan stops once it has met them all, or at a bound far past them)
+      for (let h = 4, seen = 0; seen < count[0]! && h < 1 << 22; h += 4) {
+        if (!k.symbols.GetHandleInformation(h, flags)) continue;
+        seen++;
+        if (flags[0]! & 1 && !k.symbols.SetHandleInformation(h, 1, 0)) return `handle 0x${h.toString(16)} stays inheritable`;
+      }
+    } finally { k.close(); }
+  } catch (e) { return (e as Error).message; }
+}
+
+/**
  * preview: link, starting this project's preview first when none runs. It runs the project's own Vite
  * (node_modules/vite, on node when there is one, as `bunx vite` would, else on bun) in a process of its own:
  * detached (a process group of its own, and on Windows no console), its output in PREVIEW_LOG, not waited
- * for. A host ends a turn by killing the shell's process tree (taskkill /T /F on Windows); once this command
- * is done, Vite is no longer in that tree, and it keeps serving. It is found as link finds it, by asking the
- * ports until one answers for this folder.
+ * for, and holding no handle of this process but that log (inheritNothing), so whatever reads this command's
+ * output gets to its end when the command ends. A host ends a turn by killing the shell's process tree
+ * (taskkill /T /F on Windows); once this command is done, Vite is no longer in that tree, and it keeps
+ * serving. It is found as link finds it, by asking the ports until one answers for this folder.
  */
 async function preview(video: string) {
   const t = linkTime();
@@ -322,6 +354,8 @@ async function preview(video: string) {
   // (a log without color codes; and AUDARA_NO_HMR would stop the preview reloading when a file changes)
   const env: Record<string, string | undefined> = { ...process.env, NO_COLOR: '1' };
   delete env.AUDARA_NO_HMR;
+  const kept = process.platform === 'win32' ? await inheritNothing() : undefined;
+  if (kept) console.error(`render.ts: this process's handles stay inheritable (${kept}): whatever reads this command's output to its end may wait until the preview stops`);
   const server = Bun.spawn([Bun.which('node') ?? process.execPath, entry], { cwd: PROJECT, env, stdio: ['ignore', out, out], detached: true, windowsHide: true });
   closeSync(out);
   server.unref();

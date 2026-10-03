@@ -420,7 +420,7 @@ function agentsSection(): string {
   const vids = listVideos();
   const cell = (s: string) => s.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
   const rows = vids.length
-    ? vids.map((v) => `| \`${v.name}\` | ${cell(v.title)} | \`videos/${v.name}/TREATMENT.md\` | \`<preview>/?v=${v.name}\` |`)
+    ? vids.map((v) => `| \`${v.name}\` | ${cell(v.title)} | \`videos/${v.name}/TREATMENT.md\` | \`bun scripts/render.ts link --video ${v.name}\` |`)
     : ['| (none yet) | | | |'];
   return [
     BEGIN,
@@ -437,7 +437,7 @@ function agentsSection(): string {
     "- **Preview:** `bun scripts/render.ts preview --video <video> --t <seconds>` starts it unless it runs and prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Run it yourself (the director doesn't run commands), before the first scene and again in a new session; the preview runs in a process of its own, so it outlives your turn, until `preview --stop`. Every change gets a link.",
     '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look; a full `video` render takes minutes: wait for it before replying). Before calling work done: `bun run check` and `verify`.',
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
-    '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set (a length), the version that keeps it; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
+    '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
     '',
     'Keep this file current as videos are added: running init again (`--video <video>` for a new one) rewrites this section from `videos/*/video.json`.',
     END,

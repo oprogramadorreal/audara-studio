@@ -963,7 +963,8 @@ def free_paths(kind: str, standin: list[str] | None = None) -> list[str]:
             (f"  - a local stand-in voice: {run} (Kokoro-82M, Apache-2.0: commercial use allowed), named as a "
              "stand-in:" if run else
              "  - a local stand-in voice under an open license, e.g. Kokoro-82M (Apache-2.0), named as a stand-in:"),
-            "    scenes find words by their text, so they keep their sync when the real voice replaces it;", silent]
+            "    cues that find words by their text (as audara scenes do), not copied times, keep their sync when the "
+            "real voice replaces it;", silent]
 
 
 class Api:

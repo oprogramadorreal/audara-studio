@@ -143,8 +143,8 @@ MODEL_REVISION = "f3ff3571791e39611d31c381e3a41a3af07b4987"  # main on 2026-10-0
 MODEL_FILE = "kokoro-v1_0.pth"  # the weights, 327 MB; config.json and each voice (0.5 MB) beside them
 MODEL_MB = 328  # what a first run downloads: the weights, config.json and one voice
 LICENSE = "Apache-2.0"  # the model card's license, for the weights and the voices: commercial use allowed
-LICENSE_LINE = ("{model} {voice}, {license}: commercial use allowed; a stand-in: scenes find words by their text, so "
-                "they keep their sync when `eleven.py tts ... --yes` replaces it")
+LICENSE_LINE = ("{model} {voice}, {license}: commercial use allowed. A stand-in: cues that find words by their text "
+                "(as audara scenes do), not copied times, keep their sync when `eleven.py tts ... --yes` replaces it")
 DEFAULT_VOICE = "af_heart"  # the voice the model card grades highest (A)
 SR = 24000  # Kokoro's output rate: blocks and narration.wav keep it, so nothing is resampled
 FRAME = 600  # samples per predicted duration step (25 ms): a part's audio is exactly sum(durations) x 600 samples
@@ -1987,8 +1987,8 @@ def assemble(out: Out, w: Where, script: Path, blocks: list[Block], paths: list[
     words_doc = {
         "lines": lines,
         "notes": (f"Stand-in narration by {MODEL_NAME}, a local open voice ({LICENSE}: commercial use allowed), voice "
-                  f"{voice}, made by standin.py: scenes find words by their text, so they keep their sync when "
-                  f"eleven.py tts replaces it. One line per paragraph (block) of {script.name}, in order; each block "
+                  f"{voice}, made by standin.py: cues that find words by their text, not copied times, keep their sync "
+                  f"when eleven.py tts replaces it. One line per paragraph (block) of {script.name}, in order; each block "
                   f"is one synthesis, and the blocks follow one another with {gap:g} s of silence between them, so the "
                   f"picture can cut there. Times are seconds on audio/narration.wav: t = 0 is its first sample, as "
                   f"browsers and ffmpeg play it: never shift these times; no offset is needed. w is the word as shown; "
@@ -2058,7 +2058,7 @@ def assemble(out: Out, w: Where, script: Path, blocks: list[Block], paths: list[
              if isinstance(x, dict)]
     out("  lines: " + "; ".join(f"{n} {s:.2f}-{e:.2f} s" for n, s, e in spans
                                 if isinstance(s, (int, float)) and isinstance(e, (int, float))))
-    out(f"Phrase edges vs the waveform: {edge_line(before, 'before snapping' if snap_on else '')}.")
+    out(f"Phrase edges vs the waveform (a phrase: speech between pauses): {edge_line(before, 'before snapping' if snap_on else '')}.")
     if snap_on and rep.edges:
         out(f"  snapped: moved {moved} words onto the measured sound; re-measured: {edge_line(after)}.")
     elif rep.edges and before.get("beyond_tolerance"):

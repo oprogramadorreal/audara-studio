@@ -13,10 +13,10 @@
     }
   ],
   "assertions": [
-    "Before replying, the session itself ran `bun run check` and `render.ts verify`, and the scene keeps its timing source (beat grid or timing data), with no typed seconds.",
+    "Before replying, the session itself ran `bun run check` and `render.ts verify`, and the scene keeps its existing timing scheme (fractions of the scene's entry, a beat grid or timing data), with no typed seconds.",
     "Only files under videos/<video>/ change; src/, scripts/ and other videos are unchanged (git diff); docs/STYLE.md may change only to correct what the change made wrong.",
-    "The reply links this project's running preview, <address>/?v=<video>&t=<s>, where <address>/__audara returned this work folder during the run (result.json previews, or the transcript shows the agent checked it), with t inside the changed span or up to about 0.5 s before it.",
-    "The change answers the note: on stills, the title takes longer from its first visible change to fully in, or the reply names the reading it took and offers the other.",
+    "The reply links this project's running preview, <address>/?v=<video>&t=<s>, where <address>/__audara returned this work folder during the run (result.json previews, or the transcript shows the agent checked it), with t inside the changed span or up to about 0.5 s before it. The changed span runs from where the title (not the background) first differs visibly between stills of the old and the new version at the same times to where the two match again.",
+    "The change answers the note at the start: on stills of the old and the new version at the same times, over the ~1.5 s after the title first visibly changes in the old version, the new version shows less of the title (lit, drawn or opaque), because it starts later (the reading 'too soon') or comes in slower ('too quick'); a change that only stretches the end fails. And the reply names the reading it took and offers the other.",
     "No full MP4 render is made unless asked."
   ]
 }

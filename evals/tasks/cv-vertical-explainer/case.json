@@ -18,7 +18,7 @@
   ],
   "assertions": [
     "After turn 1: a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption; nothing built yet.",
-    "By the end of turn 2 the director has been given, in a turn-2 message (progress messages count), this project's preview link written out in full with ?v=<name>, and at least one full &t= link within 0.5 s of a beat time the brief lists (the address served this work folder during the run: result.json previews).",
+    "A turn-2 message (progress messages count) gives the director this project's preview link written out in full with ?v=<name> before the first scene file for this video is written (transcript order), and one before turn 2 ends gives at least one full &t= link within 0.5 s of a beat time the brief lists (the address served this work folder during the run: result.json previews).",
     "The MP4 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (the user said no sound).",
     "Values shown on screen (hashes, bucket indices) are computed in code from the keys by a hash function the scene runs, and the copy and comparisons read them from there: a bucket typed into the code ('bucket 3', i === 3) fails.",
     "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",

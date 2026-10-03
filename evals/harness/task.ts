@@ -18,11 +18,14 @@
 // a case can check that the agent links its own project's preview, not whatever answers on the port.
 //
 // Claude Code turns run with no MCP servers (--strict-mcp-config, and without the claude.ai connectors), so the
-// user's connectors don't ask for authorization in the replies. Both tools keep the user's caches (uv's, and
-// AUDARA_CACHE's models): a fresh one per run would download gigabytes each time.
+// user's connectors don't ask for authorization in the replies. No run of either tool can reach the user's
+// desktop or their own browser: computer use and browser automation are off (see "no computer use" below).
+// Both tools keep the user's caches (uv's, and AUDARA_CACHE's models): a fresh one per run would download
+// gigabytes each time.
 //
 // result.json also lists the audara previews that answered during the run and the folder each serves (the
-// harness stops this run's at the end). A Codex run's session files, its sub-agents' included, are copied to
+// harness stops this run's at the end), and the model each turn ran, as the transcripts name it (Claude's
+// init event; Codex's session file). A Codex run's session files, its sub-agents' included, are copied to
 // codex-sessions/: `codex exec --json` leaves some tool calls out of the transcripts.
 import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, cpSync, existsSync, readdirSync, statSync, renameSync } from 'node:fs';
 import path from 'node:path';
@@ -131,12 +134,107 @@ async function lookForPreviews(turn: number | 'end') {
   }));
 }
 
+// ---------------------------------------------------------------- no computer use, no browser automation
+// A run must not reach the user's desktop or their own browser. With the user's own Codex config, one run did:
+// through Codex's computer-use plugin it read the titles of the user's open Chrome tabs, pressed play in a
+// background tab and left a tab open. So every run turns off what could: in Codex, the features and plugins
+// named for computer use or a browser, every MCP server whose name, command or environment names one (the
+// Codex app's node_repl, in config.toml, carries both services) and the turn-end notify program (the user's
+// calls the computer-use helper); in Claude Code, Claude in Chrome and the plugins named for a browser
+// (Playwright's MCP server). The rest of the user's setup loads as before. What a session can reach is then
+// checked: Codex's plugin and server lists with these flags, before a turn starts; each Claude turn's tools
+// and servers, from its init event, before the model acts; and a Codex call to such a server stops the run.
+// (trigger.ts holds the same section: keep the two alike.)
+const DESKTOP = /computer[-_ ]?use|browser|chrome|chromium|playwright|puppeteer|selenium|webdriver|\bcua|_cua|node_repl/i;
+
+/** Codex flags that turn computer use and browser automation off, built from what this Codex reports (an
+ *  override for a feature or a server it doesn't have is an error), then checked with the flags applied. */
+function codexOff(cwd: string): string[] {
+  const codex = (...a: string[]) => {
+    const r = Bun.spawnSync(['codex', ...a], { cwd, stdout: 'pipe', stderr: 'pipe' });
+    if (r.exitCode !== 0) throw new Error(`codex ${a.join(' ')} failed:\n${r.stderr}`);
+    return r.stdout.toString();
+  };
+  const flags = ['-c', 'notify=[]'];
+  for (const [, name, stage, on] of codex('features', 'list').matchAll(/^(\S+)\s+(.+?)\s+(true|false)\s*$/gm)) {
+    if (on === 'true' && stage !== 'removed' && DESKTOP.test(name!)) flags.push('--disable', name!);
+  }
+  type Plugin = { pluginId: string; name: string; enabled: boolean };
+  const plugins = () => (JSON.parse(codex('plugin', 'list', '--json', ...flags)).installed as Plugin[])
+    .filter((p) => p.enabled && DESKTOP.test(p.name));
+  for (const p of plugins()) flags.push('-c', `plugins.${p.pluginId}.enabled=false`);
+  type Server = { name: string; enabled: boolean; transport?: { command?: string; args?: string[]; env?: Record<string, string> | null } };
+  const servers = () => (JSON.parse(codex('mcp', 'list', '--json', ...flags)) as Server[]).filter((s) => s.enabled
+    && DESKTOP.test([s.name, s.transport?.command, ...(s.transport?.args ?? []), ...Object.keys(s.transport?.env ?? {})].join(' ')));
+  for (const s of servers()) flags.push('-c', `mcp_servers.${s.name}.enabled=false`);
+  const left = [...plugins().map((p) => `the plugin ${p.pluginId}`), ...servers().map((s) => `the MCP server ${s.name}`)];
+  if (left.length) throw new Error(`Codex would still reach a browser or the desktop: ${left.join(', ')}`);
+  return flags;
+}
+
+/** Claude Code flags: no Claude in Chrome, and the plugins the user's settings enable that are named for a
+ *  browser turned off for the run (their other plugins stay on). */
+function claudeOff(): string[] {
+  let on: Record<string, unknown> = {};
+  try {
+    const dir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
+    on = JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8')).enabledPlugins ?? {};
+  } catch { /* no settings */ }
+  const off = Object.keys(on).filter((p) => on[p] && DESKTOP.test(p));
+  return ['--no-chrome', ...(off.length ? ['--settings', JSON.stringify({ enabledPlugins: Object.fromEntries(off.map((p) => [p, false])) })] : [])];
+}
+
+/** What, in one transcript event, puts a browser or the desktop within the session's reach: a tool or MCP
+ *  server in Claude's init event (it comes before the model acts), or a Codex call to such a server. */
+function desktopIn(ev: any): string | null {
+  if (ev?.type === 'system' && ev.subtype === 'init') {
+    const hit = [...(ev.mcp_servers ?? []).map((s: any) => s?.name), ...(ev.tools ?? [])].filter((n) => typeof n === 'string' && DESKTOP.test(n));
+    return hit.length ? hit.slice(0, 4).join(', ') + (hit.length > 4 ? ` and ${hit.length - 4} more` : '') : null;
+  }
+  const it = ev?.item;
+  return ev?.type === 'item.started' && it?.type === 'mcp_tool_call' && DESKTOP.test(`${it.server} ${it.tool}`) ? `${it.server} ${it.tool}` : null;
+}
+
+// ---------------------------------------------------------------- the model that ran
+/** From one Claude turn's stream-json: the model its init event names, and every model its usage counts
+ *  (a sub-agent may run another). */
+function claudeTurnModels(out: string) {
+  let model: string | undefined;
+  const used = new Set<string>();
+  for (const line of out.split('\n')) {
+    let ev: any;
+    try { ev = JSON.parse(line); } catch { continue; }
+    if (ev?.type === 'system' && ev.subtype === 'init' && typeof ev.model === 'string') model ??= ev.model;
+    if (ev?.type === 'result') for (const m of Object.keys(ev.modelUsage ?? {})) used.add(m);
+  }
+  return { model, used: [...used] };
+}
+
+/** A Codex session file: its thread, the folder it ran in, and each turn's start, model and effort (a resumed
+ *  session adds its turns to the same file; a sub-agent has a file of its own). */
+function codexSessionFile(file: string) {
+  const lines = readFileSync(file, 'utf8').split('\n');
+  let meta: any;
+  try { meta = JSON.parse(lines[0]!).payload; } catch { return null; }
+  const turns: { at: string; model?: string; effort?: string }[] = [];
+  for (const l of lines) {
+    if (!l.includes('"turn_context"')) continue;
+    try {
+      const ev = JSON.parse(l);
+      if (ev.type === 'turn_context') turns.push({ at: ev.timestamp, model: ev.payload?.model, effort: ev.payload?.effort });
+    } catch { /* a line cut short */ }
+  }
+  return { id: meta?.id as string | undefined, cwd: meta?.cwd as string | undefined, turns };
+}
+
 // ---------------------------------------------------------------- turns
 const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}) };
 delete env.ELEVENLABS_API_KEY; // a case decides whether there is a key; never the real one
 // (and no claude.ai connectors, which Claude Code fetches itself: --strict-mcp-config is documented for
 // configured servers only)
 if (TOOL === 'claude') env.ENABLE_CLAUDEAI_MCP_SERVERS = 'false';
+// (built and checked before anything starts: a Codex that would still reach a browser stops the run here)
+const OFF = TOOL === 'codex' ? codexOff(WORK) : claudeOff();
 let mock: ReturnType<typeof Bun.spawn> | null = null;
 if (CASE.setup?.mock === 'elevenlabs') {
   // (there from the start, so an empty log reads as a mock nobody asked anything)
@@ -212,24 +310,40 @@ if (decoy) {
 }
 
 let session: string | null = null;
-const turns: { prompt: string; started: string; ended: string; exit: number | null; seconds: number; transcript: string; timedOut?: boolean }[] = [];
+const turns: { prompt: string; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
+  model?: string; effort?: string; timedOut?: boolean; blocked?: string }[] = [];
+const alsoRan = new Set<string>(); // every model the transcripts name, sub-agents' included
 for (const [i, t] of CASE.turns.entries()) {
   const first = i === 0;
   const cmd = TOOL === 'claude'
-    ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--strict-mcp-config',
+    ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--strict-mcp-config', ...OFF,
        ...(MODEL ? ['--model', MODEL] : []), ...(first ? [] : ['--resume', session!])]
     // (codex is a .cmd shim on Windows: prompts go on stdin)
     : first
-      ? ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', '-C', WORK, ...(MODEL ? ['-m', MODEL] : []), '-']
-      : ['codex', 'exec', 'resume', '--json', '--skip-git-repo-check', ...(MODEL ? ['-m', MODEL] : []), session!, '-'];
+      ? ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', WORK, ...(MODEL ? ['-m', MODEL] : []), '-']
+      : ['codex', 'exec', 'resume', '--json', '--skip-git-repo-check', ...OFF, ...(MODEL ? ['-m', MODEL] : []), session!, '-'];
   const t0 = performance.now(), started = new Date().toISOString();
   const p = Bun.spawn(cmd, { cwd: WORK, env, stdin: TOOL === 'codex' ? new Blob([t.prompt]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
-  let timedOut = false;
+  let timedOut = false, blocked: string | null = null;
   // (the whole tree: stopping codex's .cmd shim alone leaves the session running, and the turn waiting for it)
   const timer = setTimeout(() => { timedOut = true; try { stopTree(p.pid); } catch { /* it ended meanwhile */ } }, TIMEOUT_MS);
   const watch = setInterval(() => void lookForPreviews(i + 1), 10_000);
-  const out = await new Response(p.stdout).text();
-  const err = await new Response(p.stderr).text();
+  const errText = new Response(p.stderr).text();
+  // (read as it comes: a browser or the desktop within the session's reach stops the turn there)
+  let out = '';
+  const dec = new TextDecoder();
+  for await (const chunk of p.stdout) {
+    const from = out.lastIndexOf('\n') + 1;
+    out += dec.decode(chunk, { stream: true });
+    for (const line of blocked ? [] : out.slice(from).split('\n').slice(0, -1)) {
+      let ev: unknown;
+      try { ev = JSON.parse(line); } catch { continue; }
+      blocked = desktopIn(ev);
+      if (blocked) { try { stopTree(p.pid); } catch { /* it ended meanwhile */ } break; }
+    }
+  }
+  out += dec.decode();
+  const err = await errText;
   const exit = await p.exited;
   // (the times themselves, to the millisecond: a request the mock logged belongs to the turn whose window holds it)
   const ended = new Date().toISOString();
@@ -238,9 +352,14 @@ for (const [i, t] of CASE.turns.entries()) {
   const file = path.join(RUN, `turn-${i + 1}.jsonl`);
   writeFileSync(file, out);
   if (err.trim()) writeFileSync(path.join(RUN, `turn-${i + 1}.stderr.txt`), err);
+  // (Claude's init event names the model each turn; a Codex turn's comes from its session file, after the turns)
+  const ran = TOOL === 'claude' ? claudeTurnModels(out) : null;
+  for (const m of ran?.used ?? []) alsoRan.add(m);
   // (marked: a turn stopped at the timeout has no reply, and the next prompt answers one nobody saw)
-  turns.push({ prompt: t.prompt, started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file), ...(timedOut ? { timedOut } : {}) });
+  turns.push({ prompt: t.prompt, started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file),
+    ...(ran?.model ? { model: ran.model } : {}), ...(timedOut ? { timedOut } : {}), ...(blocked ? { blocked } : {}) });
   console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}`);
+  if (blocked) { console.error(`turn ${i + 1} stopped: ${blocked} put a browser or the desktop within the session's reach (see evals/README.md)`); break; }
   if (first) {
     for (const line of out.split('\n')) {
       try { const ev = JSON.parse(line); session ??= ev.session_id ?? ev.thread_id ?? null; } catch { /* not json */ }
@@ -262,9 +381,44 @@ function tree(dir: string, base = dir, out: { path: string; bytes: number }[] = 
 }
 await lookForPreviews('end');
 const status = Bun.spawnSync(['git', 'status', '--porcelain', '--untracked-files=all'], { cwd: WORK }).stdout.toString();
+
+// Codex's own record of the session: `codex exec --json` leaves some tool calls out of the transcripts
+// (spawn_agent, view_image) and doesn't name the model, and each sub-agent keeps a session of its own. Every
+// session file written during the run whose session ran in the run's folder (the main thread's and its
+// sub-agents') is copied to codex-sessions/ at the end; the main thread's gives each turn's model and effort.
+const CODEX_SESSIONS = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'sessions');
+const codexFiles: { file: string; id?: string; turns: { at: string; model?: string; effort?: string }[] }[] = [];
+if (TOOL === 'codex') {
+  // (in YYYY/MM/DD folders of the local date each session started: the run's days, and a day either side)
+  const days = new Set<string>();
+  for (let t = T0 - 86_400_000; t < Date.now() + 86_400_000; t += 3_600_000) {
+    const d = new Date(t);
+    days.add(path.join(CODEX_SESSIONS, String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')));
+  }
+  for (const dir of days) {
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir)) {
+      const file = path.join(dir, f);
+      if (!/^rollout-.*\.jsonl$/.test(f) || statSync(file).mtimeMs < T0) continue;
+      const s = codexSessionFile(file);
+      if (s && typeof s.cwd === 'string' && isWork(s.cwd)) codexFiles.push({ file, id: s.id, turns: s.turns });
+    }
+  }
+  for (const tc of codexFiles.find((s) => s.id === session)?.turns ?? []) {
+    const turn = turns.find((u) => Date.parse(u.started) <= Date.parse(tc.at) && Date.parse(tc.at) <= Date.parse(u.ended));
+    if (turn && !turn.model && tc.model) Object.assign(turn, { model: tc.model, ...(tc.effort ? { effort: tc.effort } : {}) });
+  }
+  for (const s of codexFiles) for (const tc of s.turns) if (tc.model) alsoRan.add(tc.model);
+}
+const ranModels = [...new Set(turns.flatMap((u) => u.model ?? []))];
+const efforts = [...new Set(turns.flatMap((u) => u.effort ?? []))];
+const otherModels = [...alsoRan].filter((m) => !ranModels.includes(m));
 writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
-  case: CASE.id, skill: CASE.skill, tool: TOOL, model: MODEL ?? 'default', arm: ARM, session,
-  ...(CASE.setup?.from ? { from: path.resolve(CASE_DIR, expand(CASE.setup.from)) } : {}), turns,
+  case: CASE.id, skill: CASE.skill, tool: TOOL,
+  // (the model as the transcripts name it, each turn's in turns[]; modelArg is what --model asked for)
+  model: ranModels.join(', ') || null, ...(efforts.length ? { effort: efforts.join(', ') } : {}), modelArg: MODEL ?? null,
+  ...(otherModels.length ? { otherModels } : {}), arm: ARM, session,
+  ...(CASE.setup?.from ? { from: path.resolve(CASE_DIR, expand(CASE.setup.from)) } : {}), desktopOff: OFF, turns,
   ...(decoy ? { decoy } : {}), previews: [...previews.values()],
   gitStatus: status.split('\n').filter(Boolean), files: tree(WORK), assertions: CASE.assertions,
 }, null, 1));
@@ -306,32 +460,14 @@ if (still.length) {
 }
 
 // ---------------------------------------------------------------- Codex's own record of the session
-// `codex exec --json` leaves some tool calls out of the transcripts (spawn_agent, view_image), and each
-// sub-agent keeps a session of its own: copy every session file written during the run whose session ran
-// in the run's folder, the main thread's and its sub-agents', to codex-sessions/.
+// (the session files found above, copied now that nothing of the run writes to them any more)
 if (TOOL === 'codex') {
-  const root = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'sessions');
-  // (in YYYY/MM/DD folders of the local date each session started: the run's days, and a day either side)
-  const days = new Set<string>();
-  for (let t = T0 - 86_400_000; t < Date.now() + 86_400_000; t += 3_600_000) {
-    const d = new Date(t);
-    days.add(path.join(root, String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')));
+  for (const s of codexFiles) {
+    mkdirSync(path.join(RUN, 'codex-sessions'), { recursive: true });
+    copyFileSync(s.file, path.join(RUN, 'codex-sessions', path.basename(s.file)));
   }
-  let n = 0;
-  for (const dir of days) {
-    if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir)) {
-      const file = path.join(dir, f);
-      if (!/^rollout-.*\.jsonl$/.test(f) || statSync(file).mtimeMs < T0) continue;
-      let cwd: unknown;
-      try { cwd = JSON.parse(readFileSync(file, 'utf8').split('\n', 1)[0]!).payload?.cwd; } catch { continue; }
-      if (typeof cwd !== 'string' || !isWork(cwd)) continue;
-      mkdirSync(path.join(RUN, 'codex-sessions'), { recursive: true });
-      copyFileSync(file, path.join(RUN, 'codex-sessions', f));
-      n++;
-    }
-  }
-  console.log(n ? `codex-sessions/: ${n} session file${n === 1 ? '' : 's'} (the main thread's and any sub-agents')` : `no Codex session file under ${root} ran in ${WORK}`);
+  const n = codexFiles.length;
+  console.log(n ? `codex-sessions/: ${n} session file${n === 1 ? '' : 's'} (the main thread's and any sub-agents')` : `no Codex session file under ${CODEX_SESSIONS} ran in ${WORK}`);
 }
 
 // ---------------------------------------------------------------- leave the user's config as it was

@@ -1,9 +1,9 @@
 // The project's look in code: the palette every scene draws with and the project's post-processing
 // defaults. docs/STYLE.md says the same in words; change them together.
 //
-// The values below are the template's test card, a calibration chart (grey, with cyan and magenta for the
-// two emphases) that no one would ship as a style: replace them with the project's own. While every one
-// of them is still here, the preview and `render.ts verify` say so for any video but `example`.
+// init writes the template's test card here, a calibration chart (grey, with cyan and magenta for the
+// two emphases) that no one would ship as a style: replace it with the project's own. While all of it
+// is still here, the preview and `render.ts verify` say so for any video but `example`.
 // Every key becomes a GLSL constant (`accent2` -> C_ACCENT2, `deepRed` -> C_DEEP_RED, linear RGB),
 // an entry of LIN (linear triplets for GL uniforms) and a name for rgba(key, alpha) in Canvas2D
 // (src/engine/palette.ts). Keep `bg` and `fg` (the engine's flash, invert and crop marks use them);

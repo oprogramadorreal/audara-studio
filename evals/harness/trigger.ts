@@ -11,9 +11,12 @@
 // its SKILL.md; Codex: a command reading <skill>/SKILL.md). Codex models often open a plausible skill just
 // to decide, so a run also records whether the skill was *used*: a command running one of its scripts.
 // A should-trigger run stops at the load; a near-miss run keeps going for a few turns to see whether the
-// skill is acted on. What matters is the decision, not the work.
+// skill is acted on. What matters is the decision, not the work. No run can reach the user's desktop or their
+// own browser (see "no computer use" below), and the results name the model each run had, as its transcript
+// (Claude's init event) or session file (Codex's) names it.
 import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { ensureFixtures } from './fixtures';
 import { cleanCodexTrust } from './codex-trust-cleanup';
 import { cleanClaudeProjects } from './claude-projects-cleanup';
@@ -76,6 +79,89 @@ function stopTree(pid: number) {
   else { Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]); try { process.kill(pid); } catch { /* it ended meanwhile */ } }
 }
 
+// ---------------------------------------------------------------- no computer use, no browser automation
+// A run must not reach the user's desktop or their own browser. With the user's own Codex config, one run did:
+// through Codex's computer-use plugin it read the titles of the user's open Chrome tabs, pressed play in a
+// background tab and left a tab open. So every run turns off what could: in Codex, the features and plugins
+// named for computer use or a browser, every MCP server whose name, command or environment names one (the
+// Codex app's node_repl, in config.toml, carries both services) and the turn-end notify program (the user's
+// calls the computer-use helper); in Claude Code, Claude in Chrome and the plugins named for a browser
+// (Playwright's MCP server). The rest of the user's setup loads as before. What a session can reach is then
+// checked: Codex's plugin and server lists with these flags, before a turn starts; each Claude turn's tools
+// and servers, from its init event, before the model acts; and a Codex call to such a server stops the run.
+// (task.ts holds the same section: keep the two alike.)
+const DESKTOP = /computer[-_ ]?use|browser|chrome|chromium|playwright|puppeteer|selenium|webdriver|\bcua|_cua|node_repl/i;
+
+/** Codex flags that turn computer use and browser automation off, built from what this Codex reports (an
+ *  override for a feature or a server it doesn't have is an error), then checked with the flags applied. */
+function codexOff(cwd: string): string[] {
+  const codex = (...a: string[]) => {
+    const r = Bun.spawnSync(['codex', ...a], { cwd, stdout: 'pipe', stderr: 'pipe' });
+    if (r.exitCode !== 0) throw new Error(`codex ${a.join(' ')} failed:\n${r.stderr}`);
+    return r.stdout.toString();
+  };
+  const flags = ['-c', 'notify=[]'];
+  for (const [, name, stage, on] of codex('features', 'list').matchAll(/^(\S+)\s+(.+?)\s+(true|false)\s*$/gm)) {
+    if (on === 'true' && stage !== 'removed' && DESKTOP.test(name!)) flags.push('--disable', name!);
+  }
+  type Plugin = { pluginId: string; name: string; enabled: boolean };
+  const plugins = () => (JSON.parse(codex('plugin', 'list', '--json', ...flags)).installed as Plugin[])
+    .filter((p) => p.enabled && DESKTOP.test(p.name));
+  for (const p of plugins()) flags.push('-c', `plugins.${p.pluginId}.enabled=false`);
+  type Server = { name: string; enabled: boolean; transport?: { command?: string; args?: string[]; env?: Record<string, string> | null } };
+  const servers = () => (JSON.parse(codex('mcp', 'list', '--json', ...flags)) as Server[]).filter((s) => s.enabled
+    && DESKTOP.test([s.name, s.transport?.command, ...(s.transport?.args ?? []), ...Object.keys(s.transport?.env ?? {})].join(' ')));
+  for (const s of servers()) flags.push('-c', `mcp_servers.${s.name}.enabled=false`);
+  const left = [...plugins().map((p) => `the plugin ${p.pluginId}`), ...servers().map((s) => `the MCP server ${s.name}`)];
+  if (left.length) throw new Error(`Codex would still reach a browser or the desktop: ${left.join(', ')}`);
+  return flags;
+}
+
+/** Claude Code flags: no Claude in Chrome, and the plugins the user's settings enable that are named for a
+ *  browser turned off for the run (their other plugins stay on). */
+function claudeOff(): string[] {
+  let on: Record<string, unknown> = {};
+  try {
+    const dir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
+    on = JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8')).enabledPlugins ?? {};
+  } catch { /* no settings */ }
+  const off = Object.keys(on).filter((p) => on[p] && DESKTOP.test(p));
+  return ['--no-chrome', ...(off.length ? ['--settings', JSON.stringify({ enabledPlugins: Object.fromEntries(off.map((p) => [p, false])) })] : [])];
+}
+
+/** What, in one transcript event, puts a browser or the desktop within the session's reach: a tool or MCP
+ *  server in Claude's init event (it comes before the model acts), or a Codex call to such a server. */
+function desktopIn(ev: any): string | null {
+  if (ev?.type === 'system' && ev.subtype === 'init') {
+    const hit = [...(ev.mcp_servers ?? []).map((s: any) => s?.name), ...(ev.tools ?? [])].filter((n) => typeof n === 'string' && DESKTOP.test(n));
+    return hit.length ? hit.slice(0, 4).join(', ') + (hit.length > 4 ? ` and ${hit.length - 4} more` : '') : null;
+  }
+  const it = ev?.item;
+  return ev?.type === 'item.started' && it?.type === 'mcp_tool_call' && DESKTOP.test(`${it.server} ${it.tool}`) ? `${it.server} ${it.tool}` : null;
+}
+
+// ---------------------------------------------------------------- the runs
+// (built and checked once, before the first run: a Codex that would still reach a browser stops here)
+mkdirSync(WORK, { recursive: true });
+const OFF = TOOL === 'codex' ? codexOff(WORK) : claudeOff();
+/** The model a Codex session ran, from its session file (`codex exec --json` doesn't name it). */
+function codexModel(thread: string, since: number): string | null {
+  const root = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'sessions');
+  for (let t = since - 86_400_000; t < Date.now() + 86_400_000; t += 86_400_000) {
+    const d = new Date(t);
+    const dir = path.join(root, String(d.getFullYear()), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0'));
+    const f = existsSync(dir) ? readdirSync(dir).find((x) => x.endsWith(`-${thread}.jsonl`)) : undefined;
+    if (!f) continue;
+    for (const line of readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+      if (!line.includes('"turn_context"')) continue;
+      try { const ev = JSON.parse(line); if (ev.type === 'turn_context' && ev.payload?.model) return ev.payload.model; } catch { /* cut short */ }
+    }
+  }
+  return null;
+}
+// (set when a run finds a browser or the desktop within its reach: the eval stops there, since every run would)
+let halt: string | null = null;
+
 const skillRe = (s: string) => new RegExp(`(?:^|[^\\w-])(?:[\\w-]+:)?${s}(?:[/\\\\]+SKILL\\.md|["'\\s,}]|$)`, 'i');
 // a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align)
 const useRe: Record<string, RegExp> = {
@@ -88,22 +174,25 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
   prepare(dir, q.files);
   const cmd = TOOL === 'claude'
     ? ['claude', '-p', q.query, '--output-format', 'stream-json', '--verbose', '--max-turns', String(MAX_TURNS), '--permission-mode', 'auto', '--no-session-persistence',
-       ...(MODEL ? ['--model', MODEL] : []), ...(flag('plugin') ? ['--plugin-dir', REPO] : [])]
+       ...OFF, ...(MODEL ? ['--model', MODEL] : []), ...(flag('plugin') ? ['--plugin-dir', REPO] : [])]
     // (codex is a .cmd shim on Windows, which can't take arguments with quotes: the prompt goes on stdin)
-    : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', '-C', dir, ...(MODEL ? ['-m', MODEL] : []), '-'];
-  const t0 = performance.now();
+    : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', dir, ...(MODEL ? ['-m', MODEL] : []), '-'];
+  const t0 = performance.now(), since = Date.now();
   const p = Bun.spawn(cmd, { cwd: dir, stdin: TOOL === 'codex' ? new Blob([q.query]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
   const timer = setTimeout(() => stopTree(p.pid), TIMEOUT_MS);
   const seen = new Set<string>(), used = new Set<string>(), tools: string[] = [];
-  let commands = 0, log = '', stop = false;
+  let commands = 0, log = '', stop = false, blocked: string | null = null, model: string | null = null, thread: string | null = null;
   const dec = new TextDecoder();
   for await (const chunk of p.stdout) {
-    const text = dec.decode(chunk);
-    log += text;
-    for (const line of text.split('\n')) {
+    const from = log.lastIndexOf('\n') + 1;
+    log += dec.decode(chunk, { stream: true });
+    // (whole lines only: one split across chunks, such as Claude's long init event, is read once it ends)
+    for (const line of log.slice(from).split('\n').slice(0, -1)) {
       if (!line.trim()) continue;
       let ev: any; try { ev = JSON.parse(line); } catch { continue; }
+      blocked ??= desktopIn(ev);
       if (TOOL === 'claude') {
+        if (ev?.type === 'system' && ev.subtype === 'init' && typeof ev.model === 'string') model ??= ev.model;
         for (const c of ev?.message?.content ?? []) if (c?.type === 'tool_use') {
           tools.push(c.name);
           const blob = JSON.stringify(c.input ?? {});
@@ -113,6 +202,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
           }
         }
       } else {
+        if (ev?.type === 'thread.started' && typeof ev.thread_id === 'string') thread ??= ev.thread_id;
         const item = ev?.item;
         if (item?.type === 'command_execution' && ev.type === 'item.started') {
           commands++; tools.push('cmd');
@@ -122,12 +212,15 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
         if (commands >= CODEX_MAX_COMMANDS) stop = true;
       }
     }
-    if ((q.should_trigger && seen.has(SET.skill)) || used.has(SET.skill) || stop) { stopTree(p.pid); break; }
+    if (blocked || (q.should_trigger && seen.has(SET.skill)) || used.has(SET.skill) || stop) { stopTree(p.pid); break; }
   }
   clearTimeout(timer);
   await p.exited;
   writeFileSync(path.join(dir, '_transcript.jsonl'), log);
-  return { k, triggered: seen.has(SET.skill), used: used.has(SET.skill), skills: [...seen], tools: tools.slice(0, 8), ms: Math.round(performance.now() - t0) };
+  if (blocked) halt ??= `${q.id}#${k}: ${blocked}`;
+  if (thread) model = codexModel(thread, since);
+  return { k, triggered: seen.has(SET.skill), used: used.has(SET.skill), skills: [...seen], tools: tools.slice(0, 8), ms: Math.round(performance.now() - t0),
+    model, ...(blocked ? { blocked } : {}) };
 }
 
 const queries = SET.queries.filter((q) => !ONLY || ONLY.includes(q.id));
@@ -135,9 +228,9 @@ const jobs = queries.flatMap((q) => Array.from({ length: RUNS }, (_, k) => ({ q,
 const results = new Map<string, Awaited<ReturnType<typeof runOnce>>[]>();
 let next = 0, done = 0;
 async function worker() {
-  while (next < jobs.length) {
+  while (next < jobs.length && !halt) {
     const { q, k } = jobs[next++]!;
-    const r = await runOnce(q, k).catch((e) => ({ k, triggered: false, used: false, skills: [], tools: [`error: ${e}`], ms: 0 }));
+    const r = await runOnce(q, k).catch((e) => ({ k, triggered: false, used: false, skills: [], tools: [`error: ${e}`], ms: 0, model: null }));
     (results.get(q.id) ?? results.set(q.id, []).get(q.id)!).push(r);
     done++;
     process.stderr.write(`\r${done}/${jobs.length}  ${q.id}#${k} ${r.triggered ? 'TRIGGERED' : '-'}   `);
@@ -149,6 +242,10 @@ process.stderr.write('\n');
 if (TOOL === 'codex') cleanCodexTrust(false, [], WORK);
 // and every claude -p run left a (memory-only) project entry for its folder
 if (TOOL === 'claude') cleanClaudeProjects(false, path.join(WORK, '_claude-sessions'), WORK);
+if (halt) {
+  console.error(`stopped: ${halt} put a browser or the desktop within a session's reach, so no results were written (see evals/README.md)`);
+  process.exit(1);
+}
 
 const rows = queries.map((q) => {
   const rs = results.get(q.id) ?? [];
@@ -159,8 +256,11 @@ const rows = queries.map((q) => {
   const pass = q.should_trigger ? rate >= 0.5 : TOOL === 'codex' ? useRate < 0.5 : rate < 0.5;
   return { id: q.id, should_trigger: q.should_trigger, rate, useRate, pass, query: q.query, runs: rs };
 });
+// (the model as the runs' transcripts or session files name it; modelArg is what --model asked for)
+const models = [...new Set([...results.values()].flat().flatMap((r) => r.model ?? []))];
 const summary = {
-  tool: TOOL, model: MODEL ?? 'default', skill: SET.skill, runs: RUNS, plugin: flag('plugin'), description: opt('description') ?? null,
+  tool: TOOL, model: models.join(', ') || null, modelArg: MODEL ?? null, skill: SET.skill, runs: RUNS, plugin: flag('plugin'), description: opt('description') ?? null,
+  desktopOff: OFF,
   passed: rows.filter((r) => r.pass).length, total: rows.length,
   recall: rows.filter((r) => r.should_trigger).reduce((a, r) => a + r.rate, 0) / Math.max(1, rows.filter((r) => r.should_trigger).length),
   falseRate: rows.filter((r) => !r.should_trigger).reduce((a, r) => a + r.rate, 0) / Math.max(1, rows.filter((r) => !r.should_trigger).length),
@@ -168,6 +268,6 @@ const summary = {
 };
 mkdirSync(path.dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify({ summary, rows }, null, 1));
-console.log(`${TOOL} ${summary.model} ${SET.skill}: ${summary.passed}/${summary.total} pass · loaded on should ${(summary.recall * 100).toFixed(0)}% · loaded on near-misses ${(summary.falseRate * 100).toFixed(0)}% · used on near-misses ${(summary.falseUseRate * 100).toFixed(0)}%`);
+console.log(`${TOOL} ${summary.model ?? MODEL ?? '(model not named)'} ${SET.skill}: ${summary.passed}/${summary.total} pass · loaded on should ${(summary.recall * 100).toFixed(0)}% · loaded on near-misses ${(summary.falseRate * 100).toFixed(0)}% · used on near-misses ${(summary.falseUseRate * 100).toFixed(0)}%`);
 for (const r of rows) if (!r.pass) console.log(`  FAIL ${r.id} (${r.should_trigger ? 'should' : 'should not'}) load ${r.rate.toFixed(2)} use ${r.useRate.toFixed(2)}: ${r.query}`);
 console.log(OUT);

@@ -5,6 +5,25 @@ Two kinds, both run headless in fresh folders, in Claude Code and in Codex. Resu
 are removed from `~/.codex/config.toml`, and Claude Code sessions are not kept (trigger) or are moved
 next to their results (tasks).
 
+No session can reach the user's desktop or their own browser: with the user's own Codex config, one task
+run read the titles of their open Chrome tabs through Codex's computer-use plugin, pressed play in a
+background tab and left a tab open. So every run turns off what could. In Codex that is the features and
+plugins named for computer use or a browser (`computer_use`, `browser_use*`, `in_app_browser`; the bundled
+`computer-use`, `unified-computer-use`, `browser` and `chrome`), every MCP server whose name, command or
+environment names one (the Codex app's `node_repl` in `config.toml`) and the `notify` program, with `-c`
+and `--disable` flags built from what `codex features list`, `plugin list` and `mcp list` report (an
+override for something Codex doesn't have is an error). In Claude Code it is Claude in Chrome
+(`--no-chrome`) and the enabled plugins named for a browser (Playwright's MCP server), through
+`--settings`. No config file changes, and the rest of the user's setup loads as before. Then a check:
+with the flags, Codex's plugin and server lists show none of these before the first turn; each Claude
+turn's init event lists none among its tools before the model acts; and a Codex call to such a server
+stops the run (a task turn is marked `blocked`; a trigger eval writes no results). A shell command could
+still open a URL (`start`, `Start-Process`): Codex puts it to its automatic reviewer first, Claude Code to
+its auto-mode classifier.
+
+Both runners record the model each run had as the transcripts name it (Claude's init event; Codex's
+session file, since its `--json` stream doesn't), and `modelArg`, what `--model` asked for.
+
 ## Trigger evals
 
 Does a fresh session load the skill for a realistic request, and leave near-misses alone? Twenty requests
@@ -56,12 +75,15 @@ own. If the port is taken already, `result.json` says what answers there instead
 
 Claude Code turns run with `--strict-mcp-config` and the claude.ai connectors off, so no MCP server loads
 and the user's connectors can't ask for authorization in the replies (the user's plugins, skills and hooks
-still load). Both tools keep the user's caches (uv's, and the soundtrack scripts' `AUDARA_CACHE`): a fresh
-one per run would download gigabytes each time, so a run finds the models the machine already has, and
-the first download on a clean machine is outside what these runs test.
+still load, but for the browser ones above). Codex turns keep the user's other MCP servers and apps. Both
+tools keep the user's caches (uv's, and the soundtrack scripts' `AUDARA_CACHE`): a fresh one per run would
+download gigabytes each time, so a run finds the models the machine already has, and the first download on
+a clean machine is outside what these runs test.
 
-Each run folder holds `turn-N.jsonl` (the transcripts), `result.json` (each turn's start and end, to the
-millisecond, its length and whether it hit the timeout, the final file list, git status, the assertions),
+Each run folder holds `turn-N.jsonl` (the transcripts), `result.json` (the model, with Codex's reasoning
+effort, and `otherModels` when a sub-agent ran another; each turn's start and end, to the millisecond, its
+length, its model and whether it hit the timeout or was blocked; `desktopOff`, the flags that turned
+computer use and browser automation off; the final file list, git status, the assertions),
 `mock-requests.jsonl` when the case runs the mock, and `work/` (the project as it ended). `result.json`'s
 `previews` lists every port in 5173-5199 whose `/__audara` named a folder during the run, with that folder
 and whether it is this run's `work/`: a preview started in a background shell dies with its turn, one

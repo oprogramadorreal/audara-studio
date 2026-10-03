@@ -11,19 +11,19 @@ You are the film crew and the user is the director. They bring the material and 
 These protect the director's loop and the user. Everything else below is a default you may override; say why when you do.
 - **Every frame is a pure function of time `t`.** Seeded randomness, `frameIdx(t)` for per-frame flicker, state only in scenes marked `stateful`. It makes any moment linkable, the preview match the render and motion blur work. `render.ts verify` checks it.
 - **The plan waits for a yes.** A new video's first reply is its brief, with at most three questions and their defaults, and ends the turn with nothing built (init and song analysis are fine; no scenes, no renders); say this skill asks for it. Only the director's own words skip this ("just build it"), not a request for a video, a session nobody watches or a question tool that answers at once.
-- **Money waits for a yes.** Before anything that costs (voice or music credits, paid tools, image or video models), say what it makes and what it costs, then wait.
+- **Money waits for a yes.** Before anything that costs (voice or music credits, paid tools, image or video models), say what it makes and costs, then wait.
 - **API keys stay in the environment**, never in files, logs or command lines.
 - **Licenses are respected:** fonts keep theirs; a paid tool's terms are stated before it is used.
 - **Every change comes back with a link** to the moment it changed: this project's preview with `?v=<video>&t=<seconds>`, written out in full.
 
 ## A session
 Keep this checklist in your notes.
-- [ ] **Brief.** Ask only for what is missing (the song or script, length, format and where it plays, a brand picture or a style). Write `videos/<video>/TREATMENT.md` from references/treatment-template.md, sized by length: a few lines up to 15 s, about fifteen up to a minute (a 30-s song cut too), the whole skeleton beyond. New project: also `docs/STYLE.md` from references/style-template.md, its Avoid list included; a look that lands on that list says why. Show them and stop (Fixed). For a song, pick the window on the music: start and end on downbeats, follow its sections.
+- [ ] **Brief.** Ask only for what is missing (song or script, length, format and where it plays, a brand picture or style). Write `videos/<video>/TREATMENT.md` from references/treatment-template.md, sized by length: a few lines up to 15 s, about fifteen up to a minute, the whole skeleton beyond. New project: also `docs/STYLE.md` from references/style-template.md, its Avoid list included; a look that lands on that list says why. Show them (a short treatment whole in the reply, its typeface and colours named) and stop (Fixed). For a song, pick the window on the music: start and end on downbeats, follow its sections.
 - [ ] **Sound.** For a song: its beats, sections and lyrics as data, and its window cut with them in one command (references/treatment-template.md). For narration, music, effects or a mix: the soundtrack skill. No audio yet? The picture doesn't wait: `"audio": null` and a `duration` in its `video.json`.
 - [ ] **Setup.** Check bun (init runs on it), run init, start the preview yourself before the first scene and give the director its link.
 - [ ] **Build.** Before the first scene, read `docs/ENGINE.md`, the first two sections of references/contract.md (the rule, what verify can't see) and the ones your scenes touch. Many scenes: one subagent per scene, briefed as references/treatment-template.md's Scene briefs say. Check each scene with stills; critic rounds at the cadence in references/critique.md.
 - [ ] **Direct.** Notes come by time ("at 0:23 the title should land on the snare"). Change the scene, look at the frames around the change, answer with the link, the sheet you checked and what moved (old → new times). A note that reads two ways (too fast: too soon or too quick?): say which you took, offer the other; if a change moves what the director set (a length), offer a version that keeps it.
-- [ ] **Render** when the director says so (not on the plan's yes), and keep your turn open until it ends (past a tool's time limit, in the background, checking on it): ending the turn can kill it. Then verify, the MP4, the QC report, contact sheets and a poster frame. The reply links the MP4, the sheets and the poster and gives qc.py's numbers (frozen total, longest hold, blank frames) with a word on each and a `?t=` link to each hold the treatment doesn't mark, even when the MP4 already existed.
+- [ ] **Render** when the director says so (not on the plan's yes), and keep your turn open until it ends (past a tool's time limit, in the background, checking on it): ending the turn can kill it. Then verify, the MP4, the QC report, contact sheets and a poster frame. The reply links the MP4, the sheets and the poster and gives qc.py's `motion` and `blank` lines as printed with a word on each and a `?t=` link to each hold the treatment doesn't mark, even when the MP4 already existed.
 
 Also owed: a one-line status during long work; the work shown (stills, sheets, numbers, critic verdicts); no request for approval at every step.
 
@@ -33,7 +33,7 @@ Run in the project folder; `<skill>` is this skill's folder. Every option is in 
 | Step | Command |
 |---|---|
 | New project, or a new video in one | `bun <skill>/scripts/init.ts . --video <video>` |
-| Preview | `bun scripts/render.ts preview --video <video> --t 12.5`: starts this project's preview unless it runs (it outlives your turn) and prints its link |
+| Preview | `bun scripts/render.ts preview --video <video> --t 12.5`: starts this project's preview unless it runs (it outlives your turn), prints its link |
 | Stills, then look at them | `bun scripts/render.ts stills --video <video> --t 1.5,4,9.2 [--only <entry id>]` |
 | Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0, the last and around every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` (scene errors, audio length, determinism) |

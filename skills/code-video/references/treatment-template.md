@@ -20,8 +20,8 @@ The treatment grows with the piece, not with this template:
 
 - **A loop, a sting or a title card (up to ~15 s): a few lines.** The idea in a sentence or two, the
   format, a timed line per moment, the look in a line (palette and typeface), what you assumed. A loop also
-  says how it closes: its last frame leads back into its first. Its reply fits in about 15 lines, the
-  questions included, with Also considered in one line at most.
+  says how it closes: its last frame leads back into its first. Its reply fits in about 15 lines and
+  250 words, the questions included, with Also considered in one line at most.
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and
   its transition out (a hard cut says so), the moments that must land, and "never claim" when it states
@@ -45,7 +45,7 @@ the draft so that one answer approves both. Don't re-ask what the request says.
 | Which part of the song | the song is longer than the video | the window you'd choose on the music (below), with its reason |
 | Format, platform, length | nothing says where it plays or how long it runs | 16:9, 1920×1080, 60 fps; a named platform sets the shape (Shorts, Reels, TikTok: 9:16, 1080×1920; a feed post: 1:1); the song's length, or the shortest that tells it |
 | Lyrics on screen | the song has words | none; picture events can still land on sung words once their timings exist |
-| Sound | the request has no audio and says nothing about it | none, no audio track: music or effects nobody asked for are a guess the director then has to undo |
+| Sound | the request has no audio and says nothing about it | none, no audio track: music or effects nobody asked for are a guess the director then has to undo; if they want sound, music synthesized in code is free (generated music costs credits, quoted first) |
 | Brand assets | it's for a named brand, show, event or person | the name set in the style's type; no invented logo, tagline or label |
 
 Anything you decide that the director didn't say (text they didn't give, their name restyled into

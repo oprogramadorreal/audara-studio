@@ -19,12 +19,13 @@ The preview is where the video gets directed: the director watches, points at a 
 change. Make it, check it (next section), and answer with a link to the moment: the preview's address
 with `?v=<video>&t=<seconds>`. Link the moment itself for a note about a frame; for motion, a cut or a
 transition, about half a second before it, so it plays into the change; after moving a cut, link both
-sides. In the preview, `c` copies the link to what's on screen. This rule is fixed, not a default: a link
+sides; when a change moves where a passage ends, link that end too. In the preview, `c` copies the link to what's on screen. This rule is fixed, not a default: a link
 is how the director checks your change in seconds instead of hunting for it.
 
 A note can read two ways ("it comes in too fast": too soon, or too quick). Make the likelier change, say
-which reading you took and offer the other in a line. A change that moves something the director set (the
-length, a cut on a word) says so and offers the version that keeps it.
+which reading you took and offer the other in a line. A change that moves something the director set or
+approved (the length, a cut on a word, a hold the treatment promises) says so, offers the version that
+keeps it, and says what else you retimed to make room.
 
 A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
 when the director asks.
@@ -46,6 +47,8 @@ choose:
   frame after, 0.1 s after. For the sheet a cut is any time an entry starts or ends, so a crossfade
   gives two rows. A feed shows frame 0 before anyone presses play, and a loop jumps from the last frame.
   `--times` adds moments of your own to the same sheet;
+- for a note, the same times before and after the change (`sheet --times`), so the pair shows what moved
+  at the moment the note names;
 - every frame through a crossfade or a transition: `sheet --from <a> --to <b> --n <(b - a) x fps + 1>`;
 - the moments the treatment ties to the sound (a hit, a word, a title landing), at the times in the
   data, not from memory;
@@ -66,8 +69,9 @@ check go in `.audara-cache/`, never `out/`.
   `docs/STYLE.md`.
 - Stills can't show motion. Pace, smoothness and one-frame pops show in a clip
   (`bun scripts/render.ts video --video <video> --from <a> --to <b> --draft --out out/<video>/wip/<clip>.mp4`:
-  one sub-frame per frame and a fast encode), in `qc.py` run on it, and in the director's preview. Say
-  which you used.
+  one sub-frame per frame and a fast encode), in `qc.py` run on it, and in the director's preview, which
+  is theirs to watch: check motion with clips, not by driving their browser or desktop (a background tab
+  skips frames). Say which you used.
 
 ## The critic
 
@@ -106,8 +110,8 @@ session that built the video passed it after looking at one frame and an eight-f
     when changing the plan is cheapest;
   - a scene round when separate authors make the scenes (or one round per few scenes);
   - a full-cut round on a `--draft` render of the whole video before you call it done, then one
-    verification round after its fixes. Then the director gets the preview link, the sheets and the
-    findings still open, and any further round follows their notes. The full render waits for their
+    verification round after its fixes. Then the director gets the sheets and the findings still
+    open (they have had the preview link since setup, and watch while the critics work), and any further round follows their notes. The full render waits for their
     "render it" (Delivery).
 
   A short piece you build alone gets the full-cut round and its verification. Not after every edit:
