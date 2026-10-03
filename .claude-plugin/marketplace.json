@@ -1,0 +1,16 @@
+{
+  "name": "audara-studio",
+  "description": "audara-studio: make videos from code, and their soundtracks, in Claude Code and Codex.",
+  "owner": {
+    "name": "oprogramadorreal",
+    "url": "https://github.com/oprogramadorreal"
+  },
+  "plugins": [
+    {
+      "name": "audara-studio",
+      "source": "./",
+      "description": "Make videos from code (WebGL/GLSL, three.js, Canvas2D) with a live preview and an MP4 render, plus song- or script-to-soundtrack timing.",
+      "category": "Creativity"
+    }
+  ]
+}

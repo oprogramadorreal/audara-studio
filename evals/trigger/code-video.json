@@ -1,0 +1,25 @@
+{
+  "skill": "code-video",
+  "queries": [
+    { "id": "cv-01", "should_trigger": true, "files": ["song.mp3"], "query": "make a 30-second video for song.mp3, dark and engraved" },
+    { "id": "cv-02", "should_trigger": true, "files": ["song.mp3", "lyrics.txt"], "query": "can you make a lyric video for my track? lyrics are in lyrics.txt, the song is song.mp3" },
+    { "id": "cv-03", "should_trigger": true, "files": ["logo.svg"], "query": "I need a 15 second animated logo intro for our startup, something where lines draw the logo in. logo is logo.svg" },
+    { "id": "cv-04", "should_trigger": true, "files": [], "query": "Make a 20-second vertical explainer animation (for YouTube Shorts) showing how a hash map stores and finds a key." },
+    { "id": "cv-05", "should_trigger": true, "files": [], "query": "make a looping background animation for my twitch stream, 10 seconds, calm lofi vibe, I'll leave it running behind the chat" },
+    { "id": "cv-06", "should_trigger": true, "files": [], "query": "create a kinetic typography piece for instagram with the quote \"every frame is a function of time\", about 20s, square" },
+    { "id": "cv-07", "should_trigger": true, "files": ["intro.mp3"], "query": "I want a music visualizer video for my podcast intro music (intro.mp3), 1080p, nothing cheesy" },
+    { "id": "cv-08", "should_trigger": true, "files": ["revenue.csv"], "query": "make an animated video of our revenue growing from 2019 to 2025 for the all-hands, data's in revenue.csv, 30 seconds" },
+    { "id": "cv-09", "should_trigger": true, "files": [], "query": "build me a short generative art clip in glsl, something like ink spreading in water, and export it as an mp4" },
+    { "id": "cv-10", "should_trigger": true, "files": ["brand.png"], "query": "can you animate our product launch announcement? three short scenes, around 25 seconds total, use the colors from brand.png" },
+    { "id": "cv-11", "should_trigger": false, "files": ["interview.mp4"], "query": "trim the first 10 seconds off interview.mp4 and add a 1 second fade out at the end" },
+    { "id": "cv-12", "should_trigger": false, "files": [], "query": "generate a realistic video of a cat surfing a wave using an AI video model like Sora or Veo" },
+    { "id": "cv-13", "should_trigger": false, "files": ["clip.mov"], "query": "convert clip.mov to mp4 and get it under 10MB so I can send it on whatsapp" },
+    { "id": "cv-14", "should_trigger": false, "files": [], "query": "write a three.js scene with a slowly rotating wireframe globe for the hero section of my website" },
+    { "id": "cv-15", "should_trigger": false, "files": ["vlog.mp4", "vlog.srt"], "query": "burn the subtitles from vlog.srt into vlog.mp4" },
+    { "id": "cv-16", "should_trigger": false, "files": [], "query": "create a CSS animation for my signup button so it pulses gently on hover" },
+    { "id": "cv-17", "should_trigger": false, "files": ["wedding.mp4"], "query": "edit my wedding video: cut the boring parts and put some romantic music under it" },
+    { "id": "cv-18", "should_trigger": false, "files": [], "query": "what bitrate and frame rate should I export my Premiere project at for YouTube 4K?" },
+    { "id": "cv-19", "should_trigger": false, "files": [], "query": "write a GLSL water shader with caustics for my Unity game" },
+    { "id": "cv-20", "should_trigger": false, "files": [], "query": "make a slide deck about our Q3 results, about 8 slides" }
+  ]
+}

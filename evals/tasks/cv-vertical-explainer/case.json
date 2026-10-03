@@ -1,0 +1,28 @@
+{
+  "id": "cv-vertical-explainer",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 75,
+  "turns": [
+    {
+      "prompt": "Make a 20-second vertical explainer animation (for YouTube Shorts) showing how a hash map stores and finds a key."
+    },
+    {
+      "prompt": "Sounds good, go ahead. No sound for now."
+    },
+    {
+      "prompt": "Render it."
+    }
+  ],
+  "assertions": [
+    "After turn 1: a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption; nothing built yet.",
+    "After turn 2: a preview link with ?v=<name> and at least one &t= link at a named beat.",
+    "The MP4 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (the user said no sound).",
+    "Values shown on screen are computed in code from the keys (hashes, buckets), not hand-typed lists.",
+    "Primary text is at least about 44 px tall at 1080 wide and stays inside the Shorts safe zones (look at the contact sheet).",
+    "qc.py reports no near-empty or near-black frame at a cut or at t=0 (or the reply explains a deliberate one), and the longest hold is under about 1.5 s or explained.",
+    "The final reply links a contact sheet, a poster and QC numbers, and the files exist."
+  ]
+}

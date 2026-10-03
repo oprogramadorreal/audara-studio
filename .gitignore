@@ -1,0 +1,20 @@
+node_modules/
+.vite/
+dist/
+out/
+.env
+.env.*
+*.tsbuildinfo
+__pycache__/
+.venv/
+.cache/
+
+# Generated inside the template during development (init generates them in each project)
+skills/code-video/assets/template-webgl/videos/example/audio/
+skills/code-video/assets/template-webgl/videos/example/data/
+skills/code-video/assets/template-webgl/docs/
+skills/code-video/assets/template-webgl/AGENTS.md
+skills/code-video/assets/template-webgl/CLAUDE.md
+
+# Eval run outputs
+evals/results/

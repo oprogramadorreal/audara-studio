@@ -1,0 +1,26 @@
+{
+  "id": "cv-range-loop",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 60,
+  "turns": [
+    {
+      "prompt": "can you make a 10 second loop for my late night jazz stream, Blue Hours? something classy I can leave running behind the chat"
+    },
+    {
+      "prompt": "Go with that."
+    },
+    {
+      "prompt": "Render it."
+    }
+  ],
+  "assertions": [
+    "An MP4 of 10.00 +/- 0.04 s exists, and the loop seam is clean: the mean absolute difference between the first and the last frame is at most about 1 level (8-bit).",
+    "The final message reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.",
+    "If a critic round ran, it was a fresh subagent given the treatment, the user's words and the render, not the builder's reasoning, and its verdict appears in the final message.",
+    "No cliché from the style template's avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse) appears unless the treatment names it with a reason.",
+    "For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer."
+  ]
+}

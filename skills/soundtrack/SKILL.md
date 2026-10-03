@@ -1,0 +1,33 @@
+---
+name: soundtrack
+description: "Turns a song or a script into a video's soundtrack plus the timing data the picture syncs to: beats, downbeats, sections and word timings as JSON, narration and music generated with ElevenLabs (asking before spending credits), sound effects, and the video's mix of voice, music and effects. Use it whenever a video or animation needs its music analyzed, a voiceover made, lyrics or words timed, background music or effects created, or its audio mixed, even if the user only says \"make it sync\" or \"add a voiceover\". Not for podcasts, voice cloning, noise removal, mastering a song for streaming, or app code that calls a speech API."
+---
+
+# soundtrack
+
+Turns what a video has (a song, a script, or nothing yet) into audio files plus the timing data the picture syncs to. Every path ends the same way: audio in `videos/<video>/audio/`, and `videos/<video>/data/audio.json` (beats, downbeats, sections, loudness envelopes, onsets, cues) and/or `data/words.json` (sung or spoken words with their times), in the formats the code-video engine reads. Outside an audara project, `--out` writes them anywhere. `<skill>` is this skill's folder (other paths are the project's); every script runs with uv and has `--help` with examples.
+
+## Fixed
+- **Spending waits for a yes.** Before any generation that costs credits, say what it will make (characters, length, estimated credits, voice, model) and wait. The scripts refuse to spend without `--yes` and print that plan instead. For music, show the free composition plan first; for a voice, approve one short block before the rest.
+- **The key stays in the environment** (`ELEVENLABS_API_KEY`): never in a file, a log or a command line.
+- **Generated audio is an asset, not a build step.** Generate once, keep the file and the request record beside it; the scripts regenerate only when the request changed, and renders never call the API.
+- **Licenses are respected:** say what a voice, a model or a plan allows before relying on it (free ElevenLabs plans are non-commercial; some alignment models are non-commercial too).
+- **Numbers are measured, not claimed.** Report what the scripts measured.
+
+## Which path
+- **The user's song**: `uv run <skill>/scripts/beats.py <song> --video <video>` gives beats, downbeats, sections, envelopes and onsets, on a fitted grid when the tempo is steady. Words on screen: `uv run <skill>/scripts/align.py song <song> --lyrics lyrics.txt --video <video>` (heavy: downloads models once, to a user-level cache).
+- **A window of the song**, for a video shorter than it: `uv run <skill>/scripts/beats.py window --video <video> --from <start> --to <end> [--fade <seconds>]` cuts `audio/<song>-window.wav` from the song's own samples and writes the window's data in video time from the whole song's, which stays in `data/song/` (analyzed first when missing). It warns, with the fix, when an end misses a downbeat or cuts a sung word (`--snap` moves the ends to downbeats), and prints the `video.json` edit.
+- **A script to narrate**: write it with the user, keeping what is said apart from what is shown (a `--say` map: "SQL" said as "sequel"). `uv run <skill>/scripts/eleven.py tts script.txt --video <video> --voice <id>` prints what it would make and cost; after a yes, `--only 1 --yes` makes a one-block voice test; once the director approves the voice, `--yes` makes the rest. One paragraph is one block; the picture cuts in the silences between blocks. Its phrase edges are measured and moved onto the sound in the same run. Pick the voice with `eleven.py voices`.
+- **Music**: `eleven.py music plan` (free) with sections that match the edit (`--sections` start times with `--length`, or `--lengths`) or the narration's chapters (`--from-narration`); after approval, `eleven.py music compose --plan <file> --takes 2 --yes`, then `--pick K` and the `beats.py` command it prints (it keeps the plan's section times exactly). A library track the user owns can beat a generated one. Music you synthesize yourself is fine too: keep the seeded script beside the audio and write its grid and cues with `beats.py grid` (scenes find a cue with `audio.cue('hit')`).
+- **Effects**: `eleven.py sfx "<prompt>" --n 4` screens the candidates by analysis before anyone listens; place each one by its measured onset.
+- **Mix**: `uv run <skill>/scripts/mix.py build --video <video>` mixes from `videos/<video>/mix.json` into `mix.wav` plus `music-only.wav` at delivery loudness, and prints what video.json still needs (`"audio": "audio/mix.wav"` and the mix's `duration`); `mix.py measure <file>` reports what a listener hears (K-weighted loudness per section, the hit against the build, a phone-speaker check).
+- **Word timings against the sound**: narration from `eleven.py tts` is snapped already. For any other voice (the user's recording, a stand-in) run `uv run <skill>/scripts/align.py check <audio> --words videos/<video>/data/words.json --fix`; on a song, `check` validates the structure only and `align.py song`'s review list and sheets are the check.
+- **No key, or no spending yet**: the user's own recording; a local open-source voice as a stand-in (state its license and that it will be replaced: scenes find words by their text, so they keep their sync when the final voice arrives); or a silent placeholder (`"audio": null` and a `duration` in video.json). The picture never waits for the sound.
+
+If a sandbox stops uv from writing its own cache, set `UV_CACHE_DIR` to `.audara-cache/uv` inside the project (git-ignored) and report its size.
+
+## Show the work
+After each step, give the director the measured numbers and the review images the scripts write to `out/<video>/` (a beat sheet, a loudness curve), and, when the preview runs, `?v=<video>&t=` links to the moments that matter: the first chorus, the hit, a section change.
+
+## Read when
+- references/elevenlabs.md: before generating anything (costs and how to estimate them, plan terms, voices and models, lessons for voice, music and effects).

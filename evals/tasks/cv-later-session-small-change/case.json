@@ -1,0 +1,20 @@
+{
+  "id": "cv-later-session-small-change",
+  "skill": "code-video",
+  "setup": {
+    "from": "$EVAL_PROJECT"
+  },
+  "timeoutMinutes": 30,
+  "turns": [
+    {
+      "prompt": "the title comes in too fast at the start, make the intro slower"
+    }
+  ],
+  "assertions": [
+    "The session reads the project conventions (AGENTS.md or docs/ENGINE.md) before editing.",
+    "Only the video's own files change (scene, timeline, TREATMENT.md); src/ and other videos are unchanged (git diff).",
+    "The reply contains a preview link with ?v=<name>&t= at the changed moment.",
+    "render.ts verify passes after the change (run it).",
+    "No full MP4 render is made unless asked."
+  ]
+}

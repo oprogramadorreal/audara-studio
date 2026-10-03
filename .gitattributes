@@ -1,0 +1,15 @@
+# Text is stored and checked out with LF on every platform: a script written on Windows otherwise
+# lands with CRLF (diffs show every line changed, and bash can't run a CRLF .sh file).
+* text=auto eol=lf
+
+# Binary assets
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.wav binary
+*.mp3 binary
+*.m4a binary
+*.mp4 binary

@@ -1,0 +1,14 @@
+{
+  "name": "audara-studio",
+  "displayName": "Audara Studio",
+  "version": "0.1.0",
+  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data.",
+  "author": {
+    "name": "oprogramadorreal",
+    "url": "https://github.com/oprogramadorreal"
+  },
+  "homepage": "https://github.com/oprogramadorreal/audara-studio",
+  "repository": "https://github.com/oprogramadorreal/audara-studio",
+  "license": "MIT",
+  "keywords": ["video", "motion-graphics", "music-video", "lyric-video", "explainer", "webgl", "glsl", "threejs", "soundtrack", "elevenlabs"]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "st-voiceover-no-key",
+  "skill": "soundtrack",
+  "setup": {
+    "files": [
+      "script.txt"
+    ]
+  },
+  "timeoutMinutes": 40,
+  "turns": [
+    {
+      "prompt": "Here's the script for my explainer video (script.txt). Make the voiceover, and I need the timing of every word so the animation can sync to it."
+    },
+    {
+      "prompt": "No key for now. Use a free voice as a stand-in, we'll swap it later."
+    }
+  ],
+  "assertions": [
+    "Turn 1 says in plain words that no ElevenLabs key is set, what a key would add and roughly what it costs, and offers the free paths (the user's recording, a local stand-in voice, a silent placeholder) without spending anything.",
+    "Turn 2 produces one narration audio file and a words JSON in the engine's lines[].words[] {w,start,end} format, one line per paragraph, with all 47 words in order.",
+    "The stand-in voice is named with its license (commercial use allowed), and the hand-off says it is a stand-in that will be replaced, with scenes finding words by their text.",
+    "Phrase edges are within +/-50 ms of the sound (align.py check on the result, or the grader's own waveform check), and the run itself checked the timings against the audio.",
+    "The final message reports measured numbers: duration, loudness (LUFS), true peak, and the largest word-edge error.",
+    "No request to api.elevenlabs.io was made, and no cache, model weights or zip is left in the folder."
+  ]
+}

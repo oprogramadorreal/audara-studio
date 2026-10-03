@@ -1,0 +1,25 @@
+{
+  "id": "st-beats-json",
+  "skill": "soundtrack",
+  "setup": {
+    "files": [
+      "$EVAL_SONG => song.mp3"
+    ]
+  },
+  "timeoutMinutes": 30,
+  "turns": [
+    {
+      "prompt": "I need the beats and downbeats of song.mp3 as JSON so my animation can cut on the beat."
+    }
+  ],
+  "assertions": [
+    "A JSON file in the engine format is written (duration, bpm, beats, downbeats, sections; features and onsets), at data/audio.json or where the user can find it, and the reply names it.",
+    "Beats: at least 344 of 345 ground-truth beats ($EVAL_SONG_DATA/audio.json) matched within +/-50 ms and at least 98% within +/-17 ms; coverage runs to within one beat of the end of the file.",
+    "bpm is within +/-0.1 of 132.007 and agrees with the beats array.",
+    "Downbeats: at least 86 of 87 within +/-50 ms, all on the right bar phase.",
+    "The time origin is stated once, with no advice to shift every time by an encoder delay.",
+    "A verification artifact (a beat sheet PNG and/or a click preview) exists and is named, with measured numbers: tempo, fit residual or phase deviation, first and last beat.",
+    "Every number in the final message matches the delivered file.",
+    "No caches, venvs, model weights or decoded intermediates are left in the folder (git status)."
+  ]
+}

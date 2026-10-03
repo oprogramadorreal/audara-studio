@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="icon" href="data:," />
+<title>audara preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* neutral chrome: the preview frames the video, it carries no look of its own */
+  :root { color-scheme: dark; --bg: #0c0d0f; --panel: #15171a; --line: #3a3f47; --text: #c9ccd1; --dim: #7d838c; --hi: #ffffff; --warn: #d8b866; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; overflow: hidden; }
+  #wrap { position: absolute; inset: 0 0 70px 0; display: flex; align-items: center; justify-content: center; }
+  #c { display: block; max-width: 100%; max-height: 100%; background: #000; cursor: pointer; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; padding: 6px 12px; box-sizing: border-box; background: var(--panel); }
+  #ui.hidden { display: none; } #ui.hidden ~ #wrap { bottom: 0; }
+  #scrub { width: 100%; margin: 0; accent-color: var(--text); }
+  #marks { position: relative; height: 16px; }
+  .mark { position: absolute; top: 0; height: 14px; border-left: 1px solid var(--line); color: var(--dim); font-size: 9px; overflow: hidden; white-space: nowrap; padding-left: 3px; cursor: pointer; box-sizing: border-box; }
+  .mark:hover, .mark.on { color: var(--hi); border-left-color: var(--hi); }
+  #row { display: flex; gap: 10px; align-items: center; height: 20px; }
+  #pick { display: none; background: var(--bg); color: var(--text); border: 1px solid var(--line); font: inherit; padding: 0 2px; }
+  #info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+  #warn { display: none; flex: 0 1 auto; min-width: 0; max-width: 55%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--warn); }
+  #toast { color: var(--hi); opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+  #toast.on { opacity: 1; transition: none; }
+  #errs { display: none; position: fixed; top: 8px; left: 8px; right: 8px; max-height: 40vh; overflow: auto; background: #2a0c0c; color: #ffc4c4; padding: 8px 10px; margin: 0; white-space: pre-wrap; z-index: 9; border: 1px solid #5c1f1f; }
+  body.export #ui, body.export #errs { display: none !important; }
+  body.export #wrap { inset: 0; display: block; }
+  body.export #c { max-width: none; max-height: none; } /* sized to the logical frame from JS */
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="marks"></div>
+  <input id="scrub" type="range" min="0" value="0" aria-label="Position in the video" />
+  <div id="row"><select id="pick" aria-label="Video"></select><div id="info"></div><div id="warn" role="status"></div><div id="toast"></div></div>
+</div>
+<div id="wrap"><canvas id="c" aria-label="Play / pause"></canvas></div>
+<pre id="errs"></pre>
+<!-- (onerror: a module of the page that doesn't compile or import stops it before it can say so itself) -->
+<script type="module" src="/src/main.ts" onerror="window.__audara = { error: 'The page could not load its code: a module failed to compile or to import (the dev server\'s output, the browser console and Vite\'s overlay say which).' }; var e = document.getElementById('errs'); e.textContent = window.__audara.error; e.style.display = 'block';"></script>
+</body>
+</html>

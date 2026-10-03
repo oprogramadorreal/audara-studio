@@ -1,0 +1,23 @@
+{
+  "id": "st-music-no-key",
+  "skill": "soundtrack",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 40,
+  "turns": [
+    {
+      "prompt": "I need background music for a 30-second product video: calm at first, building to a big hit at 0:20, then a short resolve."
+    }
+  ],
+  "assertions": [
+    "The reply says no ElevenLabs key is set (without printing any key), makes no paid request, and says what a key would add.",
+    "A WAV of 30.000 +/- 0.010 s ending at digital silence is delivered, with the hit onset at 20.000 +/- 0.010 s.",
+    "Hit contrast: the max momentary loudness just after 20 s is at least 3 LU above the 4 s before it, at full range and through a 300 Hz high-pass (mix.py measure or the grader's check).",
+    "Build: the K-weighted loudness of 12-19.8 s is at least 5 LU above 0-8 s.",
+    "Delivery level: integrated -18 to -13 LUFS and true peak <= -1.0 dBTP.",
+    "A timing JSON in the engine format sits with the audio: tempo, beats, downbeats, named sections covering 0-30 s and a hit cue at 20.0 s.",
+    "The generator script is kept, and re-running it reproduces the WAV bit-exactly.",
+    "Every number the reply states matches the measurement (within 10 ms, 1 LU, 0.3 dB)."
+  ]
+}

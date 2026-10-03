@@ -1,0 +1,32 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "audara-studio",
+  "version": "0.1.0",
+  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data.",
+  "author": {
+    "name": "oprogramadorreal",
+    "url": "https://github.com/oprogramadorreal"
+  },
+  "homepage": "https://github.com/oprogramadorreal/audara-studio",
+  "repository": "https://github.com/oprogramadorreal/audara-studio",
+  "license": "MIT",
+  "keywords": ["video", "motion-graphics", "music-video", "lyric-video", "explainer", "webgl", "glsl", "threejs", "soundtrack", "elevenlabs"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Audara Studio",
+        "shortDescription": "Videos from code, directed in a live preview",
+        "longDescription": "Direct a video made from code: GLSL, three.js and Canvas2D scenes driven by time, a live browser preview you give notes on by time, and a deterministic headless-Chrome to ffmpeg render. The soundtrack skill turns a song or a script into audio files plus beat and word timings.",
+        "developerName": "oprogramadorreal",
+        "category": "Creativity",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/oprogramadorreal/audara-studio",
+        "defaultPrompt": [
+          "Make a 30-second video for song.mp3, dark and engraved",
+          "Turn this script into a narrated 20-second explainer",
+          "Render the video and show me the contact sheet"
+        ]
+      }
+    }
+  }
+}

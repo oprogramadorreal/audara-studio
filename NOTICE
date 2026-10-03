@@ -1,0 +1,107 @@
+audara-studio
+Copyright (c) 2026 oprogramadorreal
+Licensed under the MIT License (see LICENSE).
+
+audara-studio includes and adapts work from the projects below. Their
+copyright lines are also in LICENSE.
+
+pdoom-video
+-----------
+https://github.com/mexicat/pdoom-video
+Copyright (c) 2026 Giacomo Magnanini. MIT License.
+
+The video engine, preview player and render pipeline in
+skills/code-video/assets/template-webgl/ (src/engine/, src/main.ts,
+scripts/render.ts and the files around them) are adapted from pdoom-video's
+app/ folder: from upstream commit bdbad53 and a later copy that added the
+render verify mode, accented stroke-font letters, scene remixes, longer
+timelines and spliced soundtracks. Each project made with audara-studio keeps
+the engine's MIT notice in src/engine/LICENSE.
+
+The engine guide, the treatment and style templates and the GLSL cookbook in
+skills/code-video/references/ adapt pdoom-video's docs/ENGINE.md and
+docs/TREATMENT.md and link to its scenes. The soundtrack scripts build on the
+approach of its analysis/ tools.
+
+motion-video-kit
+----------------
+https://github.com/echris6/motion-video-kit
+Copyright (c) 2026 echris6. MIT License.
+
+Its text and algorithms are adapted in:
+- skills/code-video/references/critique.md: the critic protocol and its
+  prompts;
+- skills/code-video/references/motion.md: the motion craft;
+- skills/code-video/scripts/qc.py: the measured checks;
+- skills/soundtrack/references/elevenlabs.md: the music and sound-effect
+  rules;
+- skills/soundtrack/scripts/mix.py: the per-effect level solver and the mix
+  rules.
+
+Fonts
+-----
+
+The fonts in skills/code-video/assets/template-webgl/public/fonts/, which
+`init` copies into each project's public/fonts/, are not covered by the MIT
+License. Each keeps its own license, and the full texts are in that folder
+(listed in its FONTS.md). Documents and videos made with the fonts are not
+covered by the font licenses.
+
+Archivo: Archivo-w*-*.ttf, ArchivoItalic-w*-*.ttf
+  Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
+  Licensed under the SIL Open Font License, Version 1.1 (OFL-Archivo.txt).
+  Static instances of the Archivo 2.001 variable fonts, made with fontTools.
+  They are Modified Versions under the OFL.
+
+Cormorant Garamond: Cormorant-*.ttf, CormorantItalic-*.ttf
+  Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant)
+  Licensed under the SIL Open Font License, Version 1.1
+  (OFL-CormorantGaramond.txt).
+  Static instances of the Cormorant Garamond 4.001 variable fonts, made with
+  fontTools. They are Modified Versions under the OFL.
+
+IBM Plex Mono: IBMPlexMono-*.ttf, unmodified
+  Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+  Licensed under the SIL Open Font License, Version 1.1 (OFL-IBMPlexMono.txt).
+
+EMS single-stroke fonts: stroke/EMS*.svg, unmodified
+  Created by Sheldon B. Michaels, SVG font conversion by Windell H. Oskay,
+  Evil Mad Scientist Laboratories (https://gitlab.com/oskay/svg-fonts).
+  Each is derived from a font under the SIL Open Font License, Version 1.1,
+  and licensed under it (stroke/OFL-EMS*.txt):
+  - EMS Allure, from Allura:
+      Copyright (c) 2011 TypeSETit, LLC (typesetit@att.net),
+      with Reserved Font Name "Allura"
+  - EMS Felix, from Felipa:
+      Copyright (c) 2011 Fontstage (info@fontstage.com), with Reserved Font Names, 'Felipa'
+  - EMS Osmotron, from Orbitron:
+      Copyright (c) 2009, Matt McInerney (matt@pixelspread.com),
+      with Reserved Font Name Orbitron.
+      Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron)
+      with Reserved Font Name "Orbitron"
+  - EMS Readability, from Source Sans Pro:
+      Copyright 2010, 2012, 2014 Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name ‘Source’.
+  - EMS Tech, from Architects Daughter:
+      Copyright (c) 2010, Kimberly Geswein (kimberlygeswein.com)
+
+Hershey single-stroke fonts: stroke/Hershey*.svg, unmodified
+  SVG font conversion by Windell H. Oskay, Evil Mad Scientist Laboratories
+  (https://gitlab.com/oskay/svg-fonts). Distributed under the Hershey Fonts'
+  license (stroke/LICENSE-Hershey.txt, also embedded in each file), which
+  requires these acknowledgements:
+  - The Hershey Fonts were originally created by Dr.
+      A. V. Hershey while working at the U. S.
+      National Bureau of Standards.
+  - The format of the Font data in this distribution
+      was originally created by
+          James Hurt
+          Cognition, Inc.
+          900 Technology Park Drive
+          Billerica, MA 01821
+          (mit-eddie!ci-dandelion!hurt)
+
+Trademarks: Archivo is a trademark of Omnibus-Type. IBM Plex(r) is a
+trademark of IBM Corp, registered in many jurisdictions worldwide. Allura is a
+trademark of TypeSETit, LLC. Felipa is a trademark of Fontstage. Source is a
+trademark of Adobe Systems Incorporated in the United States and/or other
+countries.

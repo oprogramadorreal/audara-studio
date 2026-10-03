@@ -1,0 +1,25 @@
+{
+  "skill": "soundtrack",
+  "queries": [
+    { "id": "st-01", "should_trigger": true, "files": ["song.mp3"], "query": "I need the beats and downbeats of song.mp3 as JSON so my animation can cut on the beat." },
+    { "id": "st-02", "should_trigger": true, "files": ["script.txt"], "query": "Here's the script for my explainer video (script.txt). Make the voiceover, and I need the timing of every word so the animation can sync to it." },
+    { "id": "st-03", "should_trigger": true, "files": [], "query": "I need background music for a 30-second product video: calm at first, building to a big hit at 0:20, then a short resolve." },
+    { "id": "st-04", "should_trigger": true, "files": ["song.mp3", "lyrics.txt"], "query": "get word-level timestamps for the lyrics of song.mp3 so each word can pop on screen as it's sung" },
+    { "id": "st-05", "should_trigger": true, "files": ["ad-script.txt"], "query": "generate a voiceover for this 40 second ad (ad-script.txt), warm female voice, I'll put it under my animation" },
+    { "id": "st-06", "should_trigger": true, "files": ["song.mp3"], "query": "find where the chorus starts and where the drops are in song.mp3, I want the video to cut exactly there" },
+    { "id": "st-07", "should_trigger": true, "files": ["narration.wav", "music.mp3"], "query": "mix narration.wav over music.mp3 for my youtube video, the music should duck under the voice and it needs to be loud enough for youtube" },
+    { "id": "st-08", "should_trigger": true, "files": [], "query": "compose a 6 second intro sting for my video that ends on a hit I can sync a logo to" },
+    { "id": "st-09", "should_trigger": true, "files": ["narration.wav", "words.json"], "query": "the word timings in words.json feel a bit early against narration.wav, can you check them against the actual audio and fix them?" },
+    { "id": "st-10", "should_trigger": true, "files": [], "query": "add whoosh and impact sound effects to the transitions in my animation, there are 5 cuts" },
+    { "id": "st-11", "should_trigger": false, "files": ["episode.mp3"], "query": "transcribe episode.mp3 into a text file so I can turn it into a blog post" },
+    { "id": "st-12", "should_trigger": false, "files": ["call.wav"], "query": "remove the background noise and the keyboard clicks from call.wav" },
+    { "id": "st-13", "should_trigger": false, "files": ["song.wav"], "query": "convert song.wav to a 320kbps mp3" },
+    { "id": "st-14", "should_trigger": false, "files": [], "query": "write lyrics for an upbeat pop song about the last day of summer" },
+    { "id": "st-15", "should_trigger": false, "files": [], "query": "set up text-to-speech in my React app with the ElevenLabs SDK so users can hear articles read aloud" },
+    { "id": "st-16", "should_trigger": false, "files": [], "query": "clone my voice with ElevenLabs from these voice memos" },
+    { "id": "st-17", "should_trigger": false, "files": [], "query": "make me a spotify playlist of upbeat songs for running, around 170 bpm" },
+    { "id": "st-18", "should_trigger": false, "files": [], "query": "my audio drifts out of sync in my Premiere timeline after 20 minutes, how do I fix it?" },
+    { "id": "st-19", "should_trigger": false, "files": ["track.wav"], "query": "master track.wav for spotify, it sounds quieter than other songs" },
+    { "id": "st-20", "should_trigger": false, "files": ["post.md"], "query": "turn post.md into a two-host podcast episode audio file" }
+  ]
+}

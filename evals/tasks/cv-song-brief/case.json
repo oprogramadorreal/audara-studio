@@ -1,0 +1,23 @@
+{
+  "id": "cv-song-brief",
+  "skill": "code-video",
+  "setup": {
+    "files": [
+      "$EVAL_SONG => song.mp3"
+    ]
+  },
+  "timeoutMinutes": 40,
+  "turns": [
+    {
+      "prompt": "make a 30-second video for song.mp3, dark and engraved"
+    }
+  ],
+  "assertions": [
+    "A treatment (videos/<name>/TREATMENT.md or the reply) exists, and no scene module or MP4 for this video was written before it (transcript order or file times). The turn ends awaiting approval, or says why it went ahead.",
+    "The treatment is sized to a 30-s piece: it states the song window as start and end times, the aspect ratio, and a storyboard with time ranges, what is seen and the transition out.",
+    "The window starts within 33 ms of a ground-truth downbeat ($EVAL_SONG_DATA/audio.json), ends on a downbeat or with a fade that lands on one, lasts 29-31 s, and the reply says why this part of the song.",
+    "Storyboard rows change where the song sections change inside the window (within one beat of each ground-truth section boundary).",
+    "The reply asks at most 3 questions, only about what the prompt leaves open, each with a default; it does not re-ask the length or the style.",
+    "No image, video, music or voice generation runs (no image_gen call, no ElevenLabs request); if the plan proposes one, it asks first and names the cost."
+  ]
+}
