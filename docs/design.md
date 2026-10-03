@@ -730,7 +730,13 @@ in `evals/`; their results stay out of the repo.
   - Round 2, after the fixes below: Claude Opus 89%, Claude Sonnet 80%, Codex 84%; every new-video run
     stopped at the brief, every spending and no-key check passed (36 of 36), and every later session,
     with or without the skills installed, linked its own preview past the decoy.
-  - ROUND3
+  - Round 3, on the cases this round's changes touched (the title card, the no-key voiceover and the later
+    session, in both tools): 87% of assertions, against 78% in round 2 and 53% in round 1 on the same
+    cases. The preview served every project through its last turn, the example kept its own palette, no
+    final render ran before "Render it.", both voiceovers used `standin.py`, and both later sessions said
+    which reading of the note they took and offered the other. What still missed: briefs over their
+    word budget, and a stand-in hand-off without its license line and cache paths; the skill text was
+    tightened for both afterwards, without another round.
 - **Creative range.** The same request ("a 10 second loop for my late night jazz stream") ten times, five
   with the skills and five without, contact sheets judged by three blind judges who didn't know which set
   was which. All three found the set with the skills more varied (5, 4, 5 against 3, 3, 4 out of 10), less
@@ -769,7 +775,9 @@ in `evals/`; their results stay out of the repo.
   is Vite's default, so another app often holds it (one later session linked an unrelated site), and a
   headless session stops its background shells when its turn ends, so every link died with the turn.
   `render.ts link` asks every port for `/__audara` and prints the one that serves this project, and
-  `render.ts preview` starts the project's own Vite as a detached process that outlives the turn.
+  `render.ts preview` starts the project's own Vite as a detached process that outlives the turn. On
+  Windows it first marks its own handles non-inheritable: otherwise Vite kept the caller's output pipe,
+  and Codex waited for a command that had already finished.
 - **Renders are waited for.** A full render takes minutes, often past a tool's time limit for one
   command, and one left running in the background died when the turn ended. The render step now says to
   keep the turn open until it ends.
@@ -800,7 +808,8 @@ in `evals/`; their results stay out of the repo.
   this machine doesn't give them on native Windows, so `evals/harness/` runs the queries and the
   multi-turn cases directly, with a decoy app on Vite's default port, a record of every live preview, a
   copy of Codex's session files and a mock of ElevenLabs that looks like a real account, and cleans what
-  the runs leave in the tools' own settings.
+  the runs leave in the tools' own settings. Its runs keep computer-use and browser plugins off in both tools:
+  in one round a Codex run's computer-use plugin drove the user's real browser to look at a preview.
 - **Two marketplace files for Codex.** Besides the root `plugin.json` (Agent Plugins 1.0, with Codex's
   fields under `extensions.com.openai`), Codex reads its marketplace from `.agents/plugins/marketplace.json`.
 
