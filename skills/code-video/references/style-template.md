@@ -180,6 +180,8 @@ Generic "AI video" looks:
 Archetypes models converge on when nothing steers them:
 
 - a navy or near-black ground with ivory type and one amber accent, or teal, amber and violet on navy;
+- the genre's emblem as the whole idea: a turning record for jazz, a skyline at night for lo-fi, a neon
+  sign for synthwave, a rocket for a launch;
 - starfields, drifting glow blobs, dot grids;
 - broadcast rings, and a "signal" line with a pulse travelling along it;
 - a centred circular spectrum or equalizer visualizer; a black sun or an eclipse in the middle of the frame;

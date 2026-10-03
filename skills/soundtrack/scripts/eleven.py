@@ -8,7 +8,8 @@
 """ElevenLabs for the soundtrack skill: narration, music and sound effects as audio files, each
 with its exact request beside it, plus the timing data the code-video engine reads.
 
-  voices         The account's voices (id, name, labels), to choose one. Free.
+  voices         The account's voices (id, name, labels, preview link), to choose one with the
+                 director. Free.
   tts            Narration from a script: one paragraph = one block = one text-to-speech request
                  with timestamps. Writes the blocks, narration.wav (blocks + gaps) and words.json,
                  measures every phrase edge against the waveform and moves it onto the sound
@@ -36,6 +37,9 @@ decodeAudioData plays.
 
 Key: ELEVENLABS_API_KEY, from the environment only: never printed, written or passed on a
 command line. ELEVENLABS_BASE_URL (default https://api.elevenlabs.io) points the script at a mock.
+Without a key a paid command spends nothing: it prints what it would cost, what a key pays for and
+the free paths, and exits 3 (tts needs no --voice for that). After a paid run the summary names the
+account's plan and what audio made on it may be used for; each request record keeps the plan.
 
 Exit codes: 0 ok, 1 error, 2 bad usage, 3 no usable API key (missing or rejected), 4 needs --yes
 to spend credits (what it would make was printed; nothing was spent).
@@ -103,6 +107,14 @@ SFX_AUTO_S = 5.0  # dollars for an effect whose length the model picks are not d
 STT_CREDITS_PER_MIN, STT_USD_PER_HOUR = 330, 0.22
 CHARS_PER_S = 16.0  # speaking rate for length estimates: pdoom-video's Portuguese narration ran 15.8
 #                     (its ROTEIRO) to 16.4 (measured median per block) characters per second
+
+# what audio made on each plan may be used for (references/elevenlabs.md, "What each plan allows"; same
+# check). /v1/user/subscription names the plan in "tier"; Scale was once Growing Business, so an older
+# account may still say growing_business
+PAID_TIERS = ("starter", "creator", "pro", "scale", "growing_business", "business", "enterprise")
+MUSIC_USERS = {"starter": "individuals only", "creator": "individuals only", "pro": "individuals only",
+               "scale": "organizations under 10 employees", "growing_business": "organizations under 10 employees",
+               "business": "organizations under 50 employees"}  # enterprise: its contract
 
 # ---------------------------------------------------------------------------------------------
 # Measuring (the phrase-edge method and constants are align.py check's, so both report the same)
@@ -786,24 +798,45 @@ def edge_stats(edges: list[Edge]) -> dict:
         return {"edges": 0}
     worst = max(edges, key=lambda e: abs(e.err))
     starts = [e.err for e in edges if e.kind == "start"]
-    return {"edges": len(edges), "worst_ms": round(worst.err * 1000, 1), "worst_word": worst.w.text,
+    # the edges beyond tolerance by kind and direction: a phrase start or end, early (the word box before the
+    # sound) or late
+    beyond = {}
+    for kind in ("start", "end"):
+        for way, early in (("early", True), ("late", False)):
+            errs = [e.err for e in edges
+                    if e.kind == kind and abs(e.err) * 1000 > TOLERANCE_MS and (e.err < 0) == early]
+            beyond[f"{kind}s_{way}"] = {"n": len(errs),
+                                        "median_ms": round(float(np.median(errs)) * 1000, 1) if errs else None}
+    # phrases = matched pauses + 1 (each pause gives an end and a start; the lead-in and tail may go unmatched)
+    return {"edges": len(edges), "phrases": sum(1 for e in edges if e.pause is not None) // 2 + 1,
+            "worst_ms": round(worst.err * 1000, 1), "worst_word": worst.w.text,
             "worst_edge": worst.kind, "worst_at": r3(worst.measured),
             "worst_frames_30": round(worst.err * 30, 2), "worst_frames_60": round(worst.err * 60, 2),
             "median_start_ms": round(float(np.median(starts)) * 1000, 1) if starts else None,
-            "beyond_tolerance": sum(1 for e in edges if abs(e.err) * 1000 > TOLERANCE_MS)}
+            "beyond_tolerance": sum(1 for e in edges if abs(e.err) * 1000 > TOLERANCE_MS), "beyond": beyond}
 
 
 def signed(ms: float) -> str:
     return "0" if round(ms) == 0 else f"{ms:+.0f}"
 
 
-def edge_line(s: dict) -> str:
+def edge_line(s: dict, when: str = "") -> str:
+    """The worst edge, then which edges are beyond tolerance and which way: '7 of 14 phrase edges (7 phrases)
+    beyond ±50 ms before snapping: 7 starts early (median -112 ms), 0 ends'."""
     if not s.get("edges"):
         return "no phrase edge could be measured"
-    return (f"worst {signed(s['worst_ms'])} ms at '{s['worst_word']}' ({s['worst_edge']}, {s['worst_at']:.2f} s) = "
+    line = (f"worst {signed(s['worst_ms'])} ms at '{s['worst_word']}' ({s['worst_edge']}, {s['worst_at']:.2f} s) = "
             f"{abs(s['worst_frames_30']):.1f} frames at 30 fps, {abs(s['worst_frames_60']):.1f} at 60 fps; "
-            f"{s['beyond_tolerance']} of {s['edges']} edges beyond ±{TOLERANCE_MS:.0f} ms"
-            + (f"; median start {signed(s['median_start_ms'])} ms" if s.get("median_start_ms") is not None else ""))
+            f"{s['beyond_tolerance']} of {s['edges']} phrase edge{'s' if s['edges'] != 1 else ''} ({s['phrases']} "
+            f"phrase{'s' if s['phrases'] != 1 else ''}) beyond ±{TOLERANCE_MS:.0f} ms" + (f" {when}" if when else ""))
+    if not s["beyond_tolerance"]:
+        return line
+    parts = []
+    for kind in ("start", "end"):
+        groups = [(way, s["beyond"][f"{kind}s_{way}"]) for way in ("early", "late")]
+        parts += [f"{g['n']} {kind}{'s' if g['n'] != 1 else ''} {way} ({'median ' if g['n'] > 1 else ''}"
+                  f"{signed(g['median_ms'])} ms)" for way, g in groups if g["n"]] or [f"0 {kind}s"]
+    return line + ": " + ", ".join(parts)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -913,14 +946,77 @@ def api_error(r: httpx.Response, what: str) -> Fail:
     return Fail(ERROR, head)
 
 
-def account_line(api: Api) -> str | None:
-    """Credits left this period (free call; best effort)."""
+def subscription(api: Api) -> dict:
+    """The account's subscription (free call; best effort: {} when it can't be read)."""
     try:
         s = api.call("GET", "/v1/user/subscription", "reading the subscription").json()
+    except (Fail, ValueError):
+        return {}
+    return s if isinstance(s, dict) else {}
+
+
+def account_line(s: dict, kind: str) -> list[str]:
+    """Credits left this period, and the plan with what audio made on it may be used for."""
+    if not s:
+        return []
+    lines = []
+    try:
         used, limit = int(s.get("character_count", 0)), int(s.get("character_limit", 0))
-        return f"Account: {num(max(0, limit - used))} of {num(limit)} credits left this period (plan {s.get('tier', '?')})."
-    except (Fail, ValueError, TypeError):
-        return None
+        lines.append(f"Account: {num(max(0, limit - used))} of {num(limit)} credits left this period.")
+    except (TypeError, ValueError):
+        pass
+    return lines + plan_terms(s.get("tier"), kind, status=s.get("status"))
+
+
+def plan_terms(tier: str | None, kind: str, which: str = "", status: str | None = None) -> list[str]:
+    """What audio made on this plan may be used for (references/elevenlabs.md, "What each plan allows"), for
+    the director: the scripts' summaries are passed on almost word for word. `which` names the files when
+    they were made on different plans; a status other than active is named too."""
+    t = str(tier or "").strip().lower()
+    free = "free-plan audio is non-commercial and must credit ElevenLabs"
+    st = f"subscription {status}" if status and str(status) != "active" and t != "free" else ""
+    tag = ", ".join(x for x in (which, st) if x)
+    if not t:
+        lines = [f"Plan not recorded{f' ({tag})' if tag else ''}: check the account's plan on elevenlabs.io before "
+                 f"commercial use; {free}."]
+    elif t == "free":
+        lines = [f"Plan free{f' ({tag})' if tag else ''}: its audio is non-commercial and must credit ElevenLabs, even "
+                 f"with a pay-as-you-go top-up; commercial use needs audio made on a paid plan."]
+    elif t in PAID_TIERS:
+        lines = [f"Plan {t} (paid{', ' + tag if tag else ''}): commercial use is covered for audio made while "
+                 f"subscribed; {free}."]
+    else:
+        lines = [f"Plan {t}{f' ({tag})' if tag else ''}: not a plan eleven.py knows; check its terms on elevenlabs.io "
+                 f"before commercial use ({free})."]
+    if kind == "music" and t in PAID_TIERS:
+        who = MUSIC_USERS.get(t)
+        lines.append(f"Music on {t} follows its contract." if who is None else
+                     f"Music on {t} is for {who}"
+                     + (" (an agency or a company making the video needs scale or above)"
+                        if who == "individuals only" else "")
+                     + ", and for online video, not film, TV, radio or studio games"
+                     + (", nor a release on streaming platforms." if t == "starter" else "."))
+    if kind == "sfx":
+        lines.append("ElevenLabs may sublicense generated effects to others unless the account opts out on its "
+                     "sound-effects page.")
+    return lines
+
+
+def report_plan(out: Out, noun: str, made: list[tuple[int, Path]], kind: str) -> None:
+    """The plan each file was made on (kept in its request record) with what it allows: audio keeps the terms
+    of the plan it was made on, so files made on different plans are named."""
+    by: dict[str | None, list[int]] = {}
+    for n, p in made:
+        by.setdefault((read_json(side(p, ".request.json")) or {}).get("tier"), []).append(n)
+    if len(by) == 1:
+        lines = plan_terms(next(iter(by)), kind)
+    else:
+        lines = [x for t, ns in by.items()
+                 for x in plan_terms(t, kind, f"{noun}{'s' if len(ns) > 1 else ''} {', '.join(map(str, ns))}")]
+        lines = list(dict.fromkeys(lines[::-1]))[::-1]  # a line every plan shares (the effects one): once, last
+    for x in lines:
+        out(x)
+    out.data["license"] = lines
 
 
 def confirm(out: Out, what: str, data: dict) -> Fail:
@@ -1320,11 +1416,17 @@ def cmd_voices(a, out: Out) -> None:
         lab = ", ".join(str(v) for k, v in r["labels"].items() if v and k != "language")
         out(f"{str(r['voice_id']):24s} {str(r['name'])[:22]:22s} {str(r['category'] or '')[:12]:12s} "
             f"{lab}{' / ' + ', '.join(r['languages']) if r['languages'] else ''}")
+        if r["preview_url"]:
+            out(f"{'':24s} preview: {r['preview_url']}")
     out()
-    out("Pass one with --voice ID to tts (listen to its preview_url first: --json lists them).")
     if any(r["category"] == "premade" for r in rows):
         out("ElevenLabs' default (premade) voices are retired on 2026-12-31: for a video that may be regenerated "
             "later, prefer a voice from the account's library.")
+    if any(r["preview_url"] for r in rows):
+        out("Share the preview links of two or three fitting voices with the director before the paid voice test "
+            "(playing them costs nothing), then pass the chosen one to tts with --voice ID.")
+    else:
+        out("Pass one with --voice ID to tts.")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1406,9 +1508,13 @@ def cmd_tts(a, out: Out) -> None:
     cfg = read_json(cfg_path) or {}
 
     voice = a.voice or cfg.get("voice_id")
-    if not voice:
+    if not voice and (get_key() or a.pick is not None):
         raise Fail(USAGE, f"choose a voice with --voice ID (list them with: {me('voices')}); it is then kept for "
                           f"this narration")
+    # without a key nothing is sent, so the estimate needs no voice: a plain `tts script.txt` prints the cost,
+    # what a key pays for and the free paths (exit 3) instead of stopping at the voice
+    no_voice = not voice
+    voice = voice or "<voice>"
     vname = cfg.get("voice_name") if voice == cfg.get("voice_id") else None
     model = a.model or cfg.get("model_id") or TTS_MODEL
     fmt = a.format or cfg.get("output_format") or DEFAULT_FORMAT
@@ -1550,9 +1656,9 @@ def cmd_tts(a, out: Out) -> None:
             copy_set(src, path, TTS_SIDES, {"block": b.n, "copied_from": rel_to(src, ndir)})
             out(f"{label}: same request as {rel(src)} (copied, no API call)")
 
-    out.data["settings"] = {"voice_id": voice, "model_id": model, "voice_settings": vs, "output_format": fmt,
-                            "seed": seed, "gap": gap, "lead": lead, "tail": tail, "snap": snap_on, "lufs": lufs,
-                            "say": say_keep}
+    out.data["settings"] = {"voice_id": None if no_voice else voice, "model_id": model, "voice_settings": vs,
+                            "output_format": fmt, "seed": seed, "gap": gap, "lead": lead, "tail": tail, "snap": snap_on,
+                            "lufs": lufs, "say": say_keep}
     if jobs:
         chars = sum(len(b.spoken) for b, *_ in jobs)
         est_text, est = tts_estimate(model, chars)
@@ -1560,7 +1666,9 @@ def cmd_tts(a, out: Out) -> None:
         free = [f"{label}: same request as {rel(src)} (copied, free)" for src, _, _, label in reuse]
         key = get_key()
         if not key:
-            raise no_key("the narration", [est_text] + plan + free)
+            voice_note = [f"no voice chosen yet: with a key, choose one with the director from {me('voices')} (its "
+                          f"preview links play for free), then add --voice ID"] if no_voice else []
+            raise no_key("the narration", [est_text] + plan + free + voice_note)
         api = Api(key)
         vinfo = api.call("GET", f"/v1/voices/{voice}", "looking up the voice").json()
         vname = vinfo.get("name") or voice
@@ -1583,9 +1691,9 @@ def cmd_tts(a, out: Out) -> None:
                 out("  " + x)
             out(f"Voice: {vname} ({voice}); model {model}; {settings_text(vs)}; {fmt}.")
             out(f"Cost: {est_text}.")
-            acct = account_line(api)
-            if acct:
-                out(acct)
+            out.data["account"] = account_line(subscription(api), "tts")
+            for x in out.data["account"]:
+                out(x)
             if any(why == "voice or settings changed" for *_, why in jobs):
                 out("The voice or its settings changed: every block is made again, so they all match.")
             if a.only is None and a.takes is None and len(jobs) > 1 and \
@@ -1602,6 +1710,7 @@ def cmd_tts(a, out: Out) -> None:
             raise confirm(out, "generate them", {"estimate": est, "jobs": out.data["jobs"]})
         do_reuse()
         write_json(cfg_path, cfg_doc(cfg.get("words_sha256")))  # the settings these blocks are paid for, first
+        tier = subscription(api).get("tier")  # the plan they are made on: each record keeps it (its terms are theirs)
         for i, (b, path, s, label, why) in enumerate(jobs, 1):
             if path.is_file():  # moved aside before paying: a file a player holds open fails here, not after
                 note(f"tts: the earlier {path.name} ({why}) moves to {rel(retire(path, TTS_SIDES))}")
@@ -1617,7 +1726,7 @@ def cmd_tts(a, out: Out) -> None:
                                   f"been billed; check the account's history)")
             al = j.get("alignment") or j.get("normalized_alignment")
             rec = {"kind": "tts", "request": r, "shown_text": b.display, "say": b.said or None, "block": b.n,
-                   "voice_name": vname, "generated": now(), "tool": TOOL,
+                   "voice_name": vname, "generated": now(), "tier": tier, "tool": TOOL,
                    "response": {"request_id": resp.headers.get("request-id"),
                                 "character_cost": resp.headers.get("character-cost"),
                                 "audio_sha256": sha256_bytes(audio), "bytes": len(audio)}}
@@ -1661,13 +1770,21 @@ def cmd_tts(a, out: Out) -> None:
         out(f"narration.wav and words.json are written once every block exists (missing or stale: {names}).")
         if a.only is not None:
             b = blocks[a.only - 1]
+            out(f"Block {b.n}'s timings (the API's, per character) are already in "
+                f"{rel(side(main_path(b), '.alignment.json'))}; {'snapped ' if snap_on else ''}word timings for every "
+                f"block come with the rest in {rel(w.data_dir / 'words.json')}, so nothing needs exporting now.")
             report_takes(out, b, [main_path(b)], base, title=f"Block {b.n} (for approving the voice):")
+            report_plan(out, "block", [(b.n, main_path(b))], "tts")
             out(f"Approve the voice by ear, then make the rest: {me(*base)} (shows the cost; add --yes)")
+        elif a.takes is not None and jobs:  # takes just made: the plan they were made on
+            b = blocks[a.block - 1]
+            report_plan(out, "take", [(k, take_path(b, k)) for k in range(1, a.takes + 1)], "tts")
         out.data["missing_blocks"] = [b.n for b in missing]
         return
     tidy(out, ndir, [main_path(b) for b in blocks])
+    made = [b.n for b, path, *_ in jobs if path.parent == ndir]  # main files paid for in this run: nobody heard them
     words_sha = assemble_narration(out, w, script, blocks, [main_path(b) for b in blocks], voice, vname, model, vs,
-                                   gap, lead, tail, snap_on, lufs, base, cfg.get("words_sha256"))
+                                   gap, lead, tail, snap_on, lufs, base, cfg.get("words_sha256"), made)
     write_json(cfg_path, cfg_doc(words_sha))
 
 
@@ -1746,9 +1863,10 @@ def report_takes(out: Out, b: Block, paths: list[Path], base: list[str], title: 
 
 def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], paths: list[Path], voice: str,
                        vname: str | None, model: str, vs: dict, gap: float, lead: float, tail: float, snap_on: bool,
-                       lufs: float | None, base: list[str], words_sha_prev: str | None) -> str | None:
+                       lufs: float | None, base: list[str], words_sha_prev: str | None, made: list[int]) -> str | None:
     """narration.wav and words.json from the blocks. Returns the sha256 of the words.json this script
-    wrote (kept from before when the file on disk was edited and nothing it is made from changed)."""
+    wrote (kept from before when the file on disk was edited and nothing it is made from changed).
+    `made`: the blocks this run paid for, which nobody has heard yet."""
     ys, blk_words, ons, offs = [], [], [], []
     for b, p in zip(blocks, paths):
         words, y = take_words(p, b)
@@ -1849,7 +1967,7 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
                   f"ffmpeg's gapless decode and of the browser's decodeAudioData. w is the word as shown; spoken is "
                   f"what the voice said when the say map respelled it (find words by w). Word times come from the "
                   f"API's character timings; phrase edges (words next to a pause of 150 ms or more) were measured "
-                  f"against the waveform: {edge_line(before)}"
+                  f"against the waveform: {edge_line(before, 'before snapping' if snap_on else '')}"
                   + ("; snapped: those edges now sit on the measured sound." if snap_on and rep.edges else
                      "; not snapped (--no-snap)." if rep.edges else ".")),
         "audioSha256": asha,
@@ -1894,7 +2012,7 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
         if kept_copy is not None:
             out(f"  it had been edited since eleven.py wrote it, and the narration changed, so it was rewritten: the "
                 f"edited copy is {rel(kept_copy)}")
-    out(f"Phrase edges vs the waveform: {edge_line(before)}.")
+    out(f"Phrase edges vs the waveform: {edge_line(before, 'before snapping' if snap_on else '')}.")
     if snap_on and rep.edges:
         out(f"  snapped: moved {moved} words onto the measured sound; re-measured: {edge_line(after)}.")
     elif rep.edges and before.get("beyond_tolerance"):
@@ -1905,12 +2023,28 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
         out("  warning: the background is too close to the voice to see pauses reliably")
     out(f"Settings: voice {vname or voice}, {model}, {settings_text(vs)}; gap {gap:g} s, lead {lead:g} s, tail {tail:g} s "
         f"(kept in {rel(w.audio_dir / 'narration' / 'narration.json')}).")
+    report_plan(out, "block", [(b.n, p) for b, p in zip(blocks, paths)], "tts")
+    # outside a project the review files follow the run's --out, so they land beside the rest of the delivery
+    place = ["--video", w.name] if w.name else (["--out", rel(w.base)] if rel(w.base) != "." else [])
     if Path(__file__).resolve().with_name("align.py").is_file():
         out(f"Review image of the words over the waveform: uv run {q(script_path('align.py'))} check {q(rel(wav_path))}"
-            + (f" --video {w.name}" if w.name else f" --words {q(rel(words_path))}"))
+            + ("" if w.name else f" --words {q(rel(words_path))}") + "".join(f" {q(x)}" for x in place))
     secs = n / SR
-    out(f"Check what was said (about {num(STT_CREDITS_PER_MIN * secs / 60)} credits; asks first): "
-        + me("stt", *(["--video", w.name] if w.name else [rel(wav_path), "--expect", rel(words_path)])))
+    # a transcript stt kept for this very file (named as cmd_stt names it; a --language one ends in .<code>)
+    transcript = f"{wav_path.stem}.{asha[:12]}.{STT_MODEL}"
+    done = sorted((w.review_dir / "stt").glob(f"{transcript}*.json"), key=lambda p: len(p.name))
+    lang = done[0].name[len(transcript):-len(".json")].lstrip(".") if done else ""
+    stt = me("stt", *([] if w.name else [rel(wav_path), "--expect", rel(words_path)]), *place,
+             *(["--language", lang] if lang else []))
+    ears = ("every block (all made just now)" if made and len(made) == len(blocks) else
+            f"block{'s' if len(made) > 1 else ''} {', '.join(map(str, made))} (made just now) and any other block "
+            f"nobody has heard" if made else "the blocks nobody has heard")
+    if done:
+        out(f"Not checked yet: by ear, {ears}; listen before handing it over. What the audio says was transcribed "
+            f"already: {stt} shows the comparison again (free).")
+    else:
+        out(f"Not checked yet: what the audio says (words.json repeats the script) and, by ear, {ears}. Listen, or: "
+            f"{stt} (about {num(STT_CREDITS_PER_MIN * secs / 60)} credits; asks first).")
     if w.video_dir is not None:
         out(f"Preview with it: \"audio\": \"audio/narration.wav\" in {rel(w.video_dir / 'video.json')} (or mix.py's mix).")
     out.data.update({
@@ -2395,6 +2529,7 @@ def cmd_music_compose(a, out: Out) -> None:
                                        "on the file shows where the music really changes). Times in seconds of the "
                                        "file's gapless decode (t = 0 = its first sample)."})
         out(f"Music: take {a.pick} is now {rel(main)}.")
+        report_plan(out, "take", [(a.pick, main)], "music")
         out(f"Sections from the plan: {rel(sec_path)}.")
         if Path(__file__).resolve().with_name("beats.py").is_file():
             spec = ",".join(f"{re.sub(r'[,:]', ' ', s['name'])}:{s['start']:g}" for s in secs)
@@ -2433,10 +2568,11 @@ def cmd_music_compose(a, out: Out) -> None:
                 f"{'with sung words' if lyrics else 'instrumental'}:")
             for s, c in zip(sections, chunks):
                 out(f"  {s['start']:6.2f}-{s['end']:6.2f} s  {s['name']}: {', '.join((c.get('positive_styles') or [])[:5])}")
-            acct = account_line(api)
-            if acct:
-                out(acct)
+            out.data["account"] = account_line(subscription(api), "music")
+            for x in out.data["account"]:
+                out(x)
             raise confirm(out, "compose them", {"estimate": est})
+        tier = subscription(api).get("tier")  # the plan the takes are made on: each record keeps it
         for i, k in enumerate(todo, 1):
             if tpath(k).is_file():  # moved aside before paying: a file a player holds open fails here, not after
                 note(f"music: the earlier take {k} (another plan or seed) moves to {rel(retire(tpath(k), MUSIC_SIDES))}")
@@ -2463,7 +2599,7 @@ def cmd_music_compose(a, out: Out) -> None:
             save_paid(tpath(k), audio, {
                 ".meta.json": meta or {},
                 ".request.json": {"kind": "music", "request": r, "plan_file": rel_to(plan_path, w.base), "take": k,
-                                  "generated": now(), "tool": TOOL,
+                                  "generated": now(), "tier": tier, "tool": TOOL,
                                   "response": {"song_id": resp.headers.get("song-id"), "filename": fname,
                                                "audio_sha256": sha256_bytes(audio), "bytes": len(audio)}}},
                 f"music take {k}")
@@ -2487,6 +2623,7 @@ def cmd_music_compose(a, out: Out) -> None:
             f"{', '.join(str(r['compare_lufs']) for r in made)}):")
         for r in made:
             out(f"  {r['compare']}")
+    report_plan(out, "take", takes, "music")
     out(f"Then keep one (no API call): {me('music', 'compose', '--plan', rel(plan_path), *place_args(a), '--pick', 'K')}")
     out("A library track the user owns, edited to the picture, can still beat these.")
     out.data.update({"plan": rel(plan_path), "takes": rows})
@@ -2663,6 +2800,7 @@ def cmd_sfx(a, out: Out) -> None:
         copy_set(cpath(a.pick), main, SFX_SIDES, {"take": a.pick, "picked": now(), "measured": res})
         out(f"Effect: candidate {a.pick} is now {rel(main)}; onset {res['onset_s'] * 1000:.0f} ms (place it at the "
             f"event minus {res['onset_s']:.3f} s), peak at {res['peak_s']:.3f} s.")
+        report_plan(out, "candidate", [(a.pick, main)], "sfx")
         out.data.update({"effect": rel(main), "measured": res})
         return
     todo = [k for k in range(1, a.n + 1) if not fresh(k)]
@@ -2687,10 +2825,11 @@ def cmd_sfx(a, out: Out) -> None:
         if not a.yes:
             out(f"Would generate {cost} for \"{a.prompt}\" ({SFX_MODEL}, prompt influence {a.influence:g}"
                 f"{', loop' if a.loop else ''}).")
-            acct = account_line(api)
-            if acct:
-                out(acct)
+            out.data["account"] = account_line(subscription(api), "sfx")
+            for x in out.data["account"]:
+                out(x)
             raise confirm(out, "generate them", {"estimate": est})
+        tier = subscription(api).get("tier")  # the plan the candidates are made on: each record keeps it
         for i, k in enumerate(todo, 1):
             if cpath(k).is_file():  # moved aside before paying: a file a player holds open fails here, not after
                 note(f"sfx: the earlier candidate {k} (another prompt or settings) moves to "
@@ -2701,13 +2840,14 @@ def cmd_sfx(a, out: Out) -> None:
             if not audio:
                 raise Fail(ERROR, f"sound effect candidate {k}: empty response (it may still have been billed)")
             save_paid(cpath(k), audio, {".request.json": {
-                "kind": "sfx", "request": r, "take": k, "generated": now(), "tool": TOOL,
+                "kind": "sfx", "request": r, "take": k, "generated": now(), "tier": tier, "tool": TOOL,
                 "response": {"character_cost": resp.headers.get("character-cost"),
                              "audio_sha256": sha256_bytes(audio), "bytes": len(audio)}}},
                 f"sound effect candidate {k}")
     rows = [screen(cpath(k), a.prompt) for k in range(1, a.n + 1)]
     out(f"Candidates for \"{a.prompt}\" (measured before anyone listens; cleanest first):")
     ranked = rank_print(out, rows)
+    report_plan(out, "candidate", [(k, cpath(k)) for k in range(1, a.n + 1)], "sfx")
     write_json(w.review_dir / "sfx" / f"{slug}.screen.json", {"prompt": a.prompt, "ranked": ranked, "tool": TOOL})
     if ranked and not ranked[0]["flags"]:
         best = int(re.search(r"\.take(\d+)\.", ranked[0]["file"]).group(1))
@@ -2914,7 +3054,8 @@ def build_parser() -> argparse.ArgumentParser:
     spend.add_argument("--format", help=f"output format (default {DEFAULT_FORMAT})")
 
     v = sub.add_parser("voices", parents=[common], help="list the account's voices (free)", formatter_class=RF,
-                       description="List the account's voices (id, name, labels, languages) to pick one. Free.",
+                       description="List the account's voices (id, name, labels, languages, preview link) to choose "
+                                   "one with the director. Free.",
                        epilog=EXAMPLES["voices"])
     v.add_argument("--search", help="filter by name, description or labels (the API's search)")
     v.add_argument("--language", help="only voices verified for this language code (e.g. pt, en)")

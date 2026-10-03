@@ -91,15 +91,18 @@ session that built the video passed it after looking at one frame and an eight-f
   reports. It marks every earlier finding FIXED, PARTLY or STILL PRESENT, hunts for regressions around
   them, and ends with SHIP or ONE MORE PASS (at most three fixes).
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame, or taste the director hasn't raised), or
-  when the director says so, not after a set number of rounds. The director outranks the critic: a
+  when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
+  round and one verification). The director outranks the critic: a
   finding that goes against their words, or against a choice the treatment argues for, is reported, not
   acted on.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
   - a scene round when separate authors make the scenes (or one round per few scenes);
-  - a full-cut round (a render of the whole video) before you call it done, then verification rounds
-    after fixes.
+  - a full-cut round on a `--draft` render of the whole video before you call it done, then one
+    verification round after its fixes. Then the director gets the preview link, the sheets and the
+    findings still open, and any further round follows their notes. The full render waits for their
+    "render it" (Delivery).
 
   A short piece you build alone gets the full-cut round and its verification. Not after every edit:
   notes go through your stills loop and the preview.
@@ -129,7 +132,8 @@ You judge; you don't fix. Work in <project>; write only under out/<video>/critiq
 - One scene alone (the rest renders black): add --only <entry id> (its id in the timeline).
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
 - Measured checks on any MP4 (holds, blank frames, loudness, color tags):
-  uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>)
+  uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
+  if a sandbox stops uv writing its cache, set UV_CACHE_DIR=.audara-cache/uv, never a folder under out/)
 - The timing data: videos/<video>/data/audio.json (beats, downbeats, sections) and data/words.json (timed lines).
 About 24 frames fit a sheet; a longer one goes on in <sheet>-2.png, <sheet>-3.png: look at every page.
 Check type sizes on full-size stills.
@@ -187,13 +191,16 @@ Run qc.py on the MP4 first. Then sheets of the whole video (about five frames a 
 a minute, a frame per beat or bar for a longer one), every frame through each cut and transition, frame 0
 and the last, and full-size stills wherever a sheet raises a doubt.
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
-it works, not whether it follows the default.
+it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
+<skill>/references/style-template.md: an archetype from them that the treatment doesn't name and argue
+for is a finding.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)?
 3. Transitions and layout: empty or blinking frames at cuts, collisions, a carried element that jumps,
-   type too small for where it will be watched, frame 0, the last frame.
+   type too small for where it will be watched or outside the format's safe area (the Layout tables in
+   <skill>/references/style-template.md, checked on full-size stills), frame 0, the last frame.
 4. Holds and pace: qc.py's holds the treatment doesn't call for; stretches where only a detail moves.
 5. The numbers: loudness against the treatment's target, color tags, duration.
 6. The top 6-8 changes by impact, concrete enough to make in code.
@@ -247,10 +254,11 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 When the director says to render:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
-2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, with adaptive motion blur
-   by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful` scene on screen it takes a
-   fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives 4K). A `--draft` is never
-   the delivery.
+2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, in the foreground: it takes
+   minutes, the reply needs its result, and a job left running when your turn ends can die with the
+   session. It renders with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and
+   sampling"; with a `stateful` scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for
+   another count; `--scale 2` gives 4K). A `--draft` is never the delivery.
 3. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 4. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
@@ -260,7 +268,8 @@ When the director says to render:
 6. The critic's verdict on this render: the last round's, or a new full-cut round if the picture
    changed after it.
 
-The reply gives the director the MP4, the sheets and the poster (their paths); the QC report's numbers in
+The reply gives the director, every time (also when the MP4 already existed or another size was made),
+the MP4, the sheets and the poster (their paths); the QC report's numbers in
 two or three lines, with a `?t=` link to anything flagged; the critic's verdict and the findings left
 open; and what wasn't checked ("measured, not listened to"; "sampled frames, not every frame"). Every
 claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on the

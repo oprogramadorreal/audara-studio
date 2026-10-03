@@ -18,13 +18,13 @@
   ],
   "assertions": [
     "After turn 1 there is no scene file for this video and no rendered MP4 (init and the template example may exist): nothing is built before approval.",
-    "The turn-1 reply holds a brief of about 15 lines or fewer with a time-coded beat list covering 0-15 s and the look (palette and type). Any on-screen text beyond \"Night Signals\", or any restyling of the name, is listed as an assumption.",
+    "The turn-1 reply is a brief for approval, of about 15 lines or fewer, with a time-coded beat list covering 0-15 s (times that read as written: 1.25 s or 0:01.25, never 1:25) and the look (palette and type). Any on-screen text beyond \"Night Signals\", or any restyling of the name, is listed as an assumption.",
     "Turn 1 asks at most 3 questions, each with a default, and one of them is about format or where the card will be shown.",
     "After turn 2 the folder is an audara project (src/engine/, videos/<name>/video.json, AGENTS.md, CLAUDE.md) and the reply gives a preview URL with ?v=<name> and at least one link with &t=.",
-    "After turn 3, ffprobe on out/<name>/*.mp4 reports 15.00 +/- 0.04 s, 1920x1080, no audio stream, and color_primaries, color_transfer and color_space all bt709.",
+    "After turn 3, ffprobe on out/<name>/<name>.mp4 reports 15.00 +/- 0.04 s, 1920x1080, no audio stream, and color_primaries, color_transfer and color_space all bt709; any other size made beside it (a 4K master, say) has the same length, color tags and no audio, at 16:9.",
     "The video shows the words Night Signals (any case) and no other words, unless the brief listed them as an assumption.",
-    "The final reply links a contact sheet PNG, a poster PNG and QC numbers (frozen time or longest hold, near-black or near-empty frames), and every linked file exists.",
-    "src/look.ts no longer holds the template's test-card palette, and the look is not the navy/ivory/amber archetype both baseline models converged on.",
-    "render.ts verify passes for the video (run it), and the project root has no stray caches, npm folders or check images outside out/ and git-ignored paths."
+    "The final reply itself (turn 3, even when an earlier turn named them) links a contact sheet PNG, a poster PNG and QC numbers (frozen time or longest hold, near-black or near-empty frames), and every linked file exists.",
+    "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list (the navy/ivory/amber one both baseline models converged on among them) unless the brief names it and says why.",
+    "render.ts verify passes for the video (run it); the project root has no stray caches, npm folders or check images outside out/ and git-ignored paths, out/ holds only renders, stills, sheets and reports, and any cache is in the git-ignored .audara-cache/."
   ]
 }

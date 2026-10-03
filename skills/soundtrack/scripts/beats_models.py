@@ -58,7 +58,45 @@ import time
 import urllib.request
 from pathlib import Path
 
-import numpy as np
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py and
+# beats_models.py: change both together.
+DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
+#                torch's: 91)
+
+
+def long_paths_on() -> bool:
+    """Windows reads paths over 260 characters only when long paths are enabled (an admin setting)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as k:
+            return winreg.QueryValueEx(k, "LongPathsEnabled")[0] == 1
+    except (ImportError, OSError):
+        return False
+
+
+def verbatim(p: str) -> str:
+    """`p` written the long way (\\\\?\\C:\\... or \\\\?\\UNC\\server\\...), which Windows reads past 260 characters."""
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
+def long_path_imports() -> None:
+    """uv's environment for a script can lie deep in a project (UV_CACHE_DIR=<project>/.audara-cache/uv, for a
+    sandbox): its module files then pass 260 characters, and Python cannot import them (an eval run: torch.fx's
+    dispatcher at 261). Import from the same folders written the long way."""
+    if sys.platform != "win32" or long_paths_on():
+        return
+    for i, p in enumerate(sys.path):
+        if p and len(os.path.abspath(p)) + DEEPEST > 259 and os.path.isdir(verbatim(p)):
+            sys.path[i] = verbatim(p)
+
+
+long_path_imports()
+
+import numpy as np  # noqa: E402 (after the import paths are set)
 
 # one line of progress per stage instead of library progress bars and Hugging Face warnings (symlinks
 # unsupported on Windows without developer mode, unauthenticated downloads): set before any import

@@ -12,7 +12,10 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   reloads the page, so fresh timing data, a new soundtrack or a changed image or model shows up without a
  *   manual reload.
  * - GET /__audara answers with the folder this server serves: scripts/render.ts checks it before
- *   using a server given with --url, so a preview of another project is never rendered by mistake.
+ *   using a server given with --url, and `render.ts link` asks every port for it to find this project's
+ *   preview, so another project's preview is never rendered or linked by mistake.
+ * - A watcher error is logged, not fatal: on Windows a file being rewritten (Windows PowerShell's
+ *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */
 const SCENE_FILE = /\/videos\/[^/]+\/scenes\/[^/]+\.ts$/;
 const isScene = (code: string) => /\bexport\s+default\s+class\b[^{]*\bextends\b/.test(code);
@@ -24,6 +27,7 @@ function audara(): Plugin {
     name: 'audara',
     configResolved(c) { root = normalizePath(c.root); },
     configureServer(server) {
+      server.watcher.on('error', (e) => server.config.logger.warn(`audara: the file watcher reported ${String((e as Error)?.message ?? e)}; the preview goes on`));
       server.middlewares.use('/__audara', (_req, res) => {
         res.setHeader('content-type', 'application/json');
         res.end(JSON.stringify({ root }));

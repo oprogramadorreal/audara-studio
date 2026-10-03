@@ -24,12 +24,17 @@ to direct the voice, the music and the effects. Paths are relative to the skill'
   into a project file or `.env` the project commits, never pass it on a command line, never print it.
   If the user pastes a key into the conversation, don't store it anywhere: ask them to set it in
   their environment (shell profile or system settings) and start the session again.
-- Without a key every paid command exits 3 and says what it would have cost. Tell the director in
-  one line that no key is set, what a key would add, and go on without waiting:
+- Without a key every paid command exits 3, spends nothing and prints what it would have cost and
+  what a key would add (`eleven.py tts script.txt` needs no `--voice` for that). Run it rather than
+  checking the variable yourself, then tell the director in one line that no key is set, what a key
+  would add and its cost, as the script printed them; name the free paths below and go on with the
+  one that fits, unless they pick another:
   - the user's own audio (`beats.py`, `align.py`);
   - a local stand-in voice under an open license, named as a stand-in with its license (for
     example Kokoro-82M, Apache-2.0). Scenes find words by text, so they keep their sync when the
-    real voice replaces it;
+    real voice replaces it. Level it as `tts` levels narration (-16 LUFS, true peak at or under
+    -1 dBTP; `mix.py measure` reads both) and end its generator with `align.py check --fix`;
+  - music you synthesize in a seeded script, with its grid and cues from `beats.py grid`;
   - a silent placeholder: `"audio": null` and a `"duration"` in the video's `video.json`.
 - A rejected key also exits 3. Some keys are limited to certain endpoints or carry a credit quota:
   a 403 names what the key or plan can't do.
@@ -86,7 +91,9 @@ billed in dollars. The script's estimates use these numbers; the account's own f
 
 ## What each plan allows
 
-Say this to the director before relying on generated audio for a client or a monetized video.
+Say this to the director before relying on generated audio for a client or a monetized video, and
+again when you hand that audio over, naming the account's plan: the scripts print it, with what it
+allows, after every paid run.
 
 - **Free plan:** non-commercial use only, and published work must credit ElevenLabs
   ([terms](https://elevenlabs.io/terms-of-use) §1(c) and §4(a);
@@ -129,8 +136,8 @@ These ids and limits live only here and in the script's defaults (checked 2026-1
 - **Formats.** The default `mp3_44100_128` works on every plan. Creator and above can ask for
   `--format mp3_44100_192` (speech) or `mp3_48000_192` (music, the model's own quality); 44.1 kHz WAV
   needs Pro. A changed format is a new request, so it regenerates.
-- **Voices.** `uv run scripts/eleven.py voices` lists the account's voices; listen to each
-  `preview_url` (in `--json`). Never hard-code a voice id: ElevenLabs' default (premade) voices are
+- **Voices.** `uv run scripts/eleven.py voices` lists the account's voices with their preview links,
+  which cost nothing to play: share two or three with the director before the paid voice test. Never hard-code a voice id: ElevenLabs' default (premade) voices are
   retired on 2026-12-31 and only exist on accounts created before March 2026. For a video that may
   be regenerated later, use a voice saved in the account's library.
 - **Settings** (stability, similarity, style, speed 0.7-1.2, speaker boost): the first run takes the

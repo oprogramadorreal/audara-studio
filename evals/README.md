@@ -31,18 +31,33 @@ no-skill baselines got wrong. Each case is `evals/tasks/<id>/case.json` (written
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool claude
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool codex
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool claude --without   # baseline arm
+bash evals/harness/run-tasks.sh both                                                 # every case, both tools
+CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh claude
 ```
+
+`run-tasks.sh` runs the cases a few at a time, then the later-session case on the project of the latest
+finished `cv-title-card` run (Claude Code's if there is one, else Codex's), the same project for both
+tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
+arguments go to `task.ts` (`--without`, `--model sonnet`).
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json`), and
 `EVAL_PROJECT` (a project made with audara, for the later-session case). `st-asks-before-spending` runs
-against a local ElevenLabs mock (`evals/mocks/elevenlabs.py`) with a fake key and logs every request, so
-a grader can see that nothing was spent before the user said yes.
+against a local ElevenLabs mock (`evals/mocks/elevenlabs.py`) with a fake key and logs every request the
+session makes, so a grader can see that nothing was spent before the user said yes. The later-session case
+has a decoy (`"decoy": 5173` in its setup): for the whole run an unrelated Vite app answers on
+127.0.0.1:5173, as one left running on a developer's machine does, with its page for every path and no
+JSON at `/__audara`, so a grader can see whether the agent checked that the preview it links is its own.
+If the port is taken already, `result.json` says what answers there instead.
 
-Each run folder holds `turn-N.jsonl` (the transcripts), `result.json` (timings, the final file list, git
-status, the assertions) and `work/` (the project as it ended). A grader reads them, checks each
-assertion with evidence (running ffprobe, `render.ts verify`, `qc.py` and the like) and writes PASS or
-FAIL per assertion.
+Each run folder holds `turn-N.jsonl` (the transcripts), `result.json` (each turn's start, length and
+whether it hit the timeout, the final file list, git status, the assertions) and `work/` (the project as
+it ended). `result.json`'s `previews` lists every port in 5173-5199 whose `/__audara` named a folder
+during the run, with that folder and whether it is this run's `work/`: a preview dies with its session,
+and runs going at once can reach each other's. A Codex run also gets `codex-sessions/`, its session files
+from `~/.codex/sessions` (the main thread's and its sub-agents'), since `codex exec --json` leaves out
+calls such as spawn_agent and view_image. A grader reads them, checks each assertion with evidence
+(running ffprobe, `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
 
 ## Spec checks
 

@@ -479,7 +479,7 @@ def parse_cuts(arg: str | None) -> list[float]:
         return []
     p = Path(arg)
     if p.is_file():
-        text = p.read_text(encoding="utf-8")
+        text = p.read_text(encoding="utf-8-sig")  # (a cuts list saved by Windows PowerShell 5.1 starts with a BOM)
         if p.suffix.lower() == ".json":
             data = json.loads(text)
             if isinstance(data, dict) and isinstance(data.get("timeline"), list):  # render.ts verify.json

@@ -98,6 +98,11 @@ speed: `lerp(a, b, smootherstep(t0, t1, t))` (zero speed and acceleration at bot
 For realism, contact is dead still: no camera jolt, at most a tiny rebound. The hold after a landing can
 breathe (a slow push or separation of a few percent) so it isn't frozen, unless stillness is the point.
 
+Fades follow the same rule, with one twist: this engine mixes a layer with what is behind it in linear
+light, so a fade looks further along than its number. A light title over a dark ground showed about half
+its final lightness at 21% opacity and three quarters at 50% (measured on stills). A gentler arrival needs
+a curve that starts slower, not only a longer one.
+
 ## A move through several keys
 
 `keys(t, [[t, v, ease], ...])` eases each segment on its own: with its default `ease.inOutCubic` the speed

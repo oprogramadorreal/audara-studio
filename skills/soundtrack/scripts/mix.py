@@ -17,8 +17,9 @@
            previous round in out/<video>/mix-rounds/ for A/B and prints what changed.
   measure  What a listener hears in any audio file: integrated loudness, loudness range, true peak,
            short-term (3 s) and momentary (400 ms) K-weighted loudness, loudness per section and the rise
-           between sections, hit contrast at full range and through a phone-like 300 Hz high-pass, the first
-           sound and dead tails. Writes a loudness-curve PNG and a JSON. Reports, not gates.
+           between sections, each hit's measured onset, its contrast with the 4 s before it and the build into
+           it, at full range and through a phone-like 300 Hz high-pass, the first sound and dead tails. Writes a
+           loudness-curve PNG and a JSON. Reports, not gates: a weak hit or a flat build is a warning.
 
 Run it through uv (Python only through uv on this machine; no pip):
   uv run <skill>/scripts/mix.py build --video launch
@@ -190,6 +191,39 @@ PEAK_RMS_S = 0.01  # an effect's loudest moment ("align": "peak", for whooshes i
 PHONE_HP_HZ = 300  # a phone speaker reproduces little below ~300 Hz: a 4th-order Butterworth high-pass stands in
 HIT_BEFORE_S = 4.0  # a hit is compared with the loudest 400 ms in the 4 s before it...
 HIT_AFTER_S = 0.6   # ...using the loudest 400 ms window inside [hit - 10 ms, hit + 0.6 s]
+HIT_LU = 3.0
+# A hit is a moment meant to land louder than the 4 s before it: under 3 LU of contrast, at full range or through the
+# phone high-pass, it doesn't stand out (the S3 eval's bar) and the report warns. "hit_lu" in the plan or measure
+# --hit-lu sets another bar; 0 turns the warning off.
+BUILD_LU = 5.0
+# The build into a hit: the stretch leading into it against the opening. Under 5 LU a build reads as flat (the S3
+# eval's bar; the Codex run's +3.7 LU did) and the report warns. "build_lu" or --build-lu, as for hits.
+BUILD_LEAD_S, BUILD_GAP_S = 8.0, 0.2
+# The stretch leading into a hit at t is [t - 8, t - 0.2]: its last 200 ms, where a breath or a drop before the hit
+# sits, is left out...
+BUILD_OPEN_S, BUILD_OPEN_FRAC = 8.0, 2.5
+# ...and the opening is [0, min(8, t / 2.5)]. From t = 13.3 s on the two don't overlap and each lasts 5.3 s or more;
+# an earlier hit, or a silent stretch (under BS.1770's -70 LUFS gate), gets no build check.
+PHONE_LOW_LU = 1.5
+# A build that stays under the bar through the phone high-pass while its full-range figure is 1.5 LU or more higher
+# is carried by the low end, which a phone doesn't play: the S3 Claude run built +5.7 LU at full range and +3.6 LU
+# through this high-pass, with 68% of the build's energy under 150 Hz (kick and bass).
+ONSET_SEARCH_S = 0.5  # a hit's attack is looked for within 0.5 s of its time
+ARRIVAL_AFTER_S, ARRIVAL_BEFORE_S = 0.05, 0.03
+# The hit's arrival is the step where the 50 ms after it gain the most K-weighted power over the 30 ms before: the
+# loudest arrival, so a quiet bass note out of a gap doesn't win over the kick on top of it...
+ARRIVAL_FAR_WEIGHT = 0.5
+# ...with each gain weighted down linearly from the asked time to half at 0.5 s from it: a beat before or after the
+# hit, about as loud as it (the drop's next beat), would otherwise win as often as not and read as the hit landing
+# 0.45 s off (unweighted, the 87 downbeats of a 132 BPM song asked as hits read as the next or previous beat in 64)...
+ATTACK_BACK_S, ATTACK_AFTER_S, ATTACK_BEFORE_S = 0.05, 0.01, 0.03
+# ...and its attack starts at the step, within the 50 ms up to that one, where the next 10 ms rise most in dB over the
+# 30 ms before: a rolled chord starts at its first note, not where it is fullest...
+LEAD_IN_DB = 40.0
+# ...counting what sits more than 40 dB under the arrival as silence, so a faint lead-in after digital silence (an
+# effect's first milliseconds of noise over a dead stop) doesn't read as the attack.
+SHARP_DB = 3.0
+# An arrival that rises under 3 dB (the 50 ms after against the 30 ms before) is a swell: no attack to time.
 DEAD_DBFS = -40.0
 # Under -40 dBFS sample peak, a video's audio reads as silence on most speakers: "dead tail" is the time at the end
 # that stays under it, "first sound" the first sample over it.
@@ -754,19 +788,67 @@ def limiter_gain(tp_env: np.ndarray, gain: float, ceiling_db: float) -> np.ndarr
 
 # ------------------------------------------------------------------------------------------------ measuring
 
-def hit_onset(x: np.ndarray, t: float) -> float | None:
-    """The largest 1 ms level jump within 0.5 s of t (mono sum, unweighted): where a hit actually starts."""
-    a, b = max(0, int((t - 0.5) * SR)), min(len(x), int((t + 0.5) * SR))
-    m = x[a:b].astype(np.float64).mean(axis=1)
-    nb = len(m) // BLK
-    if nb < 2:
+def hit_onset(k: KEnergy, t: float) -> tuple[float | None, float | None]:
+    """Where a hit's attack starts, and how far its arrival rises (dB): (None, rise) when that is under SHARP_DB, a
+    swell with nothing to time; (None, None) over silence. Read from the K-weighted power of both channels in 1 ms
+    blocks, summed over the channels and averaged over 10 ms or more, so neither stereo cancellation nor a low
+    note's zero crossings fake a jump: the level of single 1 ms blocks of the mono sum did, and put two hits that
+    start exactly on time at -155 and +271 ms."""
+    E, _ = k.cs("full")
+    nb = len(k.cnt)
+
+    def power(i0, i1):  # mean power of blocks [i0, i1) for arrays of block indices; silence outside the file
+        return (E[np.clip(i1, 0, nb)] - E[np.clip(i0, 0, nb)]) / ((i1 - i0) * BLK)
+
+    def ms(s: float) -> int:
+        return round(s * 1000)
+
+    s = np.arange(max(0, ms(t - ONSET_SEARCH_S)), min(nb, ms(t + ONSET_SEARCH_S)) + 1)
+    if not len(s):
+        return None, None
+    after, before = power(s, s + ms(ARRIVAL_AFTER_S)), power(s - ms(ARRIVAL_BEFORE_S), s)
+    near = 1 - (1 - ARRIVAL_FAR_WEIGHT) * np.abs(s / 1000 - t) / ONSET_SEARCH_S
+    i = int(np.argmax((after - before) * near))
+    if after[i] <= 0:
+        return None, None
+    rise = dbp(after[i]) - dbp(before[i])
+    if rise < SHARP_DB:
+        return None, rise
+    floor = max(after[i] * 10 ** (-LEAD_IN_DB / 10), 1e-15)
+    s = np.arange(max(0, s[i] - ms(ATTACK_BACK_S)), s[i] + 1)
+    d = (np.log10(np.maximum(power(s, s + ms(ATTACK_AFTER_S)), floor))
+         - np.log10(np.maximum(power(s - ms(ATTACK_BEFORE_S), s), floor)))
+    return int(s[int(np.argmax(d))]) / 1000, rise
+
+
+def build_check(k: KEnergy, t: float, bar: float) -> dict | None:
+    """The build into a hit at t: the loudness of [t - 8, t - 0.2] against the opening, [0, min(8, t / 2.5)], at full
+    range and through the phone high-pass. None when the two would overlap, either is empty or either is silent."""
+    o0, o1 = 0.0, min(BUILD_OPEN_S, t / BUILD_OPEN_FRAC)
+    l0, l1 = max(0.0, t - BUILD_LEAD_S), t - BUILD_GAP_S
+    if o1 > l0 or l1 <= l0 or l1 > k.dur:  # (a hit at 0 s leaves both empty)
         return None
-    e = np.sqrt((m[: nb * BLK].reshape(nb, BLK) ** 2).mean(axis=1))
-    d = np.diff(20 * np.log10(e + 1e-12))
-    return (a + (int(np.argmax(d)) + 1) * BLK) / SR
+    lv = {w: (k.lufs(o0, o1, w), k.lufs(l0, l1, w)) for w in ("full", "phone")}
+    if min(v for pair in lv.values() for v in pair) <= -70.0:
+        return None
+    rise, rise_p = r(lv["full"][1] - lv["full"][0]), r(lv["phone"][1] - lv["phone"][0])
+    flat = bar > 0 and rise < bar
+    low = bar > 0 and rise > 0 and rise_p < bar and r(rise - rise_p) >= PHONE_LOW_LU
+
+    def span(a, b):
+        return f"{round(a, 2):g}-{round(b, 2):g} s"
+
+    line = f"build into the hit at {t:.2f} s: {rise:+.1f} LU ({span(o0, o1)} to {span(l0, l1)}), phone {rise_p:+.1f} LU"
+    why = ([f"under {bar:g} LU, " + ("it reads as flat" if rise >= 0 else "the lead-in is quieter than the opening")]
+           if flat else []) + (["the build is carried by the low end and barely builds on a phone"] if low else [])
+    return {"opening_s": [round(o0, 3), round(o1, 3)], "lead_in_s": [round(l0, 3), round(l1, 3)],
+            "opening_lufs": r(lv["full"][0]), "lead_in_lufs": r(lv["full"][1]), "rise_lu": rise,
+            "opening_lufs_phone": r(lv["phone"][0]), "lead_in_lufs_phone": r(lv["phone"][1]), "rise_lu_phone": rise_p,
+            "reads_flat": flat, "low_end_only": low, "summary": line + (": " + "; ".join(why) if why else "")}
 
 
-def analyze(x: np.ndarray, sections: list[dict], hits: list[float], k: KEnergy | None = None):
+def analyze(x: np.ndarray, sections: list[dict], hits: list[float], k: KEnergy | None = None,
+            hit_lu: float = HIT_LU, build_lu: float = BUILD_LU):
     """Everything `measure` reports that is computed here (not by ffmpeg), plus the curves for the PNG."""
     k = k or KEnergy(x, phone=True)
     dur = len(x) / SR
@@ -792,21 +874,35 @@ def analyze(x: np.ndarray, sections: list[dict], hits: list[float], k: KEnergy |
         secs.append(row)
         prev = (full, s["name"])
     rep["sections"] = secs
-    hrows = []
+    hrows, warnings = [], []
     for t in hits:
         row = {"t": round(t, 3)}
-        on = hit_onset(x, t)
+        on, rise = hit_onset(k, t)
         if on is not None:
             row["onset_s"] = round(on, 3)
             row["onset_offset_ms"] = round((on - t) * 1000, 1)
+        row["onset_rise_db"] = r(rise)
         for which in ("full", "phone"):
             hl, ha = k.loudest(t - 0.01, t + HIT_AFTER_S, 0.4, which)
             bl, ba = k.loudest(max(0.0, t - HIT_BEFORE_S), t - 0.02, 0.4, which)
             row[which] = {"hit_lufs": r(hl), "hit_window_start": r(ha, 3), "before_lufs": r(bl),
                           "before_window_start": r(ba, 3),
                           "contrast_lu": r(hl - bl) if hl is not None and bl is not None else None}
+        f, p = row["full"]["contrast_lu"], row["phone"]["contrast_lu"]
+        if hit_lu > 0 and f is not None and p is not None and min(f, p) < hit_lu:
+            todo = ("make it land louder than what leads into it, or treat it as a cue (a soft resolve chord is a cue, "
+                    "not a hit)") if f < hit_lu else \
+                f"its weight is in the low end, which a phone doesn't play; give the hit more above {PHONE_HP_HZ} Hz"
+            row["contrast_warning"] = (f"hit contrast under {hit_lu:g} LU{'' if f < hit_lu else ' on a phone'} at "
+                                       f"{t:.2f} s: {f:+.1f} LU over the {HIT_BEFORE_S:g} s before it, phone "
+                                       f"{p:+.1f} LU: {todo}")
+            warnings.append(row["contrast_warning"])
+        row["build"] = build_check(k, t, build_lu)
+        if row["build"] and (row["build"]["reads_flat"] or row["build"]["low_end_only"]):
+            warnings.append(row["build"]["summary"])
         hrows.append(row)
     rep["hits"] = hrows
+    rep["warnings"] = warnings
     first = last = None
     for i0 in range(0, len(x), SR * 10):
         idx = np.flatnonzero(np.abs(x[i0:i0 + SR * 10]).max(axis=1) >= 10 ** (DEAD_DBFS / 20))
@@ -915,6 +1011,10 @@ def draw_png(path: Path, title: str, rep: dict, curves: dict, extra: dict | None
     if I is not None and I > SILENT:
         ax.axhline(I, color=C["muted"], lw=0.8, zorder=1)
         ax.text(dur, I, f" integrated {I:.1f}", fontsize=8, color=C["ink2"], va="center", ha="left")
+    ax.set_ylim(bottom, top)
+    ax.set_xlim(0, dur)  # (before the hit labels: their overlap is measured where they will be drawn)
+    renderer = fig.canvas.get_renderer()
+    placed = []  # the hit labels drawn so far, in pixels: a label that would touch one goes a row lower
     for h in rep.get("hits", []):
         t = h["t"]
         ax.axvline(t, color=C["ink"], lw=1.0, zorder=5)
@@ -923,14 +1023,18 @@ def draw_png(path: Path, title: str, rep: dict, curves: dict, extra: dict | None
         if p is not None:
             lab += f", phone {p:+.1f} LU"
         right = t > 0.7 * dur  # keep the label inside the plot
-        ax.text(t + (-0.006 if right else 0.006) * dur, 0.90, lab, transform=ax.get_xaxis_transform(), fontsize=8,
-                color=C["ink"], va="top", ha="right" if right else "left", zorder=7,
-                bbox=dict(boxstyle="square,pad=0.15", fc=C["surface"], ec="none", alpha=0.85))
+        txt = ax.text(t + (-0.006 if right else 0.006) * dur, 0.90, lab, transform=ax.get_xaxis_transform(),
+                      fontsize=8, color=C["ink"], va="top", ha="right" if right else "left", zorder=7,
+                      bbox=dict(boxstyle="square,pad=0.15", fc=C["surface"], ec="none", alpha=0.85))
+        for row in range(len(placed) + 1):
+            txt.set_y(0.90 - 0.07 * row)
+            box = txt.get_window_extent(renderer).padded(3)
+            if not any(box.overlaps(b) for b in placed):
+                break
+        placed.append(box)
     for t, lab in extra.get("marks", []):
         ax.plot([t], [bottom + 1.2], marker="v", ms=6, color=C["ink2"], ls="none", zorder=6)
         ax.text(t, bottom + 2.4, lab, fontsize=7, color=C["ink2"], ha="center", va="bottom")
-    ax.set_ylim(bottom, top)
-    ax.set_xlim(0, dur)
     ax.set_ylabel("LUFS (K-weighted)", fontsize=8, color=C["ink2"])
     ax.legend(loc="lower left", ncol=4, frameon=False, fontsize=8, labelcolor=C["ink2"],
               bbox_to_anchor=(0, 1.0, 1, 0.1), mode=None, borderaxespad=0.2)
@@ -1108,7 +1212,7 @@ def block_gaps(doc: dict | None, layer: str | None, shift: float) -> list[tuple[
 # ------------------------------------------------------------------------------------------------ the plan
 
 PLAN_KEYS = {"kind", "loudness", "true_peak", "max_limit_db", "duration", "fade_in", "fade_out", "voice", "music",
-             "effects", "hits", "note", "notes"}
+             "effects", "hits", "hit_lu", "build_lu", "note", "notes"}
 VOICE_KEYS = {"file", "at", "from", "dur", "gain_db", "note"}
 MUSIC_KEYS = {"file", "at", "from", "dur", "gain_db", "under_voice", "fade_in", "fade_out", "duck", "note"}
 DUCK_KEYS = {"depth_db", "attack", "hold", "release", "note"}
@@ -1142,7 +1246,10 @@ videos/<video>/ writes them the way video.json does ("audio/narration.wav"). Tim
     {"file": "audio/sfx/tick.wav", "downbeat": 8, "target_db": 2.5},
     {"file": "audio/sfx/bell.wav", "line": "see you", "gain_db": -12}
   ],
-  "hits": [20, "drop"]             moments to report hit contrast for (seconds or cue names)
+  "hits": [20, "drop"],            moments meant to land louder than the 4 s before them (seconds or cue names):
+                                   each gets its measured onset, its contrast and the build into it. A soft
+                                   resolve chord is a cue, not a hit.
+  "hit_lu": 3, "build_lu": 5       the contrast and build under which the report warns (0: no warning)
 }
 
 Each effect lands by one of: "at" (time), "cue" (data/audio.json "cues", else a section's start), "word" (a word,
@@ -1280,6 +1387,8 @@ def parse_plan(raw, base: Path) -> dict:
     if not isinstance(hits, list):
         raise usage('plan.hits must be a list of times or cue names, e.g. [20, "drop"]')
     plan["hits"] = hits
+    plan["hit_lu"] = num(raw, "hit_lu", "plan", HIT_LU, 0, 40)
+    plan["build_lu"] = num(raw, "build_lu", "plan", BUILD_LU, 0, 40)
     if not plan["voice"] and plan["music"] is None and not plan["effects"]:
         raise usage('the plan has no "voice", "music" or "effects": nothing to mix')
     return plan
@@ -1995,7 +2104,7 @@ def cmd_build(args) -> dict:
             if isinstance(s, dict) and isinstance(s.get("start"), (int, float)) and isinstance(s.get("end"), (int, float)):
                 sections.append({"name": str(s.get("name", "?")), "start": float(s["start"]) + data.shift_audio,
                                  "end": float(s["end"]) + data.shift_audio})
-    rep, curves, _ = analyze(mix_r, sections, [t for _, t in hit_times], k_mix)
+    rep, curves, _ = analyze(mix_r, sections, [t for _, t in hit_times], k_mix, plan["hit_lu"], plan["build_lu"])
     rep.update(meas)
     del mix_r
     km_r = KEnergy(mo_r, phone=False)
@@ -2121,7 +2230,7 @@ def cmd_build(args) -> dict:
         "measured": {k: rep.get(k) for k in ("integrated_lufs", "lra_lu", "true_peak_dbtp", "sample_peak_dbfs",
                                              "integrated_lufs_phone", "first_sound_s", "dead_tail_s",
                                              "quiet_intro_s", "last_2s_lufs")},
-        "balance": balance, "hits": rep["hits"], "sync": sync,
+        "balance": balance, "hits": rep["hits"], "warnings": rep["warnings"], "sync": sync,
         "stems_residual_dbfs": r(dbv(resid)),
         "outputs": {"mix.wav": sha256(mix_path), "music-only.wav": sha256(mo_path)},
         "notes": notes, "time_origin": TIME_ORIGIN,
@@ -2144,6 +2253,8 @@ def print_build(res: dict) -> None:
         png = ctx["out"] / "mix-report.png"
         print(f"  report: {relpath(png, root)}" if png.is_file() else
               f"  report: {relpath(png, root)} is gone (out/ is not kept): --force rebuilds it, or run measure on mix.wav")
+        for s in rec.get("warnings") or []:
+            print(f"  {s}")
         for s in rec.get("notes") or []:
             print(f"  note: {s}")
         for h in res.get("hints") or []:
@@ -2207,9 +2318,14 @@ def print_build(res: dict) -> None:
 
     for h in rec["hits"]:
         f, p = h["full"], h["phone"]
-        on = f", measured onset {h['onset_s']:.3f} s ({h['onset_offset_ms']:+.0f} ms)" if h.get("onset_s") is not None else ""
+        on = f", measured onset {h['onset_s']:.3f} s ({h['onset_offset_ms']:+.0f} ms)" if h.get("onset_s") is not None \
+            else ", no sharp attack" if h.get("onset_rise_db") is not None else ""
         print(f"  hit {h['t']:.3f} s{on}: {lu(f['contrast_lu'])} over the loudest 400 ms of the 4 s before (full "
               f"range), {lu(p['contrast_lu'])} through a 300 Hz high-pass (phone)")
+        if h.get("contrast_warning"):
+            print(f"    {h['contrast_warning']}")
+        if h.get("build"):
+            print(f"  {h['build']['summary']}")
     sy = rec.get("sync")
     if sy:
         if sy["flagged"]:
@@ -2296,7 +2412,10 @@ def cmd_measure(args) -> dict:
     for t in hits:
         if t > dur:
             raise usage(f"--hit {t:g}: past the end of the file ({dur:.3f} s)")
-    rep, curves, _ = analyze(x, sections, hits)
+    for flag, v in (("--hit-lu", args.hit_lu), ("--build-lu", args.build_lu)):
+        if not (math.isfinite(v) and 0 <= v <= 40):
+            raise usage(f"{flag} must be between 0 (no warning) and 40 LU, got {v:g}")
+    rep, curves, _ = analyze(x, sections, hits, hit_lu=args.hit_lu, build_lu=args.build_lu)
     rep = {"file": relpath(path, proj), **rep, **ebur128(path), "sections_from": ssrc}
     in_project_cache = mpl_cache(w)
     png = out_dir / f"loudness-{path.stem}.png"
@@ -2336,7 +2455,8 @@ def print_measure(rep: dict) -> None:
             ph = "silent" if s["lufs_phone"] is None or s["lufs_phone"] <= SILENT else f"{s['lufs_phone']:.1f}"
             print(f"    {s['name']:<12} {s['start']:8.2f}-{s['end']:<8.2f} {lu:>12}   phone {ph:>7}{rise}")
     for h in rep["hits"]:
-        on = f" (measured onset {h['onset_s']:.3f} s, {h['onset_offset_ms']:+.0f} ms)" if h.get("onset_s") is not None else ""
+        on = f" (measured onset {h['onset_s']:.3f} s, {h['onset_offset_ms']:+.0f} ms)" if h.get("onset_s") is not None \
+            else " (no sharp attack)" if h.get("onset_rise_db") is not None else ""
         print(f"  hit {h['t']:.3f} s{on}: loudest 400 ms from the hit vs the loudest 400 ms of the {HIT_BEFORE_S:g} s before")
         for label, k in (("full range", "full"), ("300 Hz high-pass (phone)", "phone")):
             v = h[k]
@@ -2345,14 +2465,20 @@ def print_measure(rep: dict) -> None:
                 continue
             print(f"    {label:<25} {v['contrast_lu']:+.1f} LU   (hit {v['hit_lufs']:.1f} @ {v['hit_window_start']:.2f} s, "
                   f"before {v['before_lufs']:.1f} @ {v['before_window_start']:.2f} s)")
+        if h.get("contrast_warning"):
+            print(f"    {h['contrast_warning']}")
+        if h.get("build"):
+            print(f"  {h['build']['summary']}")
     fs = rep.get("first_sound_s")
     qi = rep.get("quiet_intro_s")
     print(f"  start: first sound over {DEAD_DBFS:.0f} dBFS at {fs:.3f} s" if fs is not None else "  start: silent",
           end="")
     print(f"; within {QUIET_INTRO_LU:.0f} LU of the integrated from {qi:.2f} s" if qi is not None else "")
     if rep.get("last_2s_lufs") is not None:
+        under = rep.get("last_2s_under_integrated_lu")  # (None for a silent file)
         print(f"  end: under {DEAD_DBFS:.0f} dBFS for the last {rep['dead_tail_s']:.2f} s; the last 2 s at "
-              f"{rep['last_2s_lufs']:.1f} LUFS ({rep['last_2s_under_integrated_lu']:.1f} LU under the integrated)")
+              f"{rep['last_2s_lufs']:.1f} LUFS"
+              + (f" ({under:.1f} LU under the integrated)" if under is not None else ""))
     for s in rep.get("notes", []):
         print(f"  note: {s}")
     print(f"  wrote: {rep['png']}, {rep['json']}")
@@ -2386,10 +2512,16 @@ examples:
 list: "name:start,..." (each section ends where the next starts) or "name:start-end,..." (explicit spans, gaps
 allowed). Inside videos/<video>/, the video's data/audio.json is used by default.
 
-Hit contrast: the loudest 400 ms window inside [hit - 10 ms, hit + 0.6 s] against the loudest inside the 4 s
-before, K-weighted, at full range and through a 4th-order 300 Hz high-pass (a phone speaker). Section loudness is
-ungated (each span as one window); "rise" is each section against the one before. Writes
-out/<video>/loudness-<file>.png and .json (outside a project: ./out/ or --out)."""
+A hit is a moment meant to land louder than the 4 s before it (a soft resolve chord is a cue, not a hit). Its
+contrast: the loudest 400 ms window inside [hit - 10 ms, hit + 0.6 s] against the loudest inside the 4 s before,
+K-weighted, at full range and through a 4th-order 300 Hz high-pass (a phone speaker). The build into a hit at t:
+the loudness of [t - 8 s, t - 0.2 s] against the opening, [0, min(8 s, t / 2.5)], the same two ways (no build for
+a hit before 13.3 s). The report warns under 3 LU of contrast or 5 LU of build (--hit-lu and --build-lu set other
+bars, 0 none): reports, not gates. The measured onset is where the hit's attack starts: the loudest arrival within
+0.5 s, weighted toward the hit's time (both channels' K-weighted power, 50 ms after against 30 ms before), traced
+back to where it rises fastest; a swell (under 3 dB) has none. Section loudness is ungated (each span as one
+window); "rise" is each section against the one before. Writes out/<video>/loudness-<file>.png and .json (outside
+a project: ./out/ or --out)."""
 
 
 TOP_EPILOG = """\
@@ -2435,7 +2567,12 @@ def main(argv=None) -> int:
                        epilog=MEASURE_EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
     m.add_argument("audio", help="any audio file ffmpeg can decode")
     m.add_argument("--sections", metavar="SPEC", help='data/audio.json, or "name:start,..." / "name:start-end,..."')
-    m.add_argument("--hit", metavar="T", action="append", help="a hit time (s or m:ss) or cue name; repeatable")
+    m.add_argument("--hit", metavar="T", action="append", help="a moment meant to land louder than the 4 s before it: "
+                                                              "a time (s or m:ss) or cue name; repeatable")
+    m.add_argument("--hit-lu", metavar="LU", type=float, default=HIT_LU,
+                   help=f"warn when a hit's contrast is under this (default {HIT_LU:g}; 0: never)")
+    m.add_argument("--build-lu", metavar="LU", type=float, default=BUILD_LU,
+                   help=f"warn when the build into a hit is under this (default {BUILD_LU:g}; 0: never)")
     m.add_argument("--video", metavar="NAME", help="the video whose out/NAME/ and data/audio.json to use (a file "
                                                    "inside videos/NAME/ names it by itself)")
     m.add_argument("--out", metavar="DIR", help="without a project: the folder whose out/ gets the PNG and JSON "
@@ -2466,8 +2603,8 @@ def main(argv=None) -> int:
                                 "png": relpath(res["png"], res["ctx"]["project"]),
                                 "report": relpath(res["json"], res["ctx"]["project"])})
                 out["hints"] = res.get("hints") or []
-                out.update({k: res["record"].get(k) for k in ("measured", "balance", "hits", "sync", "notes",
-                                                              "changed_since_previous", "resolved")})
+                out.update({k: res["record"].get(k) for k in ("measured", "balance", "hits", "warnings", "sync",
+                                                              "notes", "changed_since_previous", "resolved")})
                 print(json.dumps(clean(out), indent=1, ensure_ascii=False))
             else:
                 print_build(res)

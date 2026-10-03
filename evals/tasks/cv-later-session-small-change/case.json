@@ -2,7 +2,9 @@
   "id": "cv-later-session-small-change",
   "skill": "code-video",
   "setup": {
-    "from": "$EVAL_PROJECT"
+    "from": "$EVAL_PROJECT",
+    "project": "init",
+    "decoy": 5173
   },
   "timeoutMinutes": 30,
   "turns": [
@@ -11,10 +13,10 @@
     }
   ],
   "assertions": [
-    "The session reads the project conventions (AGENTS.md or docs/ENGINE.md) before editing.",
-    "Only the video's own files change (scene, timeline, TREATMENT.md); src/ and other videos are unchanged (git diff).",
-    "The reply contains a preview link with ?v=<name>&t= at the changed moment.",
-    "render.ts verify passes after the change (run it).",
+    "Before replying, the session itself ran `bun run check` and `render.ts verify`, and the scene keeps its timing source (beat grid or timing data), with no typed seconds.",
+    "Only files under videos/<video>/ change; src/, scripts/ and other videos are unchanged (git diff); docs/STYLE.md may change only to correct what the change made wrong.",
+    "The reply links this project's running preview, <address>/?v=<video>&t=<s>, where <address>/__audara returned this work folder during the run (result.json previews, or the transcript shows the agent checked it), with t inside the changed span or up to about 0.5 s before it.",
+    "The change answers the note: on stills, the title takes longer from its first visible change to fully in, or the reply names the reading it took and offers the other.",
     "No full MP4 render is made unless asked."
   ]
 }

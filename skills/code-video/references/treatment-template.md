@@ -1,11 +1,12 @@
 # Treatment template
 
 A treatment is one video's plan: `videos/<video>/TREATMENT.md`, written before any scene exists. Show it to
-the director in the reply that asks for approval, and build once they say yes; scene authors, the critic
+the director in the reply that asks for approval (with `out/<video>/window.png` and the click track
+`out/<video>/clicks.m4a` when there is a song), and build once they say yes; scene authors, the critic
 and later sessions all work from it. The look every video in the project shares is in `docs/STYLE.md`
 (`references/style-template.md`), so a treatment says only what this video adds or changes.
 
-Everything here is a default. Drop what the piece doesn't need, add what it does, and when you depart from
+Everything here is a default, except the stop for approval (SKILL.md, Fixed). Drop what the piece doesn't need, add what it does, and when you depart from
 a default that matters (a cut off the beat, a long hold, another format), say why in a line. `references/…`
 and `<skill>/…` are this skill's files; every other path is in the project, where commands run.
 
@@ -20,8 +21,9 @@ The treatment grows with the piece, not with this template:
 - **A loop, a sting or a title card (up to ~15 s): a few lines.** The idea in a sentence or two, the
   format, a timed line per moment, the look in a line, what you assumed. A loop also says how it closes:
   its last frame leads back into its first.
-- **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound, a row per
-  moment, the moments that must land, and "never claim" when it states facts.
+- **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
+  window with its start and end times), a row per moment with its time, what's seen and its transition
+  out (a hard cut says so), the moments that must land, and "never claim" when it states facts.
 - **A music video, a long explainer, or anything several scene authors make at once: the whole
   skeleton,** with scene briefs.
 
@@ -45,7 +47,8 @@ Anything you decide that the director didn't say (text they didn't give, their n
 capitals, the format, the window) goes in the **Assumed** line, where it can be vetoed before it's built.
 The reply ends there, with the draft, the questions and their defaults, and nothing built: one answer
 approves it all. Go ahead without that answer only when the director said not to wait ("just build it"),
-and then list in the reply the defaults you went with.
+and then list in the reply the defaults you went with. Asking for a video is not saying that, and neither
+is a session that runs with nobody watching: ending the turn is how you wait.
 
 ## The skeleton
 
@@ -114,10 +117,11 @@ folder, beside this one):
 uv run <soundtrack>/scripts/beats.py window --video <video> --from <start> --to <end> [--fade <seconds>]
 ```
 
-It checks the window on the music before it cuts: it reports the bars and sections it holds, and warns,
-with the fix, about an end off the downbeats (`--snap` moves both to the nearest) and a word, held note or
-line that an end cuts (naming the nearest ends where nothing is sung). It writes `audio/<song>-window.wav` and the
-window's `data/audio.json` and `data/words.json` in video time (bar 1 is the window's first downbeat),
+It checks the window on the music before it cuts: it reports the bars and sections it holds; moves an
+end off the downbeats to the nearest one (`--exact` keeps it where you put it), so tell the director the
+length it prints; and warns, with the fix, about a word, held note or line that an end cuts (naming the
+nearest ends where nothing is sung, and, without lyrics, a voice it hears across an end). It writes
+`audio/<song>-window.wav` and the window's `data/audio.json` and `data/words.json` in video time (bar 1 is the window's first downbeat),
 keeps the whole song's data in `data/song/`, so another window is the same command with other times, and
 draws both cuts in `out/<video>/window.png`. Then make the `video.json` edit it prints, `"audio":
 "audio/<song>-window.wav"` with no `duration` (init writes it that way for a video set up after its

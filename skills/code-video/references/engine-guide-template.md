@@ -11,14 +11,19 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
 
 ## Running things
 
-- **Preview** (the dev server is probably already running): `bunx vite`, then the address it prints with
-  `?v=<video>&t=23.0`: `http://127.0.0.1:5173/?v=<video>&t=23.0` unless 5173 was taken, when it moves to
-  the next free port. It serves on 127.0.0.1 only, so use that address: `localhost` may reach another app
-  on the same port. `?v=` picks the video (default: the only one, else the first that isn't `example`);
-  `?t=` starts at that time. Keys: space play/pause, ←/→ ±1 s (shift ±5 s),
-  `,`/`.` ±1 frame, `[`/`]` previous/next timeline entry, `l` loop the current entry, `h` hide the UI,
-  `c` copy a link to this moment. While paused or seeking, the address bar's `?t=` follows the playhead,
-  so it is always a link to what is on screen. A project with several videos shows a picker.
+- **Preview**: a dev server may be running already, and it is this project's only if
+  `bun scripts/render.ts link` finds it: 5173, Vite's default port, often serves another app or another
+  project's preview. `bun scripts/render.ts link --video <video> --t 23.5` prints the link to give,
+  `http://127.0.0.1:5173/?v=<video>&t=23.5` (another port when 5173 was taken; no `&t=` without `--t`),
+  from the server that serves this folder. It starts nothing: when no server of this project answers, it
+  says what holds those ports and exits 1; then start `bunx vite` in the background (it takes the next
+  free port) and run link again once it is up. The server listens on 127.0.0.1 only, so the link uses
+  that address: `localhost` may reach another app on the same port. `?v=` picks the video (default: the
+  only one, else the first that isn't `example`); `?t=` starts at that time. Keys: space play/pause,
+  ←/→ ±1 s (shift ±5 s), `,`/`.` ±1 frame, `[`/`]` previous/next timeline entry, `l` loop the current
+  entry, `h` hide the UI, `c` copy a link to this moment. While paused or seeking, the address bar's `?t=`
+  follows the playhead, so it is always a link to what is on screen. A project with several videos shows
+  a picker.
 - **Saving files while it plays:** a scene, or a helper a scene imports, swaps in place and the rest
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),

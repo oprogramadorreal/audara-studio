@@ -34,7 +34,12 @@
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
 //   gpu:     bun scripts/render.ts gpu   (the GPU Chrome renders with)
-// Every mode:
+//   link:    bun scripts/render.ts link [--video <video>] [--t <seconds>]   (the live preview's link, to give the
+//            director: http://127.0.0.1:<port>/?v=<video>&t=<seconds>, no &t= without --t. <port> is the first of
+//            5173-5199, where `bunx vite` serves, whose dev server serves this folder: 5173 is Vite's default, so
+//            another app or another project's preview may hold it. Starts no server and no browser. Exit code 1
+//            when none serves this project: start `bunx vite` in the background, then run link again)
+// Every mode (link takes only --video):
 //   --video <video> which video (default: the only one, else the first that isn't `example`, else `example`)
 //   --only a,b      load only these timeline entries (the others render black)
 //   --scale N       N x the video's size (--scale 2: 3840x2160 for a 1920x1080 video): stills, posters and
@@ -51,12 +56,14 @@
 //                   server never reloads: a file saved by anyone mid-run can't break the run)
 //   --headed        show the browser
 // Output goes under out/<video>/ unless --out says otherwise.
-import { chromium, type Browser, type Page } from 'playwright-core';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+// (playwright-core itself is loaded by launch(), when a browser is needed: link needs none, and starts in less
+// than half the time without it)
+import type { Browser, Page } from 'playwright-core';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 const argv = process.argv.slice(2);
-const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu'];
+const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu', 'link'];
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'stills';
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const flag = (k: string) => argv.includes(`--${k}`);
@@ -93,10 +100,15 @@ function listVideos() {
     .map((d) => d.name)
     .sort();
 }
+/**
+ * A project file's text, without the byte-order mark Windows PowerShell 5.1 puts at the start of every file
+ * it writes as UTF-8 (Set-Content -Encoding utf8), which JSON.parse refuses.
+ */
+const projectText = (rel: string) => readFileSync(path.join(PROJECT, rel), 'utf8').replace(/^\uFEFF/, '');
 /** A video.json that isn't JSON stops here, by name (the page would only fail to boot). */
 function checkVideoJson(name: string) {
   const f = `videos/${name}/video.json`;
-  try { JSON.parse(readFileSync(path.join(PROJECT, f), 'utf8')); }
+  try { JSON.parse(projectText(f)); }
   catch (e) { fail(`${f} is not valid JSON: ${(e as Error).message}`); }
 }
 /** The preview's rule (src/video.ts): the only video, else the first that isn't `example`, else `example`. */
@@ -149,13 +161,25 @@ const samePath = (a: string, b: string) => {
   return process.platform === 'win32' ? n(a).toLowerCase() === n(b).toLowerCase() : n(a) === n(b);
 };
 
+/**
+ * What a server says at GET /__audara: the folder it serves, from a dev server of a project like this one
+ * (vite.config.ts); 'another app' from anything else; 'no answer' when something took the connection but said
+ * nothing in time; null when nothing listens there.
+ */
+type Answer = { root: string } | 'another app' | 'no answer' | null;
+/** Asks the server at `url`, waiting `ms` at most. */
+async function askServer(url: string, ms: number): Promise<Answer> {
+  try {
+    const r = await fetch(`${url}/__audara`, { signal: AbortSignal.timeout(ms) });
+    const j = r.ok && (r.headers.get('content-type') ?? '').includes('json') ? ((await r.json().catch(() => null)) as { root?: unknown } | null) : null;
+    return typeof j?.root === 'string' ? { root: j.root } : 'another app';
+  } catch (e) { return (e as Error)?.name === 'TimeoutError' ? 'no answer' : null; }
+}
+
 /** true: a dev server of this project; false: a server of something else; null: nothing there. */
 async function servesThisProject(url: string): Promise<boolean | null> {
-  try {
-    const r = await fetch(`${url}/__audara`, { signal: AbortSignal.timeout(1500) });
-    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return false;
-    return samePath(((await r.json()) as { root: string }).root, PROJECT);
-  } catch { return null; }
+  const a = await askServer(url, 1500);
+  return a && typeof a === 'object' ? samePath(a.root, PROJECT) : a === 'another app' ? false : null;
 }
 
 /**
@@ -199,8 +223,52 @@ async function ensureServer(): Promise<Server> {
   return { url: url!, stop: () => { void server.close(); }, deps: () => server.environments.client.depsOptimizer?.metadata.browserHash };
 }
 
+/**
+ * Where `bunx vite` serves the live preview: on 127.0.0.1 alone (vite.config.ts binds it there, so `localhost`
+ * may reach another app on the same port), at 5173 or, when that is taken, the next free port.
+ */
+const PREVIEW_HOST = '127.0.0.1', PREVIEW_PORTS = Array.from({ length: 27 }, (_, i) => 5173 + i);
+
+/**
+ * link: the address of this project's live preview, at --t when given. Every port is asked at once, each with
+ * a short timeout (one where nothing listens refuses at once); the lowest that serves this folder wins. When
+ * none does, exit code 1, with what holds those ports instead.
+ */
+async function link(video: string) {
+  const t = opt('t') === undefined ? null : timesOf('t', opt('t')!);
+  if (t && (t.length !== 1 || t[0]! < 0)) fail(`--t ${opt('t')}: a link starts at one time, in seconds from 0`);
+  const asked = PREVIEW_PORTS.map((port) => askServer(`http://${PREVIEW_HOST}:${port}`, 500));
+  for (const [i, a] of asked.entries()) {
+    const r = await a;
+    if (!r || typeof r !== 'object' || !samePath(r.root, PROJECT)) continue;
+    // (t as the preview writes it into its own links)
+    const q = new URLSearchParams({ v: video, ...(t ? { t: String(+t[0]!.toFixed(3)) } : {}) });
+    console.log(`http://${PREVIEW_HOST}:${PREVIEW_PORTS[i]}/?${q}`);
+    return;
+  }
+  const said = await Promise.all(asked);
+  /** The ports whose answer `is` picks, in a few words ('5175 and 5176 are ...'), or nothing. */
+  const held = (is: (a: Answer) => boolean, one: string, many: string) => {
+    const ps = PREVIEW_PORTS.filter((_, i) => is(said[i]!));
+    return !ps.length ? [] : [ps.length > 1 ? `${ps.slice(0, -1).join(', ')} and ${ps.at(-1)} ${many}` : `${ps[0]} ${one}`];
+  };
+  // (this folder through another path: a server started in it by its 8.3 short name (JOHNSM~1, common in
+  // %TEMP%) answers with that name, and refuses every page there: Vite's 403)
+  const here = (a: Answer) => { try { return !!a && typeof a === 'object' && samePath(realpathSync.native(a.root), PROJECT); } catch { return false; } };
+  const restart = (it: string) => `(such as its 8.3 short name, under which Vite refuses every page): stop ${it} and start \`bunx vite\` in ${PROJECT}`;
+  const what = [
+    ...held((a) => a === 'another app', 'serves another app', 'serve other apps'),
+    ...held((a) => !!a && typeof a === 'object' && !here(a), "is another project's preview", "are other projects' previews"),
+    ...held((a) => a === 'no answer', 'took the connection but did not answer', 'took the connection but did not answer'),
+    ...held(here, `serves this folder through another path ${restart('it')}`, `serve this folder through other paths ${restart('them')}`),
+  ];
+  fail('no preview of this project is running: start `bunx vite` in the background (it takes the next free port), then run this again once it is up\n'
+    + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_HOST}, ports ${PREVIEW_PORTS[0]}-${PREVIEW_PORTS.at(-1)}.`}`);
+}
+
 // ------------------------------------------------------------------ browser
 async function launch(): Promise<Browser> {
+  const { chromium } = await import('playwright-core');
   const args = ['--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'];
   const exe = process.env.CHROME_PATH;
   try {
@@ -613,17 +681,17 @@ async function verifyInPage(page: Page) {
 
 /** A project file as JSON, or null when it is missing or isn't JSON. */
 function readJson(rel: string): any {
-  try { return JSON.parse(readFileSync(path.join(PROJECT, rel), 'utf8')); } catch { return null; }
+  try { return JSON.parse(projectText(rel)); } catch { return null; }
 }
 /** The record the soundtrack skill's beats.py window writes into a window's audio.json and words.json. */
-interface WindowRecord { song: string; from: number; to: number; file: string; fade?: number | null; name?: string }
+interface WindowRecord { song: string; from: number; to: number; file: string; fade?: number | null; name?: string; exact?: boolean }
 const windowOf = (doc: any): WindowRecord | null => {
   const w = doc?.window;
   return w && typeof w === 'object' && typeof w.file === 'string' && Number.isFinite(w.from) && Number.isFinite(w.to) ? w : null;
 };
 /** The command that cuts the window again, from the whole song's data the soundtrack skill keeps in data/song/. */
 const recut = (video: string, w: WindowRecord) =>
-  `the soundtrack skill's beats.py window --video ${video} --from ${w.from} --to ${w.to}${w.fade ? ` --fade ${w.fade}` : ''}${w.name ? ` --name ${w.name}` : ''}`;
+  `the soundtrack skill's beats.py window --video ${video} --from ${w.from} --to ${w.to}${w.fade ? ` --fade ${w.fade}` : ''}${w.name ? ` --name ${w.name}` : ''}${w.exact ? ' --exact' : ''}`;
 
 /**
  * The timing data (data/audio.json, data/words.json) against what the video plays. A window of a song is in the
@@ -789,6 +857,7 @@ async function main() {
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
+  if (mode === 'link') return link(name!);
   const OUT = path.join(PROJECT, 'out', name!);
   console.log(`video: ${name}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
 

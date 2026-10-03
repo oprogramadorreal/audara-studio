@@ -16,8 +16,9 @@
            CPU (its model stages run in beats_models.py's own environment). When the tempo is steady
            the file gets a least-squares grid extrapolated over the whole song (the detections stay in
            beatsRaw); when it is not, the detected beats plus a tempo map. The phase is moved onto the
-           measured attacks. Sections come from audio novelty, snapped to downbeats (repeated lyric
-           lines in words.json mark choruses), or from --sections, kept exactly where given.
+           measured attacks. Sections come from audio novelty (the first starts at 0 s, every later
+           one on a downbeat; repeated lyric lines in words.json mark choruses), or from --sections,
+           kept exactly where given.
            Envelopes and kick onsets come from the mix; --stems adds Demucs stems: vocal/drums/bass/
            other, snare, hat and vocal onsets, and pitchMidi. --tracker librosa analyzes without any
            model download.
@@ -25,8 +26,9 @@
            composed cue): beats, bars, sections and named cues, no analysis; with --audio, the grid
            and the cues are compared with the audio's attacks.
   check    Validate an audio.json the way the engine reads it (and against its audio).
-  window   A part of the song as the video's own soundtrack, for a video shorter than its song: checks
-           it on the music (downbeats, whole bars, what is sung at each end), cuts it to the sample as
+  window   A part of the song as the video's own soundtrack, for a video shorter than its song: moves
+           an end that misses the downbeats onto the nearest one (--exact keeps it) and checks the
+           window on the music (whole bars, what is sung at each end), cuts it to the sample as
            audio/<stem>-window.wav and writes its audio.json and words.json in video time from the
            whole song's, which stay in data/song/ for the next window (the song is analyzed there
            first when it has no analysis yet).
@@ -37,12 +39,14 @@ out/<video>/. An audio file anywhere inside videos/<video>/ (audio/music/take.mp
 video by itself. Without a project: --out DIR (default: the current folder) gets DIR/data/audio.json
 and DIR/out/. Inside a project, analyze, grid and window need their video, so no data/ lands at the
 project's root.
-Caches, model weights, stems and decoded audio go to the user cache (env AUDARA_CACHE, else the OS
-user cache folder + /audara), never into the project. audio.json records what made it (model,
-checkpoint, license), never paths, timings or versions of the machine that ran it.
+Caches, model weights, stems, numba's compiled code and decoded audio go to the user cache (env
+AUDARA_CACHE, else the OS user cache folder + /audara), never into the project (a cache that has to
+sit inside it ignores itself in git). audio.json records what made it (model, checkpoint, license),
+never paths, timings or versions of the machine that ran it.
 
-Time origin: t = 0 is the first sample of ffmpeg's gapless decode, which is what Chrome's
-decodeAudioData plays.
+Time origin: t = 0 is the first sample of ffmpeg's gapless decode (the encoder delay removed),
+which is what browsers play. The times are never shifted: a player that keeps the encoder delay
+gets a WAV of that decode instead.
 
 Exit codes: 0 ok, 1 error (decode, model or validation failure, or check finding errors), 2 bad
 usage. beats.py never calls a paid API, so 3 (missing API key) and 4 (needs confirmation to spend)
@@ -65,7 +69,45 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import numpy as np
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py and
+# beats_models.py: change both together.
+DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
+#                torch's: 91)
+
+
+def long_paths_on() -> bool:
+    """Windows reads paths over 260 characters only when long paths are enabled (an admin setting)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as k:
+            return winreg.QueryValueEx(k, "LongPathsEnabled")[0] == 1
+    except (ImportError, OSError):
+        return False
+
+
+def verbatim(p: str) -> str:
+    """`p` written the long way (\\\\?\\C:\\... or \\\\?\\UNC\\server\\...), which Windows reads past 260 characters."""
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
+def long_path_imports() -> None:
+    """uv's environment for a script can lie deep in a project (UV_CACHE_DIR=<project>/.audara-cache/uv, for a
+    sandbox): its module files then pass 260 characters, and Python cannot import them (an eval run: torch.fx's
+    dispatcher at 261). Import from the same folders written the long way."""
+    if sys.platform != "win32" or long_paths_on():
+        return
+    for i, p in enumerate(sys.path):
+        if p and len(os.path.abspath(p)) + DEEPEST > 259 and os.path.isdir(verbatim(p)):
+            sys.path[i] = verbatim(p)
+
+
+long_path_imports()
+
+import numpy as np  # noqa: E402 (after the import paths are set)
 
 # ---------------------------------------------------------------------------------------------
 # Constants (each with the reason for its value)
@@ -124,9 +166,6 @@ GRID_CHECK_MS = 0.020  # a median offset over 20 ms (over one 60 fps frame) mean
 GRID_TEMPO_TOL = 0.03  # the onset-periodicity tempo is coarse (97.5 BPM read on a 96 BPM cue: 1.6%); 3% apart
 #                        means another tempo (90 declared for 96 reads 8.3%, 112 for 120 reads 7.3%)
 AUDIO_EXT = (".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".aif", ".aiff", ".mp4", ".webm")
-
-TIME_NOTE = ("Time: t = 0 is the first sample of ffmpeg's gapless decode of {file} (encoder delay "
-             "removed), which is what Chrome's decodeAudioData plays; no offset is needed.")
 
 
 USAGE = 2  # the exit code for bad usage (the code shared with the other scripts raises it)
@@ -355,8 +394,11 @@ def find_input(p: str, w: Where, sub: str, what: str) -> Path:
     raise Fail(2, f"{what} not found: {p}{extra}")
 
 
-# The cache. user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
+# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
 # three together.
+
+CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
+              "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
 
 
 def user_cache() -> Path:
@@ -375,29 +417,46 @@ def user_cache() -> Path:
 
 def cache_root(w: Where) -> tuple[Path, bool]:
     """The user cache, created; (folder, inside the project). When a sandbox forbids writing there,
-    one self-ignoring .audara-cache/ in the project (or the --out folder) instead."""
+    one self-ignoring .audara-cache/ in the project (or the --out folder) instead. An AUDARA_CACHE set
+    inside the project (or the folder worked in) ignores itself the same way."""
     root = user_cache()
     try:
         root.mkdir(parents=True, exist_ok=True)
         probe = root / f".write-test-{os.getpid()}"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink()
-        return root, False
     except OSError as e:
         fb = w.base / ".audara-cache"
         fb.mkdir(parents=True, exist_ok=True)
         (fb / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # the folder ignores itself in git
         note(f"cache: {root} is not writable here ({e.strerror or e}); using {fb} instead (git-ignored)")
         return fb, True
+    r = root.resolve()
+    base = next((d for d in (w.base.resolve(), Path.cwd().resolve()) if d in r.parents), None)
+    if not os.environ.get("AUDARA_CACHE", "").strip() or base is None:
+        return root, False
+    if not (root / ".gitignore").exists():
+        other = [e.name for e in root.iterdir() if e.name not in CACHE_DIRS and not e.name.startswith(".write-test-")]
+        if other:  # (a folder of the project's own: its files must stay visible to git)
+            note(f"cache: AUDARA_CACHE ({root}) lies inside {base} and holds other files ({', '.join(other[:3])}), so "
+                 f"it is not git-ignored: point AUDARA_CACHE at a folder of its own")
+            return root, False
+        (root / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # as the fallback's
+        note(f"cache: AUDARA_CACHE ({root}) lies inside {base}: it ignores itself in git (a '*' .gitignore there)")
+    return root, True
 
 
 def use_cache(root: Path) -> None:
-    """Point the model downloads (torch hub, Hugging Face) at the audara cache. numba's JIT cache
-    stays in uv's environment, which is user-level already (and short paths: Windows caps a path at
-    260 characters)."""
+    """Point the model downloads (torch hub, Hugging Face) and numba's JIT cache at the audara cache.
+    numba's own default is beside each module in uv's environment, which can lie deep in a project
+    (UV_CACHE_DIR inside it, for a sandbox): an eval run failed there writing a 263-character path, so
+    on Windows its folder is written the long way. A NUMBA_CACHE_DIR set by hand stays."""
     os.environ["TORCH_HOME"] = str(root / "torch")
     os.environ["HF_HOME"] = str(root / "hf")  # the layout align.py uses: one htdemucs download serves both
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    if not os.environ.get("NUMBA_CACHE_DIR"):  # (read when numba is first imported, after this)
+        nb = str((root / "numba").resolve())
+        os.environ["NUMBA_CACHE_DIR"] = verbatim(nb) if sys.platform == "win32" else nb
 
 
 def folder_bytes(p: Path) -> int:
@@ -441,6 +500,35 @@ def decode(path: Path) -> tuple[np.ndarray, int]:
     return y[: len(y) // ch * ch].reshape(-1, ch).copy(), sr
 
 
+def priming(path: Path) -> float:
+    """The encoder delay the gapless decode drops (s): the priming samples its first packet says to skip (an MP3's
+    LAME header, AAC's edit list, Opus' pre-skip); 0 for PCM. A player that keeps them plays everything that late."""
+    r = subprocess.run([tool("ffprobe"), "-v", "error", "-select_streams", "a:0", "-read_intervals", "%+#1",
+                        "-show_packets", "-show_entries", "stream=sample_rate:packet_side_data=skip_samples", "-of",
+                        "json", str(path)], capture_output=True, text=True)
+    try:
+        j = json.loads(r.stdout)
+        sr = int(j["streams"][0]["sample_rate"])
+        skip = sum(int(s.get("skip_samples") or 0) for p in j.get("packets", [])[:1]
+                   for s in p.get("side_data_list", []))
+    except (ValueError, KeyError, IndexError, TypeError):
+        return 0.0
+    return skip / sr
+
+
+def time_note(name: str, delay: float) -> str:
+    """The time origin, for notes and the summary: these times are the gapless decode's, never shifted; for a player
+    that keeps the encoder delay, a WAV of that decode (a shift would only be right for that player)."""
+    if delay <= 0:
+        return (f"Time: t = 0 is the first sample of {name}, as browsers and ffmpeg play it: never shift these times; "
+                f"no offset is needed.")
+    q = (lambda s: s if re.fullmatch(r"[\w.,+=@-]+", s) else f'"{s}"')  # (quoted unless a shell reads it as one word)
+    return (f"Time: t = 0 is the first sample of ffmpeg's gapless decode of {name} (its {delay * 1000:.1f} ms encoder "
+            f"delay removed), which is what browsers and ffmpeg play: never shift these times. A player that keeps the "
+            f"encoder delay plays every sound {delay * 1000:.1f} ms after them: give it a WAV of this decode instead "
+            f"(ffmpeg -i {q(name)} {q(Path(name).stem + '.wav')}).")
+
+
 @dataclass
 class Audio:
     path: Path
@@ -451,6 +539,7 @@ class Audio:
     multi44: np.ndarray  # samples x channels at 44.1 kHz
     mono44: np.ndarray
     mono22: np.ndarray
+    delay: float = 0.0  # the encoder delay the decode dropped (s)
 
 
 def load_audio(path: Path) -> Audio:
@@ -461,7 +550,7 @@ def load_audio(path: Path) -> Audio:
     multi = soxr.resample(y, sr0, SR).astype(np.float32) if sr0 != SR else y
     mono44 = multi.mean(axis=1).astype(np.float32)
     mono22 = soxr.resample(mono44, SR, SR_LOW).astype(np.float32)
-    return Audio(path, sha256(path), duration, sr0, y.shape[1], multi, mono44, mono22)
+    return Audio(path, sha256(path), duration, sr0, y.shape[1], multi, mono44, mono22, priming(path))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -472,6 +561,20 @@ def work_dir(root: Path, a: Audio) -> Path:
     d = root / "work" / a.sha[:12]
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def deep_uv(uv: str) -> str | None:
+    """uv's cache when the model stage's files in it (its environment, then torch's own folders) can pass the 260
+    characters Windows allows while long paths are off; else None."""
+    if sys.platform != "win32" or long_paths_on():
+        return None
+    d = os.environ.get("UV_CACHE_DIR") or subprocess.run([uv, "cache", "dir"], capture_output=True,
+                                                         text=True).stdout.strip()
+    if not d:
+        return None
+    d = os.path.abspath(d)
+    return d if len(d) + len("\\environments-v2\\beats-models-0123456789abcdef\\Lib\\site-packages\\") + DEEPEST > 259 \
+        else None
 
 
 def run_models(a: Audio, root: Path, checkpoint: str | None, stems: bool) -> dict:
@@ -508,8 +611,14 @@ def run_models(a: Audio, root: Path, checkpoint: str | None, stems: bool) -> dic
             f.unlink(missing_ok=True)  # decoded PCM is an intermediate: never kept
     out = r.stdout.decode("utf-8", errors="replace").strip()
     if r.returncode != 0:
-        raise Fail(1, f"the model stage failed (exit {r.returncode}); its messages are above. To analyze "
-                      f"without models: add --tracker librosa (no download; weaker on downbeats)")
+        deep = deep_uv(uv)
+        raise Fail(1, f"the model stage failed (exit {r.returncode}); its messages are above. " + (
+            f"If they name a file or module that could not be found or written, that is Windows' 260-character path "
+            f"limit: the model stage runs from uv's cache at {deep} ({len(deep)} characters), where torch's files pass "
+            f"260 characters, and long paths are off on this machine. Set UV_CACHE_DIR to a short folder such as "
+            f"C:\\uvc (torch installs there again, about 625 MB), or enable long paths (LongPathsEnabled = 1, an admin "
+            f"setting), then run again. " if deep else "")
+                      + "To analyze without models: add --tracker librosa (no download; weaker on downbeats)")
     try:
         return json.loads(out.splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
@@ -1136,6 +1245,18 @@ def make_sections(a: Audio, beats: np.ndarray, downs: np.ndarray, P_bar: float, 
     return out, how, notes, dropped
 
 
+def section_starts(secs: list[dict], downs) -> str:
+    """Where the sections start, measured on the data: the first at 0 s, the later ones on downbeats or not (sections
+    set by hand stay where given)."""
+    later = [s["start"] for s in secs[1:]]
+    if not later:
+        return "one section, from 0 s"
+    d = np.asarray(downs, float)
+    on = sum(1 for t in later if len(d) and float(np.min(np.abs(d - t))) < 0.0015)
+    return "the first starts at 0 s, " + ("every later one on a downbeat" if on == len(later) else
+                                          f"{on} of the {len(later)} later ones on a downbeat")
+
+
 def parse_sections(spec: str) -> list[tuple[str, float]]:
     """name:start,... in seconds, the first at 0, increasing (the engine's sections are contiguous from 0)."""
     out = []
@@ -1554,7 +1675,9 @@ def plot_review(path: Path, a: Audio, doc: dict, B: Beats, title: str, phase_cha
         xt = axp.get_xaxis_transform()
         for t in beats[(beats >= t0) & (beats <= t1)]:
             isd = bool(len(downs)) and np.min(np.abs(downs - t)) < 1e-6
-            heard = B.mode == "grid" or (len(raw) and np.min(np.abs(raw - t)) < 0.035)
+            # a beat within 35 ms of a detection was heard (pdoom's grid beats sit within 22 ms of theirs); the
+            # others, extrapolated past the detections or refilled between them, are dashed, grid or not
+            heard = bool(len(raw)) and np.min(np.abs(raw - t)) < 0.035
             axp.axvline(t, color="k" if isd else "0.4", lw=1.9 if isd else 0.7, ls="-" if heard else (0, (3, 2)))
             if isd:
                 axp.text(t, 1.01, str(int(np.searchsorted(downs, t + 1e-6))), fontsize=7, ha="center",
@@ -1644,7 +1767,8 @@ def window_command(rec: dict, w: Where) -> str:
     found = isinstance(song, str) and song and ((w.video_dir or w.base) / song).is_file()
     return (f"beats.py window {'' if found else f'<the file {song}> '}"
             + (f"--video {w.name}" if w.name else f"--out {w.base}") + f" --from {rec.get('from')} --to {rec.get('to')}"
-            + (f" --fade {rec['fade']}" if rec.get("fade") else "") + (f" --name {rec['name']}" if rec.get("name") else ""))
+            + (f" --fade {rec['fade']}" if rec.get("fade") else "") + (f" --name {rec['name']}" if rec.get("name") else "")
+            + (" --exact" if rec.get("exact") else ""))
 
 
 def window_cut_of(audio: Path, w: Where) -> dict | None:
@@ -1908,7 +2032,7 @@ def run_analyze(args, w: Where | None = None) -> dict:
     elif B.mode == "detected":
         tempo.update({"bpmAverage": round(B.bpm, 3), "fit": B.fit, "phaseShiftMs": round(B.shift * 1000, 1),
                       "range": list(B.trange), "steady": B.runs, "changes": B.changes, "map": B.tmap})
-    notes = [TIME_NOTE.format(file=audio.name)]
+    notes = [time_note(audio.name, a.delay)]
     if B.mode == "grid":
         notes.append(f"Beats: constant {B.bpm:.3f} BPM, a least-squares grid through the {B.fit['beats']} beats "
                      f"{'Beat This!' if args.tracker == 'beat-this' else 'the librosa tracker'} detected (residual {B.fit['rmsMs']} ms rms; 16-beat windows within "
@@ -1924,7 +2048,8 @@ def run_analyze(args, w: Where | None = None) -> dict:
         notes.append(f"Phase: moved {B.shift * 1000:+.1f} ms onto the attacks measured near "
                      f"{B.shift_info['beatsWithAttack']} beats (beatsRaw is the tracker's output before this shift).")
     notes.append(f"Bars: {meter} beats; bar phase from {bar_src}; beatInBar numbers each beat (1 = downbeat).")
-    notes.append(f"Sections: {sec_how}; names are generic unless they come from the lyrics or from --sections.")
+    notes.append(f"Sections: {sec_how}; {section_starts(secs, downs_r)}; names are generic unless they come from the "
+                 f"lyrics or from --sections.")
     notes.append("Envelopes: 100 fps, frame i centred at i/100 s, 46 ms RMS, one-pole smoothing (10 ms attack, "
                  "90 ms release), each divided by its 99th percentile and clipped to 0..1. Sources in analysis.sources.")
     doc = {
@@ -2006,13 +2131,14 @@ def run_analyze(args, w: Where | None = None) -> dict:
         "tempoRange": list(B.trange) if B.trange else None,
         "steady": B.runs if B.mode == "detected" else [],
         "sections": [{"name": s["name"], "start": s["start"]} for s in back["sections"]],
-        "sectionsFrom": sec_how, "sectionNotes": sec_notes, "sectionCandidatesDropped": dropped,
+        "sectionsFrom": sec_how, "sectionStarts": section_starts(back["sections"], back["downbeats"]),
+        "sectionNotes": sec_notes, "sectionCandidatesDropped": dropped,
         "features": {k: sources.get(k, "") for k in back["features"]},
         "onsets": {k: len(v) for k, v in back["onsets"].items()},
         "checks": {"passed": nchk2 - len(warns2), "of": nchk2, "warnings": warns2},
         "warnings": warnings, "notes": notes_out, "review": review, "cache": cache_info, "model": mdl,
         "stems": stems_info, "seconds": {**seconds, "total": round(time.time() - t_start, 1)},
-        "timeOrigin": TIME_NOTE.format(file=audio.name),
+        "timeOrigin": time_note(audio.name, a.delay), "encoderDelayMs": round(a.delay * 1000, 1),
     }
     return result
 
@@ -2074,7 +2200,7 @@ def print_analyze(r: dict) -> None:
     if r["phaseChanges"]:
         say(f"             bar phase changes (a short or long bar) at: {', '.join(clock(x) for x in r['phaseChanges'][:8])}")
     secs = ", ".join(f"{s['name']} {clock(s['start'])}" for s in r["sections"])
-    say(f"  sections   {secs} ({r['sectionsFrom']})")
+    say(f"  sections   {secs} ({r['sectionsFrom']}; {r['sectionStarts']})")
     for n_ in r["sectionNotes"]:
         say(f"             {n_}")
     if r.get("sectionCandidatesDropped"):
@@ -2244,9 +2370,10 @@ def run_grid(args) -> dict:
         "features": feats, "onsets": {},
         "analysis": {"tool": "audara-studio soundtrack/scripts/beats.py grid", "sources": src,
                      "sections": "declared" if args.sections else "single"},
-        **({"audioFile": a.path.name, "audioSha256": a.sha} if a else {}),
+        # (named as analyze names it, from the video's folder, so that check finds it)
+        **({"audioFile": data_name(a.path, w) if w.video_dir else a.path.name, "audioSha256": a.sha} if a else {}),
         "notes": (f"Declared grid: {args.bpm} BPM, {args.meter} beats per bar, first downbeat at {off} s; beats "
-                  f"extrapolated over [0, {dur}). " + (TIME_NOTE.format(file=a.path.name) + " Envelopes measured on "
+                  f"extrapolated over [0, {dur}). " + (time_note(a.path.name, a.delay) + " Envelopes measured on "
                   "that decode (100 fps, 46 ms RMS, smoothed, divided by their 99th percentile). " if a else
                   "No audio was read: envelopes and onsets are empty (the engine reads them as 0). ")
                  + "Cues are named hit points in seconds."),
@@ -2397,6 +2524,20 @@ NEAR_FRAC = 0.25  # and by a quarter of its length at most: further is another w
 #                   away: a 92.7 s window offered for a 30 s video)
 CUT_MATCH = 1e-4  # the cut must equal the song's samples to 1e-4 (-80 dBFS): 24-bit rounding leaves 1.2e-7, and a
 #                   cut one sample off differs by far more on any music
+HALF_BAR_TIE = 0.010  # an end within 10 ms of the middle of its bar is a tie between the bar's downbeats: a length
+#                       asked in seconds from a downbeat lands there (30 s at 132 BPM is 16.5 bars), give or take the
+#                       data's millisecond rounding and times typed to the hundredth
+VOICE_ON = 0.2  # without lyrics, the vocal stem (features.vocal: 0..1 of its 99th percentile) over 0.2 on both sides
+#                 of an end is a voice sounding across it. On pdoom's beats, against its lyrics: 7 of the 315 with a
+#                 word or a line sung across them read quiet, and 11 of the 28 with nothing sung across (most of the
+#                 others are lines sung straight on); at 0.25, 17 sung ones read quiet (a quiet one is offered as a cut)
+VOICE_S = 0.060  # ...as the mean over 60 ms on each side (the envelope releases over 90 ms: a voice that stopped
+#                  before the cut has mostly faded within it)
+HELD_SEMITONES = 0.5  # pitchMidi within half a semitone of its median over those 120 ms is a pitch held across the
+#                       end (a sung note; YIN's octave slips and the gaps between words break it)
+DRUMS_OFF = 0.05  # a bar whose drum stem stays under 0.05 of its loud level (the 90th percentile of the bar's frames,
+#                   so one stray hit does not count) has no drums: on pdoom such bars read 0.001-0.009, the sparest
+#                   drummed bar 0.075
 ENVELOPES = ("rms", "low", "mid", "high", "vocal", "drums", "bass", "other", "pitchMidi")  # the engine's names
 #                                                                                           (audio.ts), top-level or in features
 LOUDNESS = ENVELOPES[:-1]  # the envelopes that measure level, which a fade scales (pitchMidi is a pitch)
@@ -2520,6 +2661,33 @@ def sung_at(t: float, lines: list[dict], extras: list[dict], beat: float, runs_o
             return {"kind": "extra", "desc": str(e.get("desc") or e.get("text") or "a backing vocal"),
                     "start": e["start"], "end": e["end"]}
     return None
+
+
+def voice_at(t: float, vocal: np.ndarray, pitch: np.ndarray | None, fps: float) -> dict:
+    """The vocal stem across time t (song time), for a song without lyrics: its mean level over VOICE_S before and
+    after t, and when a pitch held across t started. "sounding": a voice is heard across t, so a cut there falls
+    inside singing (which word, only lyrics can say)."""
+    i, k = int(round(t * fps)), max(1, int(round(VOICE_S * fps)))
+    lv = [float(np.mean(x)) if len(x) else 0.0 for x in (vocal[max(0, i - k):i], vocal[i:i + k])]
+    held = None
+    if pitch is not None and k <= i <= len(pitch) - k:
+        seg = pitch[i - k:i + k]
+        ref = float(np.median(seg))
+        if ref > 0 and float(np.max(np.abs(seg - ref))) <= HELD_SEMITONES:
+            j = i - k
+            while j > 0 and abs(pitch[j - 1] - ref) <= HELD_SEMITONES:
+                j -= 1
+            held = round(j / fps, 2)
+    return {"before": round(lv[0], 2), "after": round(lv[1], 2), "heldFrom": held,
+            "sounding": min(lv) > VOICE_ON or held is not None}
+
+
+def drum_changes(drums: np.ndarray, downs: np.ndarray, fps: float) -> list[tuple[float, str]]:
+    """Where the drum stem stops for a whole bar or more after drummed bars ("out") and where it comes in again
+    ("in"), bar by bar between the downbeats: (song time of that bar's downbeat, which)."""
+    off = [float(np.percentile(seg, 90)) < DRUMS_OFF if len(seg) else False
+           for seg in (drums[int(round(s * fps)):int(round(e * fps))] for s, e in zip(downs, downs[1:]))]
+    return [(float(downs[i]), "out" if off[i] else "in") for i in range(1, len(off)) if off[i] != off[i - 1]]
 
 
 def shift_span(s: float, e: float, a: float, b: float, dur3: float, keep_short: bool = False):
@@ -2935,7 +3103,7 @@ def run_window(args) -> dict:
     # ---- the whole song's words: data/words.json when it is the song's, else data/song/words.json
     (kw, ksw), (ka, ks) = kinds["words"], kinds["audio"]
     fits = (lambda d: last_word_end(d) <= song_dur + SAME_LENGTH)
-    words_src, song_w = None, None
+    words_src, song_w, no_words = None, None, False
     if kw and (kw[0] == "song" or (kw[0] == "unknown" and (ka is None or ka[0] == "song") and fits(cur_w))):
         words_src, song_w = "moved", cur_w
     elif ksw and (ksw[0] == "song" or (ksw[0] == "unknown" and (ks is None or ks[0] == "song") and fits(sav_w))):
@@ -2953,9 +3121,7 @@ def run_window(args) -> dict:
             warnings.append(f"data/words.json is not this song's ({kw[1]}): left as it is, and the window has no words")
         if ksw:
             warnings.append(f"data/song/words.json is not this song's ({ksw[1]}): not used")
-        if not (kw or ksw):
-            notes.append("the song has no words.json: what is sung at the window's ends is not checked (align.py song "
-                         "times the lyrics)")
+        no_words = not (kw or ksw)  # (said below, with what the song's data allows instead)
 
     # ---- the whole song's audio.json: data/audio.json when it is the song's, else data/song/audio.json, else
     # the normal analysis of the song, written to data/song/
@@ -2995,7 +3161,7 @@ def run_window(args) -> dict:
     lines = [x for x in (song_w or {}).get("lines") or [] if isinstance(x, dict)]
     extras = [x for x in (song_w or {}).get("extras") or [] if isinstance(x, dict)]
 
-    # ---- the window on the music: ends on downbeats (or the song's own ends), a pickup start, --snap
+    # ---- the window on the music: ends on downbeats (or the song's own ends), a pickup start; moved there unless --exact
     a, b = float(a_req), min(float(b_req), song_dur)
 
     def on_down(t: float) -> bool:
@@ -3040,21 +3206,34 @@ def run_window(args) -> dict:
         return None
 
     pickup = pickup_at(a)
-    snapped = []
-    if args.snap and len(downs):
-        if not on_down(a) and not pickup and not song_start:
-            snapped.append(("start", a, float(downs[nearest(downs, a)])))
-            a = snapped[-1][2]
-        if not on_down(b) and not song_end:
-            snapped.append(("end", b, float(downs[nearest(downs, b)])))
-            b = snapped[-1][2]
-        if b <= a:
-            raise Fail(2, f"with --snap the window is empty: both ends moved to the downbeat at {a:.3f} s; give a "
-                          f"window of at least one bar")
-        if args.snap and not snapped:
-            notes.append("--snap: both ends were already where they belong (downbeats, a pickup or the song's ends)")
-    elif args.snap:
-        warnings.append("--snap: the song's data has no downbeats, so nothing moved")
+    snapped = []  # (which end, asked, moved to, a half-bar tie)
+    asked = b - a
+    bar_s = float(np.median(np.diff(downs))) if len(downs) > 1 else 4 * beat
+    if not args.exact and len(downs):
+        # an end between downbeats moves to the nearest one (or to the song's own start or end), so the window is
+        # whole bars; on a half-bar tie (in a bar, not in the scrap of one before the first downbeat or after the
+        # last), the way that keeps it no longer than asked, give or take the tie's own 10 ms at each end (both ends
+        # tied: both the same way, so the bars asked stay)
+        def options(t: float, targets: list[float]) -> list[float]:
+            near = [x for x in targets if x <= t][-1:] + [x for x in targets if x > t][:1]
+            if len(near) == 2 and near[1] - near[0] > bar_s / 2 \
+                    and abs((t - near[0]) - (near[1] - t)) <= 2 * HALF_BAR_TIE:
+                return near
+            return [min(near, key=lambda x: abs(x - t))]
+
+        a_opts = [a] if on_down(a) or pickup or song_start else options(a, [0.0, *map(float, downs)])
+        b_opts = [b] if on_down(b) or song_end else options(b, [*map(float, downs), song_dur])
+        pairs = [(e - s > asked + 2 * HALF_BAR_TIE, abs(e - s - asked), s, e) for s in a_opts for e in b_opts
+                 if e - s > ON_DOWNBEAT]
+        if not pairs:
+            raise Fail(2, f"the window {a:.3f}-{b:.3f} s is shorter than a bar: both ends move to the downbeat at "
+                          f"{a_opts[0]:.3f} s. Give a window of a bar or more, or keep these times with --exact")
+        _, _, a2, b2 = min(pairs)
+        snapped = [(k, t0, t1, len(o) == 2) for k, t0, t1, o in (("start", a, a2, a_opts), ("end", b, b2, b_opts))
+                   if abs(t1 - t0) > 1e-9]
+        a, b = a2, b2
+        song_start, song_end = a <= ON_DOWNBEAT, b >= song_dur - ON_DOWNBEAT
+        pickup = pickup_at(a)
     S0 = math.floor(a * sr + 0.5)
     S1 = n_song if song_end else min(n_song, math.floor(b * sr + 0.5))
     N = S1 - S0
@@ -3112,9 +3291,9 @@ def run_window(args) -> dict:
         near_ = [float(t) for t in (downs[i] if i >= 0 else None, downs[i + 1] if i + 1 < len(downs) else None)
                  if t is not None and t < b]
         start["summary"] = f"off the downbeats at {a:.3f} s"
-        warnings.append(f"the window starts at {a:.3f} s, between downbeats: start on "
+        warnings.append(f"the window starts at {a:.3f} s, between downbeats (--exact): start on "
                         + " or ".join(f"{at_text(t)} ({span_text(t, b)})" for t in near_)
-                        + " (--snap moves it to the nearer), or on the beat before a sung pickup")
+                        + " (without --exact it moves to the nearer), or on the beat before a sung pickup")
     if len(downs):
         if on_down(b):
             end["summary"] = f"on song bar {bar_no(b)}'s downbeat ({b:.3f} s)"
@@ -3127,10 +3306,11 @@ def run_window(args) -> dict:
             end["summary"] = f"off the downbeats at {b:.3f} s"
             frac = bar_at(b, downs) - math.floor(bar_at(b, downs))
             warnings.append(f"the window ends {frac:.2f} of a bar into song bar {math.floor(bar_at(b, downs)) + 1} "
-                            f"({b:.3f} s, {bars} bars): end on "
+                            f"({b:.3f} s, {bars} bars, --exact): end on "
                             + " or ".join(f"{at_text(t)} ({span_text(a, t)})" for t in near_)
-                            + ("" if fade else ", or with a --fade that lands there") + " (--snap moves it to the nearer)")
-    clean_starts, clean_ends, bar_s = [], [], 4 * beat
+                            + ("" if fade else ", or with a --fade that lands there")
+                            + " (without --exact it moves to the nearer)")
+    clean_starts, clean_ends = [], []
     if song_w is not None:
         def clean(t: float) -> bool:
             return sung_at(t, lines, extras, beat, runs_on) is None
@@ -3141,7 +3321,6 @@ def run_window(args) -> dict:
         clean_starts = sorted(set(clean_downs) | {float(t) for t in beats if pickup_at(float(t)) and clean(float(t))}
                               | ({0.0} if clean(0.0) else set()))
         clean_ends = sorted(set(clean_downs) | {song_dur})
-        bar_s = float(np.median(np.diff(downs))) if len(downs) > 1 else 4 * beat
     # how far a suggested start or end may move the window (see NEAR_BARS), at least a bar
     reach = max(bar_s, min(NEAR_BARS * bar_s, NEAR_FRAC * (b - a)))
     for side_, t in (("start", a), ("end", b)):
@@ -3195,6 +3374,61 @@ def run_window(args) -> dict:
                                + " or ".join(f"{at_text(x)} ({span_text(x, b)})" for x in near_) if near_ else
                                f". No start {within} has nothing sung across it"))
 
+    # without lyrics, the vocal stem (analyze --stems) hears whether a voice sounds across an end, not which word
+    feats_ = song_a.get("features") if isinstance(song_a.get("features"), dict) else {}
+    ons_ = song_a.get("onsets") if isinstance(song_a.get("onsets"), dict) else {}
+    vocal_, pitch_ = feats_.get("vocal") or song_a.get("vocal"), feats_.get("pitchMidi") or song_a.get("pitchMidi")
+    # the song analyzed with its stems (without them, vocal and drums are guesses from the mix, not used here)
+    stems = (isinstance(pitch_, list) or "vocal" in ons_ or "snare" in ons_
+             or isinstance(song_a.get("analysis"), dict) and song_a["analysis"].get("stems") is True)
+    voiced = song_w is None and stems and isinstance(vocal_, list) and len(vocal_) > 0
+    if no_words:
+        notes.append("the song has no words.json: " + (
+            "the window's ends are checked on the vocal stem only, which hears a voice but not its words (align.py "
+            "song times the lyrics)" if voiced else "what is sung at the window's ends is not checked (align.py song "
+            "times the lyrics; analyzing the song with --stems measures its vocal stem there)"))
+    if voiced:
+        fps_s = song_a.get("fps") or FPS
+        vv, pp = np.asarray(vocal_, float), (np.asarray(pitch_, float) if isinstance(pitch_, list) else None)
+
+        def quiet(t: float) -> bool:
+            return not voice_at(t, vv, pp, fps_s)["sounding"]
+
+        within = f"within {reach / bar_s:.3g} bars" if len(downs) > 1 else f"within {reach:.1f} s"
+        for side_, t in (("start", a), ("end", b)):
+            if (side_ == "start" and song_start) or (side_ == "end" and song_end):
+                continue
+            rec_ = start if side_ == "start" else end
+            vx = rec_["voice"] = voice_at(t, vv, pp, fps_s)
+            nums = (f"{vx['before']:.2f} | {vx['after']:.2f}"
+                    + (f", a pitch held from {vx['heldFrom']:.2f} s" if vx["heldFrom"] is not None else ""))
+            rec_["voiceSummary"] = ("a voice across it" if vx["sounding"] else "quiet across it") + f" ({nums})"
+            if not vx["sounding"]:
+                continue
+            # the nearest downbeats (or the song's own start or end) where the stem is quiet, one each way
+            if side_ == "start":
+                cand = [0.0, *map(float, downs)]
+                near_ = ([x for x in cand if a - reach - ON_DOWNBEAT <= x < a - ON_DOWNBEAT and quiet(x)][-1:]
+                         + [x for x in cand if a + ON_DOWNBEAT < x < min(b - beat, a + reach + ON_DOWNBEAT)
+                            and quiet(x)][:1])
+                fix = ("The nearest downbeats where the vocal stem is quiet: "
+                       + " or ".join(f"{at_text(x)} ({span_text(x, b)})" for x in near_) if near_ else
+                       f"No downbeat {within} has the vocal stem quiet")
+            else:
+                cand = [*map(float, downs), song_dur]
+                near_ = ([x for x in cand if max(a + beat, b - reach - ON_DOWNBEAT) < x < b - ON_DOWNBEAT
+                          and quiet(x)][-1:]
+                         + [x for x in cand if b + ON_DOWNBEAT < x <= b + reach + ON_DOWNBEAT and quiet(x)][:1])
+                fade_out = f"fade it out over the last bar (--fade {bar_s:.3f})"
+                fix = ("The nearest downbeats where the vocal stem is quiet: "
+                       + " or ".join(f"{at_text(x)} ({span_text(a, x)})" for x in near_)
+                       + ("" if fade else f"; or keep this end and {fade_out}") if near_ else
+                       f"No downbeat {within} has the vocal stem quiet"
+                       + ("" if fade else f": keep this end and {fade_out}"))
+            warnings.append(f"a voice is sounding across the {side_} (vocal stem {nums}): the window likely "
+                            f"{'opens' if side_ == 'start' else 'ends'} mid-word or mid-line; lyrics (align.py song) "
+                            f"would name it. {fix}")
+
     # sections inside the window, with their bars
     secs_in = []
     for s in song_a.get("sections") or []:
@@ -3208,6 +3442,13 @@ def run_window(args) -> dict:
         secs_in.append({"name": s.get("name"), "start": round(s0 - a, 3), "end": round(s1 - a, 3), "bars": nb,
                         "ofBars": full, "cut": [x for x, c in (("start", s["start"] < a - ON_DOWNBEAT),
                                                                 ("end", s["end"] > b + ON_DOWNBEAT)) if c]})
+    # a window of one section: where the drum stem stops for a bar or more and comes in again inside it, which may be
+    # where its parts change (as boundaries in the song's sections they added 2 true ones and 2 false on pdoom)
+    drums_ = feats_.get("drums") or song_a.get("drums")
+    drum_marks = [{"t": round(t - a, 3), "song": round(t, 3), "drums": k}
+                  for t, k in drum_changes(np.asarray(drums_, float), downs, song_a.get("fps") or FPS)
+                  if a + ON_DOWNBEAT < t < b - ON_DOWNBEAT] if (
+        len(secs_in) == 1 and stems and isinstance(drums_, list) and len(downs) > 2) else []
 
     # ---- the window's data
     fps = song_a.get("fps") or FPS
@@ -3215,7 +3456,7 @@ def run_window(args) -> dict:
     rec = {"song": song_rel, "songSha256": sha, "from": round(a, 3), "to": round(b, 3), "duration": dur3,
            "samples": [S0, S1], "sampleRate": sr, "fade": round(fade, 3) if fade else None,
            **({"name": stem} if stem != song.stem else {}), "file": win_rel,
-           "data": relv(song_dir / "audio.json"), "tool": WINDOW_TOOL}
+           "data": relv(song_dir / "audio.json"), "tool": WINDOW_TOOL, **({"exact": True} if args.exact else {})}
 
     # ---- cut the audio (the file goes in place only once the data is ready: nothing is half done on a failure)
     seg = y[S0:S1]
@@ -3289,8 +3530,8 @@ def run_window(args) -> dict:
     elif vjson is not None:  # (cut before the video was set up: init reads the window from data/audio.json)
         hints.append(f"{show(vjson)} does not exist yet: give it \"audio\": \"{win_rel}\" and no \"duration\" (the "
                      f"code-video skill's init --video {w.name} writes it so)")
-    if snapped:
-        notes.extend(f"--snap moved the {s} from {t0:.3f} to {t1:.3f} s" for s, t0, t1 in snapped)
+    moved = [{"end": k, "from": round(t0, 3), "to": round(t1, 3), "onto": at_text(t1), "tie": tie}
+             for k, t0, t1, tie in snapped]
     if ainfo.get("cuesDropped"):
         warnings.append(f"cues outside the window: {', '.join(map(str, ainfo['cuesDropped']))} (audio.cue() throws for "
                         f"them in this video)")
@@ -3305,8 +3546,9 @@ def run_window(args) -> dict:
         "ok": True, "command": "window", "project": str(w.project or w.base), "song": str(song), "songFile": song_rel,
         "songDuration": round(song_dur, 3),
         "window": {"from": round(a, 3), "to": round(b, 3), "duration": dur3, "seconds": round(dur_w, 6),
-                   "samples": [S0, S1], "sampleRate": sr, "bars": bars, "fade": cut["fade"], "asked": [a_req, b_req]},
-        "start": start, "end": end, "sections": secs_in,
+                   "samples": [S0, S1], "sampleRate": sr, "bars": bars, "fade": cut["fade"], "asked": [a_req, b_req],
+                   "askedSeconds": round(asked, 3), "moved": moved},
+        "start": start, "end": end, "sections": secs_in, "drums": drum_marks,
         "audio": {"path": str(win_path), "file": win_rel, "bytes": win_path.stat().st_size,
                   "format": f"WAV {cut['depth']} {sr} Hz, {y.shape[1]} channel{'s' * (y.shape[1] != 1)}",
                   "matchesSong": {"fromSample": S0, "samples": cut["unfaded"], "maxDifference": cut["maxDifference"]}},
@@ -3344,11 +3586,22 @@ def print_window(r: dict) -> None:
         f"-{wd['samples'][1]} of the song at {wd['sampleRate']} Hz); measured against the song from sample "
         f"{m['fromSample']}: {m['samples']} samples within {m['maxDifference']:.2g}"
         + (" (24-bit rounding)" if m["maxDifference"] <= 2 ** -23 + 1e-12 else ""))
+    if wd.get("moved"):  # (whole bars: a length asked in seconds is approximate, and the director hears of the change)
+        mv = "; ".join(f"the {x['end']} from {x['from']:.3f} s to {x['onto']} ("
+                       + ("a half-bar tie: the way that keeps the window no longer than asked" if x["tie"] else
+                          "the nearest") + ")" for x in wd["moved"])
+        same = abs(wd["duration"] - wd["askedSeconds"]) < 0.0015
+        say(f"  moved      {mv}. " + (f"The window keeps the length asked, {bars}{wd['duration']:.3f} s" if same else
+                                      f"The window is now {bars}{wd['duration']:.3f} s, not the "
+                                      f"{wd['askedSeconds']:.3f} s asked: tell the director the new length")
+            + f" (--exact keeps {wd['asked'][0]:g}-{wd['asked'][1]:g} s, off the downbeats)")
     for side_ in ("start", "end"):
         s = r[side_]
         line = f"  {side_:<10} {s.get('summary') or ''}"
         if s.get("sungSummary"):
             line += ("; " if s.get("summary") else "") + f"sung: {s['sungSummary']}"
+        if s.get("voiceSummary"):
+            line += ("; " if s.get("summary") else "") + f"vocal stem: {s['voiceSummary']}"
         say(line)
     if wd["fade"]:
         f = wd["fade"]
@@ -3364,6 +3617,10 @@ def print_window(r: dict) -> None:
             whole = f" ({s['bars']} bar{'s' * (s['bars'] != 1)})" if not s["cut"] and s["bars"] is not None else ""
             return f"{s['name']} {s['start']:.3f}{whole}{part}"
         say(f"  sections   {', '.join(sec(s) for s in r['sections'])} (window time)")
+    if r.get("drums"):
+        say("  drums      " + ", ".join(f"{x['drums']} at {x['t']:.3f} s" for x in r["drums"])
+            + " (window time; bar by bar on the drum stem: the window holds one section, and its parts may change at "
+              "these)")
     da = r["data"]["audio.json"]
     on = ", ".join(f"{k} {v}" for k, v in da["onsets"].items())
     say(f"  data       {sh(da['path'])}: {da['beats']} beats, {da['downbeats']} downbeats, {len(da['sections'])} sections"
@@ -3444,10 +3701,14 @@ that stands to what the video plays (a mix that holds this music from 0 s is the
 """
 EX_WINDOW = """examples:
   uv run scripts/beats.py window --video teaser --from 22.055 --to 51.144
-  uv run scripts/beats.py window videos/teaser/audio/song.mp3 --from 22 --to 52 --snap --fade 1.818
---from and --to are song times; the window holds [from, to). From the whole song's data (data/audio.json
-and data/words.json while they describe the song, which move to data/song/; else data/song/; else
-the song is analyzed into data/song/ first) it writes, in video time:
+  uv run scripts/beats.py window videos/teaser/audio/song.mp3 --from 22 --to 52 --fade 1.818
+  uv run scripts/beats.py window --video teaser --from 94.783 --to 124.783 --exact
+--from and --to are song times; the window holds [from, to). The window is whole bars: an end between
+downbeats moves to the nearest one (on a half-bar tie, the way that keeps the window no longer than
+asked), and the new length is printed, to tell the director; --exact keeps the times as given. A
+start on the beat before a sung pickup, and the song's own start and end, stay. From the whole song's
+data (data/audio.json and data/words.json while they describe the song, which move to data/song/;
+else data/song/; else the song is analyzed into data/song/ first) it writes, in video time:
   audio/<stem>-window.wav   the song's samples from round(from x rate) to round(to x rate), 24-bit
                             WAV at the song's rate (32-bit float when samples go over full scale);
                             atrim by sample count: no seek, so no offset and no lost first samples;
@@ -3457,14 +3718,16 @@ the song is analyzed into data/song/ first) it writes, in video time:
                             duration the window's; a "window" record of where it came from; over a
                             --fade the loudness envelopes and onset strengths fade with the audio
   data/words.json           lines, words and syllables inside; a word cut by an edge keeps its part
-Before cutting it checks the window on the music and warns, with the fix: a start or end off the
-downbeats (a start on the beat before a sung pickup is fine), how many bars, the sections it
-holds, and a word, held note or line that an edge cuts, naming starts or ends within 4 bars where
-nothing is sung (or the fade, when there are none). --snap moves the ends to the nearest
-downbeats. It ends with the video.json edit to make (next:). Run it again for another window: it
-starts from data/song/. To analyze the song with other options (--stems, --sections), run beats.py
-on the song first, then window: the new analysis moves to data/song/ (sections set by hand there
-are kept). The window file itself is not analyzed: its data comes from the song's.
+Before cutting it checks the window on the music and warns, with the fix: an end left off the
+downbeats by --exact, how many bars, the sections it holds, and a word, held note or line that an
+edge cuts, naming starts or ends within 4 bars where nothing is sung (or the fade, when there are
+none). Without words.json, a song analyzed with --stems is checked on its vocal stem instead: a
+voice sounding across an end is reported, with the nearest downbeats where the stem is quiet; and
+when the window holds one section, the bars where the drum stem stops and comes in are listed. It
+ends with the video.json edit to make (next:). Run it again for another window: it starts from
+data/song/. To analyze the song with other options (--stems, --sections), run beats.py on the song
+first, then window: the new analysis moves to data/song/ (sections set by hand there are kept).
+The window file itself is not analyzed: its data comes from the song's.
 """
 
 
@@ -3548,14 +3811,19 @@ def make_parser() -> Parser:
     wn.add_argument("song", nargs="?", help="the song (default: the one the video's data names, else the file "
                                             "video.json plays)")
     wn.add_argument("--from", dest="start", type=float, required=True, metavar="SECONDS",
-                    help="start, in song time: a downbeat, or the beat before a sung pickup")
+                    help="start, in song time: a downbeat, or the beat before a sung pickup (else it moves to the "
+                         "nearest downbeat)")
     wn.add_argument("--to", dest="end", type=float, required=True, metavar="SECONDS",
-                    help="end, in song time: a downbeat (the window holds the bars before it), or the song's end")
+                    help="end, in song time: a downbeat (the window holds the bars before it), or the song's end (else "
+                         "it moves to the nearest downbeat)")
     wn.add_argument("--fade", type=float, metavar="SECONDS", help="fade out over the window's last seconds, "
                                                                   "landing at --to (a bar's length fades the last bar)")
     wn.add_argument("--name", help="the window file's stem: audio/<stem>-window.wav (default: the song's)")
-    wn.add_argument("--snap", action="store_true", help="move --from and --to to the nearest downbeats (a start on "
-                                                        "the beat before a sung pickup stays)")
+    ends = wn.add_mutually_exclusive_group()
+    ends.add_argument("--exact", action="store_true", help="keep --from and --to where given, off the downbeats too "
+                                                           "(by default an end between downbeats moves to the nearest)")
+    ends.add_argument("--snap", action="store_true", help="move --from and --to to the nearest downbeats: the default "
+                                                          "now, kept for older commands")
     wn.add_argument("--video", help="video name in this audara project")
     wn.add_argument("--out", help="without a project: folder with audio/ and data/ (default .)")
     wn.add_argument("--tracker", choices=("beat-this", "librosa"), default="beat-this",
@@ -3612,6 +3880,11 @@ def main(argv: list[str] | None = None) -> int:
         import traceback
         tb = traceback.extract_tb(e.__traceback__)[-1]
         code, err = 1, f"unexpected {type(e).__name__}: {e} (beats.py line {tb.lineno}, in {tb.name})"
+        long_ = str(getattr(e, "filename", None) or "")
+        if sys.platform == "win32" and len(long_) > 259 and not long_.startswith("\\\\?\\") and not long_paths_on():
+            err += (f". That path is {len(long_)} characters, past the 260 Windows allows while long paths are off: "
+                    f"set UV_CACHE_DIR and AUDARA_CACHE to short folders (such as C:\\uvc), or enable long paths "
+                    f"(LongPathsEnabled = 1, an admin setting), then run again")
     note(f"beats.py {args.cmd}: {err}")
     if getattr(args, "json", False):
         print(json.dumps({"ok": False, "command": args.cmd, "error": err, "exit": code}, ensure_ascii=False))

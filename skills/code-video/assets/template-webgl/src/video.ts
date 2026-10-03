@@ -147,7 +147,9 @@ function select(): VideoConfig {
   }
   let j: VideoJSON = {};
   try {
-    const parsed: unknown = JSON.parse(CONFIGS[`/videos/${name}/video.json`] ?? '{}');
+    // (without the byte-order mark Windows PowerShell 5.1 puts at the start of a file it writes as UTF-8,
+    // which the text keeps and JSON.parse refuses)
+    const parsed: unknown = JSON.parse((CONFIGS[`/videos/${name}/video.json`] ?? '{}').replace(/^\uFEFF/, ''));
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) j = parsed as VideoJSON;
     else VIDEO_ERROR = `videos/${name}/video.json must hold an object, e.g. { "title": "Teaser", "size": [1920, 1080], "fps": 60, "audio": "audio/song.mp3" }`;
   } catch (e) {

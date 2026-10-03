@@ -18,11 +18,11 @@
   ],
   "assertions": [
     "After turn 1: a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption; nothing built yet.",
-    "After turn 2: a preview link with ?v=<name> and at least one &t= link at a named beat.",
+    "By the end of turn 2 the director has been given this project's preview link written out in full, with ?v=<name>, and at least one full &t= link at a named beat (the address served this work folder during the run: result.json previews).",
     "The MP4 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (the user said no sound).",
     "Values shown on screen are computed in code from the keys (hashes, buckets), not hand-typed lists.",
-    "Primary text is at least about 44 px tall at 1080 wide and stays inside the Shorts safe zones (look at the contact sheet).",
-    "qc.py reports no near-empty or near-black frame at a cut or at t=0 (or the reply explains a deliberate one), and the longest hold is under about 1.5 s or explained.",
+    "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",
+    "qc.py reports no near-empty or near-black frame at a cut or at t=0 (or the reply explains a deliberate one), and the longest hold is under about 1.5 s or the reply explains it.",
     "The final reply links a contact sheet, a poster and QC numbers, and the files exist."
   ]
 }

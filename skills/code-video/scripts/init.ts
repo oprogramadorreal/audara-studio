@@ -49,6 +49,8 @@ function fail(msg: string): never {
 const problems: string[] = [];
 const problem = (msg: string) => { problems.push(msg); console.log(`  ! ${msg}`); };
 const log = (s = '') => console.log(s);
+/** A project file's text, without the byte-order mark Windows PowerShell 5.1 writes at the start of UTF-8 files. */
+const readText = (file: string) => readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
 
 // ------------------------------------------------------------------ arguments
 const args = process.argv.slice(2);
@@ -181,7 +183,7 @@ function listVideos(): VideoInfo[] {
     .map((name) => {
       let title = name;
       try {
-        const j = JSON.parse(readFileSync(path.join(dir, name, 'video.json'), 'utf8'));
+        const j = JSON.parse(readText(path.join(dir, name, 'video.json')));
         if (typeof j?.title === 'string' && j.title.trim()) title = j.title.trim();
       } catch {
         title = `${name} (its video.json is not valid JSON)`;
@@ -290,7 +292,7 @@ function copyTemplate(files: string[], hadEngine: boolean, withExample: boolean)
 /** A package.json that init didn't write: does it have what the engine needs? */
 function checkPackageJson() {
   let mine: Record<string, Record<string, string> | undefined>;
-  try { mine = JSON.parse(readFileSync(path.join(P, 'package.json'), 'utf8')); }
+  try { mine = JSON.parse(readText(path.join(P, 'package.json'))); }
   catch (e) { return problem(`package.json is not valid JSON (${(e as Error).message}): fix it, then run init again`); }
   const tpl = JSON.parse(readFileSync(path.join(TEMPLATE, 'package.json'), 'utf8')) as Record<string, Record<string, string> | undefined>;
   const has = (d: string) => [mine.dependencies, mine.devDependencies, mine.peerDependencies].some((x) => x?.[d]);
@@ -375,7 +377,7 @@ export default function timeline(words: Words, audio: AudioData): TimelineEntry[
  */
 function dataSoundtrack(dir: string): { file: string; why: string } | null {
   let a: { window?: { file?: unknown; from?: unknown; to?: unknown; song?: unknown }; audioFile?: unknown } | null;
-  try { a = JSON.parse(readFileSync(path.join(P, dir, 'data', 'audio.json'), 'utf8')); } catch { return null; }
+  try { a = JSON.parse(readText(path.join(P, dir, 'data', 'audio.json'))); } catch { return null; }
   const w = a?.window;
   const [file, why] = typeof w?.file === 'string' ? [w.file, `the window ${w.from}–${w.to} s of ${w.song} in data/audio.json`] : [a?.audioFile, 'the file data/audio.json was made from'];
   // (a path inside the video's folder, as the data names it; a file elsewhere is named by its name alone)
@@ -418,9 +420,8 @@ function agentsSection(): string {
   const vids = listVideos();
   const cell = (s: string) => s.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
   const rows = vids.length
-    ? vids.map((v) => `| \`${v.name}\` | ${cell(v.title)} | \`videos/${v.name}/TREATMENT.md\`${v.treatment ? '' : ' (not written yet)'} | \`<preview>/?v=${v.name}\` |`)
+    ? vids.map((v) => `| \`${v.name}\` | ${cell(v.title)} | \`videos/${v.name}/TREATMENT.md\` | \`<preview>/?v=${v.name}\` |`)
     : ['| (none yet) | | | |'];
-  const style = existsSync(path.join(P, 'docs', 'STYLE.md')) ? '`docs/STYLE.md`' : '`docs/STYLE.md` (not written yet)';
   return [
     BEGIN,
     '<!-- Written by audara init (the code-video skill). Running init again rewrites only this section; anything outside it is kept. -->',
@@ -432,11 +433,11 @@ function agentsSection(): string {
     '|---|---|---|---|',
     ...rows,
     '',
-    `- **Shared look:** ${style} in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
-    '- **Preview:** `bunx vite` (keep it running). `<preview>` is the address it prints: `http://127.0.0.1:5173` unless that port was taken (it serves on 127.0.0.1 only; `localhost` may reach another app). Every change gets a link, `<preview>/?v=<video>&t=<seconds>`.',
+    `- **Shared look:** \`docs/STYLE.md\` in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
+    "- **Preview:** `bunx vite` in the background (keep it running; a new session starts it again). `bun scripts/render.ts link --video <video> --t <seconds>` prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Every change gets a link.",
     '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look). Before calling work done: `bun run check` and `verify`.',
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
-    '- **What you owe the director:** a one-line status during long work; a `?v=…&t=…` link for every change; the work shown (stills, contact sheets, numbers, critic verdicts); a question before anything that costs money.',
+    '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
     '',
     'Keep this file current as videos are added: running init again (`--video <video>` for a new one) rewrites this section from `videos/*/video.json`.',
     END,
@@ -570,7 +571,7 @@ log('\nNext: start the preview and keep it running:');
 if (!here) log(`  cd "${P}"`);
 if (needInstall) log('  bun install');
 log('  bunx vite');
-log(`then open the address it prints with ?v=${show ?? '<video>'}: http://127.0.0.1:5173/?v=${show ?? '<video>'} unless 5173 was taken`);
+log(`then get its link (it checks the server is this project's): bun scripts/render.ts link --video ${show ?? '<video>'}`);
 if (problems.length) {
   log(`\ninit finished with ${problems.length} problem${problems.length > 1 ? 's' : ''}:`);
   for (const p of problems) log(`  - ${p}`);
