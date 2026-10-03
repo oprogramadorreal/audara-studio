@@ -254,11 +254,12 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 When the director says to render:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
-2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, in the foreground: it takes
-   minutes, the reply needs its result, and a job left running when your turn ends can die with the
-   session. It renders with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and
-   sampling"; with a `stateful` scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for
-   another count; `--scale 2` gives 4K). A `--draft` is never the delivery.
+2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, and wait for it before you
+   reply: it takes minutes, often past a tool's time limit for one command (then run it in the background
+   and check on it until it ends), the reply needs its result, and a render still running when your turn
+   ends can die with the session. It renders with adaptive motion blur by default (`docs/ENGINE.md`,
+   "Motion blur and sampling"; with a `stateful` scene on screen it takes a fixed 12 sub-frames,
+   `--samples <n>` for another count; `--scale 2` gives 4K). A `--draft` is never the delivery.
 3. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 4. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the

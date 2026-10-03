@@ -17,15 +17,15 @@ These protect the director's loop and the user. Everything else below is a defau
 - **Every change comes back with a link** to the moment it changed: this project's preview with `?v=<video>&t=<seconds>`, written out in full.
 
 ## A session
-Copy this checklist into your notes and keep it current.
+Keep this checklist in your notes.
 - [ ] **Brief.** Ask only for what is missing (the song or script, length, format and where it plays, a brand picture or a style). Write `videos/<video>/TREATMENT.md` from references/treatment-template.md, sized to the piece: a few lines for a 10-second loop, a full treatment for a music video. New project: also `docs/STYLE.md` from references/style-template.md, its Avoid list included; a look that lands on that list says why. Show them and stop (Fixed). For a song, pick the window on the music: start and end on downbeats, follow its sections.
 - [ ] **Sound.** For a song: its beats, sections and lyrics as data, and its window cut with them in one command (references/treatment-template.md). For narration, music, effects or a mix: the soundtrack skill. Either way: audio in `videos/<video>/audio/`, timing in `data/` beside it (`audio.json`, `words.json`). No audio yet? The picture doesn't wait: `"audio": null` and a `duration` in its `video.json`.
 - [ ] **Setup.** Check bun (init runs on it), run init, start the preview in the background and give the director the link.
 - [ ] **Build.** Before the first scene, read `docs/ENGINE.md`, the first two sections of references/contract.md (the rule, what verify can't see) and the ones your scenes touch. Many scenes: one subagent per scene, briefed with its scene brief, `docs/STYLE.md`, `docs/ENGINE.md` and the paths of references/contract.md and motion.md; scene authors edit only their files and ask you for engine changes. Check each scene with stills; critic rounds at the cadence in references/critique.md.
 - [ ] **Direct.** Notes come by time ("at 0:23 the title should land on the snare"). Change the scene, look at the frames around the change, answer with the link, the sheet you checked and what moved (old → new times).
-- [ ] **Render** when the director says so, in the foreground (the reply needs its results): verify, the MP4, the QC report, contact sheets and a poster frame. The reply links the MP4, the sheets and the poster and gives qc.py's numbers (frozen total, longest hold, blank frames) with a word on each, even when the MP4 already existed.
+- [ ] **Render** when the director says so, and wait for it before replying (in the background past a tool's time limit; one still running when your turn ends can die): verify, the MP4, the QC report, contact sheets and a poster frame. The reply links the MP4, the sheets and the poster and gives qc.py's numbers (frozen total, longest hold, blank frames) with a word on each, even when the MP4 already existed.
 
-Also owed: a one-line status during long work; the work shown (stills, sheets, numbers, critic verdicts), kept in `out/<video>/`, never deleted; not a request for approval at every step.
+Also owed: a one-line status during long work; the work shown (stills, sheets, numbers, critic verdicts), kept in `out/<video>/`; no request for approval at every step.
 
 ## Commands
 Run in the project folder; `<skill>` is this skill's folder. Every option is in the header of `scripts/render.ts`.
@@ -46,7 +46,7 @@ Run in the project folder; `<skill>` is this skill's folder. Every option is in 
 - references/treatment-template.md, references/style-template.md: writing the brief.
 - references/contract.md: before the first scene (its first two sections, then by its contents): the f(t) rule's edge cases (stateful scenes, motion blur, 4K), three.js here, cheaper preview paths.
 - references/motion.md: eases, moves through several keys, cuts, sync, pacing.
-- references/glsl-cookbook.md: techniques with working code: lines that hold at 4K, raymarching at preview speed, 3D line drawings, kinetic type and karaoke, fields, particles and motion without state.
+- references/glsl-cookbook.md: techniques with working code: lines that hold at 4K, raymarching at preview speed, kinetic type and karaoke, fields, particles and motion without state.
 - references/critique.md: your stills loop, the critic's protocol and prompts, the measured checks.
 - references/backends.md: when the engine doesn't suit the video (a UI- or text-heavy piece that wants HTML/CSS layout).
 

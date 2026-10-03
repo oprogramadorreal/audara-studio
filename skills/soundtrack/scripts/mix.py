@@ -38,7 +38,9 @@ error unless the plan's "duration" asks for it.
 Loudness: a mono file plays on both channels at full level (dual mono), as a browser plays it and as eleven.py
 measures it; sample and true peaks are the file's own.
 
-Time origin: t = 0 is the first sample of ffmpeg's gapless decode, which is what Chrome's decodeAudioData plays.
+Time origin: t = 0 is the first sample of ffmpeg's gapless decode (the encoder delay removed), which is what browsers
+and ffmpeg play. The times are never shifted: a player that keeps the encoder delay plays every sound later, so it
+gets a WAV of that decode instead (mix.wav and music-only.wav are WAVs already).
 
 Exit codes: 0 ok, 1 error (ffmpeg missing, a file can't be decoded or written), 2 bad usage (the command
 line or the plan is wrong: the message says what to fix). mix.py spends nothing, so it never exits 3 (missing
@@ -63,9 +65,47 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
-from scipy import signal
-from scipy.ndimage import maximum_filter1d, minimum_filter1d, uniform_filter1d
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
+# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
+#                torch's: 91)
+
+
+def long_paths_on() -> bool:
+    """Windows reads paths over 260 characters only when long paths are enabled (an admin setting)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as k:
+            return winreg.QueryValueEx(k, "LongPathsEnabled")[0] == 1
+    except (ImportError, OSError):
+        return False
+
+
+def verbatim(p: str) -> str:
+    """`p` written the long way (\\\\?\\C:\\... or \\\\?\\UNC\\server\\...), which Windows reads past 260 characters."""
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
+def long_path_imports() -> None:
+    """uv's environment for a script can lie deep in a project (UV_CACHE_DIR=<project>/.audara-cache/uv, for a
+    sandbox): its module files then pass 260 characters, and Python cannot import them (an eval run: torch.fx's
+    dispatcher at 261). Import from the same folders written the long way."""
+    if sys.platform != "win32" or long_paths_on():
+        return
+    for i, p in enumerate(sys.path):
+        if p and len(os.path.abspath(p)) + DEEPEST > 259 and os.path.isdir(verbatim(p)):
+            sys.path[i] = verbatim(p)
+
+
+long_path_imports()
+
+import numpy as np  # noqa: E402 (after the import paths are set)
+from scipy import signal  # noqa: E402
+from scipy.ndimage import maximum_filter1d, minimum_filter1d, uniform_filter1d  # noqa: E402
 
 # ------------------------------------------------------------------------------------------------ constants
 
@@ -79,8 +119,11 @@ MIX_VERSION = 2
 # Bump when a change in this file changes the audio a plan produces: every up-to-date mix then rebuilds once.
 # (2: a mono file plays on both channels at full level; the music rises between a narration's paragraphs.)
 
-TIME_ORIGIN = ("t = 0 is the first sample of ffmpeg's gapless decode of each input, which is what Chrome's "
-               "decodeAudioData plays; mix.wav and music-only.wav are PCM, so they have no encoder delay.")
+TIME_ORIGIN = ("Time: t = 0 is the first sample of mix.wav and music-only.wav, as browsers and ffmpeg play them (PCM: "
+               "no encoder delay): never shift these times; no offset is needed. Each input went in through ffmpeg's "
+               "gapless decode (its encoder delay removed, as browsers play it), so times measured on an input hold in "
+               "the mix, moved only by where the plan places it.")
+# The build's note (mix-report.json and the record); measure writes time_note() of the file it measures.
 
 # Delivery loudness (integrated, BS.1770 / EBU R128) by kind of piece. Streaming platforms (YouTube, Spotify)
 # play everything at about -14 LUFS: louder uploads are turned down, quieter ones mostly stay quiet. A punchy
@@ -472,8 +515,11 @@ def where(video: str | None, out: str | None, inputs=(), writes: bool = True) ->
     return Where(None, None, None, base / "audio", base / "data", base / "out", base)
 
 
-# The cache. user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
+# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
 # three together.
+
+CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
+              "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
 
 
 def user_cache() -> Path:
@@ -492,25 +538,38 @@ def user_cache() -> Path:
 
 def cache_root(w: Where) -> tuple[Path, bool]:
     """The user cache, created; (folder, inside the project). When a sandbox forbids writing there,
-    one self-ignoring .audara-cache/ in the project (or the --out folder) instead."""
+    one self-ignoring .audara-cache/ in the project (or the --out folder) instead. An AUDARA_CACHE set
+    inside the project (or the folder worked in) ignores itself the same way."""
     root = user_cache()
     try:
         root.mkdir(parents=True, exist_ok=True)
         probe = root / f".write-test-{os.getpid()}"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink()
-        return root, False
     except OSError as e:
         fb = w.base / ".audara-cache"
         fb.mkdir(parents=True, exist_ok=True)
         (fb / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # the folder ignores itself in git
         note(f"cache: {root} is not writable here ({e.strerror or e}); using {fb} instead (git-ignored)")
         return fb, True
+    r = root.resolve()
+    base = next((d for d in (w.base.resolve(), Path.cwd().resolve()) if d in r.parents), None)
+    if not os.environ.get("AUDARA_CACHE", "").strip() or base is None:
+        return root, False
+    if not (root / ".gitignore").exists():
+        other = [e.name for e in root.iterdir() if e.name not in CACHE_DIRS and not e.name.startswith(".write-test-")]
+        if other:  # (a folder of the project's own: its files must stay visible to git)
+            note(f"cache: AUDARA_CACHE ({root}) lies inside {base} and holds other files ({', '.join(other[:3])}), so "
+                 f"it is not git-ignored: point AUDARA_CACHE at a folder of its own")
+            return root, False
+        (root / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # as the fallback's
+        note(f"cache: AUDARA_CACHE ({root}) lies inside {base}: it ignores itself in git (a '*' .gitignore there)")
+    return root, True
 
 
 def mpl_cache(w: Where) -> Path | None:
     """matplotlib's font cache, the only cache mix.py writes, goes into the audara cache (cache_root). Returns
-    the folder when it had to go inside the project (its size is reported), else None."""
+    the cache's folder when it is inside the project (its size is reported), else None."""
     if os.environ.get("MPLCONFIGDIR"):
         return None
     root, inside = cache_root(w)
@@ -524,8 +583,9 @@ def cache_size_note(root: Path | None, w: Where) -> str | None:
     if root is None:
         return None
     size = sum(f.stat().st_size for f in root.rglob("*") if f.is_file())
-    return (f"the user cache is not writable here, so the matplotlib font cache is in {relpath(root, w.project)}/ "
-            f"({size / 1e6:.2f} MB; it ignores itself in git)")
+    why = ("AUDARA_CACHE puts the cache" if root == user_cache() else  # (set inside the project: cache_root)
+           "the user cache is not writable here, so the cache is")
+    return f"{why} inside the project, in {relpath(root, w.project)}/ ({size / 1e6:.2f} MB; it ignores itself in git)"
 
 
 # ------------------------------------------------------------------------------------------------ audio in and out
@@ -547,6 +607,39 @@ def channels(path: Path) -> int | None:
         return int(p.stdout.strip().splitlines()[0])
     except (ValueError, IndexError):
         return None
+
+
+# priming and time_note are the same code in beats.py, mix.py, align.py and eleven.py (mix.py runs ffprobe by name, as
+# its other calls do): change all four together.
+
+
+def priming(path: Path) -> float:
+    """The encoder delay the gapless decode drops (s): the priming samples its first packet says to skip (an MP3's
+    LAME header, AAC's edit list, Opus' pre-skip); 0 for PCM. A player that keeps them plays everything that late."""
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-read_intervals", "%+#1",
+                        "-show_packets", "-show_entries", "stream=sample_rate:packet_side_data=skip_samples", "-of",
+                        "json", str(path)], capture_output=True, text=True)
+    try:
+        j = json.loads(r.stdout)
+        sr = int(j["streams"][0]["sample_rate"])
+        skip = sum(int(s.get("skip_samples") or 0) for p in j.get("packets", [])[:1]
+                   for s in p.get("side_data_list", []))
+    except (ValueError, KeyError, IndexError, TypeError):
+        return 0.0
+    return skip / sr
+
+
+def time_note(name: str, delay: float) -> str:
+    """The time origin, for notes and the summary: these times are the gapless decode's, never shifted; for a player
+    that keeps the encoder delay, a WAV of that decode (a shift would only be right for that player)."""
+    if delay <= 0:
+        return (f"Time: t = 0 is the first sample of {name}, as browsers and ffmpeg play it: never shift these times; "
+                f"no offset is needed.")
+    q = (lambda s: s if re.fullmatch(r"[\w.,+=@-]+", s) else f'"{s}"')  # (quoted unless a shell reads it as one word)
+    return (f"Time: t = 0 is the first sample of ffmpeg's gapless decode of {name} (its {delay * 1000:.1f} ms encoder "
+            f"delay removed), which is what browsers and ffmpeg play: never shift these times. A player that keeps the "
+            f"encoder delay plays every sound {delay * 1000:.1f} ms after them: give it a WAV of this decode instead "
+            f"(ffmpeg -i {q(name)} {q(Path(name).stem + '.wav')}).")
 
 
 _decoded: dict[str, np.ndarray] = {}
@@ -2424,7 +2517,7 @@ def cmd_measure(args) -> dict:
     draw_png(png, title, rep, curves)
     rep["png"] = relpath(png, proj)
     rep["notes"] = summary_flags(rep) + ([cache_size_note(in_project_cache, w)] if in_project_cache else [])
-    rep["time_origin"] = TIME_ORIGIN
+    rep["time_origin"] = time_note(path.name, priming(path))
     jpath = out_dir / f"loudness-{path.stem}.json"
     write_json(jpath, rep)
     rep["json"] = relpath(jpath, proj)

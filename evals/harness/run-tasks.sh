@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run the task evals in both tools, a few at a time, then the later-session case on a project the
-# title-card case made. Results land in evals/results/tasks/. Needs EVAL_SONG and EVAL_SONG_DATA
+# title-card case made. Results land in evals/results/tasks/, each run's log named like its folder:
+# log-<case>-<tool>[-<model>]-<with|without>.txt. Needs EVAL_SONG and EVAL_SONG_DATA
 # (see evals/README.md); EVAL_PROJECT is set here from the title-card runs.
 #   bash evals/harness/run-tasks.sh [claude|codex|both] [extra task.ts args, e.g. --model sonnet]
 #   CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh   (only those cases)
@@ -16,7 +17,18 @@ for case in $CASES; do
   [ -f "evals/tasks/$case/case.json" ] || { echo "no case '$case' in evals/tasks/: CASES takes case folder names, e.g. CASES=\"cv-title-card $LATER\""; exit 1; }
 done
 
-run() { bun evals/harness/task.ts --case "evals/tasks/$1" --tool "$2" "${@:3}" > "evals/results/tasks/log-$1-$2.txt" 2>&1; echo "done: $1 ($2)"; }
+# the arm and the model, read from the extra arguments as task.ts reads them: a --without run or another
+# model's run gets its own log (of a model name, only the characters a file name can hold)
+arm=with model= prev=
+for a in "$@"; do
+  [ "$a" = --without ] && arm=without
+  [ "$prev" = --model ] && model="-${a//[^A-Za-z0-9._-]/-}"
+  prev=$a
+done
+run() {
+  local log="evals/results/tasks/log-$1-$2$model-$arm.txt"
+  bun evals/harness/task.ts --case "evals/tasks/$1" --tool "$2" "${@:3}" > "$log" 2>&1; echo "done: $1 ($2); log: $log"
+}
 mkdir -p evals/results/tasks
 for case in $CASES; do
   [ "$case" = "$LATER" ] && continue

@@ -69,6 +69,13 @@ function prepare(dir: string, files: string[]) {
   for (const s of SKILLS) symlinkSync(path.join(SRC, s), path.join(link, s), 'junction');
 }
 
+/** Stop a run with its whole process tree: codex is a .cmd shim on Windows, and stopping the shim alone leaves
+ *  the session running in the folder, holding the output open (so a timeout never ends the run). */
+function stopTree(pid: number) {
+  if (process.platform === 'win32') Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' });
+  else { Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]); try { process.kill(pid); } catch { /* it ended meanwhile */ } }
+}
+
 const skillRe = (s: string) => new RegExp(`(?:^|[^\\w-])(?:[\\w-]+:)?${s}(?:[/\\\\]+SKILL\\.md|["'\\s,}]|$)`, 'i');
 // a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align)
 const useRe: Record<string, RegExp> = {
@@ -86,7 +93,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
     : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', '-C', dir, ...(MODEL ? ['-m', MODEL] : []), '-'];
   const t0 = performance.now();
   const p = Bun.spawn(cmd, { cwd: dir, stdin: TOOL === 'codex' ? new Blob([q.query]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
-  const timer = setTimeout(() => p.kill(), TIMEOUT_MS);
+  const timer = setTimeout(() => stopTree(p.pid), TIMEOUT_MS);
   const seen = new Set<string>(), used = new Set<string>(), tools: string[] = [];
   let commands = 0, log = '', stop = false;
   const dec = new TextDecoder();
@@ -115,7 +122,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
         if (commands >= CODEX_MAX_COMMANDS) stop = true;
       }
     }
-    if ((q.should_trigger && seen.has(SET.skill)) || used.has(SET.skill) || stop) { p.kill(); break; }
+    if ((q.should_trigger && seen.has(SET.skill)) || used.has(SET.skill) || stop) { stopTree(p.pid); break; }
   }
   clearTimeout(timer);
   await p.exited;

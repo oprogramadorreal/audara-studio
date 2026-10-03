@@ -435,7 +435,7 @@ function agentsSection(): string {
     '',
     `- **Shared look:** \`docs/STYLE.md\` in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
     "- **Preview:** `bunx vite` in the background (keep it running; a new session starts it again). `bun scripts/render.ts link --video <video> --t <seconds>` prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Every change gets a link.",
-    '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look). Before calling work done: `bun run check` and `verify`.',
+    '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look; a full `video` render takes minutes: wait for it before replying). Before calling work done: `bun run check` and `verify`.',
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
     '- **What you owe the director:** for a new video, its treatment and nothing built before their yes; a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money; the full render when they ask for it.',
     '',

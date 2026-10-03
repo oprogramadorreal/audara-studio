@@ -27,14 +27,16 @@ folder) gets DIR/data/words.json and DIR/out/. Inside a project, song needs its 
 video plays a window of the song (beats.py window: data/ is in the window's time), song writes the
 song's words to data/song/words.json and prints the command that cuts the window again from them.
 Caches, model weights and decoded audio go to the user cache (env AUDARA_CACHE, else the OS
-user cache folder + /audara), never into the project.
+user cache folder + /audara), never into the project (a cache that has to sit inside it ignores
+itself in git).
 
 Say map (--say): 'shown=spoken', a file of shown<TAB>spoken lines, or a JSON {"shown": "spoken"},
 read the same way as eleven.py reads it (several-word entries; an all-capitals word matches only
 all-capitals text).
 
-Time origin: t = 0 is the first sample of ffmpeg's gapless decode, which is what Chrome's
-decodeAudioData plays.
+Time origin: t = 0 is the first sample of ffmpeg's gapless decode (the encoder delay removed),
+which is what browsers and ffmpeg play. The times are never shifted: a player that keeps the
+encoder delay plays every sound later, so it gets a WAV of that decode instead.
 
 Exit codes: 0 ok, 1 error, or check found problems (edges beyond the tolerance, a broken
 structure), 2 bad usage. align.py never calls a paid API, so 3 (missing API key) and 4 (needs
@@ -58,7 +60,45 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
 
-import numpy as np
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
+# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
+#                torch's: 91)
+
+
+def long_paths_on() -> bool:
+    """Windows reads paths over 260 characters only when long paths are enabled (an admin setting)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as k:
+            return winreg.QueryValueEx(k, "LongPathsEnabled")[0] == 1
+    except (ImportError, OSError):
+        return False
+
+
+def verbatim(p: str) -> str:
+    """`p` written the long way (\\\\?\\C:\\... or \\\\?\\UNC\\server\\...), which Windows reads past 260 characters."""
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
+def long_path_imports() -> None:
+    """uv's environment for a script can lie deep in a project (UV_CACHE_DIR=<project>/.audara-cache/uv, for a
+    sandbox): its module files then pass 260 characters, and Python cannot import them (an eval run: torch.fx's
+    dispatcher at 261). Import from the same folders written the long way."""
+    if sys.platform != "win32" or long_paths_on():
+        return
+    for i, p in enumerate(sys.path):
+        if p and len(os.path.abspath(p)) + DEEPEST > 259 and os.path.isdir(verbatim(p)):
+            sys.path[i] = verbatim(p)
+
+
+long_path_imports()
+
+import numpy as np  # noqa: E402 (after the import paths are set)
 
 # ---------------------------------------------------------------------------------------------
 # Constants (each with the reason for its value)
@@ -266,8 +306,11 @@ def find_input(p: str, w: Where, subs: tuple[str, ...], what: str) -> Path:
     raise Fail(2, f"{what} not found: {p}{extra}")
 
 
-# The cache. user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
+# The cache. CACHE_DIRS, user_cache and cache_root are the same code in beats.py, mix.py and align.py: change all
 # three together.
+
+CACHE_DIRS = ("work", "torch", "hf", "whisper", "matplotlib", "numba",  # what the scripts keep in the cache,
+              "uv")  # and uv's, which SKILL.md puts in .audara-cache/uv for a sandbox
 
 
 def user_cache() -> Path:
@@ -286,20 +329,33 @@ def user_cache() -> Path:
 
 def cache_root(w: Where) -> tuple[Path, bool]:
     """The user cache, created; (folder, inside the project). When a sandbox forbids writing there,
-    one self-ignoring .audara-cache/ in the project (or the --out folder) instead."""
+    one self-ignoring .audara-cache/ in the project (or the --out folder) instead. An AUDARA_CACHE set
+    inside the project (or the folder worked in) ignores itself the same way."""
     root = user_cache()
     try:
         root.mkdir(parents=True, exist_ok=True)
         probe = root / f".write-test-{os.getpid()}"
         probe.write_text("ok", encoding="utf-8")
         probe.unlink()
-        return root, False
     except OSError as e:
         fb = w.base / ".audara-cache"
         fb.mkdir(parents=True, exist_ok=True)
         (fb / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # the folder ignores itself in git
         note(f"cache: {root} is not writable here ({e.strerror or e}); using {fb} instead (git-ignored)")
         return fb, True
+    r = root.resolve()
+    base = next((d for d in (w.base.resolve(), Path.cwd().resolve()) if d in r.parents), None)
+    if not os.environ.get("AUDARA_CACHE", "").strip() or base is None:
+        return root, False
+    if not (root / ".gitignore").exists():
+        other = [e.name for e in root.iterdir() if e.name not in CACHE_DIRS and not e.name.startswith(".write-test-")]
+        if other:  # (a folder of the project's own: its files must stay visible to git)
+            note(f"cache: AUDARA_CACHE ({root}) lies inside {base} and holds other files ({', '.join(other[:3])}), so "
+                 f"it is not git-ignored: point AUDARA_CACHE at a folder of its own")
+            return root, False
+        (root / ".gitignore").write_text("*\n", encoding="utf-8", newline="\n")  # as the fallback's
+        note(f"cache: AUDARA_CACHE ({root}) lies inside {base}: it ignores itself in git (a '*' .gitignore there)")
+    return root, True
 
 
 def folder_bytes(p: Path) -> int:
@@ -340,6 +396,39 @@ def decode_mono(path: Path, sr: int | None = None) -> tuple[np.ndarray, int]:
     if len(y) == 0:
         raise Fail(1, f"{path.name}: decoded to zero samples")
     return y, sr
+
+
+# priming and time_note are the same code in beats.py, mix.py, align.py and eleven.py (mix.py runs ffprobe by name, as
+# its other calls do): change all four together.
+
+
+def priming(path: Path) -> float:
+    """The encoder delay the gapless decode drops (s): the priming samples its first packet says to skip (an MP3's
+    LAME header, AAC's edit list, Opus' pre-skip); 0 for PCM. A player that keeps them plays everything that late."""
+    r = subprocess.run([tool("ffprobe"), "-v", "error", "-select_streams", "a:0", "-read_intervals", "%+#1",
+                        "-show_packets", "-show_entries", "stream=sample_rate:packet_side_data=skip_samples", "-of",
+                        "json", str(path)], capture_output=True, text=True)
+    try:
+        j = json.loads(r.stdout)
+        sr = int(j["streams"][0]["sample_rate"])
+        skip = sum(int(s.get("skip_samples") or 0) for p in j.get("packets", [])[:1]
+                   for s in p.get("side_data_list", []))
+    except (ValueError, KeyError, IndexError, TypeError):
+        return 0.0
+    return skip / sr
+
+
+def time_note(name: str, delay: float) -> str:
+    """The time origin, for notes and the summary: these times are the gapless decode's, never shifted; for a player
+    that keeps the encoder delay, a WAV of that decode (a shift would only be right for that player)."""
+    if delay <= 0:
+        return (f"Time: t = 0 is the first sample of {name}, as browsers and ffmpeg play it: never shift these times; "
+                f"no offset is needed.")
+    q = (lambda s: s if re.fullmatch(r"[\w.,+=@-]+", s) else f'"{s}"')  # (quoted unless a shell reads it as one word)
+    return (f"Time: t = 0 is the first sample of ffmpeg's gapless decode of {name} (its {delay * 1000:.1f} ms encoder "
+            f"delay removed), which is what browsers and ffmpeg play: never shift these times. A player that keeps the "
+            f"encoder delay plays every sound {delay * 1000:.1f} ms after them: give it a WAV of this decode instead "
+            f"(ffmpeg -i {q(name)} {q(Path(name).stem + '.wav')}).")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1431,6 +1520,20 @@ def acoustic_label(acoustic: str, hf_license: str | None) -> tuple[str, str]:
     return (acoustic[3:] + " (Hugging Face)", hf_license or "unknown")
 
 
+def deep_uv(uv: str) -> str | None:
+    """uv's cache when the model stage's files in it (its environment, then torch's own folders) can pass the 260
+    characters Windows allows while long paths are off; else None."""
+    if sys.platform != "win32" or long_paths_on():
+        return None
+    d = os.environ.get("UV_CACHE_DIR") or subprocess.run([uv, "cache", "dir"], capture_output=True,
+                                                         text=True).stdout.strip()
+    if not d:
+        return None
+    d = os.path.abspath(d)
+    return d if len(d) + len("\\environments-v2\\align-models-0123456789abcdef\\Lib\\site-packages\\") + DEEPEST > 259 \
+        else None
+
+
 def run_models(args, audio: Path, work: Path, cache: Path, acoustic: str, prompt: str, lang: str) -> dict:
     worker = Path(__file__).with_name("align_models.py")
     if not worker.is_file():
@@ -1447,7 +1550,13 @@ def run_models(args, audio: Path, work: Path, cache: Path, acoustic: str, prompt
     r = subprocess.run(cmd, stdout=subprocess.PIPE, env=env)
     out = r.stdout.decode("utf-8", errors="replace").strip()
     if r.returncode != 0:
-        raise Fail(1, f"the model stage failed (exit {r.returncode}); its messages are above")
+        deep = deep_uv(uv)
+        raise Fail(1, f"the model stage failed (exit {r.returncode}); its messages are above" + (
+            f". If they name a file or module that could not be found or written, that is Windows' 260-character "
+            f"path limit: the model stage runs from uv's cache at {deep} ({len(deep)} characters), where torch's files "
+            f"pass 260 characters, and long paths are off on this machine. Set UV_CACHE_DIR to a short folder such as "
+            f"C:\\uvc (torch, Demucs and faster-whisper install there again, about 850 MB), or enable long paths "
+            f"(LongPathsEnabled = 1, an admin setting), then run again" if deep else ""))
     try:
         return json.loads(out.splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
@@ -1620,9 +1729,8 @@ def run_song(args) -> dict:
     label, lic = acoustic_label(acoustic, res.get("acoustic_license"))
     whisper_txt = (f"faster-whisper {args.whisper} transcribed the {res['source']} as a cross-check only (it never "
                    f"replaces the lyrics); ") if res.get("whisper") else ""
-    notes = (f"Time origin: t = 0 is the first sample of ffmpeg's gapless decode of {audio.name}, which is what "
-             f"Chrome's decodeAudioData plays. Made by align.py song: "
-             + ("Demucs htdemucs isolated the vocals from that decode; " if res["source"] == "vocals" else "")
+    notes = (time_note(audio.name, priming(audio)) + " Made by align.py song: "
+             + ("Demucs htdemucs isolated the vocals from the decoded audio; " if res["source"] == "vocals" else "")
              + f"{label} CTC emissions (20 ms frames) and one Viterbi forced alignment of all {len(lines)} lines, with a "
              f"garbage token between lines for ad-libs and backing vocals; a word that starts with a hiss (s, f, sh...) "
              f"starts where the hiss does ({n_fric} moved; CTC marks its end); a word runs on to the next one unless the "

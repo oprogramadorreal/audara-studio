@@ -32,13 +32,16 @@ plan, an audio file) names its video by itself. Without a project: --out DIR (de
 folder) gets DIR/audio/, DIR/data/ and DIR/out/. Inside a project a command that writes needs its
 video, so nothing lands at the project's root. Nothing is cached anywhere else.
 
-Time origin: t = 0 is the first sample of ffmpeg's gapless decode, which is what Chrome's
-decodeAudioData plays.
+Time origin: t = 0 is the first sample of ffmpeg's gapless decode (the encoder delay removed),
+which is what browsers and ffmpeg play. The times are never shifted: a player that keeps the
+encoder delay plays every sound later, so it gets a WAV of that decode instead (narration.wav is
+one already).
 
 Key: ELEVENLABS_API_KEY, from the environment only: never printed, written or passed on a
-command line. ELEVENLABS_BASE_URL (default https://api.elevenlabs.io) points the script at a mock.
+command line. ELEVENLABS_BASE_URL (default https://api.elevenlabs.io) changes the server it talks to.
 Without a key a paid command spends nothing: it prints what it would cost, what a key pays for and
-the free paths, and exits 3 (tts needs no --voice for that). After a paid run the summary names the
+the free paths, and exits 3 (tts needs no --voice for that); music plan does the same, with what
+composing the plan would cost once its length is given. After a paid run the summary names the
 account's plan and what audio made on it may be used for; each request record keeps the plan.
 
 Exit codes: 0 ok, 1 error, 2 bad usage, 3 no usable API key (missing or rejected), 4 needs --yes
@@ -65,8 +68,46 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 
-import httpx
-import numpy as np
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
+# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
+DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
+#                torch's: 91)
+
+
+def long_paths_on() -> bool:
+    """Windows reads paths over 260 characters only when long paths are enabled (an admin setting)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\FileSystem") as k:
+            return winreg.QueryValueEx(k, "LongPathsEnabled")[0] == 1
+    except (ImportError, OSError):
+        return False
+
+
+def verbatim(p: str) -> str:
+    """`p` written the long way (\\\\?\\C:\\... or \\\\?\\UNC\\server\\...), which Windows reads past 260 characters."""
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    return "\\\\?\\UNC\\" + p[2:] if p.startswith("\\\\") else "\\\\?\\" + p
+
+
+def long_path_imports() -> None:
+    """uv's environment for a script can lie deep in a project (UV_CACHE_DIR=<project>/.audara-cache/uv, for a
+    sandbox): its module files then pass 260 characters, and Python cannot import them (an eval run: torch.fx's
+    dispatcher at 261). Import from the same folders written the long way."""
+    if sys.platform != "win32" or long_paths_on():
+        return
+    for i, p in enumerate(sys.path):
+        if p and len(os.path.abspath(p)) + DEEPEST > 259 and os.path.isdir(verbatim(p)):
+            sys.path[i] = verbatim(p)
+
+
+long_path_imports()
+
+import httpx  # noqa: E402 (after the import paths are set)
+import numpy as np  # noqa: E402
 
 TOOL = "eleven.py"
 OK, ERROR, USAGE, NO_KEY, CONFIRM = 0, 1, 2, 3, 4
@@ -514,6 +555,39 @@ def decode(path: Path, sr: int = SR) -> np.ndarray:
     return y
 
 
+# priming and time_note are the same code in beats.py, mix.py, align.py and eleven.py (mix.py runs ffprobe by name, as
+# its other calls do): change all four together.
+
+
+def priming(path: Path) -> float:
+    """The encoder delay the gapless decode drops (s): the priming samples its first packet says to skip (an MP3's
+    LAME header, AAC's edit list, Opus' pre-skip); 0 for PCM. A player that keeps them plays everything that late."""
+    r = subprocess.run([tool("ffprobe"), "-v", "error", "-select_streams", "a:0", "-read_intervals", "%+#1",
+                        "-show_packets", "-show_entries", "stream=sample_rate:packet_side_data=skip_samples", "-of",
+                        "json", str(path)], capture_output=True, text=True)
+    try:
+        j = json.loads(r.stdout)
+        sr = int(j["streams"][0]["sample_rate"])
+        skip = sum(int(s.get("skip_samples") or 0) for p in j.get("packets", [])[:1]
+                   for s in p.get("side_data_list", []))
+    except (ValueError, KeyError, IndexError, TypeError):
+        return 0.0
+    return skip / sr
+
+
+def time_note(name: str, delay: float) -> str:
+    """The time origin, for notes and the summary: these times are the gapless decode's, never shifted; for a player
+    that keeps the encoder delay, a WAV of that decode (a shift would only be right for that player)."""
+    if delay <= 0:
+        return (f"Time: t = 0 is the first sample of {name}, as browsers and ffmpeg play it: never shift these times; "
+                f"no offset is needed.")
+    q = (lambda s: s if re.fullmatch(r"[\w.,+=@-]+", s) else f'"{s}"')  # (quoted unless a shell reads it as one word)
+    return (f"Time: t = 0 is the first sample of ffmpeg's gapless decode of {name} (its {delay * 1000:.1f} ms encoder "
+            f"delay removed), which is what browsers and ffmpeg play: never shift these times. A player that keeps the "
+            f"encoder delay plays every sound {delay * 1000:.1f} ms after them: give it a WAV of this decode instead "
+            f"(ffmpeg -i {q(name)} {q(Path(name).stem + '.wav')}).")
+
+
 def to_pcm16(y: np.ndarray) -> np.ndarray:
     return np.clip(np.round(y.astype(np.float64) * 32767.0), -32768, 32767).astype("<i2")
 
@@ -848,10 +922,11 @@ def get_key() -> str | None:
     return k or None
 
 
-def no_key(what: str, cost: list[str] | None = None, done: str = "generated") -> Fail:
+def no_key(what: str, cost: list[str] | None = None, done: str = "generated",
+           lead: str = "This request would cost: ") -> Fail:
     lines = [f"{KEY_ENV} is not set in this environment, so {what} was not {done} and nothing was spent."]
     if cost:
-        lines += ["This request would cost: " + cost[0]] + ["  " + c for c in cost[1:]]
+        lines += [lead + cost[0]] + ["  " + c for c in cost[1:]]
     lines += [
         f"What a key pays for (rates checked {RATES_CHECKED}; the account's plan decides):",
         "  narration (tts)  1 credit per character (Multilingual v2; Flash 0.5-1), word timings included",
@@ -1963,8 +2038,8 @@ def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], pa
         "notes": (f"Narration by ElevenLabs text-to-speech with timestamps (eleven.py tts): voice "
                   f"{vname + ' (' + voice + ')' if vname else voice}, model {model}. One line per paragraph (block) of {script.name}, in order; each block is one request, "
                   f"and the blocks follow one another with {gap:g} s of silence between them, so the picture can cut "
-                  f"there. Times are seconds on audio/narration.wav: t = 0 is its first sample, which is t = 0 of "
-                  f"ffmpeg's gapless decode and of the browser's decodeAudioData. w is the word as shown; spoken is "
+                  f"there. Times are seconds on audio/narration.wav: t = 0 is its first sample, as browsers and ffmpeg "
+                  f"play it: never shift these times; no offset is needed. w is the word as shown; spoken is "
                   f"what the voice said when the say map respelled it (find words by w). Word times come from the "
                   f"API's character timings; phrase edges (words next to a pause of 150 ms or more) were measured "
                   f"against the waveform: {edge_line(before, 'before snapping' if snap_on else '')}"
@@ -2231,6 +2306,13 @@ def validate_chunks(chunks: list) -> list[str]:
     return bad
 
 
+def music_estimate(takes: int, secs: float) -> tuple[str, dict]:
+    est = {"takes": takes, "seconds_each": secs, "credits": round(MUSIC_CREDITS_PER_MIN * secs / 60 * takes),
+           "usd": round(MUSIC_USD_PER_MIN * secs / 60 * takes, 3)}
+    return (f"{takes} take{'s' if takes != 1 else ''} of {secs:g} s = about {num(est['credits'])} credits (about "
+            f"${est['usd']:.2f} at API prices)"), est
+
+
 def cmd_music_plan(a, out: Out) -> None:
     w = where(a.video, a.out)
     modes = sum(bool(x) for x in (a.sections, a.lengths, a.from_narration))
@@ -2288,7 +2370,14 @@ def cmd_music_plan(a, out: Out) -> None:
         raise Fail(USAGE, f"the prompt is {len(prompt)} characters with the rules added; the API takes 4,100")
     key = get_key()
     if not key:
-        raise no_key("the composition plan (a free call, but it needs a key)", done="made")
+        cost = None
+        if total_ms:  # the plan is free: the cost is composing it, as compose's default 2 takes or as 1
+            cost = [music_estimate(2, total_ms / 1000)[0] + ", compose's default",
+                    music_estimate(1, total_ms / 1000)[0] + ", with --takes 1",
+                    "what a key adds: a produced take composed to this plan, which the director reviews first (the "
+                    "plan is free; compose shows the cost and asks before spending)"]
+        raise no_key("the composition plan (a free call, but it needs a key)", cost, done="made",
+                     lead="Composing this plan would cost: ")
     api = Api(key)
     body = {"prompt": prompt, "model_id": MUSIC_MODEL}
     if total_ms:
@@ -2526,8 +2615,8 @@ def cmd_music_compose(a, out: Out) -> None:
         write_json(sec_path, {"sections": secs, "duration": r3(len(decode(main)) / SR), "audio": rel_to(main, w.video_dir or w.base),
                               "notes": f"Sections of {main.name} from its composition plan: {MUSIC_MODEL} enforces chunk "
                                        "durations, so these are the planned boundaries (not measured here; beats.py "
-                                       "on the file shows where the music really changes). Times in seconds of the "
-                                       "file's gapless decode (t = 0 = its first sample)."})
+                                       "on the file shows where the music really changes). "
+                                       + time_note(main.name, priming(main))})
         out(f"Music: take {a.pick} is now {rel(main)}.")
         report_plan(out, "take", [(a.pick, main)], "music")
         out(f"Sections from the plan: {rel(sec_path)}.")
@@ -2554,11 +2643,7 @@ def cmd_music_compose(a, out: Out) -> None:
         for k, p in rescued.items():
             adopt_rescued(p, tpath(k), MUSIC_SIDES)
     if todo:
-        est = {"takes": len(todo), "seconds_each": total,
-               "credits": round(MUSIC_CREDITS_PER_MIN * total / 60 * len(todo)),
-               "usd": round(MUSIC_USD_PER_MIN * total / 60 * len(todo), 3)}
-        cost = (f"{len(todo)} take{'s' if len(todo) != 1 else ''} of {total:g} s = about {num(est['credits'])} credits "
-                f"(about ${est['usd']:.2f} at API prices)")
+        cost, est = music_estimate(len(todo), total)
         key = get_key()
         if not key:
             raise no_key("the music", [cost])
@@ -2671,7 +2756,7 @@ def write_song_words(w: Where, main: Path, chunks: list[dict], wt: list[dict]) -
     path = w.data_dir / ("song-words.json" if narrated else "words.json")
     write_json(path, {"lines": lines, "audioSha256": sha256_file(main),
                       "notes": f"Sung words of {main.name}, from ElevenLabs music word timestamps placed on the plan's "
-                               "lyric lines. Times in seconds of the file's gapless decode (t = 0 = its first sample).",
+                               "lyric lines. " + time_note(main.name, priming(main)),
                       "source": {"kind": "song", "tool": TOOL, "audio": rel_to(main, w.video_dir or w.base)}})
     return path, len(lines), sum(len(l["words"]) for l in lines), matched
 

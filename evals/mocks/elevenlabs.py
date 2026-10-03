@@ -16,8 +16,13 @@ The TTS audio is speech-like (voiced tones per letter, real silences at , and .)
 alignment has the biases real TTS timestamps show: the first character starts at 0.0 although
 the voice starts 150 ms in, a word after a pause is reported 90 ms early, a word before a pause
 ends 50 ms late, and the last character runs to the end of the file. Every request is logged to
-the --log file (method, path, whether the key matched; never the key itself). The key it accepts is
-$MOCK_KEY (default: the eval harness fake key).
+the --log file (method, path, whether the key matched, and a text-to-speech request's request id;
+never the key itself). The key it accepts is $MOCK_KEY (default: the eval harness fake key).
+
+What a session sees looks like a real creator account: voice names, ids and labels, preview links,
+request ids and song metadata in ElevenLabs' formats. Agents that spotted a mock (voices named
+"(mock)") held back and left out what a real hand-off says. The preview links point at ElevenLabs'
+storage bucket, where these files don't exist: fetched, they answer 404.
 
 Triggers for error tests: TTS text containing TRIGGER_402 -> 402 insufficient_credits;
 TRIGGER_429 -> 429 once, then success.
@@ -46,26 +51,46 @@ LOG = WORK / "mock_log.jsonl"
 LOCK = threading.Lock()
 STATE = {"tts_texts": [], "sfx_calls": {}, "seen_429": set(), "audio_sha": {}}
 
+# a default (premade) voice, one added from the Voice Library (professional) and one made with Voice
+# Design (generated); preview links have the bucket paths each kind has there
+PREVIEWS = "https://storage.googleapis.com/eleven-public-prod"
 VOICES = [
-    {"voice_id": "VOICE_MOCK_ANA", "name": "Ana (mock)", "category": "premade", "description": "calm narrator",
-     "labels": {"gender": "female", "age": "young", "accent": "brazilian", "use_case": "narration"},
-     "verified_languages": [{"language": "pt", "model_id": "eleven_multilingual_v2", "accent": "brazilian"}],
-     "preview_url": "http://mock/preview/ana.mp3"},
-    {"voice_id": "VOICE_MOCK_ED", "name": "Ed (mock)", "category": "professional", "description": "warm",
-     "labels": {"gender": "male", "age": "middle_aged", "accent": "american", "use_case": "narration"},
-     "verified_languages": [{"language": "en", "model_id": "eleven_multilingual_v2", "accent": "american"}],
-     "preview_url": "http://mock/preview/ed.mp3"},
-    {"voice_id": "VOICE_MOCK_LIB", "name": "Lib (mock)", "category": "generated", "description": "bright",
-     "labels": {"gender": "female", "age": "young", "accent": "british", "use_case": "social media"},
-     "verified_languages": [{"language": "en", "model_id": "eleven_multilingual_v2"},
-                            {"language": "pt", "model_id": "eleven_multilingual_v2"}],
-     "preview_url": "http://mock/preview/lib.mp3"},
+    {"voice_id": "7pw50oSJb9NWQ0HJBBuM", "name": "Camila", "category": "premade",
+     "description": "A calm, clear Brazilian Portuguese voice for narration and audiobooks.",
+     "labels": {"accent": "brazilian", "descriptive": "calm", "age": "young", "gender": "female", "language": "pt",
+                "use_case": "narrative_story"},
+     "verified_languages": [{"language": "pt", "model_id": "eleven_multilingual_v2", "accent": "brazilian",
+                             "locale": "pt-BR"}],
+     "preview_url": f"{PREVIEWS}/premade/voices/7pw50oSJb9NWQ0HJBBuM/ae2156f9-d9fa-4042-b60d-4505f3d38841.mp3"},
+    {"voice_id": "lLMLgpFODM2KlxUSCdcI", "name": "Graham - Warm Narrator", "category": "professional",
+     "description": "A warm, steady American narrator in his forties: clear and trustworthy, for explainers, "
+                    "product videos and documentaries.",
+     "labels": {"accent": "american", "descriptive": "warm", "age": "middle_aged", "gender": "male", "language": "en",
+                "use_case": "narrative_story"},
+     "verified_languages": [{"language": "en", "model_id": "eleven_multilingual_v2", "accent": "american",
+                             "locale": "en-US"}],
+     "preview_url": f"{PREVIEWS}/database/user/AIUIKYiRBwkRR26g44VZyKyilmnV/voices/lLMLgpFODM2KlxUSCdcI/"
+                    "cTczOGjY24UT3zJATqtC.mp3"},
+    {"voice_id": "f38bgdzGogYQ5UizvbaJ", "name": "Hannah - British Host", "category": "generated",
+     "description": "A bright, upbeat young British voice for social media, ads and short videos.",
+     "labels": {"accent": "british", "descriptive": "upbeat", "age": "young", "gender": "female", "language": "en",
+                "use_case": "social_media"},
+     "verified_languages": [{"language": "en", "model_id": "eleven_multilingual_v2", "accent": "british",
+                             "locale": "en-GB"},
+                            {"language": "pt", "model_id": "eleven_multilingual_v2", "locale": "pt-BR"}],
+     "preview_url": f"{PREVIEWS}/UJeUIFMzeGXX9WpLtQoWnZIpJBcq/voices/f38bgdzGogYQ5UizvbaJ/"
+                    "31ecfd4d-415a-499e-97f8-7fe8a1d48843.mp3"},
 ]
+
+
+def request_id() -> str:
+    """A request id as the API gives one, in error bodies and the request-id header: 32 hex digits."""
+    return os.urandom(16).hex()
 
 
 def err(code: int, typ: str, ecode: str, msg: str, status: str | None = None) -> tuple[int, dict]:
     return code, {"detail": {"type": typ, "code": ecode, "message": msg, "status": status or ecode,
-                             "request_id": "req_mock_" + os.urandom(4).hex()}}
+                             "request_id": request_id()}}
 
 
 def mp3(y: np.ndarray, channels: int = 1) -> bytes:
@@ -193,13 +218,16 @@ def plan_for(prompt: str, length_ms: int | None) -> dict:
         b = int(round(total * 0.25 / 1000)) * 1000
         parts = [("Intro", a), ("Main", total - a - b), ("Outro", b)]
     sung = "vocals" in prompt.lower() and "no vocals" not in prompt.lower()
+    # the styles echo the prompt's first line (eleven.py puts its rules on the lines after it)
+    styles = [s.strip() for s in (prompt.strip().splitlines() or [""])[0].split(",") if s.strip()][:4]
+    role = {"Intro": "sparse intro", "Main": "full arrangement", "Outro": "gentle resolve"}
     chunks = []
-    for i, (name, d) in enumerate(parts):
+    for name, d in parts:
         text = f"[{name}]"
         if sung and name == "Main":
             text += "\nEvery frame is a function of time\nand the time is ours"
         chunks.append({"text": text, "duration_ms": d,
-                       "positive_styles": ["warm analog pads", "soft pulse", "86 BPM", "D major", f"part {i + 1}"][:6],
+                       "positive_styles": (styles or ["warm analog pads", "soft pulse"]) + [role[name]],
                        "negative_styles": ["harsh"], "context_adherence": "high"})
     return {"chunks": chunks}
 
@@ -236,7 +264,8 @@ def make_sfx() -> None:
 
 
 class H(BaseHTTPRequestHandler):
-    server_version = "eleven-mock/1"
+    def version_string(self) -> str:  # the Server header: a common API server's, not this file's name
+        return "uvicorn"
 
     def log_message(self, *a):  # quiet console
         pass
@@ -326,7 +355,7 @@ class H(BaseHTTPRequestHandler):
             body = json.loads(raw)
             text = body["text"]
             if m.group(1) not in [v["voice_id"] for v in VOICES]:
-                c, b = err(404, "not_found", "voice_not_found", "voice not found")
+                c, b = err(404, "not_found", "voice_not_found", f"A voice with voice_id {m.group(1)} was not found.")
                 self._log(c, True)
                 return self._json(c, b)
             if "TRIGGER_402" in text:
@@ -343,16 +372,18 @@ class H(BaseHTTPRequestHandler):
             with LOCK:
                 if text not in STATE["tts_texts"]:
                     STATE["tts_texts"].append(text)
+            rid = request_id()  # (eleven.py keeps it in the block's request record)
             self._log(200, True, {"chars": len(text), "seed": body.get("seed"), "model": body.get("model_id"),
-                                  "voice_settings": body.get("voice_settings"), "format": q.get("output_format")})
+                                  "voice_settings": body.get("voice_settings"), "format": q.get("output_format"),
+                                  "request_id": rid})
             return self._json(200, {"audio_base64": base64.b64encode(audio).decode(), "alignment": al,
                                     "normalized_alignment": al},
-                              {"request-id": "req_" + hashlib.sha1(raw).hexdigest()[:12],
-                               "character-cost": str(len(text))})
+                              {"request-id": rid, "character-cost": str(len(text))})
         if u.path == "/v1/music/plan":
             body = json.loads(raw)
             if body.get("model_id") != "music_v2_5":
-                c, b = err(422, "validation_error", "invalid", "mock expects model_id music_v2_5")
+                c, b = err(422, "validation_error", "invalid_parameters",
+                           f"Unsupported model_id {body.get('model_id')!r}: use music_v2_5.")
                 self._log(c, False)
                 return self._json(c, b)
             if "Beatles" in body.get("prompt", ""):
@@ -365,7 +396,8 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/v1/music/detailed":
             body = json.loads(raw)
             if body.get("model_id") != "music_v2_5" or "composition_plan" not in body:
-                c, b = err(422, "validation_error", "invalid", "mock expects music_v2_5 with a composition_plan")
+                c, b = err(422, "validation_error", "invalid_parameters",
+                           f"model_id {body.get('model_id')!r}: this request needs music_v2_5 and a composition_plan.")
                 self._log(c, True)
                 return self._json(c, b)
             chunks = body["composition_plan"]["chunks"]
@@ -387,14 +419,21 @@ class H(BaseHTTPRequestHandler):
                                 words.append({"word": wd, "start_ms": k, "end_ms": k + 350})
                                 k += 400
                     t0 += d
+            # a title and description made from the plan's styles (the model writes its own from the request)
+            styles = [s.strip() for s in chunks[0].get("positive_styles") or []
+                      if isinstance(s, str) and s.strip() and s.strip().lower() != "instrumental"] or ["ambient"]
+            title = " ".join(w[:1].upper() + w[1:] for w in styles[0].split())
+            sung = any(l.strip() and not l.startswith("[") for c in chunks for l in str(c.get("text", "")).splitlines())
+            about = ", ".join(styles[:3] + ([] if sung else ["instrumental"]))
             meta = {"composition_plan": body["composition_plan"],
-                    "song_metadata": {"title": "Mock song", "description": "synthetic", "genres": ["ambient"],
-                                      "languages": ["en"], "is_explicit": False},
+                    "song_metadata": {"title": title, "description": about[:1].upper() + about[1:] + ".",
+                                      "genres": ["ambient"], "languages": ["en"] if sung else [], "is_explicit": False},
                     "words_timestamps": words}
-            boundary = "mockboundary" + os.urandom(6).hex()
+            boundary = os.urandom(16).hex()
+            fname = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_") + ".mp3"
             payload = (f"--{boundary}\r\nContent-Type: application/json\r\n\r\n{json.dumps(meta)}\r\n"
                        f"--{boundary}\r\nContent-Type: audio/mpeg\r\n"
-                       f"Content-Disposition: attachment; filename=\"mock_song.mp3\"\r\n\r\n").encode() + audio + \
+                       f"Content-Disposition: attachment; filename=\"{fname}\"\r\n\r\n").encode() + audio + \
                       f"\r\n--{boundary}--\r\n".encode()
             sha = hashlib.sha256(audio).hexdigest()
             self._log(200, True, {"seed": seed, "audio_sha256": sha, "with_timestamps": body.get("with_timestamps")})
@@ -414,10 +453,12 @@ class H(BaseHTTPRequestHandler):
             fields = dict(re.findall(rb'name="([^"]+)"\r\n\r\n([^\r]*)\r\n', raw))
             model = fields.get(b"model_id", b"").decode()
             if model != "scribe_v2":
-                c, b = err(422, "validation_error", "invalid", f"mock expects scribe_v2, got {model!r}")
+                c, b = err(422, "validation_error", "invalid_parameters",
+                           f"Unsupported model_id {model!r}: use scribe_v2.")
                 self._log(c, True)
                 return self._json(c, b)
             text = " ".join(STATE["tts_texts"]).replace("dum", "doom")
+            lang = "por" if re.search(r"[ãõçáéíóúâêô]", text.lower()) else "eng"  # the language it detects
             words, t = [], 0.4
             for wd in text.split():
                 words.append({"text": wd, "type": "word", "start": round(t, 3), "end": round(t + 0.3, 3),
@@ -425,7 +466,7 @@ class H(BaseHTTPRequestHandler):
                 words.append({"text": " ", "type": "spacing", "start": round(t + 0.3, 3), "end": round(t + 0.35, 3)})
                 t += 0.35
             self._log(200, True, {"multipart": "multipart/form-data" in ctype, "bytes": len(raw)})
-            return self._json(200, {"language_code": "por", "language_probability": 0.98, "text": text,
+            return self._json(200, {"language_code": lang, "language_probability": 0.98, "text": text,
                                     "words": words})
         self._log(404, paid)
         self._json(404, {"detail": "Not Found"})

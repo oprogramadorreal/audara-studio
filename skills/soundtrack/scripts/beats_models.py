@@ -58,8 +58,8 @@ import time
 import urllib.request
 from pathlib import Path
 
-# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py and
-# beats_models.py: change both together.
+# Windows' 260 characters. long_paths_on, verbatim and long_path_imports are the same code in beats.py,
+# beats_models.py, align.py, align_models.py, mix.py and eleven.py: change all six together.
 DEEPEST = 100  # characters a package's own files reach below site-packages (scikit-learn's deepest module: 93,
 #                torch's: 91)
 
