@@ -37,7 +37,8 @@ To force the skill (for example when other video skills are installed), use `/au
 Claude Code or `$audara-studio:code-video` in Codex.
 
 Generating voice or music needs an [ElevenLabs](https://elevenlabs.io) API key in `ELEVENLABS_API_KEY`;
-everything else works without one.
+everything else works without one, and a local stand-in voice or synthesized music can fill in until
+there is one.
 
 ## More
 

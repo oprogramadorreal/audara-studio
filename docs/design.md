@@ -180,7 +180,8 @@ The GLSL is the visible part, but the value to reuse is six things around it:
    why the browser preview matches the export, and why motion blur from averaged sub-frames and rendering
    in parallel segments both work.
 2. **A live preview to direct the video** (`app/src/main.ts`). `bunx vite` serves the video as a web page
-   that plays in real time with the song:
+   that plays in real time with the song (in audara, `render.ts preview` starts it, detached, so it
+   outlives the agent's turn):
    - a scrub bar with the scenes marked, and keys to play, seek, step one frame, jump between scenes and
      loop one;
    - `?t=23` links to any moment;
@@ -703,6 +704,105 @@ A suggested layout; adjust it if the code pushes back.
   [WinterArc21/Battle-of-Austerlitz-Film](https://github.com/WinterArc21/Battle-of-Austerlitz-Film) (long
   form), [athemeroy/awesome-opus-5-5-videos](https://github.com/athemeroy/awesome-opus-5-5-videos) (prompts),
   [guanmo-ai/awesome-ai-motion](https://github.com/guanmo-ai/awesome-ai-motion) (a list).
+
+## What the build checked
+
+Every check ran on Windows 11, in fresh headless sessions (`claude -p`, `codex exec`), with the skills
+linked into a scratch folder as project skills or installed as the plugin. The harness and the cases are
+in `evals/`; their results stay out of the repo.
+
+- **Format.** Both SKILL.md files pass three validators: `skills-ref` (the Agent Skills spec), Codex's
+  `quick_validate.py` and Anthropic's. They stay under 8,000 bytes, so neither tool truncates them.
+- **Triggering.** Twenty queries per skill, ten that should load it and ten near-misses written to be
+  hard (a podcast edit, an app that calls a speech API, a GIF of a UI). Claude Opus, Claude Sonnet and
+  Codex's default model: 20/20 each, for both skills. Codex opens a skill to decide whether it applies, so
+  for Codex a near-miss passes when the skill was not used (its scripts never ran); it read code-video on
+  43% of the near-misses and used it on none.
+- **Tasks.** Nine multi-turn cases written from what went wrong in twelve runs without the skills: a title
+  card, a brief for a song video, a vertical explainer, a later session asked for a small change (with
+  and without the skills installed, and with an unrelated app holding Vite's default port), a
+  creative-range loop, beats as JSON, a voiceover and a music cue without a key, and a voiceover that must
+  ask before spending (against a mock of the ElevenLabs API, so nothing is billed). One grader per run
+  checks each assertion with measurements (ffprobe, `verify`, `qc.py`, ground-truth beats and lyrics,
+  loudness), not the transcript.
+  - Round 1: Claude 84% of assertions, Codex 55%. Five of six new-video runs built and rendered the whole
+    video before the director saw a plan.
+  - Round 2, after the fixes below: Claude Opus 89%, Claude Sonnet 80%, Codex 84%; every new-video run
+    stopped at the brief, every spending and no-key check passed (36 of 36), and every later session,
+    with or without the skills installed, linked its own preview past the decoy.
+  - ROUND3
+- **Creative range.** The same request ("a 10 second loop for my late night jazz stream") ten times, five
+  with the skills and five without, contact sheets judged by three blind judges who didn't know which set
+  was which. All three found the set with the skills more varied (5, 4, 5 against 3, 3, 4 out of 10), less
+  generic and better made, and the set without them plainer. Codex alone kept converging, with or without
+  the skills, on a turning record with ivory type and a brass accent; after "the genre's emblem as the
+  whole idea" joined the style template's Avoid list, its next two runs chose smoked glass and velvet.
+- **The engine.** `render.ts verify` passes on the example and on every video the tests made, determinism
+  included (the same frame reached by different seeks is pixel-identical), and `qc.py` reports on every
+  final MP4.
+- **Test videos.** Four 25-31 s videos, each in Claude Code and in Codex, directed through the preview by
+  the user: a narrated explainer in Portuguese with an ElevenLabs voice and generated music, and a lyric
+  video cut to the user's own song. The director's notes (a slower voice, a bigger label, more motion in
+  a still stretch) went through the preview, and new sessions in those projects, asked for a change
+  without naming a skill, found the conventions and answered with a link to the moment that changed.
+  The narrated videos cost 2,392 ElevenLabs credits in all.
+- **Install.** The plugin installs from GitHub in Claude Code (`/plugin marketplace add`, then
+  `/plugin install audara-studio@audara-studio`) and in Codex (`codex plugin marketplace add`, then
+  `codex plugin add`), and `npx skills add` finds both skills. While the repository was private, Codex
+  and npx needed its SSH URL: over HTTPS, git waited for a credential prompt.
+- **No key.** Everything except generating audio works without an ElevenLabs key: the scripts estimate
+  what generation would cost and exit 3, and the free paths are a script away (the user's recording,
+  `standin.py`'s local voice, synthesized music gridded with `beats.py grid`, a silent placeholder).
+
+## Built differently from the plan, and why
+
+- **The approval stop is a fixed rule.** The plan made "show the brief, then build" one step of the
+  session, and everything outside the fixed rules is a default the model may override with a reason. In
+  the first task evals, five of six new-video runs built and rendered before the director saw a plan:
+  Claude wrote "since this session couldn't wait for a reply", and Codex cited its own rule to finish
+  authorized work (its question tool also returned "accepted" before anyone answered). Asking for a
+  video now authorizes its brief, not its build, and the render waits for the director's own word.
+- **Replies list what they deliver.** "Show all of it" lost to the tools' terse final messages: a render
+  reply came back as one MP4 link. The render step and the soundtrack's "show the work" name what every
+  last reply carries (the files, the sheets, qc.py's numbers, a link to each unmarked hold).
+- **A preview command.** The plan had the agent run `bunx vite` and read the address it prints. Port 5173
+  is Vite's default, so another app often holds it (one later session linked an unrelated site), and a
+  headless session stops its background shells when its turn ends, so every link died with the turn.
+  `render.ts link` asks every port for `/__audara` and prints the one that serves this project, and
+  `render.ts preview` starts the project's own Vite as a detached process that outlives the turn.
+- **Renders are waited for.** A full render takes minutes, often past a tool's time limit for one
+  command, and one left running in the background died when the turn ended. The render step now says to
+  keep the turn open until it ends.
+- **The example keeps its own palette.** It used the project palette's test-card names, so a project's
+  real palette broke its type check, and agents tried to delete it (blocked by permission prompts) or
+  kept the old names as aliases. It now has its own palette module.
+- **The preview doesn't watch the cache.** In a sandbox the skills put uv's cache in `.audara-cache/`;
+  Vite's watcher held its files open and uv's renames failed.
+- **beats.py tracks with Beat This!, not librosa.** The plan started from librosa on the mix. Beat This!
+  (MIT), a neural beat and downbeat tracker, runs on CPU in its own environment; with a grid fitted to
+  its beats it put all 345 beats of the test song within 17 ms of the ground truth and every downbeat on
+  the right bar. librosa stays as `--tracker librosa`, an analysis with no model download. Song windows
+  snap to whole bars unless `--exact`, since an agent kept a half-bar cut "to keep exactly 30 s" despite
+  the warning, and each window writes its own click track for the brief.
+- **align.py runs on CPU anywhere.** pdoom-video's aligner used mlx-whisper, which only runs on Apple
+  Silicon: align.py uses Demucs for the vocals, a CTC aligner for the words and faster-whisper only to
+  cross-check them, in their own environment, with the models in the user cache.
+- **A stand-in voice script.** The plan named a local open-source voice as a free path; without a script,
+  two runs each wrote a Kokoro generator by hand, hit a Rust build or Windows' path limit, and levelled
+  the voice wrongly. `standin.py` makes one the way `eleven.py tts` makes narration.
+- **mix.py's measurements were rebuilt.** Its hit onset, the largest jump of the mono level, read bass
+  zero crossings and stereo cancellation as attacks (20.271 s for a hit at 20.000); it now sums the
+  channels' power, and it reports the build into each hit.
+- **The template's palette is a test card.** The plan asked for an example "in a neutral look so it
+  anchors no style". Grey with a cyan and a magenta reads as a placeholder, and `verify` warns while a
+  real video still uses it, so no project inherits a look nobody chose.
+- **The evals have their own harness.** skill-creator's trigger loop and `claude plugin eval` need a shell
+  this machine doesn't give them on native Windows, so `evals/harness/` runs the queries and the
+  multi-turn cases directly, with a decoy app on Vite's default port, a record of every live preview, a
+  copy of Codex's session files and a mock of ElevenLabs that looks like a real account, and cleans what
+  the runs leave in the tools' own settings.
+- **Two marketplace files for Codex.** Besides the root `plugin.json` (Agent Plugins 1.0, with Codex's
+  fields under `extensions.com.openai`), Codex reads its marketplace from `.agents/plugins/marketplace.json`.
 
 ## Sources
 
