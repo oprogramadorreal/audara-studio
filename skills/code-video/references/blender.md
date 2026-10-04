@@ -3,7 +3,7 @@
 Blender for the few 3D shots three.js can't model or light well enough, run headless from a script: never
 through a GUI, an MCP server or screen control (they need a window and a person watching, and fail unattended).
 Read it when a shot needs one of the things below and Blender is installed, or the director asks for it.
-Checked 2026-10 with Blender 5.2.2 LTS on Windows 11; other versions move the Python API.
+Checked 2026-10 with Blender 5.2.2 LTS on Windows 11 (an RTX laptop); other versions move the Python API.
 
 ## When it earns its place
 
@@ -16,8 +16,10 @@ Checked 2026-10 with Blender 5.2.2 LTS on Windows 11; other versions move the Py
 
 ## Running it
 
-Find it in `BLENDER_BIN`, on the PATH, then the standard install folder. Install it in a short folder on
-Windows: from a deep one (past 260 characters) its glTF exporter fails to import and every start prints a
+Find it in `BLENDER_BIN`, on the PATH, then where installers put it: Windows `C:\Program Files\Blender
+Foundation\Blender <x.y>\blender.exe`, macOS `/Applications/Blender.app/Contents/MacOS/Blender`, Linux the
+official tarball, snap or flatpak (distribution packages often lag a version). Install it in a short folder
+on Windows: from a deep one (past 260 characters) its glTF exporter fails to import and every start prints a
 traceback. Without an install, `uv run --no-project --python 3.13 --with bpy==5.2.2 python script.py`
 runs the same script (a 645 MB package; its EEVEE renders on the integrated GPU, so use it for export, not
 for frames).
@@ -30,9 +32,11 @@ blender -b --factory-startup --python-exit-code 1 -P scene.py -- <args>
   it wrote, not by stderr, where add-on tracebacks appear on clean runs.
 - Print `bpy.app.version` first: 5.x changed actions (no `.fcurves`; layers and channelbags), deprecates
   `use_nodes`, and defaults to the AgX view transform and a 0.5 shutter.
-- It writes caches under `%APPDATA%\Blender Foundation` even with `--factory-startup`;
-  `BLENDER_USER_RESOURCES=<folder>` keeps them in the project's `.audara-cache/`.
-- Under Codex the sandbox may stop Blender from starting: ask to run it outside.
+- It writes user files (Windows `%APPDATA%\Blender Foundation`, macOS `~/Library/Application Support/Blender`,
+  Linux `~/.config/blender`) even with `--factory-startup`; the environment variable
+  `BLENDER_USER_RESOURCES=<folder>` keeps them in the project's `.audara-cache/`, which a sandbox that blocks
+  writes outside the project also needs. If it still can't start and nobody can approve running it outside
+  the sandbox, make the shot in three.js and say what Blender would have added.
 
 ## First choice: a GLB the engine animates
 
@@ -72,5 +76,6 @@ frame at 1600×600; Cycles about 2.5 s).
   `frameTime(t)`, drawn at 1:1. Crop to the object: each frame costs width × height × 4 bytes of GPU memory
   (60 frames at 1600×600: 230 MB; full-frame 1080p: about 500 MB a second). 4K means rendering at 2×.
 - 8-bit frames lose HDR: glow added in the engine, or baked into the frames.
-- `blender.exe`, not the bpy module, so EEVEE renders on the discrete GPU.
+- Frames from the Blender app, not the bpy module: on a Windows laptop with two GPUs the module's EEVEE ran
+  on the integrated one.
 - Record the script, the Blender version and the command in `assets/SOURCES.md`, like any asset.

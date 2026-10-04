@@ -1,8 +1,9 @@
 # Style template
 
 The look every video in a project shares, written to `docs/STYLE.md` and mirrored in code: the palette
-and post defaults in `src/look.ts` (`PALETTE`, `POST`), the fonts in `src/engine/type.ts`. Write it with
-the project's first treatment and show its palette and type with it (the style frames are its proof).
+and post defaults in `src/look.ts` (`PALETTE`, `POST`), the fonts in `src/engine/type.ts`. Write it once
+the look is settled, from the director's material or the style frame picked by looking, and show its
+palette and type with that frame.
 Later videos reuse it; one that departs from it says how in its own treatment. Change the doc
 and the code together: scenes read the code, while scene authors, the critic and later sessions read the
 doc.
@@ -20,12 +21,17 @@ for them
   own typeface; use the logo as given, since a redrawn logo is no longer the brand's mark.
 - **A product URL:** the site's CSS (custom properties, `@font-face`) names its colours and fonts, and its
   copy gives the tone.
-- **Neither:** the look is yours (SKILL.md, "When the look is yours"). Start from the idea: what the piece
-  should make a viewer feel and the image that carries it, the music's character, a typographic idea, a
-  material or a light, a constraint the piece sets itself. Not from the genre (the look that comes first for
-  "night", "tech", "music" or "data" is the one every other video already has), and not from the subject's
-  props drawn flat on a plain ground. Try two or three directions as style frames, the key moment rendered
-  in the engine, and keep the one that looks best on screen, not the one that sounds best described.
+- **Words** ("dark and engraved", a film, an era): that look is the director's. The style frames try ways
+  to make it, all inside what they said; what they didn't say (palette, type, light) is yours.
+- **None of these:** the look is yours (SKILL.md, "When the look is yours"). Start from the idea: what the
+  piece should make a viewer feel and the image that carries it, the music's character, a typographic idea,
+  a material or a light, a constraint the piece sets itself. Not from the genre (the look that comes first
+  for "night", "tech", "music" or "data" is the one every other video already has), and not from the
+  subject's props drawn flat on a plain ground. Try two or three directions as style frames: the key moment
+  in the engine, each made a different way (a lit form, a flat graphic field, a treated photograph, type
+  alone: whatever the idea suggests), not one layout recoloured; one scene file and a still each, no sync.
+  Keep the one that carries the idea at a glance and that no other video of this subject would have; the
+  others go in the treatment's Also considered, so the director can switch.
 
 Ask only for what's missing, such as the logo as a file or whether the brand's typeface may be used in
 video. The director's material wins over everything here, and what they decide or turn down for the whole
@@ -42,12 +48,12 @@ From: <the brand picture, URL or treatment it was derived from>, <date>.
 ## Palette (`src/look.ts` PALETTE)
 | Key | Hex | Role |
 |---|---|---|
-| `bg` | | the ground most frames sit on |
-| `fg` | | what reads on that ground: text and marks |
+| `bg` | | the engine's base (its flash, invert and crop marks use it); a frame need not be figures on a ground |
+| `fg` | | its contrast to `bg`: what reads against it |
 | <`key`> | | <each other colour the piece needs, named for its job here; as many as the idea wants> |
 
-Glow: <the keys a scene may push above 1, if any>. <Light and dark: one ground, or which moments turn
-light.>
+Glow: <the keys a scene may push above 1, if any>. <Light and dark: where the frame's values sit, and
+which moments turn.>
 
 ## Type
 | Voice | Font | Carries |
@@ -73,7 +79,8 @@ cut and a hit do.>
 
 ## Decisions
 <What the director chose or turned down for the whole project, in their words, with the date. Every session
-reads it before a change; a look they turned down also goes into Avoid.>
+reads it before a change. What they turned down stays out whatever a treatment argues; it may also be listed
+in Avoid, marked (director).>
 
 ## Craft
 - Kerning: the font's own. Text drawn glyph by glyph is placed with `layout()` / `glyphX()`, and
@@ -175,14 +182,15 @@ a contact sheet is usually shown scaled down, so its thumbnails understate what 
 
 Copy this list into `docs/STYLE.md` and adapt it. These are defaults, not choices: what models reach for
 when nothing steers them, so each reads as generic. One is fine when the director asks for it or the
-treatment argues for it. The list says what is tired, not what is good: steering clear of all of it is not
-a look, and turning one item inside out gives its twin (when only the dark-ground archetype was named here,
-four test videos in a row, from two tools and two subjects, landed on its negative).
+treatment argues for it, except an item marked (director): that is their decision, and no treatment brings
+it back. The list says what is tired, not what is good: steering clear of all of it is not a look, and
+turning one item inside out gives its twin, which is listed too.
 
 - a navy or near-black ground with ivory or bone type and one warm accent, often glowing; or teal, amber
   and violet on navy;
-- its twin: a warm off-white paper ground, near-black ink type and one red accent, flat, with no light or
-  texture;
+- its twin: a warm off-white paper ground, near-black ink type and one red accent (paper grain or a
+  vignette doesn't make it another look);
+- either one's skeleton in other colours: one flat ground, one ink, one accent, figures placed on it;
 - stock "AI" and tech imagery: purple and cyan neon, glowing brains, robots, circuit boards, code rain,
   glitch and scan lines;
 - the genre's emblem as the whole idea: a turning record for jazz, a skyline at night for lo-fi, a neon

@@ -11,14 +11,16 @@
 // it draws with a test card of its own (videos/example/scenes/_palette.ts), whatever this palette becomes.
 import type { PostParams } from './engine/post';
 
+// (Calibration values with generic names, not roles a piece has to fill: rename, add or drop keys for this
+// one. A frame need not be figures on a ground with one accent.)
 export const PALETTE = {
-  bg: '#3A3A3A', // the background
-  surface: '#474747', // raised areas: panels, cards
-  line: '#707070', // rules, grids, dim lines
-  muted: '#AEAEAE', // secondary text
-  fg: '#F5F5F5', // primary text and marks
-  accent: '#00B4E6', // the one emphasis colour
-  accent2: '#E6007E', // a second, rarer emphasis
+  bg: '#3A3A3A',
+  surface: '#474747',
+  line: '#707070',
+  muted: '#AEAEAE',
+  fg: '#F5F5F5',
+  accent: '#00B4E6',
+  accent2: '#E6007E',
 } as const;
 
 /**

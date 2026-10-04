@@ -91,7 +91,7 @@ part of the design serves that loop:
 5. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes the scene and answers with a `?t=` link to that moment. This loop repeats for
    as long as the director wants.
-6. **Render.** The director says "render it" and gets the MP4, with a quality report, a contact sheet and a
+6. **Render.** The first build ends with the MP4; after that the director says "render it". Each render comes with a quality report, a contact sheet and a
    poster frame.
 
 What the agent owes the director:
@@ -345,7 +345,8 @@ without one, nothing else changes.
    seed). Renders never call the API, and a script regenerates only when its request has changed.
    pdoom-video did this by hand: `docs/letra-explicada-pt-br/tts/` holds the exact text of each generation.
 2. **Ask before spending.** Before generating, say what it will make (characters, length) and confirm. For
-   music, show the free plan first. Approve the voice on one short file before generating the rest.
+   music, show the free plan first. Make the voice's first block and check it before generating the rest
+   (by ear when the director wants to; by measurement otherwise). A budget the director sets counts as the yes.
 3. **Keep the key out of the repo.** Read `ELEVENLABS_API_KEY` from the environment (the name the SDK and
    the official skills use). Never write it to a tracked file, print it or pass it as a command-line
    argument. If it's missing, the scripts say so and the skill goes on with the user's own audio or a silent
@@ -355,7 +356,7 @@ without one, nothing else changes.
    P(doom), "I-Á" for IA), so the timestamps are in spoken words. Keep a map from spoken to displayed words,
    so scenes still find words by what's on screen.
 5. **Check the result by transcription.** Speech-to-text on the generated file confirms that it says what
-   the text says. The user still approves it by ear.
+   the text says. The user approves it by ear when they want to.
 
 Lessons from pdoom-video's explainer to put in `references/elevenlabs.md` (`ROTEIRO.md`, "Geração no
 ElevenLabs"): one voice and the same settings for every file; one paragraph of text is one block, and the
@@ -772,7 +773,8 @@ in `evals/`; their results stay out of the repo.
   the first task evals, five of six new-video runs built and rendered before the director saw a plan:
   Claude wrote "since this session couldn't wait for a reply", and Codex cited its own rule to finish
   authorized work (its question tool also returned "accepted" before anyone answered). Asking for a
-  video now authorizes its brief, not its build, and the render waits for the director's own word.
+  video now authorized its brief, not its build, and the render waited for the director's own word. Round 4
+  keeps the brief shown first but builds on, and ends the first build with its MP4 (see "Round 4").
 - **Replies list what they deliver.** "Show all of it" lost to the tools' terse final messages: a render
   reply came back as one MP4 link. The render step and the soundtrack's "show the work" name what every
   last reply carries (the files, the sheets, qc.py's numbers, a link to each unmarked hold).
@@ -817,6 +819,84 @@ in `evals/`; their results stay out of the repo.
   in one round a Codex run's computer-use plugin drove the user's real browser to look at a preview.
 - **Two marketplace files for Codex.** Besides the root `plugin.json` (Agent Plugins 1.0, with Codex's
   fields under `extensions.com.openai`), Codex reads its marketplace from `.agents/plugins/marketplace.json`.
+
+## Round 4: direction first, and taste when it's left open (2026-10-04)
+
+Four videos made with short casual prompts on 2026-10-03 (a narrated git explainer and a lyric video for the
+chorus of the user's song, each in Claude Code and in Codex, on commit `5f73a08`) came out competent at best:
+the explainers clear but simple, the lyric videos weak. The user's prompts asked for nothing plain. What the
+videos, the transcripts and four runs of the same prompts without the skills showed:
+
+- **One look for all four.** Two tools, two subjects, the same palette: a warm off-white paper ground, near-
+  black ink, one red accent, bloom off, flat Canvas2D on an empty ground. It is the negative of the archetype
+  the Avoid list named (a dark ground, ivory type, one warm accent). The song treatment said so: "the usual
+  would be dark neon, glitch and robots; here it's the opposite: paper, ink and a graph". Anthropic's own
+  Opus 5.5 notes describe this: a general "avoid a generic look" mostly swaps one default for another.
+- **The look was fixed in words in minutes,** before the engine, the example scenes or the cookbook were
+  read and before any frame existed (Codex: 0 reasoning tokens on the treatment), and the user approved it as
+  one line of text.
+- **All of the taste guidance said what to avoid.** No line in either skill asked for anything striking;
+  "derive the look from the subject's own material" became props drawn flat on paper; "a typographic card
+  needs no shader" and "Draw in code ... only when asked" pointed down; the rights line ("no imitation of
+  other artists' characters") kept the lyric's monsters out of the picture.
+- **The critic checked correctness and waved taste off** ("Stop ... when what's left is cosmetic: taste the
+  director hasn't raised"; "a choice the treatment argues for is reported, not acted on"). It shipped a
+  lyric video that is nine still type cards, and a narrated one at 71% frozen, as "reading holds". One
+  session never ran a critic.
+- **qc.py couldn't see it.** A 1.3 px sway of the type made "frozen 0 s, nearly frozen 0 s" out of a video
+  that sits still to the eye 79% of the time.
+- **The stop before building added nothing** in any of the four: every default was accepted, and the first
+  frame came 20-27 minutes after the prompt.
+- **Not the model tier:** Opus 5.5 at xhigh and GPT-6 Astra at ultra ran every thread, subagents included.
+  Not time either: the sessions stopped working on the picture by choice, because nothing in their loop asked
+  about it.
+- **Without the skills,** on the same prompts, Claude made a varied illustrated sky explainer (richer than
+  any of the four) and a green terminal karaoke for the song; Codex made dark slides and a dark karaoke with
+  interface chrome. The model alone reaches for its own defaults; with the old skills it reached for their
+  mirror image.
+
+What changed, and why:
+
+- **The user decides what they decide; the model fills the rest, aiming high.** SKILL.md opens with the
+  parts of a video and that rule, and a short "When the look is yours" bar: an image that carries the idea,
+  tied to the words sideways (the pdoom video's author: "approach them sideways"), what code draws that slides
+  can't, the picture changing where the sound does, plain only as a choice. No motivational phrasing: Anthropic
+  dropped "Don't hold back" from its docs, and no study measures such phrases; both companies now advise
+  naming defaults, stating the outcome and proposing options before building.
+- **The brief is shown and the build goes on,** unless something only the director can decide is open. The
+  stop was added in round 1 because runs built without showing a plan; showing it remains, waiting doesn't.
+- **Style frames:** when the look is open, two or three directions rendered in the engine, chosen by looking,
+  which is the one approach Anthropic calls reliable against default looks.
+- **The Avoid list** names the paper twin and says that steering clear of a list is not a look.
+- **The critic** gives a viewer's verdict first, and a plain or slide-like picture nobody asked for is a
+  finding, not taste; qc.py's "still at a glance" gives it a number.
+- **Sound left open is made** (synthesized for free; paid voice or music after a yes, with a free stand-in
+  meanwhile); **the first build ends with the MP4** (the tests' users asked for it every time).
+- **Decisions are written down:** a Decisions section in the treatment and STYLE.md, in the director's words,
+  rejections included; AGENTS.md tells later sessions to read it. A script, shot list or exact timecode the
+  director gives is kept as given; problems are raised with a fix, not edited in.
+- **Spending:** a budget the director sets is the yes for what fits it. The voice is checked by measurement
+  before the rest is made; takes and voices are picked by measurement when left to the model.
+- **Optional tools, each read only when in play:** generated images (`imagegen.py`, GPT Image 2.5, behind the
+  same rules as ElevenLabs; Codex's built-in generation counts as spending), public-domain and the director's
+  images, Blender (headless; a GLB driven from `t` first), and math (MathJax drawn in the engine first, Manim
+  as footage). Generated video clips stay out unless asked: am.will's model tried Veo and used none, and they
+  were part of a $200 bill.
+
+Considered and rejected:
+
+- **Blender through an MCP server or screen control:** both need a window and someone watching (the MCP add-on
+  hangs in background mode; Claude Code's computer use isn't available headless), and fail the unattended,
+  same-in-both-tools test.
+- **Manim as a dependency or default:** it leaves the live preview and the engine's motion blur, needs a
+  second timing system, and its default look is the generic "AI explainer"; TeX, the one real gap, MathJax
+  fills in the browser.
+- **Motivational phrases** ("go all out"): retired by Anthropic, unmeasured, and they don't say what better is.
+- **Removing the Avoid list:** the codex jazz loop converged without it; it now names defaults instead of
+  standing in for a look.
+- **A fourth skill for images:** one reference and one script in code-video carry it.
+
+<!-- RESULTS -->
 
 ## Sources
 

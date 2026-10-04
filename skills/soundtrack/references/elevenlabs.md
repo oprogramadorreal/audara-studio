@@ -141,7 +141,8 @@ These ids and limits live only here and in the script's defaults (checked 2026-1
   `--format mp3_44100_192` (speech) or `mp3_48000_192` (music, the model's own quality); 44.1 kHz WAV
   needs Pro. A changed format is a new request, so it regenerates.
 - **Voices.** `uv run scripts/eleven.py voices` lists the account's voices with their preview links,
-  which cost nothing to play: share two or three with the director before the paid voice test. Never hard-code a voice id: ElevenLabs' default (premade) voices are
+  which cost nothing to play: share two or three with the director before the paid voice test when the voice is theirs to choose;
+  otherwise pick from the descriptions and say which. Never hard-code a voice id: ElevenLabs' default (premade) voices are
   retired on 2026-12-31 and only exist on accounts created before March 2026. For a video that may
   be regenerated later, use a voice saved in the account's library.
 - **Settings** (stability, similarity, style, speed 0.7-1.2, speaker boost): the first run takes the
@@ -199,8 +200,8 @@ ElevenLabs"), and `tts` is built around them.
 The rules in this section are adapted from motion-video-kit's `references/audio.md` (MIT, (c) 2026
 echris6), learned from client rejections.
 
-- **Plan first.** `music plan` is free: review the sections and styles with the director before
-  paying for a take.
+- **Plan first.** `music plan` is free: review the sections and styles before paying for a take, with
+  the director when the music is theirs to choose.
 - **One section per scene group, with exact durations that add up to the video.**
   `--lengths "intro:8,build:12,hit:2,resolve:8"`, or start times with the total
   (`--sections "intro:0,build:8,hit:20,resolve:22" --length 30`, the form `beats.py` takes), or

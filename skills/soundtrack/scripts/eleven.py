@@ -9,7 +9,7 @@
 with its exact request beside it, plus the timing data the code-video engine reads.
 
   voices         The account's voices (id, name, labels, preview link), to choose one with the
-                 director. Free.
+                 director, or yourself when it's left to you. Free.
   tts            Narration from a script: one paragraph = one block = one text-to-speech request
                  with timestamps. Writes the blocks, narration.wav (blocks + gaps) and words.json,
                  measures every phrase edge against the waveform and moves it onto the sound
@@ -1522,7 +1522,8 @@ def cmd_voices(a, out: Out) -> None:
             "later, prefer a voice from the account's library.")
     if any(r["preview_url"] for r in rows):
         out("Share the preview links of two or three fitting voices with the director before the paid voice test "
-            "(playing them costs nothing), then pass the chosen one to tts with --voice ID.")
+            "(playing them costs nothing), or pick from the labels yourself when the voice is left to you; then pass "
+            "the chosen one to tts with --voice ID.")
     else:
         out("Pass one with --voice ID to tts.")
 
@@ -1766,7 +1767,7 @@ def cmd_tts(a, out: Out) -> None:
         key = get_key()
         if not key:
             voice_note = [f"no voice chosen yet: with a key, choose one with the director from {me('voices')} (its "
-                          f"preview links play for free), then add --voice ID"] if no_voice else []
+                          f"preview links play for free), or pick yourself when it's left to you, then add --voice ID"] if no_voice else []
             raise no_key("the narration", "tts", [est_text] + plan + free + voice_note,
                          standin=[a.script, *place_args(a)])
         api = Api(key)
@@ -1803,7 +1804,7 @@ def cmd_tts(a, out: Out) -> None:
                 c1, _ = tts_estimate(model, len(b1.spoken))
                 out(f"No block has this voice and these settings yet. Approve the voice on one block first ({c1}):")
                 out(f"  {test}")
-                out(f"then, after the director has listened, the rest: {me(*base, '--yes')}")
+                out(f"then, once it passes (the director's ear when they want it), the rest: {me(*base, '--yes')}")
                 out("Nothing was generated.")
                 raise Fail(CONFIRM, "needs --yes to spend: make the voice test (--only 1 --yes) first",
                            {"status": "needs_confirmation", "estimate": est, "jobs": out.data["jobs"], "next": test})
@@ -1878,7 +1879,8 @@ def cmd_tts(a, out: Out) -> None:
             out.data["names"] = names_to_hear(b)
             if out.data["names"]:  # (references/elevenlabs.md: "Listen to the names before approving a file")
                 out(f"Listen for the names before approving: {', '.join(out.data['names'])}.")
-            out(f"Approve the voice by ear, then make the rest: {me(*base)} (shows the cost; add --yes)")
+            out(f"Check the voice (pace, loudness, the names; the director's ear when they want it), then make the rest: "
+                f"{me(*base)} (shows the cost; add --yes)")
         elif a.takes is not None and jobs:  # takes just made: the plan they were made on
             b = blocks[a.block - 1]
             report_plan(out, "take", [(k, take_path(b, k)) for k in range(1, a.takes + 1)], "tts")
@@ -2543,7 +2545,8 @@ def cmd_music_plan(a, out: Out) -> None:
             "to leave them to the prompt).")
     cost = MUSIC_CREDITS_PER_MIN * total / 60
     out(f"Composing it costs about {num(cost)} credits per take (about ${MUSIC_USD_PER_MIN * total / 60:.2f} at API "
-        f"prices); two takes, {num(2 * cost)}. Review the plan with the director, then (shows the cost; add --yes):")
+        f"prices); two takes, {num(2 * cost)}. Review the plan (with the director when the music is theirs to "
+        f"choose), then (shows the cost; add --yes):")
     out("  " + me("music", "compose", "--plan", rel(plan_path), *place_args(a), "--takes", "2"))
     out.data.update({"plan": rel(plan_path), "total_s": total, "chunks": len(chunks), "sections": sections,
                      "merged": notes, "free_form": a.free_form, "credits_per_take": round(cost)})
@@ -3269,7 +3272,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     v = sub.add_parser("voices", parents=[common], help="list the account's voices (free)", formatter_class=RF,
                        description="List the account's voices (id, name, labels, languages, preview link) to choose "
-                                   "one with the director. Free.",
+                                   "one with the director, or yourself when it's left to you. Free.",
                        epilog=EXAMPLES["voices"])
     v.add_argument("--search", help="filter by name, description or labels (the API's search)")
     v.add_argument("--language", help="only voices verified for this language code (e.g. pt, en)")

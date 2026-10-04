@@ -558,8 +558,8 @@ def no_key(what: str, plan: list[str]) -> Fail:
         "  - the director's own images, copied into the video's assets/;",
         ("  - public-domain or openly licensed images (CC0, CC BY), each with a line in assets/SOURCES.md: what, "
          "where from, author, license;"),
-        ("  - under Codex: its built-in image generation (it uses the ChatGPT plan's limits, not an API key), the "
-         "file saved in assets/ with a line in assets/SOURCES.md."),
+        ("  - under Codex, after the director's yes: its built-in image generation (no key, but it spends the "
+         "ChatGPT plan's image limits), the file copied into assets/ with a line in assets/SOURCES.md."),
     ]
     return Fail(NO_KEY, "\n".join(lines), {"status": "no_key", "plan": plan})
 
@@ -579,6 +579,10 @@ class Api:
         for attempt in range(4):
             try:
                 r = self.client.post(path.lstrip("/"), **kw)
+            except httpx.ConnectError as e:  # nothing left this machine: no bill (a sandbox without network, often)
+                raise Fail(ERROR, f"{what}: couldn't connect to {self.base} ({type(e).__name__}); nothing was sent or "
+                           "billed. In a sandbox without network, run the command with network access"
+                           + (f"; check {BASE_ENV}" if os.environ.get(BASE_ENV) else "") + ".")
             except httpx.TimeoutException:
                 raise Fail(ERROR, f"{what}: no answer from {self.base} in time." + billed)
             except httpx.HTTPError as e:

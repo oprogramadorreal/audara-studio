@@ -60,7 +60,7 @@ A script, a shot list, a two-column A/V script or timecodes are the director's s
 words, order and times, a row per shot, and fill only what they leave open. A timecode they give as exact
 (a client's cut, a broadcast slot) stays exact; a note by time ("at 0:23, on the snare") finds the event it
 means (`references/motion.md`). A script too long for its length, a word the voice will stumble on, a shot
-that can't work: say so with a fix and wait, rather than changing it. Spoken words go to the soundtrack
+that can't work: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
 skill without the notes.
 
 ## The skeleton
@@ -69,14 +69,14 @@ skill without the notes.
 # <Title>
 
 <The idea in one paragraph: what the viewer should feel or understand by the end, and the image that
-carries it. Tie it to the words sideways rather than illustrating each line: the literal picture is the one
-every video of this song or subject shows. If it rests on a transformation or two, name them without effect
+carries it. Tie a song's image to its words sideways rather than illustrating each line (the literal picture
+is the one every video of the song shows); an explainer shows its mechanism, staged so it surprises. If it rests on a transformation or two, name them without effect
 names ("the receipt becomes the city map", not "a morph transition"); name the persistent actor if any.>
 <Also considered: the style frames you didn't pick, a line each, when the look was yours.>
 
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.
-- **Sound:** <the song window below | narration | none: no audio track>.
+- **Sound:** <the song window below | narration | music and effects synthesized in code | none: no audio track>.
 - **Look:** `docs/STYLE.md`<, plus what this video changes and why>; the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
@@ -116,8 +116,9 @@ section map of the whole song's analysis (the soundtrack skill writes it), not b
   start on the beat before the pickup's first word.
 - **End on a downbeat, or with a fade that lands on one,** and check what is sung there (`words.json`):
   stopping inside a held word or a line sounds chopped even on the bar line.
-- **Whole bars, then say the length.** A requested length is rarely whole bars: 30 s at 100 BPM in 4/4 is
-  12.5 bars, so the window is 12 bars (28.8 s) or 13 (31.2 s). Choose by the phrase (most are 4, 8 or 16
+- **Whole bars, then say the length,** unless the length is fixed (a slot, a client's spec, "exactly"): then
+  it stays to the frame, with `--exact` and a short `--fade` landing between words. A requested length is
+  rarely whole bars: 30 s at 100 BPM in 4/4 is 12.5 bars, so the window is 12 bars (28.8 s) or 13 (31.2 s). Choose by the phrase (most are 4, 8 or 16
   bars), tell the director the new length, and stay under a platform's hard cap.
 - **Follow the section map.** Windows that begin and end on section boundaries cut best, and the storyboard
   changes where the sections change, so the picture moves most where the music does: a chorus entry, a
@@ -185,7 +186,7 @@ critic checks them frame by frame. The sources (more in `docs/ENGINE.md`, "Data"
 - **Words** found by their text, `words.get('line')` or `findWords('word')`. An event on a word lands at
   its `start`.
 - **Continuous motion** on the grid or the sound: `f.beatPhase`, `f.barPhase`, `audio.env('drums', t)`.
-- **Sound effects,** when the director wants them, are placed from the same times as the picture, so they
+- **Sound effects** are placed from the same times as the picture, so they
   move when the timeline does; a copied list of times doesn't.
 
 ## Words on screen
@@ -212,8 +213,9 @@ set plainly) is the treatment's call.
 
 ## Scene briefs for scene authors
 
-When several scene authors work at once (subagents on your own model: they make the picture), each scene
-gets a brief that stands alone: its author reads it,
+When several scene authors work at once (subagents on your own model, each started with only its brief:
+in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
+treatment's Decisions,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
 the lead for engine changes.
@@ -222,6 +224,7 @@ the lead for engine changes.
 ### `<id>` · <owner, e.g. B2> · bars <a–b>, <section> (<m:ss–m:ss>)
 Files: `scenes/<id>.ts` and `scenes/<id>-*.ts`. <What it shows, row by row.> Must land: <its sync points>.
 Receives: <what carries in, and the shared helper it comes from>. Hands over: <what carries out>.
+The director's decisions that touch it: <quoted from Decisions, rejections included>.
 ```
 
 The lead owns `timeline.ts`, `video.json`, `src/` and the helpers scenes share (`scenes/_<name>.ts`, named

@@ -36,9 +36,9 @@ Inside the director's loop runs yours: render the moments a change touches, look
 again. Most of the quality comes from it. Three habits make it catch what usually slips through.
 
 **Look as a viewer, not as the author.** Before hunting defects, ask of each sheet whether a stranger
-would stop scrolling for it. Frames that read as slides (type, boxes and icons on an empty ground), a
+would watch it to the end, and again. Frames that read as slides (type, boxes and icons on an empty ground), a
 picture that illustrates each line literally, or one that changes by the same amount where the music
-turns, are worth fixing before any critic sees them, unless the director asked for exactly that.
+turns, are worth fixing before any critic sees them, unless the director's words call for it.
 
 **Look where videos break, not where they've settled.** A frame in the middle of a beat shows the scene
 doing what it was written to do. Defects sit at the edges: a scene that starts a few frames late, a
@@ -107,7 +107,7 @@ session that built the video passed it after looking at one frame and an eight-f
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame; a weak picture is not cosmetic when the
   look was left to you), or when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
   round and one verification). After SHIP, what's left goes to the director as open findings, not into
-  the picture: a change after the last round means a new full-cut round at delivery. The director
+  the picture: a change after the last round is reviewed at delivery (Delivery, step 6). The director
   outranks the critic: a finding that goes against their words is reported, not acted on. A choice only
   the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
@@ -150,7 +150,8 @@ out/<video>/critique/r<N>/; any script or data you write to measure goes under .
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
 - Measured checks on any MP4 (holds, blank frames, loudness, color tags):
   uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
-  only if uv can't write its own cache, set UV_CACHE_DIR=.audara-cache/uv, never a folder under out/)
+  only if uv can't write its own cache, set the environment variable UV_CACHE_DIR to .audara-cache/uv,
+  never a folder under out/)
 - The timing data: videos/<video>/data/audio.json (beats, downbeats, sections) and data/words.json (timed lines).
 About 24 frames fit a sheet; a longer one goes on in <sheet>-2.png, <sheet>-3.png: look at every page.
 Check type sizes on full-size stills.
@@ -211,13 +212,15 @@ a minute, a frame per beat or bar for a longer one), every frame through each cu
 and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for motion.
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
-<skill>/references/style-template.md: an archetype from them that the treatment doesn't name and argue
-for is a finding.
+<skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
+treatment doesn't argue for is a finding; one marked (director) never comes back, whatever is argued.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
-0. As a viewer, in two lines: would it hold a stranger's attention, and why? Unless the director's words
-   ask for restraint, a picture that reads as slides or a template, that illustrates its words literally,
-   that ignores the music's changes, or that leaves unused what code can draw (light, depth, material,
-   texture, motion through space), is a top finding with a fix in code, not taste.
+0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
+   director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
+   that reads as slides or a template, that illustrates a song's words literally, that ignores the music's
+   changes, or that any video on this subject would have, is a top finding with a fix in code, not taste.
+   Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
+   to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)?
@@ -279,7 +282,8 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 
 ## Delivery
 
-When the director says to render:
+At the end of the first build (unless the director wants to watch the preview first), and later whenever
+the director asks for a render:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, and wait for it before you
@@ -294,8 +298,9 @@ When the director says to render:
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).
 5. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
-6. The critic's verdict on this render: the last round's, or a new full-cut round if the picture
-   changed after it.
+6. The critic's verdict on this render: the last round's. A picture changed after that round gets a new
+   full-cut round, unless this turn already ran a full-cut round and its verification: then give that
+   verdict and list the fixes made since as not yet reviewed.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in

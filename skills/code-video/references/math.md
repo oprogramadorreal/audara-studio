@@ -1,8 +1,8 @@
 # Math
 
 Equations, plots and geometric constructions inside the engine, and Manim for when it serves better. Read it
-when a piece shows formulas or math being worked. Checked 2026-10 (MathJax 4.1, Manim Community 0.21) in a
-project like this one, `verify` passing for both routes.
+when a piece shows formulas or math being worked. Checked 2026-10 on Windows 11 (MathJax 4.1, Manim
+Community 0.21) in a project like this one, `verify` passing for both routes.
 
 ## What makes math animation work
 
@@ -60,6 +60,8 @@ exists already. It leaves the live loop: each timing change is a re-render and a
 uv run --no-project --python 3.12 --with "manim[typst]" manim -qh --fps 60 --transparent --disable_caching --media_dir out/<video>/manim videos/<video>/manim/scene.py Scene
 ```
 
+- On macOS run `brew install cairo pkg-config` first, on Debian or Ubuntu `apt install build-essential
+  python3-dev libcairo2-dev libpango1.0-dev` (Windows has wheels); without them, take the MathJax route.
 - No LaTeX needed: `MathTypst` instead of `MathTex` (which fails with `FileNotFoundError` without LaTeX), and
   `TransformMatchingShapes` (`TransformMatchingTex` refuses Typst).
 - Time it from the same data: the Python scene reads `data/words.json` and `data/audio.json` and schedules

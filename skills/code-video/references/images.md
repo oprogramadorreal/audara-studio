@@ -12,7 +12,8 @@ across many images · Size and 4K · The record · Checking
 Code draws light, geometry, type, fields, particles and motion better than any still. It draws poorly a
 painted or photographic surface, a face or a character, a period document, the grain of a real material.
 That is where an image earns its place, as a plate, a texture, a cut-out, a mask or a source of light, never
-as a slide: what makes it video is what the code does to it. A still that only pans and zooms is the Ken
+as a slide unless the director wants their pictures shown as they are: what makes it video is what the code
+does to it. A still that only pans and zooms is the Ken
 Burns line on the Avoid list. For anything factual or historical, a real image beats a generated one: a
 generated "1920s photo" in an explainer is a fabrication.
 
@@ -21,8 +22,8 @@ generated "1920s photo" in an explainer is a fabrication.
 **The director's own.** Their files, their rights; for a client's piece, note the basis they give (own
 work, a stock licence and its ID, releases for the people in it).
 
-**Public domain and open licences.** Free, real, and often the strongest material: the creator of the
-original P(doom) video built a whole piece on about forty public-domain images and films, treated in code.
+**Public domain and open licences.** Free, real, and often the strongest material: a whole music video has
+rested on about forty public-domain images and films, treated in code.
 These answer without a key, with licence fields to record (checked 2026-10):
 
 ```
@@ -46,21 +47,25 @@ curl -s "https://openaccess-api.clevelandart.org/api/artworks/?q=<words>&cc0=1&h
   under each; otherwise choose, and say what you chose.
 
 **Generated.** Money waits for a yes (SKILL.md, Fixed), and a key in the environment is not one:
-- When a piece would clearly gain from something code draws poorly and the director hasn't opened the
-  toolbox, mention generated images once, in a line with what you'd make and the cost, and keep building in
-  code. When they ask for images or open the toolbox ("use any keys you have", "generate what you need"),
-  use it within their budget. Otherwise draw in code.
+- When a piece would clearly gain from something code draws poorly and the director hasn't asked for
+  images, mention generated images once, in a line with what you'd make and the cost, as an option outside
+  the brief's defaults (a "go" to the brief doesn't buy them), and keep building in code. When they ask for
+  images in their own words ("generate what you need", "use any keys you have"), that is the yes: within
+  their budget when they set one; without one, for the images the treatment plans, each cost in Decisions,
+  asking before more. Otherwise draw in code.
 - **With an OpenAI key** (`OPENAI_API_KEY`), in either tool: `uv run <skill>/scripts/imagegen.py generate
   <name> --video <video> --prompt "..."` (GPT Image 2.5). Without a key it spends nothing and prints the
   cost and the free paths; without `--yes` it prints what it would make and what that costs; with it, the
   image lands in `videos/<video>/assets/` beside its `.request.json`. An unchanged request makes no call,
   and renders never call it. About $0.04 for a high-quality 1536×1024 image and $0.10 at 3840×2160 (an
   estimate; the script records the real cost). `--help` has the rest: `--style`, `--ref`, `--transparent`,
-  `--takes`, `pick`.
+  `--takes`, `pick`. In a sandbox without network it can't connect, and says nothing was sent: run it with
+  network access.
 - **In Codex without a key**, its built-in image generation ("$imagegen", gpt-image-2) draws on the
   ChatGPT plan's limits: that is spending too, so the same rules apply. It picks size and quality itself
-  (no 4K, no exact aspect): good for style frames, textures and plates you'll scale. Copy each file into
-  `assets/` and write its record (below).
+  (no 4K, no exact aspect): good for textures and plates you'll scale; style frames stay renders in the
+  engine, since they prove what code will make. It saves under `$CODEX_HOME/generated_images/`: copy each
+  file into `assets/` and write its record (below). Signed in with an API key instead, it bills that key.
 - Another provider fits better for some jobs: images beyond 4K or one character across many shots (Google's
   Gemini image models), vector art (Recraft). Use one when the director names it, behind the same rules.
 - Generated video clips stay out unless the director asks (SKILL.md).
@@ -126,7 +131,8 @@ c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8,
 
 Sizes in `video.json` are logical; `--scale 2` renders 4K, so a plate needs at least twice the logical
 width it's shown at (a 2560-wide plate shown 2100 px wide looked soft at 4K; the 3840 one held), plus room for
-what the camera does: a 10% push at 3840 wide needs about 4220 px. OpenAI's largest is 3840×2160 (above
+what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K render pass `--size 3840x2160`;
+the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
 2560×1440 counts as experimental), so for a move at 4K, keep the camera still and move layers, upscale, or
 use a provider that goes bigger. A soft background behind sharp code-drawn type survives a 1.5× upscale.
 
