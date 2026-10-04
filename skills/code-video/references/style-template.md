@@ -197,7 +197,9 @@ turning one item inside out gives its twin, which is listed too.
   sign for synthwave, a rocket for a launch;
 - slides: a heading at the top left, boxes, icons and arrows below, captions that repeat the voice, on an
   empty flat ground;
-- lyrics as captions: the sung line set on a plain ground with nothing else in the frame;
+- lyrics as captions: the sung line set over a plain ground, or over an animated background that would fit
+  any song;
+- one composition for every scene: a headline beside or above a diagram, captions centred over a field;
 - filler light: starfields, drifting glow blobs, generic particle nebulae, lens-flare soup, dot grids;
 - a centred circular spectrum or equalizer; a black sun or an eclipse in the middle of the frame;
 - Ken Burns pans and zooms over stills;

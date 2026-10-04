@@ -22,14 +22,14 @@ The rest is a default: depart from it when the piece gains, and say why.
 Keep this checklist in your notes.
 - [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md). Show it briefly and keep building in the same turn; the director steers whenever they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
 - [ ] **Setup.** Check bun, run init, start the preview and give its link.
-- [ ] **Look.** When it's yours, render two or three style frames: the key moment in the engine, each made a different way (inside what the director said of it), not recoloured; pick by looking, show them. Then write `docs/STYLE.md` (references/style-template.md) and `src/look.ts` from the pick or the director's material.
+- [ ] **Look.** When it's yours, render two or three style frames: the key moment, its words included, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, show them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for while you build with a free stand-in (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: one subagent per scene, on your own model (Scene briefs in references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before it's done: a fresh full-cut critic, then its verification (references/critique.md). A plain picture nobody asked for is a finding, not taste.
 - [ ] **Render.** The first build ends with the MP4 unless the director wants to watch the preview first; after that, render when they say. Keep your turn open until it ends: ending it can kill the render. The reply links the MP4, sheets and poster, gives qc.py's `motion`, `glance` and `blank` lines with a `?t=` link to each hold the treatment doesn't mark, and the critic's verdict.
 - [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, look at the frames around it, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision, and each thing the director turns down, goes in their words into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them before every change.
 
-Also owed: a one-line status during long work; the work shown (stills, sheets, numbers, verdicts).
+Also owed: a status line during long work; the work shown (stills, sheets, numbers, verdicts).
 
 ## Commands
 Run in the project folder; `<skill>` is this skill's folder. All options: the header of `scripts/render.ts`.

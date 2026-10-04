@@ -217,8 +217,10 @@ treatment doesn't argue for is a finding; one marked (director) never comes back
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
    director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
-   that reads as slides or a template, that illustrates a song's words literally, that ignores the music's
-   changes, or that any video on this subject would have, is a top finding with a fix in code, not taste.
+   that reads as slides or a template (the same layout in every scene, a headline beside or above a
+   diagram; one composition held for the whole piece; captions over a background any song could have),
+   that illustrates a song's words literally, that ignores the music's changes, or that any video on this
+   subject would have, is a top finding with a fix in code, not taste.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.

@@ -77,7 +77,8 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.
 - **Sound:** <the song window below | narration | music and effects synthesized in code | none: no audio track>.
-- **Look:** `docs/STYLE.md`<, plus what this video changes and why>; the style frame it came from.
+- **Look:** <until the style frames are made, the two or three directions you'll try; then> `docs/STYLE.md`<,
+  plus what this video changes and why>, and the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
 - **Never claim:** <what would be false or unprovable here; how illustrative values are labelled>. (When
@@ -187,12 +188,14 @@ critic checks them frame by frame. The sources (more in `docs/ENGINE.md`, "Data"
   its `start`.
 - **Continuous motion** on the grid or the sound: `f.beatPhase`, `f.barPhase`, `audio.env('drums', t)`.
 - **Sound effects** are placed from the same times as the picture, so they
-  move when the timeline does; a copied list of times doesn't.
+  move when the timeline does (a copied list of times doesn't), each on an event you can see: an effect
+  with nothing happening on screen reads as a mistake.
 
 ## Words on screen
 
-Words don't replace the picture. Unless the director wants type alone, the frame holds an image the words
-live in; when type is the whole picture, its treatment is the image (it moves, steps, builds, breaks). When
+Words don't replace the picture. Unless the director wants type alone, the frame holds an image of this song
+or this subject, not a background any video could have, and the words live in it: they act on it, or it on
+them. When type is the whole picture, its treatment is the image (it moves, steps, builds, breaks). When
 sung or spoken words are on screen, as karaoke or captions:
 
 - **Readable:** at or above the style's minimum size for the format, and on screen long enough to read.
