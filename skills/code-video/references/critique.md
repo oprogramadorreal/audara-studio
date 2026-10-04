@@ -88,7 +88,8 @@ session that built the video passed it after looking at one frame and an eight-f
   whole task is one of the prompts below, filled in. Some tools copy the conversation into a subagent
   unless told not to (in Codex, set `fork_turns` to `"none"`): ask for an empty one, whose first message
   is the filled prompt and nothing else. If you can't start one, run the prompt in a new non-interactive
-  session of your CLI. Looking at your own work again is a stills check, not a critic round: call it that.
+  session of your CLI. Wait for its report before you go on or end your turn: a critic started in the
+  background is lost if the turn ends first, and its findings with it. Looking at your own work again is a stills check, not a critic round: call it that.
 - **It gets** the treatment, `docs/STYLE.md`, the director's own words (the brief and every note,
   quoted from the treatment's Decisions, not summarized), facts about the work (paths, size, fps, duration, scene ids and windows,
   cut times, the timing data) and the commands to render what it wants. In a verification round, the
