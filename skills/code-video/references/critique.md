@@ -214,12 +214,13 @@ and the last, full-size stills wherever a sheet raises a doubt, and a clip or tw
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
 <skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
-treatment doesn't argue for is a finding; one marked (director) never comes back, whatever is argued.
+treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
    director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
    that reads as slides or a template (the same layout in every scene, a headline beside or above a
-   diagram; one composition held for the whole piece; captions over a background any song could have),
+   diagram; one composition held for the whole piece; captions over a background any song could have; a
+   camera move over one still picture),
    that illustrates a song's words literally, that ignores the music's changes, or that any video on this
    subject would have, is a top finding with a fix in code, not taste.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has

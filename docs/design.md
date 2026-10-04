@@ -896,7 +896,42 @@ Considered and rejected:
   standing in for a look.
 - **A fourth skill for images:** one reference and one script in code-video carry it.
 
-<!-- RESULTS -->
+### What round 4 checked
+
+Headless runs on Windows 11, Claude Code (Opus 5.5) and Codex (GPT-6 Astra), on the users' plans, with ElevenLabs
+and the image API mocked (`evals/README.md`); one grader per run checked each assertion with its own
+measurements, and three blind judges ranked each set of videos made from the same prompt.
+
+- **Blind, the short prompts** (overall "would impress", 1-10, three judges):
+
+  | Lyric video for the chorus of `pdoom-pt-BR.mp3` | Judges | | "Why the sky is blue", zero assets | Judges |
+  |---|---|---|---|---|
+  | Claude, with the round-4 skills | 9, 9, 9 | | Claude, with the round-4 skills | 8, 8, 8 |
+  | Claude, the 2026-10-03 test (old skills) | 8, 8, 7 | | Claude, without the skills | 6, 6, 7 |
+  | Claude, without the skills | 7, 7, 7 | | Codex, with the round-4 skills | 5.5, 5, 5 |
+  | Codex, the 2026-10-03 test (old skills) | 5, 5, 3 | | Codex, without the skills | 4, 4, 3 |
+  | Codex, with the round-4 skills | 4, 4, 4 | | | |
+  | Codex, without the skills | 3, 3, 2 | | | |
+
+  Every judge put the round-4 Claude video first in both sets and named it the one to show; the skills beat
+  the model alone in both tools. Codex's lyric video moved from cream karaoke cards to a full-frame shader
+  field but stayed captions over a background any song could have, no better than the old test; the text
+  that names that pattern and asks style frames to differ in idea came after that run.
+- **No stops before something to watch** in any run, with or without the skills.
+- **Direction is kept:** decisions and rejections were written in the director's words, in the treatment and
+  in STYLE.md's Avoid marked (director), and a new session read them; an exact timecode stayed off the beat
+  grid "by their word"; a locked script's 43 words came out exactly, with only the say map's respelling
+  spoken. Misses: drop marks that read as tree rings slipped past "no plant icons" because the critics that
+  caught it ran in the background and died with the turn.
+- **Process misses the graders found,** each fixed in the text afterwards: the treatment, the preview link
+  and the style frames shown only at the end of 55-88-minute silent builds; critics and a final render
+  started in the background and lost when a headless turn ended; style frames that varied the surface, not
+  the idea. Two script bugs were found and fixed: `align.py` gave an acronym's held vowel to the next word
+  (RLHF 0.6 s early), and contact sheets over 3.75 MiB were re-encoded to 256 colours by Claude Code's image
+  reader, painting grey haze into the critics' view.
+- **Not run:** the stand-alone second wave of the short prompts on the final text (stopped when the machine
+  ran low on memory with four renders at once), real image generation and real ElevenLabs music with
+  `--free-form` (no paid calls were made), and Blender or Manim outside Windows.
 
 ## Sources
 

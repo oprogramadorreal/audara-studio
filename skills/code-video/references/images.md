@@ -62,7 +62,7 @@ curl -s "https://openaccess-api.clevelandart.org/api/artworks/?q=<words>&cc0=1&h
   `--takes`, `pick`. In a sandbox without network it can't connect, and says nothing was sent: run it with
   network access.
 - **In Codex without a key**, its built-in image generation ("$imagegen", gpt-image-2) draws on the
-  ChatGPT plan's limits: that is spending too, so the same rules apply. It picks size and quality itself
+  ChatGPT plan's limits: that is spending too, so the same rules apply, and the reply says so. It picks size and quality itself
   (no 4K, no exact aspect): good for textures and plates you'll scale; style frames stay renders in the
   engine, since they prove what code will make. It saves under `$CODEX_HOME/generated_images/`: copy each
   file into `assets/` and write its record (below). Signed in with an API key instead, it bills that key.
