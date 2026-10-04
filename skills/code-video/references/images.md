@@ -91,7 +91,7 @@ const u = smoothKeys(f.t, [[at(0), 0], [at(16), 1]]), camX = (u - 0.5) * 140;
 this.pass.u.rect!.value.set(W / 2 - camX * 0.4 - pw / 2, H / 2 - ph / 2, pw, ph);        // the plate, slowest
 this.pass.render(renderer, out);                                                            // an FSPass: plate + treatment
 comp.draw(renderer, this.title.texture, out, { rect: [tx - camX, H * 0.36, tw, th] });      // between the layers
-comp.draw(renderer, this.cutout, out, { rect: [cx - camX * 1.9, cy, cw, ch], tint: lit });  // in front, fastest
+comp.draw(renderer, this.cutout, out, { rect: [cx - camX * 1.9, cy - ch / 2, cw, ch], tint: lit });  // in front, fastest
 ```
 
 In the plate's shader, the image is a source, not the frame:
@@ -105,14 +105,16 @@ c = mix(c, ht, smoothstep(edge - 0.05, edge + 0.05, uv.x));                  // 
 c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8, pow(luma(c), 1.0 / 2.2)); // light on the bright parts
 ```
 
-- **Cut-outs:** GPT Image 2.5's `--transparent` subjects come out about 99% opaque (alpha 252-253, never 255)
-  with a faint alpha 1-3 haze around them (measured 2026-10): clamp both when preparing one (alpha over about
-  240 to 255, under about 8 to 0), or a layer moving behind it shows through and the haze picks up colour.
-  Straight alpha with the colour bled into the transparent pixels; black under alpha 0 gives a
+- **Cut-outs:** GPT Image 2.5's `--transparent` subjects come out about 99% opaque (alpha mostly 252-253,
+  never 255) inside a faint alpha 1-11 haze (measured 2026-10): clamp both when preparing one (alpha over
+  about 240 to 255, under about 8 to 0), or a layer moving behind it shows through and the haze picks up
+  colour. Look at a cut-out over a flat colour: an image reader that ignores alpha shows the colour bled
+  under it as a glowing halo that isn't in the picture. Straight alpha with the colour bled into the transparent pixels; black under alpha 0 gives a
   dark rim when the image is shown small. Resize colour and alpha separately (Pillow premultiplies RGBA and
   loses the bleed). Leave `premultiplyAlpha` off on an sRGB texture: it darkens soft edges.
 - **Sharpness:** mipmaps soften a plate shown just under its size by about a sixth; keep them and sample with
-  a bias of -0.5, or turn them off when nothing samples it blurred. A halftone or any cell-snapped lookup
+  a bias of -0.5, or turn them off when nothing samples it blurred. A plate shown larger than its file (a 3:2
+  plate cropped to 16:9 and pushed in) is soft whatever the sampling: generate it bigger. A halftone or any cell-snapped lookup
   uses `textureLod`: `texture()` picks the wrong mip at every cell edge.
 - **Memory:** width × height × 4 bytes plus a third for mipmaps (22 MB for a 2560×1440 plate); footage
   frames are the costly kind (`references/contract.md`).
@@ -120,6 +122,24 @@ c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8,
   scene undoes the tone shoulder before it writes (it mirrors `SHOULDER_GLSL` in `src/engine/post.ts`; with
   the cap at 0.998, greys land within 0.2 levels of the file):
   `vec3 unshoulder(vec3 y) { const float k = 0.72; vec3 yc = min(y, vec3(0.998)); return mix(y, k - (1.0 - k) * log(1.0 - (yc - k) / (1.0 - k)), step(k, y)); }`
+
+Lighting and joining generated layers (from a 20 s piece made of a night plate, its dawn variant and a cut-out):
+
+- **A cut-out lit for its scene** needs a pass of its own: a tint only multiplies, so a daylit subject on a
+  night plate still reads daylit. Grade it there (partly desaturate, then a cool tint that keeps red above
+  green above blue on warm fur, or it turns grey or lilac), mix toward a lit colour for a local light rather
+  than adding to the graded one, and take a rim light from the alpha's difference toward the light. The pass
+  outputs premultiplied colour, `vec4(col * a, a)`, with blend factors One, OneMinusSrcAlpha set on it: the
+  default (SrcAlpha) multiplies by alpha a second time.
+- **Contact under parallax:** a cut-out standing on ground painted into the plate slides over it once the two
+  move at different rates. Hide the contact behind a nearer layer (grass, a ridge) or move the touching
+  layers at one rate.
+- **Two plates of one place** (the second made from the first with `--ref`) line up to the pixel. Go from one to
+  the other with a reveal that starts at the light source, a wide ellipse along the horizon with a warm edge on
+  the bright parts, rather than a crossfade, which reads as a dissolve.
+- **Masks** don't come with a generated image: make one in its own pixels (a shape tuned on an overlay, a
+  brightness test) and port its numbers to the shader. Light pushed past about 1.2 linear in a saturated
+  colour washes to white through the tone shoulder; keep a coloured glow near 1.0.
 
 ## One look across many images
 
