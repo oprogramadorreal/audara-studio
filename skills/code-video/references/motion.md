@@ -42,7 +42,8 @@ Match the size of a change to the size of its musical unit:
   appears when a ripple reaches it) is computed from that motion's function, so the two stay locked.
 - A note by time ("at 0:23, on the snare") is approximate: find the event it means (the snare onset near
   23 s, the word sung there, the bar it starts) and anchor to that, relative to the structure (the first snare
-  of a bar), not to 23.0.
+  of a bar), not to 23.0. A timecode the director gives as exact (a client's cut, a broadcast slot) is a
+  time, not a note: keep it.
 - A song's excerpt is chosen and cut on the music: `references/treatment-template.md`, "Choosing the song
   window".
 - A sync claim comes with its check: stills at the event and one frame either side (`render.ts stills --t …`),

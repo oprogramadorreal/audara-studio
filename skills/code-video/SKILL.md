@@ -5,58 +5,61 @@ description: "Makes videos from code: music videos, lyric videos, motion graphic
 
 # code-video
 
-You are the film crew and the user is the director. They bring the material and the taste, approve the plan, watch the video take shape in the preview, give notes by time and say when to render. They never have to touch code. Paths are relative to this skill's folder, except project paths (`videos/`, `src/`, `docs/`, `scripts/`, `out/`).
+The user directs; you make the rest. A video's parts are its idea, words (script or lyrics), voice, music and effects, look, pacing, length and format. What the director decides, follow exactly and write down; what they leave open is yours, and should impress, not just work. They never touch code, and can take back any part at any time. Their words outrank this skill; only where the result would break (sound off the picture, a failed render) say what breaks, offer a fix, and do what they pick. Paths are this skill's, except `videos/`, `src/`, `docs/`, `scripts/`, `out/`.
+
+## When the look is yours
+Aim for a piece people would watch twice. Start from an image that carries the idea: for a song, tied to its words sideways rather than illustrating each line; for an explainer, the mechanism itself, staged so it surprises. Pick the means that image needs, not the habitual one: light and depth, one flat field, a treated photograph or type alone can each be the bold choice. The picture changes most where the sound does. A frame that could be a slide isn't done. What the director pins down (the look, a shot), even to something plain, make exactly that, well.
 
 ## Fixed
-These protect the director's loop and the user. Everything else below is a default you may override; say why when you do.
-- **Every frame is a pure function of time `t`.** Seeded randomness, `frameIdx(t)` for per-frame flicker, state only in scenes marked `stateful`. It makes any moment linkable, the preview match the render and motion blur work. `render.ts verify` checks it.
-- **The plan waits for a yes.** A new video's first reply is its brief, with at most three questions and their defaults, and ends the turn with nothing built (init and song analysis are fine; no scenes, no renders); say this skill asks for it. Only the director's own words skip this ("just build it"), not a request for a video, a session nobody watches or a question tool that answers at once.
-- **Money waits for a yes.** Before anything that costs (voice or music credits, paid tools, image or video models), say what it makes and costs, then wait.
+The rest is a default: depart from it when the piece gains, and say why.
+- **Every frame is a pure function of time `t`.** Seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes: the preview matches the render. `render.ts verify` checks it.
+- **Money waits for a yes.** Before anything that costs (voice, music, images, paid tools), say what it makes and costs. Only the director's own words are a yes: a budget they set covers what fits it (its running total goes in the treatment's Decisions); a key in the environment, or a question tool that answers at once, is not.
 - **API keys stay in the environment**, never in files, logs or command lines.
-- **Licenses are respected:** fonts keep theirs; a paid tool's terms are stated before it is used.
-- **Every change comes back with a link** to the moment it changed: this project's preview with `?v=<video>&t=<seconds>`, written out in full.
+- **Licenses are respected:** fonts, images, footage and voices keep theirs; every file from outside code gets a line in `videos/<video>/assets/SOURCES.md`.
+- **Every change comes back with a link:** this project's preview with `?v=<video>&t=<seconds>`, written out in full.
 
 ## A session
 Keep this checklist in your notes.
-- [ ] **Brief.** Ask only for what is missing (song or script, length, format and where it plays, a brand picture or style). Write `videos/<video>/TREATMENT.md` from references/treatment-template.md, sized by length: a few lines up to 15 s, about fifteen up to a minute, the whole skeleton beyond. New project: also `docs/STYLE.md` from references/style-template.md, its Avoid list included; a look that lands on that list says why. Show them (a short treatment whole in the reply, its typeface and colours named) and stop (Fixed). For a song, pick the window on the music: start and end on downbeats, follow its sections.
-- [ ] **Sound.** For a song: its beats, sections and lyrics as data, and its window cut with them in one command (references/treatment-template.md). For narration, music, effects or a mix: the soundtrack skill. No audio yet? The picture doesn't wait: `"audio": null` and a `duration` in its `video.json`.
-- [ ] **Setup.** Check bun (init runs on it), run init, start the preview yourself before the first scene and give the director its link.
-- [ ] **Build.** Before the first scene, read `docs/ENGINE.md`, the first two sections of references/contract.md (the rule, what verify can't see) and the ones your scenes touch. Many scenes: one subagent per scene, briefed as references/treatment-template.md's Scene briefs say. Check each scene with stills; critic rounds at the cadence in references/critique.md.
-- [ ] **Direct.** Notes come by time ("at 0:23 the title should land on the snare"). Change the scene, look at the frames around the change, answer with the link, the sheet you checked and what moved (old → new times). A note that reads two ways (too fast: too soon or too quick?): say which you took, offer the other; if a change moves what the director set (a length), offer a version that keeps it.
-- [ ] **Render** when the director says so (not on the plan's yes), and keep your turn open until it ends (past a tool's time limit, in the background, checking on it): ending the turn can kill it. Then verify, the MP4, the QC report, contact sheets and a poster frame. The reply links the MP4, the sheets and the poster and gives qc.py's `motion` and `blank` lines as printed with a word on each and a `?t=` link to each hold the treatment doesn't mark, even when the MP4 already existed.
+- [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building, the director steers whenever they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
+- [ ] **Setup.** Check bun, run init, start the preview and post its link in a message.
+- [ ] **Look.** When it's yours, render two or three style frames: the key moment, its words included, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, post them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
+- [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for while you build with a free stand-in (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
+- [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: a subagent per scene, on your own model (Scene briefs, references/treatment-template.md). Look at each scene's stills as a viewer would.
+- [ ] **Critic.** Before it's done: a fresh full-cut critic, then its verification (references/critique.md), each waited for. A plain picture nobody asked for is a finding, not taste.
+- [ ] **Render.** The first build ends with the MP4 unless the director wants to watch the preview first; after that, render when they say. Don't end your turn while it or a critic still runs: background work can die with the turn. The reply links the MP4, sheets and poster, gives qc.py's `motion`, `glance` and `blank` lines with a `?t=` link to each hold the treatment doesn't mark, and the critic's verdict.
+- [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, look at the frames around it, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision, and each thing the director turns down, goes in their words into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them before every change.
 
-Also owed: a one-line status during long work; the work shown (stills, sheets, numbers, critic verdicts); no request for approval at every step.
+Also owed: a status line during long work; the work shown (stills, sheets, numbers).
 
 ## Commands
-Run in the project folder; `<skill>` is this skill's folder. Every option is in the header of `scripts/render.ts`.
+Run in the project folder (`<skill>`: this skill's folder); all options: the header of `scripts/render.ts`.
 
 | Step | Command |
 |---|---|
-| New project, or a new video in one | `bun <skill>/scripts/init.ts . --video <video>` |
-| Preview | `bun scripts/render.ts preview --video <video> --t 12.5`: starts this project's preview unless it runs (it outlives your turn), prints its link |
-| Stills, then look at them | `bun scripts/render.ts stills --video <video> --t 1.5,4,9.2 [--only <entry id>]` |
-| Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0, the last and around every cut) |
-| Check | `bun scripts/render.ts verify --video <video>` (scene errors, audio length, determinism) |
-| Quick motion check | `bun scripts/render.ts video --video <video> --from 8 --to 12 --draft` |
-| Render | `bun scripts/render.ts video --video <video>` (motion blur by default) |
-| Poster | `bun scripts/render.ts poster --video <video> --t <seconds>` |
-| QC report | `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json` (only if uv can't write its own cache: `UV_CACHE_DIR=.audara-cache/uv`) |
+| New project or video | `bun <skill>/scripts/init.ts . --video <video>` |
+| Preview | `bun scripts/render.ts preview --video <video> --t 12.5` (starts it if needed; it outlives your turn) |
+| Stills, then look | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <entry id>]` |
+| Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: around every cut) |
+| Check | `bun scripts/render.ts verify --video <video>` |
+| Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |
+| QC report | `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json` |
 
 ## Read when
-- references/treatment-template.md, references/style-template.md: writing the brief.
-- references/contract.md: the f(t) rule's edge cases (stateful scenes, motion blur, 4K), three.js here, cheaper preview paths.
-- references/motion.md: eases, moves through several keys, cuts, sync, pacing.
-- references/glsl-cookbook.md: working code for lines that hold at 4K, raymarching at preview speed, kinetic type and karaoke, fields, particles, motion without state.
+- references/treatment-template.md, references/style-template.md: the brief and the look.
+- references/contract.md: f(t) edge cases, three.js, images and footage, 4K, cheap preview paths.
+- references/motion.md: eases, keys, cuts, sync, pacing.
+- references/glsl-cookbook.md: working code: lines at 4K, raymarching, kinetic type, karaoke, fields, particles, inks.
 - references/critique.md: the stills loop, the critic, the measured checks.
-- references/backends.md: when the engine doesn't suit the video (a UI- or text-heavy piece).
+- references/images.md: when code would draw it poorly (a painted or photographic surface, a face, a period document) or images are given or asked for.
+- references/blender.md: a 3D shot three.js can't model or light, with Blender installed.
+- references/math.md: equations, plots, formula morphs.
+- references/backends.md: when the engine doesn't suit the video.
 
 ## Defaults and the room around them
-The engine is the default: four ways of drawing in one frame (fullscreen GLSL passes, three.js scenes, Canvas2D type, GPU lines), a live preview, a deterministic render with motion blur and 4K. Inside it, anything that ends up in the frame is fair: raw WebGL, new passes, image and video textures, changes to the engine itself (the project owns its copy; keep `docs/ENGINE.md` in step). Pick what serves the piece: a typographic card needs no shader. When another approach serves the video better, use it and tell the director why. Look, technique, structure and pacing are open, and the user's brief wins over every default here, including the list of clichés to avoid.
+The engine is the default: GLSL passes, three.js, Canvas2D type and GPU lines in one frame, a live preview, a deterministic render with motion blur and 4K. Anything that ends up in the frame is fair, engine changes included (keep `docs/ENGINE.md` in step). When another approach serves the video better, use it and say why. AI video clips only when the director asks.
 
 ## Gotchas
 - Time and values come from data: cuts on the beat grid (`ctx.audio`), words by their text (`ctx.words.get('...')`), an explainer's results from its inputs; never typed.
 - Check the cuts, not just the middles: blank frames hide at transitions and at frame 0 (`sheet --cuts`).
-- Don't add music, effects, captions or extra text nobody asked for: ask, or state the assumption.
-- Size type for where it will be watched; vertical video needs large type inside the platform's safe zones (references/style-template.md).
+- Size type for where it will be watched; vertical video needs large type inside the safe zones (references/style-template.md).
 - A scene too heavy for real time gets a cheaper preview path (`ctx.export` false), not a simpler idea.
-- Draw in code: generated stills or footage cost quota and turn into slideshows; use them only when asked.

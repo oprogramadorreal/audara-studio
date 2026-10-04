@@ -1,0 +1,25 @@
+{
+  "id": "cv-lyric-short",
+  "skill": "code-video",
+  "setup": {
+    "files": [
+      "$EVAL_INPUTS/pdoom-pt-BR.mp3 => pdoom-pt-BR.mp3",
+      "$EVAL_INPUTS/lyrics.txt => lyrics.txt"
+    ]
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "faz um lyric video de uns 30 segundos com o refrão da minha música pdoom-pt-BR.mp3, com a letra aparecendo sincronizada com o canto. A letra completa tá em lyrics.txt"
+    },
+    {
+      "prompt": "Pode seguir. Quero o MP4 e ver os arquivos gerados."
+    }
+  ],
+  "assertions": [
+    "An MP4 of 25-35 s at 16:9 or 9:16 exists by the end, cut from the chorus of pdoom-pt-BR.mp3 (the window holds the sung line \"Aumento meu P(doom)\"), with the song as its audio.",
+    "Every sung word in the window is on screen in time with the voice: on stills at each word's start (from the run's words.json, checked against the audio by the grader's own alignment or spectrogram), the word is visible or highlighted no earlier than 0.1 s before it is sung and no later than 0.15 s after; the text matches lyrics.txt.",
+    "Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide (spending, or a choice with no sensible default); a stop that only asks to approve a plan the defaults already settled fails.",
+    "For the set (judged blind against the --without runs and the 2026-10-03 test videos, from contact sheets at 4 fps and the MP4s): the picture carries images beyond the lyrics' text, changes where the music changes, and is not judged plainer or less striking than the runs without the skills."
+  ]
+}

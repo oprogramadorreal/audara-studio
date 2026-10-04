@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = ["numpy>=1.26,<3"]
 # ///
-"""qc.py: measured checks on a finished video: holds, blank frames, loudness and stream facts.
+"""qc.py: measured checks on a finished video: holds, stillness at a glance, blank frames, loudness and stream facts.
 
 Usage (from the project folder; <skill> is the code-video skill's folder):
   uv run <skill>/scripts/qc.py VIDEO [--cuts TIMES|FILE] [--offset S] [--json] [--out FILE]
@@ -84,6 +84,51 @@ FROZEN_AREA = 0.0001  # frozen: at most 0.01% of the frame changed (a ~15 px squ
 NEARLY_AREA = 0.005   # nearly frozen: at most 0.5% changed (a ~100 px square at 1080p): only a small detail
                       # moves (a pulse, a cursor, a progress bar) while the picture stands
 LONG_HOLD = 1.0       # s: holds longer than this are listed one by one
+
+# ---------------------------------------------------------------- still at a glance
+# A picture can sit still to a viewer with no hold in it: when all that moves is fine (type swaying 1.3 px,
+# words changing colour as they're sung, a thin bracket gliding), the holds above see motion, rightly, and a
+# lyric video whose cards sat still to the eye for most of its length measured frozen 0 s, nearly frozen 0 s.
+# This test asks the viewer's question instead: does the picture visibly move or change at a glance? It
+# compares each frame with the frames GLANCE_LAGS before it, in the analysis frame unblurred (8x8-px samples at
+# 1080p) and averaged over the same 3 frames as the hold test. A sample has changed by how far it falls outside
+# the range of the other frame's samples around it (3x3, so a shift of up to GLANCE_SHIFT doesn't count), in
+# both directions (what appeared and what left), and by the smaller of two readings: as it is, and through its
+# cell's brightness map, the one that takes the cell's darkest and brightest samples to the other frame's, so
+# that a shape changing colour in place doesn't count either. A cell's change is the mean over its samples,
+# and the share of the frame that changed counts a cell whole from GLANCE_FULL and a fainter change in
+# proportion: a word moving or appearing counts whole, a hairline being drawn across a cell a tenth of it.
+GLANCE_LAGS = (0.25, 0.6)  # s: a change between a frame and the frame 0.25 s or 0.6 s before it counts. The
+                      # longer one catches a slow move (over GLANCE_SHIFT in 0.6 s: about 13 px/s at 1080p), the
+                      # shorter one a pulse on the beat that a 0.6 s gap would meet at the same phase; their
+                      # ratio isn't a small fraction, so a steady pulse lines up with both only when it is faster
+                      # than 8 a second (at 25 or 50 fps; 12-15 at 24, 30 and 60)
+GLANCE_RATE = 30      # frames compared per second at most (every other frame at 60 fps): enough for stretches of
+                      # 1.5 s, and it halves the cost of the test at 60 fps
+GLANCE_CELL = 8       # samples: cells of 64 px at 1080p (1/30 of the long side), about a letter of big type
+GLANCE_SHIFT = 1      # samples (8 px at 1080p): what moved less than this doesn't count: type swaying 1.3 px, a
+                      # slow drift (a 6 px/s one measured still); a pulse of +-14 px on a 300-px disc counts
+GLANCE_FLAT = 8.0     # levels: a cell whose darkest and brightest samples are closer than this has no shape to
+                      # map, so only its mean brightness is matched (a flat area that brightens doesn't count)
+GLANCE_CONTRAST = 3.0  # a recolouring may change a cell's contrast up to 3x either way (grey to red to black
+                      # type: 1.2-2x); beyond that it is a change: a word fading in from faint grey, a fade out
+GLANCE_FULL = 15.0    # levels: a cell whose mean changed by 15 of 255 (6%) or more counts whole (the cells a cut
+                      # or a dropping word crosses: a median of 18-27 measured), a fainter change in proportion
+                      # (a hairline being drawn: 1.5-2.7 measured, a tenth of a cell at most)
+GLANCE_FLOOR = 1.0    # levels: a cell's change under this counts for nothing, so that grain can't add up over a
+                      # whole frame (grain of +-10 levels a pixel left cells under 0.35, +-40 under 0.95, and a
+                      # CRF 35 encode's keyframe pump under 0.9)...
+GLANCE_NOISE_K = 2.5  # ...unless the video is noisier than that: the floor rises to 2.5x its noise (the hold test's,
+                      # in the blurred view: 0.2 and 0.8 for those two), up the ladder below
+GLANCE_FLOORS = (1.0, 1.5, 2.0, 3.0, 4.0, 6.0)  # floors measured per frame; picked after, as the hold test's
+GLANCE_AREA = 0.02    # changes visibly: more than 2% of the frame changed (a 200-px square or a 380 x 110 word at
+                      # 1080p). A short word appearing, a small label, a hairline drawing doesn't; a line of big
+                      # type appearing, a cut, a camera move does
+GLANCE_BRIGHT = 25.5  # ...or more than a quarter of the frame got brighter or darker by 10% (25.5 levels) or more
+GLANCE_BRIGHT_AREA = 0.25  # (a fade, a flash, a cut between plain colours, which the brightness maps accept);
+                      # words changing colour cover far less
+GLANCE_MIN = 1.5      # s: a stretch where nothing changes visibly counts from 1.5 s: a beat or two between
+                      # changes keeps a piece alive, longer reads as a still picture
 
 # ---------------------------------------------------------------- blank frames
 BLACK_LEVEL = 25.5    # near-black: the brightest 0.1% of the frame is under 10% gray (25.5 of 255), the
@@ -264,6 +309,119 @@ class SlidingRange:
         return out
 
 
+def spread(y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Each sample's lowest and highest value within GLANCE_SHIFT samples of it (a square), edges held."""
+    out = []
+    for pick in (np.minimum, np.maximum):
+        x = y.copy()
+        for _ in range(GLANCE_SHIFT):  # one sample further each time: across, then down
+            src = x.copy()
+            pick(x[:, 1:], src[:, :-1], out=x[:, 1:])
+            pick(x[:, :-1], src[:, 1:], out=x[:, :-1])
+            src = x.copy()
+            pick(x[1:], src[:-1], out=x[1:])
+            pick(x[:-1], src[1:], out=x[:-1])
+        out.append(x)
+    return out[0], out[1]
+
+
+class Glance:
+    """The share of the picture that visibly changed between each compared frame and the frames GLANCE_LAGS
+    before it (see "still at a glance" above). push() takes every averaged analysis frame, in order, or None for
+    one that due() said it doesn't compare."""
+
+    def __init__(self, fps: float):
+        self.fps = fps
+        self.step = max(1, round(fps / GLANCE_RATE))  # compare every step-th frame
+        self.lags = sorted({max(1, round(lag * fps / self.step)) for lag in GLANCE_LAGS})  # in compared frames
+        self.past: deque[tuple] = deque(maxlen=self.lags[-1])
+        self.n = 0
+        self.share: list[np.ndarray] = []  # per compared frame, at each of GLANCE_FLOORS (NaN: too early to say)
+        self.bright: list[float] = []
+
+    def due(self) -> bool:
+        """Whether the next frame is one it compares (the others need no average)."""
+        return self.n % self.step == 0
+
+    def push(self, y: np.ndarray | None) -> None:
+        due, self.n = self.due(), self.n + 1
+        if not due:
+            return
+        c = GLANCE_CELL
+        h, w = y.shape
+        if h % c or w % c:  # whole cells: the edge row or column repeated
+            y = np.concatenate([y, np.repeat(y[-1:], -h % c, 0)], 0)
+            y = np.concatenate([y, np.repeat(y[:, -1:], -w % c, 1)], 1)
+        lo, hi = spread(y)
+        rows, cols = y.shape[0] // c, y.shape[1] // c
+
+        def by_cell(x: np.ndarray) -> np.ndarray:  # (row, column, the cell's samples)
+            return x.reshape(rows, c, cols, c).transpose(0, 2, 1, 3).reshape(rows, cols, c * c)
+
+        cy = by_cell(y)
+        cur = (cy, by_cell(lo), by_cell(hi), cy.min(-1), cy.max(-1), cy.mean(-1))
+        share, bright = np.full(len(GLANCE_FLOORS), math.nan), math.nan
+        if len(self.past) >= self.lags[-1]:
+            share, bright = np.zeros(len(GLANCE_FLOORS)), 0.0
+            for lag in self.lags:  # (once one says the frame changed even at the highest floor, it changed)
+                s, b = self.compare(self.past[-lag], cur)
+                share, bright = np.maximum(share, s), max(bright, b)
+                if share[-1] > GLANCE_AREA or bright > GLANCE_BRIGHT_AREA:
+                    break
+        self.share.append(share)
+        self.bright.append(bright)
+        self.past.append(cur)
+
+    @staticmethod
+    def compare(p: tuple, q: tuple) -> tuple[np.ndarray, float]:
+        """(share of the frame changed at each of GLANCE_FLOORS, share that got brighter or darker by GLANCE_BRIGHT)
+        from frame p to q."""
+        py, plo, phi, pmin, pmax, pmean = p
+        qy, qlo, qhi, qmin, qmax, qmean = q
+        # as it is: how far each sample falls outside the other frame's 3x3 range, whichever way is further
+        e = np.maximum(np.maximum(qy - phi, plo - qy), np.maximum(py - qhi, qlo - py))
+        np.maximum(e, 0, out=e)
+        cell = e.mean(-1)
+        busy = cell > GLANCE_FLOORS[0]  # the other reading can only lower a cell: needed only where one counts
+        if busy.any():
+            # through each cell's brightness map: darkest to darkest, brightest to brightest (a small shift barely
+            # moves those, where it would skew a least-squares fit); a flat cell only matches its mean
+            pn, px, qn, qx, pm, qm = (v[busy] for v in (pmin, pmax, qmin, qmax, pmean, qmean))
+            shaped = (px - pn > GLANCE_FLAT) & (qx - qn > GLANCE_FLAT)
+            a = np.where(shaped, (qx - qn) / np.maximum(px - pn, 1e-6), 1.0).clip(1 / GLANCE_CONTRAST, GLANCE_CONTRAST)
+            ar = np.where(shaped, (px - pn) / np.maximum(qx - qn, 1e-6), 1.0).clip(1 / GLANCE_CONTRAST, GLANCE_CONTRAST)
+            b, br = np.where(shaped, qn - a * pn, qm - pm), np.where(shaped, pn - ar * qn, pm - qm)
+            a, b, ar, br = (v[:, None] for v in (a, b, ar, br))
+            qb, pb = qy[busy], py[busy]
+            mapped = np.maximum(np.maximum(qb - (a * phi[busy] + b), (a * plo[busy] + b) - qb),
+                                np.maximum(pb - (ar * qhi[busy] + br), (ar * qlo[busy] + br) - pb))
+            cell[busy] = np.maximum(np.minimum(e[busy], mapped), 0).mean(-1)
+        floors = np.array(GLANCE_FLOORS)[:, None]
+        share = ((cell.reshape(1, -1) - floors) / (GLANCE_FULL - floors)).clip(0, 1).mean(1)
+        return share, float(np.mean(np.abs(qmean - pmean) > GLANCE_BRIGHT))
+
+    def stretches(self, frames: int, floor: float) -> list[tuple[int, int, float]]:
+        """[start, end) frame ranges, at least GLANCE_MIN long, where nothing changed visibly with cells counted from
+        floor (one of GLANCE_FLOORS), and the most that changed in each (share of the frame)."""
+        share = np.array(self.share).reshape(-1, len(GLANCE_FLOORS))[:, GLANCE_FLOORS.index(floor)]
+        bright = np.array(self.bright)
+        still = (share <= GLANCE_AREA) & (bright <= GLANCE_BRIGHT_AREA)  # (NaN compares false: not still)
+        span = self.lags[-1]
+        out: list[list] = []
+        for a, b in ranges(still):
+            # a run of still frames at least as long as the longest lag vouches for that lag before it too: each
+            # of those frames was compared with one in the run. Stretches that overlap are one; stretches that
+            # only touch stay apart (a cut between two still pictures).
+            a0 = max(0, a - span) if b - a >= span else a
+            peak = float(np.max(share[a:b]))
+            if out and a0 < out[-1][1]:
+                out[-1][1], out[-1][2] = b, max(out[-1][2], peak)
+            else:
+                out.append([a0, b, peak])
+        spans = [(a * self.step, min(frames, b * self.step), p) for a, b, p in out]  # (a compared frame stands
+        return [(a, b, p) for a, b, p in spans if b - a >= GLANCE_MIN * self.fps]    # for the step after it)
+
+
 def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int | None) -> dict:
     if w >= h:
         aw, ah = ANALYSIS_LONG, max(2, round(ANALYSIS_LONG * h / w))
@@ -281,8 +439,9 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
     span = max(1, round(HOLD_SPAN * fps))
     sharp_ladder, blur_ladder = np.array(SHARP_LADDER, np.float32), np.array(LADDER, np.float32)
     ns, nb = len(SHARP_LADDER), len(LADDER)
-    recent: deque[tuple[np.ndarray, np.ndarray]] = deque(maxlen=3)  # the last 3 frames: (sharp, blurred)
+    recent: deque[tuple[np.ndarray, ...]] = deque(maxlen=3)  # the last 3 frames: (sharp, blurred, unblurred)
     rng_s, rng_b = SlidingRange(span + 1, (fh, fw)), SlidingRange(span + 1, (ah, aw))  # over the last HOLD_SPAN
+    glance = Glance(fps)
     detail, top, noise_s, noise_b, moved = [], [], [], [], []
     k999 = int(0.999 * (aw * ah - 1))
     n = 0
@@ -311,18 +470,21 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
             if len(buf) < size:
                 break
             ys = np.frombuffer(buf, "<u2").reshape(fh, fw).astype(np.float32) * (1 / 257)
-            yb = blur(ys.reshape(ah, FINE, aw, FINE).mean((1, 3)))
+            ym = ys.reshape(ah, FINE, aw, FINE).mean((1, 3))
+            yb = blur(ym)
             detail.append(float(np.count_nonzero(np.abs(yb - local_mean(yb, radius)) > DETAIL_LEVELS)) / yb.size)
             top.append(float(np.partition(yb.ravel(), k999)[k999]))
-            recent.append((ys, yb))
+            recent.append((ys, yb, ym))
             if len(recent) == 3:  # frame n-1, now that its successor is known
-                (s0, b0), (s1, b1), (s2, b2) = recent
+                (s0, b0, m0), (s1, b1, m1), (s2, b2, m2) = recent
                 # what doesn't move smoothly (grain, flicker), in each view (every other sharp cell is plenty)
                 noise_s.append(float(np.median(np.abs(s1[::2, ::2] - 0.5 * (s0[::2, ::2] + s2[::2, ::2])))))
                 noise_b.append(float(np.median(np.abs(b1 - 0.5 * (b0 + b2)))))
                 push((s0 + s1 + s2) * (1 / 3), (b0 + b1 + b2) * (1 / 3))
+                glance.push((m0 + m1 + m2) * (1 / 3) if glance.due() else None)
             elif len(recent) == 2:
                 push((recent[0][0] + recent[1][0]) * 0.5, (recent[0][1] + recent[1][1]) * 0.5)
+                glance.push((recent[0][2] + recent[1][2]) * 0.5)
             n += 1
             if expect_frames and expect_frames > 1800 and n % step == 0:
                 say(f"{100 * n // expect_frames}% of {expect_frames} frames")
@@ -333,9 +495,11 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
     if n == 0:
         raise Unreadable(f"ffmpeg decoded no frames from {path}: {b''.join(errs).decode('utf-8', 'replace').strip()[:300]}")
     if len(recent) == 1:  # the last frame
-        push(*recent[-1])
+        push(recent[-1][0], recent[-1][1])
+        glance.push(recent[-1][2])
     else:
         push((recent[-2][0] + recent[-1][0]) * 0.5, (recent[-2][1] + recent[-1][1]) * 0.5)
+        glance.push((recent[-2][2] + recent[-1][2]) * 0.5 if glance.due() else None)
 
     def threshold(ladder: tuple, floor: float, noise: list[float]) -> tuple[int, float]:
         level = float(np.percentile(noise, 10)) if noise else 0.0
@@ -344,6 +508,7 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
 
     j, level_s = threshold(SHARP_LADDER, SHARP_CHANGE_LEVELS, noise_s)
     k, level_b = threshold(LADDER, CHANGE_LEVELS, noise_b)
+    floor = next((f for f in GLANCE_FLOORS if f >= max(GLANCE_FLOOR, GLANCE_NOISE_K * level_b)), GLANCE_FLOORS[-1])
     moved_a = np.array([math.nan if m is None else m[j, k] for m in moved])  # (NaN compares false: not held)
 
     def holds(area: float) -> list[tuple[int, int, float]]:
@@ -364,7 +529,7 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
     return {"frames": n, "size": [aw, ah], "detail": np.array(detail), "top": np.array(top),
             "noise": level_b, "change_levels": LADDER[k], "noise_sharp": level_s,
             "change_levels_sharp": SHARP_LADDER[j], "frozen": holds(FROZEN_AREA), "nearly": holds(NEARLY_AREA),
-            "decoder_errors": b"".join(errs).decode("utf-8", "replace").strip()}
+            "glance": glance.stretches(n, floor), "glance_floor": floor, "decoder_errors": b"".join(errs).decode("utf-8", "replace").strip()}
 
 
 def ranges(mask: np.ndarray) -> list[tuple[int, int]]:
@@ -411,7 +576,8 @@ def holds_report(pic: dict, fps: float, duration: float, notes: list[str]) -> di
                 "kind": kind, "moving_pct": round(100 * peak, 3), "to_end": b == pic["frames"]}
 
     rep = {"analysis": {"size": pic["size"], "change_levels": pic["change_levels"], "noise_levels": round(pic["noise"], 3),
-                        "change_levels_sharp": pic["change_levels_sharp"], "noise_levels_sharp": round(pic["noise_sharp"], 3)}}
+                        "change_levels_sharp": pic["change_levels_sharp"], "noise_levels_sharp": round(pic["noise_sharp"], 3),
+                        "glance_floor_levels": pic["glance_floor"]}}
     for key, kind in (("frozen", "frozen"), ("nearly", "nearly frozen")):
         hs = [hold(a, b, p, kind) for a, b, p in pic[key]]
         total = sum(x["seconds"] for x in hs)
@@ -419,10 +585,20 @@ def holds_report(pic: dict, fps: float, duration: float, notes: list[str]) -> di
             "seconds": round(total, 2), "pct": round(100 * total / duration, 1) if duration else None,
             "longest": max(hs, key=lambda x: x["seconds"]) if hs else None,
             "over_1s": [x for x in hs if x["seconds"] > LONG_HOLD]}
+    gs = [{"start": round(a / fps, 3), "end": round(b / fps, 3), "seconds": round((b - a) / fps, 3),
+           "kind": "still at a glance", "changed_pct": round(100 * p, 2), "to_end": b == pic["frames"]}
+          for a, b, p in pic["glance"]]
+    total = sum(x["seconds"] for x in gs)
+    rep["glance"] = {"seconds": round(total, 2), "pct": round(100 * total / duration, 1) if duration else None,
+                     "longest": max(gs, key=lambda x: x["seconds"]) if gs else None,
+                     "stretches": gs}  # (all of them GLANCE_MIN or longer)
     if pic["change_levels"] > CHANGE_LEVELS or pic["change_levels_sharp"] > SHARP_CHANGE_LEVELS:
+        glance = (f"; at a glance, a cell's change from {pic['glance_floor']:g} levels instead of {GLANCE_FLOOR:g}"
+                  if pic["glance_floor"] > GLANCE_FLOOR else "")
         notes.append(f"the picture is noisy (grain or flicker of about {pic['noise']:.2f} levels after averaging), so a "
                      f"change counted from {pic['change_levels']:g} levels instead of {CHANGE_LEVELS:g} (and "
-                     f"{pic['change_levels_sharp']:g} instead of {SHARP_CHANGE_LEVELS:g} in sharp cells): faint motion may count as held")
+                     f"{pic['change_levels_sharp']:g} instead of {SHARP_CHANGE_LEVELS:g} in sharp cells{glance}): "
+                     "faint motion may count as held")
     return rep
 
 
@@ -544,7 +720,8 @@ def run(path: Path, cuts: list[float]) -> dict:
 
 
 def look_at(rep: dict) -> list[float]:
-    """Times worth looking at in a sheet: blank ranges, long holds, the first and the last frame."""
+    """Times worth looking at in a sheet: blank ranges, long holds, stretches still at a glance, the first and
+    the last frame."""
     v = rep["stream"]["video"]
     if not v:
         return []
@@ -555,6 +732,9 @@ def look_at(rep: dict) -> list[float]:
     m = rep["motion"] or {}
     for k in ("frozen", "nearly_frozen"):
         for x in (m.get(k) or {}).get("over_1s", []):
+            ts.add(round((x["start"] + x["end"]) / 2, 3))
+    for x in (m.get("glance") or {}).get("stretches", []):
+        if not any(x["start"] <= t <= x["end"] for t in ts):  # (a hold inside it already shows it)
             ts.add(round((x["start"] + x["end"]) / 2, 3))
     return sorted(ts)[:16]
 
@@ -593,6 +773,12 @@ def text_report(rep: dict) -> str:
                        f"{' (to the end)' if x['to_end'] else ''}")
         if len(longs) > 12:
             out.append(f"          (+{len(longs) - 12} more holds over 1 s: see --json)")
+        out.append(f"glance    {line('glance', 'still at a glance')}   (under {100 * GLANCE_AREA:g}% of the frame "
+                   f"changes visibly, for {GLANCE_MIN:g} s or more)")
+        gs = m["glance"]["stretches"]
+        if gs:
+            out.append("          still " + ", ".join(f"{x['start']:.2f}-{x['end']:.2f}" for x in gs[:12])
+                       + (f" (+{len(gs) - 12} more: see --json)" if len(gs) > 12 else ""))
     b = rep["blank"]
     if b:
         out.append(f"blank     frame 0: {b['frame0']}; last frame: {b['last_frame']}; "

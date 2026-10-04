@@ -1,9 +1,10 @@
 # Style template
 
 The look every video in a project shares, written to `docs/STYLE.md` and mirrored in code: the palette
-and post defaults in `src/look.ts` (`PALETTE`, `POST`), the fonts in `src/engine/type.ts`. Write it with
-the project's first treatment, before any scene, and show its palette and type in the same reply for
-approval. Later videos reuse it; one that departs from it says how in its own treatment. Change the doc
+and post defaults in `src/look.ts` (`PALETTE`, `POST`), the fonts in `src/engine/type.ts`. Write it once
+the look is settled, from the director's material or the style frame picked by looking, and show its
+palette and type with that frame.
+Later videos reuse it; one that departs from it says how in its own treatment. Change the doc
 and the code together: scenes read the code, while scene authors, the critic and later sessions read the
 doc.
 
@@ -20,14 +21,22 @@ for them
   own typeface; use the logo as given, since a redrawn logo is no longer the brand's mark.
 - **A product URL:** the site's CSS (custom properties, `@font-face`) names its colours and fonts, and its
   copy gives the tone.
-- **Neither:** derive the look from the idea rather than from its genre: for example from the subject's
-  own material (its objects, textures, tools and places), from the music's character, from a typographic
-  idea or from a constraint the piece sets itself. The look that comes first for "night", "tech", "music"
-  or "data" is the one every other video already has (see the list at the end).
+- **Words** ("dark and engraved", a film, an era): that look is the director's. The style frames try ways
+  to make it, all inside what they said; what they didn't say (palette, type, light) is yours.
+- **None of these:** the look is yours (SKILL.md, "When the look is yours"). Start from the idea: what the
+  piece should make a viewer feel and the image that carries it, the music's character, a typographic idea,
+  a material or a light, a constraint the piece sets itself. Not from the genre (the look that comes first
+  for "night", "tech", "music" or "data" is the one every other video already has), and not from the
+  subject's props drawn flat on a plain ground. Try two or three directions as style frames: the key moment
+  in the engine, each made a different way (a lit form, a flat graphic field, a treated photograph, type
+  alone: whatever the idea suggests), not one layout recoloured; one scene file and a still each, no sync.
+  Keep the one that carries the idea at a glance and that no other video of this subject would have; the
+  others go in the treatment's Also considered, so the director can switch.
 
 Ask only for what's missing, such as the logo as a file or whether the brand's typeface may be used in
-video. The director's material wins over everything here. A small project's STYLE.md can be fifteen
-lines: a palette, a type line and the avoid list.
+video. The director's material wins over everything here, and what they decide or turn down for the whole
+project goes into Decisions in their words. A small project's STYLE.md can be fifteen lines: a palette, a
+type line, the decisions and the avoid list.
 
 ## The skeleton
 
@@ -39,12 +48,12 @@ From: <the brand picture, URL or treatment it was derived from>, <date>.
 ## Palette (`src/look.ts` PALETTE)
 | Key | Hex | Role |
 |---|---|---|
-| `bg` | | the ground most frames sit on |
-| `fg` | | what reads on that ground: text and marks |
+| `bg` | | the engine's base (its flash, invert and crop marks use it); a frame need not be figures on a ground |
+| `fg` | | its contrast to `bg`: what reads against it |
 | <`key`> | | <each other colour the piece needs, named for its job here; as many as the idea wants> |
 
-Glow: <the keys a scene may push above 1, if any>. <Light and dark: one ground, or which moments turn
-light.>
+Glow: <the keys a scene may push above 1, if any>. <Light and dark: where the frame's values sit, and
+which moments turn.>
 
 ## Type
 | Voice | Font | Carries |
@@ -68,6 +77,11 @@ cut and a hit do.>
 ## Tone
 <A few words the scene authors can act on: what it sounds like, what humour it allows, what it never does.>
 
+## Decisions
+<What the director chose or turned down for the whole project, in their words, with the date. Every session
+reads it before a change. What they turned down stays out whatever a treatment argues; it may also be listed
+in Avoid, marked (director).>
+
 ## Craft
 - Kerning: the font's own. Text drawn glyph by glyph is placed with `layout()` / `glyphX()`, and
   `strokeText()` kerns the stroke fonts optically; the gap between runs in different fonts or sizes is set
@@ -80,8 +94,10 @@ cut and a hit do.>
   behind it (3:1 for large type), measured on a rendered still. Small type stays solid and out of the
   glow, since outlines and glows blur at phone size and smear under bloom; display type may glow when the
   idea is light itself.
-- Rights: only fonts, images and marks the project owns or licenses; a brand's assets as given; no
-  imitation of other artists' characters or of real products' interfaces.
+- Rights: only fonts, images and marks the project owns or licenses, each listed in
+  `videos/<video>/assets/SOURCES.md`; a brand's assets as given. Draw your own version of whatever the
+  words name (a monster, a myth, a machine); what's out is copying a particular artist's design, a
+  franchise's character or a real product's interface.
 
 ## Avoid unless the piece calls for them
 <The list at the end of this template, with what this project adds or crosses out.>
@@ -159,35 +175,36 @@ a contact sheet is usually shown scaled down, so its thumbnails understate what 
   through several keys, objects carried across a cut) is in `references/motion.md`.
 - **Post** is set once in `POST`; scenes return per-frame changes on top (a flash on a hit, a punch-in).
   The engine's defaults are a clean image: a mild bloom above 1, everything else off.
-- **Grain** changes every frame, and that costs bitrate: on one 15-second card it made the file about
-  eight times larger than a still grain did. Use the least that survives encoding, or none.
+- **Grain** is a look like any other. Grain that changes every frame costs file size (about eight times
+  a still grain's on one 15-second card), so when the look wants it, use the least that survives encoding.
 
 ## Avoid unless the piece calls for them
 
-Copy this list into `docs/STYLE.md` and adapt it. These are what a model reaches for first, so they read
-as generic: the average of what it has seen rather than a choice. When one is right for the piece, the
-treatment names it and says why. The director's request always wins over the list.
+Copy this list into `docs/STYLE.md` and adapt it. These are defaults, not choices: what models reach for
+when nothing steers them, so each reads as generic. One is fine when the director asks for it or the
+treatment argues for it, except an item marked (director): that is their decision, and no treatment brings
+it back. The list says what is tired, not what is good: steering clear of all of it is not a look, and
+turning one item inside out gives its twin, which is listed too.
 
-Generic "AI video" looks:
-
-- purple and cyan neon cyberpunk;
-- glowing brains, robots, circuit boards and other stock "AI" imagery;
-- Matrix code rain;
-- lens-flare soup;
-- generic particle nebulae;
-- glitch effects and scan lines.
-
-Archetypes models converge on when nothing steers them:
-
-- a navy or near-black ground (any tint) with ivory or bone type and one warm accent (amber, orange, red),
-  often glowing; or teal, amber and violet on navy;
+- a navy or near-black ground with ivory or bone type and one warm accent, often glowing; or teal, amber
+  and violet on navy;
+- its twin: a warm off-white paper ground, near-black ink type and one red accent (paper grain or a
+  vignette doesn't make it another look);
+- either one's skeleton in other colours: one flat ground, one ink, one accent, figures placed on it;
+- stock "AI" and tech imagery: purple and cyan neon, glowing brains, robots, circuit boards, code rain,
+  glitch and scan lines;
 - the genre's emblem as the whole idea: a turning record for jazz, a skyline at night for lo-fi, a neon
   sign for synthwave, a rocket for a launch;
-- starfields, drifting glow blobs, dot grids;
-- broadcast rings, and a "signal" line with a pulse travelling along it;
-- a centred circular spectrum or equalizer visualizer; a black sun or an eclipse in the middle of the frame;
-- Ken Burns pans and zooms over generated stills;
+- slides: a heading at the top left, boxes, icons and arrows below, captions that repeat the voice, on an
+  empty flat ground;
+- lyrics as captions: the sung line set over a plain ground, or over an animated background that would fit
+  any song;
+- one composition for every scene: a headline beside or above a diagram, captions centred over a field;
+- filler light: starfields, drifting glow blobs, generic particle nebulae, lens-flare soup, dot grids;
+- a centred circular spectrum or equalizer; a black sun or an eclipse in the middle of the frame;
+- Ken Burns pans and zooms over stills;
 - rounded translucent cards that glow, and titles in a neon gradient;
-- a system font (Segoe UI, Consolas) as the voice;
+- a font used for everything because it was there (the template's Archivo or IBM Plex Mono, a system
+  font);
 - chrome nobody asked for: header and footer labels, progress segments, a small tracked label,
   decorative coordinates.

@@ -1,0 +1,33 @@
+{
+  "id": "cv-direction-rejection",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Make a 20-second animated intro for my nature-science channel, Field Notes."
+    },
+    {
+      "prompt": "No serif type, I hate serif for this. And no leaves or plant icons, too literal. Keep going."
+    },
+    {
+      "prompt": "Land the title at 0:06 exactly, not later, and mute the green, it is too saturated."
+    },
+    {
+      "prompt": "Render it."
+    },
+    {
+      "prompt": "Make a 10-second end card for Field Notes in the same style.",
+      "newSession": true
+    }
+  ],
+  "assertions": [
+    "After turn 2 no serif face is loaded for this video (font files and font calls in src/look.ts and the scenes) and no still at the brief's beat times shows leaves or plants.",
+    "Before turn 2 ends, both rejections are written in the director's words where a later session reads them: TREATMENT.md's Decisions or docs/STYLE.md's Decisions or Avoid.",
+    "After turn 3 the title's first visible frame is at 6.00 +/- 0.05 s (the timecode kept as given, not moved to a beat), the key green's HSV saturation is lower than after turn 2 at the same pixel and time, and nothing else moved: stills at the brief's other beat times match turn 2's.",
+    "After turn 4 the MP4 is 20.00 +/- 0.04 s, 1920x1080; render.ts verify passes.",
+    "Turn 5 (a new session, not resumed) uses no serif and no leaf or plant imagery, reuses the project's palette from src/look.ts, and its message cites the recorded decisions."
+  ]
+}

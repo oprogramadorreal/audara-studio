@@ -1,8 +1,9 @@
 # audara-studio
 
-Make videos from code by directing an agent. You bring the song or the script and the taste; the agent
-writes the brief, builds the video in a live browser preview, takes your notes by time ("at 0:23 the title
-should land on the snare") and renders the MP4.
+Make videos from code by directing an agent. Say what you want in a sentence or in pages, and bring a song,
+a script or nothing at all: what you decide is followed exactly, and what you leave open the agent decides,
+aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
+("at 0:23 the title should land on the snare") and renders the MP4.
 
 audara-studio is a plugin for Claude Code and Codex with two skills:
 
@@ -25,20 +26,33 @@ soundtrack and the quality report.
 
 ## Your first video
 
-Open a folder with a song in it and ask:
+Open an empty folder and ask:
 
-> make a 30-second video for song.mp3, dark and engraved
+> make a 20-second video showing why the sky is blue, with music and sound effects
 
-The agent asks what's missing, shows you a short treatment, and once you approve it, sets up the project and
-gives you a preview link. Watch it and give notes by time. Say "render it" when it's ready: you get the MP4
-with a contact sheet, a poster frame and a quality report.
+The agent shows a short plan, gives you a preview link and builds while you watch; redirect it whenever you
+like. It ends with the MP4, a contact sheet, a poster frame and a quality report. Then give notes by time.
+
+Bring a song and it cuts the picture to it:
+
+> make a lyric video for the chorus of song.mp3, the lyrics are in lyrics.txt
+
+Other ways in:
+
+- **Your script:** "make the video for script.txt, keep every word". The words stay as written; the agent
+  makes the voice, music and picture, and says so when something in the script won't work.
+- **Your direction:** a paragraph of it, or notes over days ("slower intro", "less blue in the chorus",
+  "no 3D camera moves"). A note changes only what it names, and your decisions are kept in the project, so
+  they hold in later sessions.
 
 To force the skill (for example when other video skills are installed), use `/audara-studio:code-video` in
 Claude Code or `$audara-studio:code-video` in Codex.
 
-Generating voice or music needs an [ElevenLabs](https://elevenlabs.io) API key in `ELEVENLABS_API_KEY`;
-everything else works without one, and a local stand-in voice or synthesized music can fill in until
-there is one.
+An [ElevenLabs](https://elevenlabs.io) key in `ELEVENLABS_API_KEY` adds generated voice and music; an
+[OpenAI](https://platform.openai.com) key in `OPENAI_API_KEY` adds generated images (Codex can also use its
+own). The agent says what it will make and what it costs and waits for your yes, or spends within a budget
+you give it. Without keys everything else works: music and effects synthesized in code, a local stand-in
+voice, pictures drawn in code.
 
 ## More
 

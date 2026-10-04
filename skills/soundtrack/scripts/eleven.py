@@ -9,7 +9,7 @@
 with its exact request beside it, plus the timing data the code-video engine reads.
 
   voices         The account's voices (id, name, labels, preview link), to choose one with the
-                 director. Free.
+                 director, or yourself when it's left to you. Free.
   tts            Narration from a script: one paragraph = one block = one text-to-speech request
                  with timestamps. Writes the blocks, narration.wav (blocks + gaps) and words.json,
                  measures every phrase edge against the waveform and moves it onto the sound
@@ -180,10 +180,11 @@ TP_MAX = -1.0  # true-peak ceiling (dBTP) for anything this script levels: strea
 
 # music takes (reports, not gates)
 ARRIVE_LU = 10.0  # the music has arrived once a 400 ms window is within 10 LU of the integrated level
-ARRIVE_MAX_S = 1.5  # later than that (window included) is a slow intro: the plan asked for none
+ARRIVE_MAX_S = 1.5  # later than that (window included) is a slow intro: the plan asked for none (unless free-form)
 DIP_LU = 6.0  # a dip: the 1 s loudness 6 LU under its own section's median, for 1 s or more
 HOLD_LU = 8.0  # the ending holds while the 400 ms loudness stays within 8 LU of the integrated level
-RINGOUT_S = 4.0  # a resolved chord rings for a few seconds; down 8 LU longer than this is early decay
+RINGOUT_S = 4.0  # a resolved chord rings for a few seconds; down 8 LU longer than this is early decay (not
+#                  flagged for a free-form plan, whose prompt may ask for a fade-out)
 MIN_CHUNK_S, MAX_CHUNK_S = 3.0, 120.0  # the API's limits for one chunk of a music_v2/v2.5 plan
 MAX_CHUNKS = 30
 CUT_AT = 0.4  # a narration chapter's music changes 40% into the silence before it (pdoom-video's cut)
@@ -1521,7 +1522,8 @@ def cmd_voices(a, out: Out) -> None:
             "later, prefer a voice from the account's library.")
     if any(r["preview_url"] for r in rows):
         out("Share the preview links of two or three fitting voices with the director before the paid voice test "
-            "(playing them costs nothing), then pass the chosen one to tts with --voice ID.")
+            "(playing them costs nothing), or pick from the labels yourself when the voice is left to you; then pass "
+            "the chosen one to tts with --voice ID.")
     else:
         out("Pass one with --voice ID to tts.")
 
@@ -1765,7 +1767,7 @@ def cmd_tts(a, out: Out) -> None:
         key = get_key()
         if not key:
             voice_note = [f"no voice chosen yet: with a key, choose one with the director from {me('voices')} (its "
-                          f"preview links play for free), then add --voice ID"] if no_voice else []
+                          f"preview links play for free), or pick yourself when it's left to you, then add --voice ID"] if no_voice else []
             raise no_key("the narration", "tts", [est_text] + plan + free + voice_note,
                          standin=[a.script, *place_args(a)])
         api = Api(key)
@@ -1802,7 +1804,7 @@ def cmd_tts(a, out: Out) -> None:
                 c1, _ = tts_estimate(model, len(b1.spoken))
                 out(f"No block has this voice and these settings yet. Approve the voice on one block first ({c1}):")
                 out(f"  {test}")
-                out(f"then, after the director has listened, the rest: {me(*base, '--yes')}")
+                out(f"then, once it passes (the director's ear when they want it), the rest: {me(*base, '--yes')}")
                 out("Nothing was generated.")
                 raise Fail(CONFIRM, "needs --yes to spend: make the voice test (--only 1 --yes) first",
                            {"status": "needs_confirmation", "estimate": est, "jobs": out.data["jobs"], "next": test})
@@ -1877,7 +1879,8 @@ def cmd_tts(a, out: Out) -> None:
             out.data["names"] = names_to_hear(b)
             if out.data["names"]:  # (references/elevenlabs.md: "Listen to the names before approving a file")
                 out(f"Listen for the names before approving: {', '.join(out.data['names'])}.")
-            out(f"Approve the voice by ear, then make the rest: {me(*base)} (shows the cost; add --yes)")
+            out(f"Check the voice (pace, loudness, the names; the director's ear when they want it), then make the rest: "
+                f"{me(*base)} (shows the cost; add --yes)")
         elif a.takes is not None and jobs:  # takes just made: the plan they were made on
             b = blocks[a.block - 1]
             report_plan(out, "take", [(k, take_path(b, k)) for k in range(1, a.takes + 1)], "tts")
@@ -2342,6 +2345,9 @@ def narration_sections(w: Where, length: float | None) -> list[tuple[str, float]
     return [(nm, cuts[i + 1] - cuts[i]) for i, nm in enumerate(names)]
 
 
+# The start and the ending a plan asks for unless --free-form: generated music tends to open on a long intro
+# and to fade out, which fights a cut on the first frame and on the last. The first and last chunks get these
+# styles, and the prompt the plan is made from says the same in words (cmd_music_plan).
 RULE_FIRST_NEG = ["long intro", "slow fade-in"]
 RULE_LAST_POS = ["clear resolved final chord", "natural ring-out"]
 RULE_LAST_NEG = ["fade-out", "abrupt ending"]
@@ -2362,14 +2368,17 @@ def lyric_lines(text: str) -> list[str]:
     return out
 
 
-def apply_rules(chunks: list[dict], vocals: bool) -> None:
-    """The brief's music rules, written into the plan itself (a plan is sent without the prompt)."""
+def apply_rules(chunks: list[dict], vocals: bool, free_form: bool) -> None:
+    """The brief's music rules, written into the plan itself (a plan is sent without the prompt).
+    free_form leaves the start and the ending to the prompt and the styles the model chose."""
     for c in chunks:
         c.setdefault("positive_styles", [])
         c.setdefault("negative_styles", [])
         if not vocals:
             c["positive_styles"] = add_styles(c["positive_styles"], ["instrumental"])
             c["negative_styles"] = add_styles(c["negative_styles"], ["vocals"])
+    if free_form:
+        return
     chunks[0]["negative_styles"] = add_styles(chunks[0]["negative_styles"], RULE_FIRST_NEG)
     chunks[-1]["positive_styles"] = add_styles(chunks[-1]["positive_styles"], RULE_LAST_POS)
     chunks[-1]["negative_styles"] = add_styles(chunks[-1]["negative_styles"], RULE_LAST_NEG)
@@ -2456,13 +2465,19 @@ def cmd_music_plan(a, out: Out) -> None:
     if plan_path.exists() and not a.replace:
         raise Fail(USAGE, f"{rel(plan_path)} exists (it may hold the director's edits): pass --replace to overwrite "
                           f"it, or --name for another plan")
-    rules = ["Starts immediately on the first beat, no long intro.",
-             "A clear, resolved final chord at the start of the last section, then a natural ring-out."]
+    try:  # replacing a free-form plan without --free-form brings the rules back: said after the table
+        was_free = bool(a.replace and (read_json(plan_path) or {}).get("free_form"))
+    except (Fail, AttributeError):  # an unreadable plan is replaced all the same
+        was_free = False
+    rules = []
+    if not a.free_form:  # the start and the ending (see RULE_FIRST_NEG); --free-form leaves them to the prompt
+        rules += ["Starts immediately on the first beat, no long intro.",
+                  "A clear, resolved final chord at the start of the last section, then a natural ring-out."]
     if not a.vocals:
         rules.append("Instrumental, no vocals.")
     if secs:
         rules.append("Structure: " + "; ".join(f"{s['name']} {(s['end_ms'] - s['start_ms']) / 1000:g} s" for s in secs) + ".")
-    prompt = a.prompt.strip() + "\n" + " ".join(rules)
+    prompt = a.prompt.strip() + ("\n" + " ".join(rules) if rules else "")
     if len(prompt) > 4100:
         raise Fail(USAGE, f"the prompt is {len(prompt)} characters with the rules added; the API takes 4,100")
     key = get_key()
@@ -2500,7 +2515,7 @@ def cmd_music_plan(a, out: Out) -> None:
                         "negative_styles": list(src.get("negative_styles") or []),
                         "context_adherence": src.get("context_adherence", "high")})
         chunks = new
-    apply_rules(chunks, a.vocals)
+    apply_rules(chunks, a.vocals, a.free_form)
     bad = validate_chunks(chunks)
     if bad:
         raise Fail(ERROR, "music plan: the plan is not valid: " + "; ".join(bad))
@@ -2511,7 +2526,7 @@ def cmd_music_plan(a, out: Out) -> None:
                      "(chunk text, styles, durations) if needed, then: eleven.py music compose --plan <this file>. "
                      f"{MUSIC_MODEL} enforces chunk durations, so chunk i starts at the sum of the chunks before it."),
            "prompt": a.prompt, "prompt_sent": prompt, "model_id": MUSIC_MODEL, "vocals": a.vocals,
-           "requested_sections": [{"name": nm, "seconds": d} for nm, d in requested] or None,
+           "free_form": a.free_form, "requested_sections": [{"name": nm, "seconds": d} for nm, d in requested] or None,
            "merged": notes or None, "sections": sections, "composition_plan": {"chunks": chunks},
            "api_plan": resp, "created": now(), "tool": TOOL}
     write_json(plan_path, doc)
@@ -2523,12 +2538,18 @@ def cmd_music_plan(a, out: Out) -> None:
             f"{', '.join(c['positive_styles'][:6])}{' ...' if len(c['positive_styles']) > 6 else ''}")
     for x in notes:
         out(f"  {x}")
+    if a.free_form:
+        out("  Free-form: no start or ending rules; the prompt and the chunk styles decide how it opens and ends.")
+    elif was_free:
+        out("  The plan this replaced was free-form; this one has the start and ending rules again (add --free-form "
+            "to leave them to the prompt).")
     cost = MUSIC_CREDITS_PER_MIN * total / 60
     out(f"Composing it costs about {num(cost)} credits per take (about ${MUSIC_USD_PER_MIN * total / 60:.2f} at API "
-        f"prices); two takes, {num(2 * cost)}. Review the plan with the director, then (shows the cost; add --yes):")
+        f"prices); two takes, {num(2 * cost)}. Review the plan (with the director when the music is theirs to "
+        f"choose), then (shows the cost; add --yes):")
     out("  " + me("music", "compose", "--plan", rel(plan_path), *place_args(a), "--takes", "2"))
     out.data.update({"plan": rel(plan_path), "total_s": total, "chunks": len(chunks), "sections": sections,
-                     "merged": notes, "credits_per_take": round(cost)})
+                     "merged": notes, "free_form": a.free_form, "credits_per_take": round(cost)})
 
 
 def parse_multipart_mixed(content_type: str, body: bytes) -> list[tuple[dict, bytes]]:
@@ -2559,7 +2580,9 @@ def parse_multipart_mixed(content_type: str, body: bytes) -> list[tuple[dict, by
 
 
 def music_takes_report(out: Out, w: Where, slug: str, takes: list[tuple[int, Path]], sections: list[dict],
-                       target: float) -> list[dict]:
+                       target: float, free_form: bool = False) -> list[dict]:
+    """free_form: the plan left the start and the ending to the prompt, which may ask for a slow swell or a
+    fade-out, so a slow intro or an early decay is measured (arrives_s, holds_to_s) but not flagged."""
     rows = []
     cmp_dir = w.review_dir / "music"
     for k, p in takes:
@@ -2568,10 +2591,12 @@ def music_takes_report(out: Out, w: Where, slug: str, takes: list[tuple[int, Pat
         dur = len(decode(p)) / SR
         flags = []
         arrive = float(t[np.argmax(M >= I - ARRIVE_LU)]) if len(M) and (M >= I - ARRIVE_LU).any() else None
-        if arrive is None or arrive > ARRIVE_MAX_S:
-            flags.append(f"slow intro (music arrives at {arrive:.1f} s)" if arrive is not None else "never arrives")
+        if arrive is None:
+            flags.append("never arrives")
+        elif arrive > ARRIVE_MAX_S and not free_form:
+            flags.append(f"slow intro (music arrives at {arrive:.1f} s)")
         hold = float(t[np.flatnonzero(M >= I - HOLD_LU)[-1]]) if len(M) and (M >= I - HOLD_LU).any() else 0.0
-        if dur - hold > RINGOUT_S:
+        if dur - hold > RINGOUT_S and not free_form:
             flags.append(f"early decay (down {HOLD_LU:g} LU from {hold:.1f} s, {dur - hold:.1f} s before the end)")
         planned = sections[-1]["end"] if sections else None
         if planned and abs(dur - planned) > 0.1:
@@ -2636,6 +2661,7 @@ def cmd_music_compose(a, out: Out) -> None:
     bad = validate_chunks(chunks) if chunks else ["no composition_plan.chunks"]
     if bad:
         raise Fail(USAGE, f"{rel(plan_path)}: " + "; ".join(bad))
+    free_form = isinstance(doc, dict) and bool(doc.get("free_form"))  # music plan --free-form
     slug = plan_path.name[:-len(".plan.json")] if plan_path.name.endswith(".plan.json") else plan_path.stem
     fmt = a.format or DEFAULT_FORMAT
     ext = ext_for(fmt, "music")
@@ -2788,13 +2814,17 @@ def cmd_music_compose(a, out: Out) -> None:
             raw.unlink(missing_ok=True)
         out(f"Composed {len(todo)} take{'s' if len(todo) != 1 else ''}.")
     takes = [(k, tpath(k)) for k in range(1, ntakes + 1)]
-    rows = music_takes_report(out, w, slug, takes, sections, a.lufs)
+    rows = music_takes_report(out, w, slug, takes, sections, a.lufs, free_form)
     out(f"Takes of {slug} ({total:g} s, plan {rel(plan_path)}), measured:")
     out(f"  {'take':4s} {'length':>8s} {'LUFS':>6s} {'LRA':>5s} {'dBTP':>6s} {'arrives':>8s} {'holds to':>9s}  flags")
     for r in rows:
         out(f"  {r['take']:<4d} {r['seconds']:7.2f}s {r['lufs']:6.1f} {r['lra']:5.1f} {r['true_peak']:6.1f} "
             f"{(format(r['arrives_s'], '.1f') + ' s') if r['arrives_s'] is not None else '-':>8s} "
             f"{r['holds_to_s']:8.1f}s  {'; '.join(r['flags']) or 'ok'}")
+    if free_form:
+        out("  A free-form plan: a slow intro or an early decay is not flagged, since the prompt may ask for one; "
+            "'arrives' and 'holds to' say where the music comes in and where it starts to fade: check them "
+            "against the brief.")
     for r in rows:
         shape = " | ".join(f"{nm} {v:+.1f}" for nm, v in r["section_lu"].items() if v is not None)
         if shape:
@@ -2808,7 +2838,7 @@ def cmd_music_compose(a, out: Out) -> None:
     report_plan(out, "take", takes, "music")
     out(f"Then keep one (no API call): {me('music', 'compose', '--plan', rel(plan_path), *place_args(a), '--pick', 'K')}")
     out("A library track the user owns, edited to the picture, can still beat these.")
-    out.data.update({"plan": rel(plan_path), "takes": rows})
+    out.data.update({"plan": rel(plan_path), "free_form": free_form, "takes": rows})
 
 
 def write_song_words(w: Where, main: Path, chunks: list[dict], wt: list[dict]) -> tuple[Path, int, int, int]:
@@ -3169,10 +3199,15 @@ audio/narration/takes/, audio/narration.wav and data/words.json.
   uv run scripts/eleven.py music plan "warm felt piano, soft pulse, 86 BPM, D major" --lengths "intro:8,build:12,hit:2,resolve:8" --video promo
   uv run scripts/eleven.py music plan "warm felt piano" --sections "intro:0,build:8,hit:20,resolve:22" --length 30 --video promo
   uv run scripts/eleven.py music plan "ambient pads under a narration, gentle pulse" --from-narration --video intro
+  uv run scripts/eleven.py music plan "slow ambient swell from silence, fades out under the credits" --length 40 --free-form --video outro
 --sections takes start times, the first at 0, with --length (the form beats.py takes); --lengths
 takes each section's length. Writes audio/music/<slug>.plan.json. Sections under 3 s merge into
 the next one (the API's minimum chunk), and the rules go into the plan: starts on the first
-beat, a resolved final chord with a natural ring-out, instrumental unless --vocals.
+beat, a resolved final chord with a natural ring-out, instrumental unless --vocals. The start
+and the ending are there because generated music tends to open on a long intro and fade out,
+which fights a cut on the first frame and the last. When the brief wants a slow swell, a
+fade-out or a hard stop, --free-form leaves both to the prompt (say how it opens and ends);
+it stays instrumental unless --vocals, and compose then doesn't flag a slow intro or a decay.
 """,
     "compose": """examples:
   uv run scripts/eleven.py music compose --plan videos/promo/audio/music/warm-felt-piano.plan.json --takes 2 --yes
@@ -3237,7 +3272,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     v = sub.add_parser("voices", parents=[common], help="list the account's voices (free)", formatter_class=RF,
                        description="List the account's voices (id, name, labels, languages, preview link) to choose "
-                                   "one with the director. Free.",
+                                   "one with the director, or yourself when it's left to you. Free.",
                        epilog=EXAMPLES["voices"])
     v.add_argument("--search", help="filter by name, description or labels (the API's search)")
     v.add_argument("--language", help="only voices verified for this language code (e.g. pt, en)")
@@ -3288,6 +3323,10 @@ def build_parser() -> argparse.ArgumentParser:
     mp.add_argument("--length", type=float, help="total seconds (with --sections, or alone; with --from-narration "
                                                  "it extends the last section to the video's length)")
     mp.add_argument("--vocals", action="store_true", help="allow vocals (default: instrumental)")
+    mp.add_argument("--free-form", action="store_true",
+                    help="leave the start and the ending to the prompt (a slow swell, a fade-out, a hard stop); "
+                         "default: on the first beat, then a resolved final chord and a ring-out, to meet the cuts. "
+                         "Recorded in the plan")
     mp.add_argument("--name", help="plan name (default: from the prompt)")
     mp.add_argument("--replace", action="store_true", help="overwrite an existing plan of that name")
     mc = ms.add_parser("compose", parents=[common, place, spend], formatter_class=RF, epilog=EXAMPLES["compose"],

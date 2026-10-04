@@ -231,8 +231,9 @@ The rule, applied to three.js:
   (`img.src = url; await img.decode()`) drawn into a `Layer2D`.
 - They pass through the same post as everything else: the bloom lifts the blacks around a bright image
   (from 0 to 11–23 next to a white frame) and the tone shoulder lands white at 243 even with `{ bloom: 0 }`
-  (measured). A picture that must match its file (a logo, a screenshot, a product shot) needs the shoulder
-  off for its entry: an engine change in `src/engine/post.ts`.
+  (measured). A picture that must match its file (a logo, a screenshot, a product shot) needs its entry's
+  bloom off and the shoulder undone in the scene (`references/images.md`, which also covers images as
+  material: plates, cut-outs, treatments, sizes for 4K).
 - Footage (the director's own clips) never plays through an `HTMLVideoElement` or a `VideoTexture`: it runs
   on the wall clock and seeks asynchronously, `render()` can't wait, and the preview, stills and render
   would each show a different frame for the same `t`. Extract the frames with ffmpeg at the size they're

@@ -29,7 +29,7 @@ Stages, each skipped when its result is already in --work (keyed by the audio's 
   1. vocals: ffmpeg's gapless decode -> Demucs htdemucs on CPU -> vocal stem, mono 16 kHz
      (--no-separate: the decode itself, mono 16 kHz)
   2. emissions: CTC log-probabilities (20 ms frames) from --acoustic, mapped onto the shared
-     alphabet "-abcdefghijklmnopqrstuvwxyz'" (0 = blank)
+     alphabet "-abcdefghijklmnopqrstuvwxyz'" (0 = blank), then the model's word separator ("|")
   3. whisper: faster-whisper words with times on the same audio (the cross-check)
 Models download once into --cache (torch/, hf/, whisper/). Progress goes to stderr; the last
 line on stdout is a JSON result for align.py.
@@ -91,6 +91,8 @@ def long_path_imports() -> None:
 long_path_imports()  # (before numpy, torch, Demucs and faster-whisper are imported, in the stages below)
 
 ALPHA = "-abcdefghijklmnopqrstuvwxyz'"  # must match align.py
+EMISSIONS = 2  # the emissions' layout, in their file name: ALPHA's columns, then the word separator's (2). An
+#                emissions file of an older layout is computed again instead of read wrongly
 SR = 16000  # every CTC model here and Whisper take 16 kHz mono
 HOP = 320  # 20 ms CTC frames at 16 kHz
 CHUNK_S, CONTEXT_S = 20.0, 3.0  # emissions in 20 s chunks with 3 s of context each side: bounded
@@ -189,16 +191,19 @@ def fold(label: str) -> str:
     return unicodedata.normalize("NFKD", label.casefold()).encode("ascii", "ignore").decode()
 
 
-def project(logp, labels: list[str], blank_ids: list[int]):
-    """Map a model's label set onto ALPHA: blank (+ word separator) -> 0, letters folded to a-z
-    (accented letters merge into their base letter), everything else dropped; renormalized."""
+def project(logp, labels: list[str], blank_ids: list[int], sep_ids: list[int]):
+    """Map a model's label set onto ALPHA: blank -> 0, letters folded to a-z (accented letters merge
+    into their base letter), the word separator ("|") into one more column after them (-1e4 for a
+    model without one), everything else dropped; renormalized."""
     import numpy as np
     T = logp.shape[0]
-    out = np.full((T, len(ALPHA)), -1e4, np.float64)
+    out = np.full((T, len(ALPHA) + 1), -1e4, np.float64)
     out[:, 0] = np.logaddexp.reduce(logp[:, blank_ids], axis=1)
+    if sep_ids:
+        out[:, -1] = np.logaddexp.reduce(logp[:, sep_ids], axis=1)
     groups: dict[int, list[int]] = {}
     for i, lab in enumerate(labels):
-        if i in blank_ids or lab.startswith("<"):
+        if i in blank_ids or i in sep_ids or lab.startswith("<"):
             continue
         c = fold(lab)
         if len(c) == 1 and c in ALPHA[1:]:
@@ -211,7 +216,7 @@ def project(logp, labels: list[str], blank_ids: list[int]):
 
 
 def load_acoustic(acoustic: str, cache: Path):
-    """Returns (forward(np 16 kHz chunk) -> log-probs [T, V], labels, blank ids, license)."""
+    """Returns (forward(np 16 kHz chunk) -> log-probs [T, V], labels, blank ids, word separator ids, license)."""
     import numpy as np
     import torch
     if acoustic in ("lv60k", "mms"):
@@ -220,18 +225,18 @@ def load_acoustic(acoustic: str, cache: Path):
         if acoustic == "lv60k":
             bundle = torchaudio.pipelines.WAV2VEC2_ASR_LARGE_LV60K_960H
             model, labels = bundle.get_model(dl_kwargs=quiet), list(bundle.get_labels())
-            blank_ids = [labels.index("-"), labels.index("|")]
+            blank_ids, sep_ids = [labels.index("-")], [labels.index("|")]
         else:
             bundle = torchaudio.pipelines.MMS_FA
             model, labels = bundle.get_model(with_star=False, dl_kwargs=quiet), list(bundle.get_labels(star=None))
-            blank_ids = [labels.index("-")]
+            blank_ids, sep_ids = [labels.index("-")], []  # MMS_FA has no word separator
         model.eval()
 
         def fwd(x):
             with torch.inference_mode():
                 em, _ = model(torch.from_numpy(x)[None])
                 return torch.log_softmax(em, dim=-1)[0].float().numpy()
-        return fwd, labels, blank_ids, LICENSES[acoustic]
+        return fwd, labels, blank_ids, sep_ids, LICENSES[acoustic]
     repo = acoustic[3:]
     from huggingface_hub import HfApi, snapshot_download
     lic = None
@@ -260,7 +265,8 @@ def load_acoustic(acoustic: str, cache: Path):
     labels = [""] * (max(vocab.values()) + 1)
     for lab, i in vocab.items():
         labels[i] = lab
-    blank_ids = sorted({int(cfg.get("pad_token_id", vocab.get("<pad>", 0)))} | ({vocab["|"]} if "|" in vocab else set()))
+    blank_ids = [int(cfg.get("pad_token_id", vocab.get("<pad>", 0)))]
+    sep_ids = [vocab["|"]] if "|" in vocab and vocab["|"] not in blank_ids else []
     norm = bool(pre.get("do_normalize", True))
 
     def fwd(x):
@@ -269,13 +275,13 @@ def load_acoustic(acoustic: str, cache: Path):
         with torch.inference_mode():
             logits = model(torch.from_numpy(x.astype(np.float32))[None]).logits
             return torch.log_softmax(logits, dim=-1)[0].float().numpy()
-    return fwd, labels, blank_ids, str(lic) if lic else "unknown (no license on the model card)"
+    return fwd, labels, blank_ids, sep_ids, str(lic) if lic else "unknown (no license on the model card)"
 
 
 def stage_emissions(args, y, work: Path, source: str, times: dict, cache: Path) -> tuple[Path, str | None]:
     import numpy as np
     slug = re.sub(r"[^A-Za-z0-9.-]+", "-", args.acoustic)
-    out = work / f"ctc-{slug}-{source}.npy"
+    out = work / f"ctc{EMISSIONS}-{slug}-{source}.npy"
     meta = out.with_suffix(".json")
     if out.is_file() and meta.is_file():
         return out, json.loads(meta.read_text(encoding="utf-8")).get("license")
@@ -283,7 +289,7 @@ def stage_emissions(args, y, work: Path, source: str, times: dict, cache: Path) 
     torch.set_num_threads(args.threads)
     log(f"emissions: {args.acoustic} on the {source} (first use downloads about 1.3 GB) ...")
     t0 = time.time()
-    fwd, labels, blank_ids, lic = load_acoustic(args.acoustic, cache)
+    fwd, labels, blank_ids, sep_ids, lic = load_acoustic(args.acoustic, cache)
     x = (y / (np.abs(y).max() + 1e-9)).astype(np.float32)  # peak-normalized, as pdoom-video did
     n = len(x) // HOP
     chunk, ctx = int(CHUNK_S * SR), int(CONTEXT_S * SR)
@@ -298,7 +304,7 @@ def stage_emissions(args, y, work: Path, source: str, times: dict, cache: Path) 
         E[lo: lo + len(part)] = part
     last = int(np.flatnonzero(~np.isnan(E[:, 0])).max())
     E[last + 1:] = E[last]
-    P, missing = project(E.astype(np.float64), labels, blank_ids)
+    P, missing = project(E.astype(np.float64), labels, blank_ids, sep_ids)
     if missing:
         log(f"note: {args.acoustic} has no label for {' '.join(missing)}; those letters align on their neighbours")
     np.save(out, P)

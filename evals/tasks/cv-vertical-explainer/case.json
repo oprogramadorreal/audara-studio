@@ -17,13 +17,13 @@
     }
   ],
   "assertions": [
-    "After turn 1: a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption; nothing built yet.",
-    "A turn-2 message (progress messages count) gives the director this project's preview link written out in full with ?v=<name> before the first scene file for this video is written (transcript order), and one before turn 2 ends gives at least one full &t= link within 0.5 s of a beat time the brief lists (the address served this work folder during the run: result.json previews).",
-    "The MP4 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (the user said no sound).",
+    "Turn 1 shows a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption, before the first scene file is written.",
+    "A message (progress messages count) gives the director this project's preview link written out in full with ?v=<name> before the first scene file for this video is written (transcript order), and one before turn 2 ends gives at least one full &t= link within 0.5 s of a beat time the brief lists (the address served this work folder during the run: result.json previews).",
+    "The MP4 delivered after turn 3 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (turn 2 said no sound, so any sound made in turn 1 is gone), and turn 2 changed nothing else it didn't name (stills at the brief's beat times match before and after, but for the sound).",
     "Values shown on screen (hashes, bucket indices) are computed in code from the keys by a hash function the scene runs, and the copy and comparisons read them from there: a bucket typed into the code ('bucket 3', i === 3) fails.",
     "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",
     "No near-empty or near-black frame at t=0 or at a cut, counting the brief's beat times as cuts (a one-scene video has none in verify.json, so check those frames yourself), unless the reply explains a deliberate one; and every hold of about 1.5 s or more that qc.py reports is marked in the treatment or named in the final reply with its time (a ?t= link) and what is read during it; a label such as 'intentional reading holds' doesn't count.",
     "The final reply links a contact sheet, a poster and QC numbers, and the files exist (a path, or a file name under a folder the reply names, counts as a link).",
-    "No final render before the director asks for it: when turn 3 starts (result.json turn times), out/<name>/<name>.mp4 does not exist yet and no full-length render has run without --draft (the transcripts)."
+    "After the first build's MP4, a full render runs only when a turn asks for one (turn 3); notes are answered in the preview (the transcripts)."
   ]
 }

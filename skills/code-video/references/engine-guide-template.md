@@ -42,8 +42,9 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
   frame, the frame after, 0.1 s after. `--cuts --times a,b` adds those moments to the same sheet.
   Thumbnails have the same area whatever the frame's shape (480 px wide for 16:9, 270 for 9:16), in as
   many columns as fit about 1940 px, except that a `--cuts` row holds a cut's five frames, so 16:9
-  thumbnails shrink to 383 px there. A sheet taller than about 2040 px goes on in `-2.png`, `-3.png`, so
-  each page stays readable when it's looked at whole. `--cols` and `--thumb <px wide>` change the layout.
+  thumbnails shrink to 383 px there. A sheet taller than about 2000 px, or past 3.75 MiB, goes on in `-2.png`,
+  `-3.png`, so each page stays readable when it's looked at whole and reaches an image reader unchanged (a
+  bigger PNG can be re-encoded to 256 colours on the way, which paints grey blotches around bright strokes). `--cols` and `--thumb <px wide>` change the layout.
 - **A quick look at motion**: `bun scripts/render.ts video --video <video> --from 20 --to 25 --only hook --draft`.
   `--draft` takes one sub-frame per frame (no motion blur) and a fast encode (`--preset veryfast --crf 23`)
   and says so as it starts.

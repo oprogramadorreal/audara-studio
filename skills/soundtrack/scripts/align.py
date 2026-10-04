@@ -125,6 +125,12 @@ MIN_WORD_S = 0.05  # shortest word duration kept after snapping ("a" spoken fast
 
 ALPHA = "-abcdefghijklmnopqrstuvwxyz'"  # CTC alphabet shared with align_models.py; 0 = blank
 STAR = len(ALPHA)  # garbage token between lines (pdoom-video ctcalign.py)
+SEP = STAR + 1  # the model's word separator ("|"; MMS_FA has none), in the emissions' column after ALPHA
+SQUEEZED = (2, 0.05)  # a word whose last spoken part the path put on 2 frames or fewer, at a mean posterior under
+#   0.05, may have lost its sound to the next word: the song is aligned again with the model's separator required
+#   after it (at a line end, on each side of the star). On pdoom-pt, "GPU" ("gê pê u") ended on a one-frame "u" at
+#   0.002 and the next line's "RLHF" ("erre ...") began in its held "pê-u", 0.6 s early, though the model marked
+#   the gap after "u" with a separator. Required between every two lines, it moved legato joins 0.1-0.3 s late
 STAR_MARGIN = 1.5  # the star scores (best label's log-prob - 1.5): it absorbs ad-libs, backing
 #                    vocals and the outro, while lyric words still win where they really match
 FRAME_S = 0.02  # wav2vec2 / MMS emit one CTC frame per 320 samples at 16 kHz
@@ -1405,28 +1411,50 @@ class Tok:
 
 
 def align_tokens(E: np.ndarray, toks: list[Tok], nlines: int) -> None:
-    Ex = np.concatenate([E, E.max(axis=1, keepdims=True) - STAR_MARGIN], axis=1)
-    tgt, index = [STAR], []
-    for li in range(nlines):
-        for k, tk in enumerate(toks):
-            if tk.line != li:
-                continue
-            for u in tk.units:
-                a = len(tgt)
-                tgt.extend(ALPHA.index(c) for c in u)
-                index.append((k, a, len(tgt)))
-        tgt.append(STAR)
-    tgt = np.array(tgt, np.int64)
-    path = viterbi(Ex, tgt)
-    T = len(path)
-    pos = np.where(path % 2 == 1, (path - 1) // 2, -1)
-    P = np.exp(Ex[np.arange(T), np.where(pos >= 0, tgt[np.maximum(pos, 0)], 0)])
-    order = np.argsort(pos, kind="stable")
-    sorted_pos = pos[order]
-    for k, a, b in index:
-        lo, hi = np.searchsorted(sorted_pos, [a, b])
-        fr = order[lo:hi]
-        toks[k].spans.append((int(fr.min()) * FRAME_S, (int(fr.max()) + 1) * FRAME_S, float(P[fr].mean())))
+    sep = E[:, len(ALPHA)] if E.shape[1] > len(ALPHA) else np.full(len(E), -1e4)  # (older caches: no column)
+    E = E[:, :len(ALPHA)].copy()
+    E[:, 0] = np.logaddexp(E[:, 0], sep)  # a blank, as before: the model's blank or its separator
+    Ex = np.concatenate([E, E.max(axis=1, keepdims=True) - STAR_MARGIN, sep[:, None]], axis=1)
+
+    def spans(sep_after: set[int]) -> dict[int, list]:
+        tgt, index, last = [STAR], [], None
+        for li in range(nlines):
+            n0 = len(tgt)
+            for k, tk in enumerate(toks):
+                if tk.line != li or not tk.units:
+                    continue
+                if last in sep_after:  # the separator between them (after the star, at a line end)...
+                    tgt.append(SEP)
+                for u in tk.units:
+                    a = len(tgt)
+                    tgt.extend(ALPHA.index(c) for c in u)
+                    index.append((k, a, len(tgt)))
+                last = k
+            if len(tgt) > n0 and li < nlines - 1 and last in sep_after:  # ...and before the star
+                tgt.append(SEP)
+            tgt.append(STAR)
+        tgt = np.array(tgt, np.int64)
+        path = viterbi(Ex, tgt)
+        T = len(path)
+        pos = np.where(path % 2 == 1, (path - 1) // 2, -1)
+        P = np.exp(Ex[np.arange(T), np.where(pos >= 0, tgt[np.maximum(pos, 0)], 0)])
+        order = np.argsort(pos, kind="stable")
+        sorted_pos = pos[order]
+        out: dict[int, list] = {}
+        for k, a, b in index:
+            lo, hi = np.searchsorted(sorted_pos, [a, b])
+            fr = order[lo:hi]
+            out.setdefault(k, []).append((int(fr.min()) * FRAME_S, (int(fr.max()) + 1) * FRAME_S, float(P[fr].mean())))
+        return out
+
+    got = spans(set())
+    frames, post = SQUEEZED
+    squeezed = {k for k, sp in got.items() if k + 1 < len(toks) and sp[-1][1] - sp[-1][0] < (frames + 0.5) * FRAME_S
+                and sp[-1][2] < post} if float(sep.max()) > -100 else set()
+    if squeezed:
+        got = spans(squeezed)
+    for k, sp in got.items():
+        toks[k].spans.extend(sp)
 
 
 def fricative_starts(toks: list[Tok], y: np.ndarray, sr: int, lang: str, snd: Sound) -> int:
@@ -1468,8 +1496,9 @@ def fricative_starts(toks: list[Tok], y: np.ndarray, sr: int, lang: str, snd: So
         if k and toks[k - 1].spans:
             pu = toks[k - 1].units[-1] if toks[k - 1].units else ""
             prev_end = toks[k - 1].spans[-1][1]
-            # a previous word that ends in a hiss ("its sparks") must keep it: start the search after it
-            lo_t = max(lo_t, prev_end + 0.02 if FRICATIVE_END.search(pu) else prev_end - 0.10, raw[k - 1] + 0.10)
+            # a previous word that ends in a hiss ("its sparks") must keep it: start the search after it; any other
+            # keeps its last letter's frame (0.1 s before it, "Cem" took the hiss of "senso"'s "-so" before it)
+            lo_t = max(lo_t, prev_end + 0.02 if FRICATIVE_END.search(pu) else prev_end - FRAME_S, raw[k - 1] + 0.10)
         i_lo = int(np.searchsorted(tt, lo_t))
         a, b = max(int(np.searchsorted(tt, s - 0.15)), i_lo), int(np.searchsorted(tt, s + 0.06))
         if b <= a:
@@ -1890,6 +1919,10 @@ def print_song(r: dict) -> None:
             say(f"  ... and {r['flagged_total'] - 15} more in {r['review'] or 'the --json output'}")
     if r["sheets"]:
         say(f"sheets: {len(r['sheets'])} images, {r['sheets'][0]} ...")
+        # (the review list misses what no score flags: on pdoom-pt, "RLHF" began 0.6 s early inside the held "pê-u"
+        # of "GPU" before it, at a confidence of 0.70, and only the sheet showed it)
+        say("  in the sheets, beyond the list: each line's first word and every respelled word, for a box that starts "
+            "while the word before it is still sounding, or opens on a silence")
     for x in r.get("next") or []:
         say(f"next: {x}")
 

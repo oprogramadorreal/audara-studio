@@ -27,13 +27,18 @@ which reading you took and offer the other in a line. A change that moves someth
 approved (the length, a cut on a word, a hold the treatment promises) says so, offers the version that
 keeps it, and says what else you retimed to make room.
 
-A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
-when the director asks.
+A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. After the
+first build's MP4, render when the director asks.
 
 ## Your stills loop
 
 Inside the director's loop runs yours: render the moments a change touches, look at the PNGs, fix, look
-again. Most of the quality comes from it. Two habits make it catch what usually slips through.
+again. Most of the quality comes from it. Three habits make it catch what usually slips through.
+
+**Look as a viewer, not as the author.** Before hunting defects, ask of each sheet whether a stranger
+would watch it to the end, and again. Frames that read as slides (type, boxes and icons on an empty ground), a
+picture that illustrates each line literally, or one that changes by the same amount where the music
+turns, are worth fixing before any critic sees them, unless the director's words call for it.
 
 **Look where videos break, not where they've settled.** A frame in the middle of a beat shows the scene
 doing what it was written to do. Defects sit at the edges: a scene that starts a few frames late, a
@@ -83,9 +88,10 @@ session that built the video passed it after looking at one frame and an eight-f
   whole task is one of the prompts below, filled in. Some tools copy the conversation into a subagent
   unless told not to (in Codex, set `fork_turns` to `"none"`): ask for an empty one, whose first message
   is the filled prompt and nothing else. If you can't start one, run the prompt in a new non-interactive
-  session of your CLI. Looking at your own work again is a stills check, not a critic round: call it that.
+  session of your CLI. Wait for its report before you go on or end your turn: a critic started in the
+  background is lost if the turn ends first, and its findings with it. Looking at your own work again is a stills check, not a critic round: call it that.
 - **It gets** the treatment, `docs/STYLE.md`, the director's own words (the brief and every note,
-  quoted, not summarized), facts about the work (paths, size, fps, duration, scene ids and windows,
+  quoted from the treatment's Decisions, not summarized), facts about the work (paths, size, fps, duration, scene ids and windows,
   cut times, the timing data) and the commands to render what it wants. In a verification round, the
   earlier reports too. With another backend, give it that backend's commands for stills and clips;
   `qc.py` works on any MP4.
@@ -99,20 +105,21 @@ session that built the video passed it after looking at one frame and an eight-f
 - **Verification.** Fix what's worth fixing, then start a new critic with the new render and the earlier
   reports. It marks every earlier finding FIXED, PARTLY or STILL PRESENT, hunts for regressions around
   them, and ends with SHIP or ONE MORE PASS (at most three fixes).
-- **Stop** at SHIP, when what's left is cosmetic (sub-frame, or taste the director hasn't raised), or
-  when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
+- **Stop** at SHIP, when what's left is cosmetic (sub-frame; a weak picture is not cosmetic when the
+  look was left to you), or when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
   round and one verification). After SHIP, what's left goes to the director as open findings, not into
-  the picture: a change after the last round means a new full-cut round at delivery. The director
-  outranks the critic: a finding that goes against their words, or against a choice the treatment argues
-  for, is reported, not acted on.
+  the picture: a change after the last round is reviewed at delivery (Delivery, step 6). The director
+  outranks the critic: a finding that goes against their words is reported, not acted on. A choice only
+  the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
   - a scene round when separate authors make the scenes (or one round per few scenes);
   - a full-cut round on a `--draft` render of the whole video before you call it done, then one
     verification round after its fixes. Then the director gets the sheets and the findings still
-    open (they have had the preview link since setup, and watch while the critics work), and any further round follows their notes. The full render waits for their
-    "render it" (Delivery).
+    open (they have had the preview link since setup, and watch while the critics work), and any further
+    round follows their notes. The first build then ends with its render (Delivery); later renders wait
+    for their word.
 
   A short piece you build alone gets the full-cut round and its verification. Not after every edit:
   notes go through your stills loop and the preview.
@@ -144,7 +151,8 @@ out/<video>/critique/r<N>/; any script or data you write to measure goes under .
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
 - Measured checks on any MP4 (holds, blank frames, loudness, color tags):
   uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
-  only if uv can't write its own cache, set UV_CACHE_DIR=.audara-cache/uv, never a folder under out/)
+  only if uv can't write its own cache, set the environment variable UV_CACHE_DIR to .audara-cache/uv,
+  never a folder under out/)
 - The timing data: videos/<video>/data/audio.json (beats, downbeats, sections) and data/words.json (timed lines).
 About 24 frames fit a sheet; a longer one goes on in <sheet>-2.png, <sheet>-3.png: look at every page.
 Check type sizes on full-size stills.
@@ -163,7 +171,9 @@ Check:
 - What carries across each cut? Does any row start or end on an empty frame, the first and last included?
 - Is every claim, number and diagram true or labelled, and is nothing claimed that the treatment rules out?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
-- Does the look come from this brief, or is it what any video like it would get?
+- Does the look come from this brief, or is it what any video like it would get? Will it make something a
+  viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
+  unless the director asked for that.
 - Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge
   whether it works, not whether it follows the default.
 Reply with a ranked list, most important first: row or time, the problem, why it matters to the viewer,
@@ -183,7 +193,7 @@ stills into type, edges and fine lines.
 Check: legibility at the delivery size; kerning and collisions; one-frame pops (something leaving rest
 at full speed); holds the brief doesn't ask for; shimmer on thin lines; empty or near-black frames at
 its edges; events landing on their beat or word, in frames; whether it does its brief's job in the
-treatment's look rather than a default one. Where the treatment argues for a departure (an off-beat cut,
+treatment's look rather than a default one, and whether it is striking or only correct. Where the treatment argues for a departure (an off-beat cut,
 a long hold, a uniform drift), judge whether it works, not whether it follows the default.
 Report, under 450 words, also to out/<video>/critique/r<N>/<id>.md: KEEP / REVISE / REJECT; defects by
 severity, each with time, place in the frame, evidence, why it matters and a fix in code; the three
@@ -200,12 +210,21 @@ words, which bind: "<verbatim>". Treatment: videos/<video>/TREATMENT.md; look: d
 <tools>
 Run qc.py on the MP4 first. Then sheets of the whole video (about five frames a second for a piece under
 a minute, a frame per beat or bar for a longer one), every frame through each cut and transition, frame 0
-and the last, and full-size stills wherever a sheet raises a doubt.
+and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for motion.
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
-<skill>/references/style-template.md: an archetype from them that the treatment doesn't name and argue
-for is a finding.
+<skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
+treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
+0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
+   director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
+   that reads as slides or a template (the same layout in every scene, a headline beside or above a
+   diagram; one composition held for the whole piece; captions over a background any song could have; a
+   camera move over one still picture),
+   that illustrates a song's words literally, that ignores the music's changes, or that any video on this
+   subject would have, is a top finding with a fix in code, not taste.
+   Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
+   to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)?
@@ -215,9 +234,10 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    type too small for where it will be watched or outside the format's safe area (the Layout tables in
    <skill>/references/style-template.md, checked on full-size stills), frame 0, the last frame.
 4. Holds and pace: each hold qc.py reports that the treatment doesn't mark is a finding, not taste (its
-   time, its cause in code, a fix); stretches where only a detail moves.
+   time, its cause in code, a fix); so is each stretch its glance line calls still at a glance, and any
+   stretch where only a detail moves.
 5. The numbers: loudness against the treatment's target, color tags, duration.
-6. The top 6-8 changes by impact, concrete enough to make in code.
+6. The top 6-8 changes by impact on what a viewer sees, concrete enough to make in code.
 End with SHIP or ONE MORE PASS. Be blunt; no padding.
 ```
 
@@ -254,6 +274,7 @@ whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <fi
 | | What it measures | Default bar |
 |---|---|---|
 | holds | frozen (nothing visibly changes) and nearly frozen (under 0.5% of the frame moves) stretches of half a second or more, measured so that grain can't hide a hold and a moving hairline isn't counted as one | no hold the treatment doesn't call for (the commercial preset's numbers are in `references/treatment-template.md`) |
+| glance | stretches of 1.5 s or more where under 2% of the frame visibly changes at a glance: moves under about 8 px, sway, grain and words changing colour in place don't count, so a picture that only breathes reads as still | none the treatment doesn't call for; a lyric or narrated piece that reads still most of the time is a finding even with no holds |
 | blank frames | near-black and near-empty ranges, flagged at a cut, at t=0 and at the end | none at a cut; frame 0 a finished composition, unless the piece fades in on purpose |
 | loudness | integrated, range, true peak, short-term per second, first and last sound | about -14 LUFS for punchy pieces and -16 for calm ones (platforms play online video at about -14, as of 2026); true peak at or under -1 dBTP; sound as long as the picture |
 | stream | size, fps, frames, codec, pixel format, bitrate, color tags | tagged BT.709, yuv420p, the planned length to the frame |
@@ -265,7 +286,8 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 
 ## Delivery
 
-When the director says to render:
+At the end of the first build (unless the director wants to watch the preview first), and later whenever
+the director asks for a render:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, and wait for it before you
@@ -280,8 +302,9 @@ When the director says to render:
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).
 5. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
-6. The critic's verdict on this render: the last round's, or a new full-cut round if the picture
-   changed after it.
+6. The critic's verdict on this render: the last round's. A picture changed after that round gets a new
+   full-cut round, unless this turn already ran a full-cut round and its verification: then give that
+   verdict and list the fixes made since as not yet reviewed.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in

@@ -14,8 +14,7 @@ effects, licenses, versions)
    work, kinetic type with animatable width and weight, pen-written strokes, composited in one frame with
    HDR post, motion blur averaged in linear light, and true 4K. It cuts and animates from the soundtrack's
    data, its preview gives the director `?t=` links and per-scene hot reload, and it is MIT and local. It
-   doesn't imply shaders: a typographic piece can be Canvas2D layers alone. Leave it only for something it
-   can't do well, and name that thing; a better-known framework is not a reason.
+   doesn't imply shaders or 3D: choose the means for the image. Leave it only for something it can't do well, and name that thing; a better-known framework is not a reason.
 2. **HyperFrames** (HeyGen; Apache-2.0, free) when HTML/CSS layout carries the piece: product and UI
    videos, text-heavy explainers, charts and tables that need real layout, captions or graphics over
    footage. GSAP, its default animation runtime, has its own free license (see the dated facts). A
@@ -30,7 +29,7 @@ effects, licenses, versions)
 
 ## Switching
 
-- Name the backend and the reason in the brief, so the director approves it with the treatment.
+- Name the backend and the reason in the brief, so the director sees it with the treatment and can turn it down.
 - Install the framework's own skills into the project, not globally (the lines are under the dated
   facts): they answer plain video requests too, and installed everywhere they compete with this one in
   every project. Ask before anything global or paid.

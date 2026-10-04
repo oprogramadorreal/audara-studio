@@ -9,7 +9,8 @@
 //            labelled with its time and scene. Thumbnails have about the area of 480x270 whatever the shape
 //            (480 wide for 16:9, 270 for 9:16), in as many columns as fit ~1940 px; with --cuts a row holds the
 //            five frames of a cut, so 16:9 thumbnails shrink to 383 px wide; [--cols N] [--thumb <px wide>].
-//            A sheet taller than ~2040 px goes on in <file>-2.png, <file>-3.png ..., so each stays readable.
+//            A sheet taller than ~2000 px or bigger than 3.75 MiB goes on in <file>-2.png, <file>-3.png ..., so
+//            each stays readable and reaches a model's image input as it is.
 //   poster:  bun scripts/render.ts poster --t 9.5 [--out out/<video>/poster.png]   (one frame at full quality:
 //            adaptive sub-frames, as the video renders it)
 //   verify:  bun scripts/render.ts verify   (renders every word, cut and half second; scene, browser and WebGL errors;
@@ -520,13 +521,18 @@ interface Tile { t: number; tag?: string }
  * model's image input) scales a big one down to fit: past about 2000 px a side the thumbnails stop being
  * readable. So a page is at most `maxW` x `maxH`, and a thumbnail has by default the area of a 480x270 one,
  * whatever the frame's shape, so every frame shows at the same scale (480x270 for 16:9, 270x480 for 9:16).
+ * And a page reaches a model's image input as it is only up to 2000 px a side and `maxBytes` (Claude Code's
+ * reader): past that, the reader re-encodes it first, as a 256-colour PNG without dithering, which turns the
+ * soft glow and grain of a dark frame into flat grey blotches around everything bright, defects that aren't
+ * in the video. So a page is an opaque (RGB) PNG, as stills are, and one over `maxBytes` is cut between rows.
  */
-const SHEET = { maxW: 1940, maxH: 2040, area: 480 * 270, pad: 4, label: 22 };
+const SHEET = { maxW: 1940, maxH: 2000, maxBytes: 3.75 * 2 ** 20, area: 480 * 270, pad: 4, label: 22 };
 
 /**
  * Contact sheets: each group of tiles starts a row of its own and wraps at `cols`; thumbnails `tw` px wide
  * (the height from the frame's aspect), each under a label with its time, its scene and its tag. Rows that
- * don't fit in SHEET.maxH go on further pages, out-2.png, out-3.png ... Returns the files written.
+ * don't fit in SHEET.maxH go on further pages, out-2.png, out-3.png ..., as do those that would take a
+ * page's PNG past SHEET.maxBytes. Returns the files written.
  */
 async function sheet(page: Page, info: Info, groups: Tile[][], cols: number, tw: number, out: string) {
   const th = Math.max(1, Math.round((tw * info.logicalHeight) / info.logicalWidth));
@@ -536,10 +542,10 @@ async function sheet(page: Page, info: Info, groups: Tile[][], cols: number, tw:
   const pages: Tile[][][] = [];
   for (let i = 0; i < rows.length; i += perPage) pages.push(rows.slice(i, i + perPage));
   const ext = path.extname(out), base = out.slice(0, out.length - ext.length);
-  const files = pages.map((_, i) => (i ? `${base}-${i + 1}${ext}` : out));
+  const files: string[] = [];
   mkdirSync(path.dirname(out), { recursive: true });
-  for (const [i, pageRows] of pages.entries()) {
-    const dataUrl: string = await page.evaluate(async ({ rows, tw, th, pad, lab, samples, shutter }) => {
+  for (const pageRows of pages) {
+    const pngs: string[] = await page.evaluate(async ({ rows, tw, th, pad, lab, samples, shutter, maxBytes }) => {
       const P = (window as any).__audara;
       const cv = document.createElement('canvas');
       cv.width = Math.max(...rows.map((r) => r.length)) * (tw + pad) + pad;
@@ -568,9 +574,21 @@ async function sheet(page: Page, info: Info, groups: Tile[][], cols: number, tw:
         c.textAlign = 'left'; c.fillStyle = '#ddd';
         c.fillText(`${tile.t.toFixed(3)}s  ${on.join('+') || '—'}`, x + 2, y + 16, Math.max(8, room));
       }
-      return cv.toDataURL('image/png');
-    }, { rows: pageRows, tw, th, pad: SHEET.pad, lab: SHEET.label, samples: SAMPLES, shutter: SHUTTER });
-    await Bun.write(files[i]!, Buffer.from(dataUrl.split(',')[1]!, 'base64'));
+      // rows [r0, r1) as one opaque (RGB) PNG, as png() writes stills (toDataURL writes RGBA, a sixth bigger),
+      // or, over maxBytes, halved between rows until each half fits
+      const png = async (r0: number, r1: number): Promise<string[]> => {
+        const part = new OffscreenCanvas(cv.width, (r1 - r0) * (th + lab + pad) + pad);
+        part.getContext('2d', { alpha: false })!.drawImage(cv, 0, -r0 * (th + lab + pad));
+        const blob = await part.convertToBlob({ type: 'image/png' }), m = (r0 + r1) >> 1;
+        if (r1 - r0 > 1 && blob.size > maxBytes) return [...(await png(r0, m)), ...(await png(m, r1))];
+        return [await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(r.result as string); r.readAsDataURL(blob); })];
+      };
+      return png(0, rows.length);
+    }, { rows: pageRows, tw, th, pad: SHEET.pad, lab: SHEET.label, samples: SAMPLES, shutter: SHUTTER, maxBytes: SHEET.maxBytes });
+    for (const url of pngs) {
+      files.push(files.length ? `${base}-${files.length + 1}${ext}` : out);
+      await Bun.write(files.at(-1)!, Buffer.from(url.split(',')[1]!, 'base64'));
+    }
   }
   // pages left over from an earlier, longer sheet of the same name would pass for part of this one
   for (let i = files.length + 1; existsSync(`${base}-${i}${ext}`); i++) rmSync(`${base}-${i}${ext}`);
