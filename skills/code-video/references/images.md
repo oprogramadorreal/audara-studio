@@ -105,7 +105,10 @@ c = mix(c, ht, smoothstep(edge - 0.05, edge + 0.05, uv.x));                  // 
 c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8, pow(luma(c), 1.0 / 2.2)); // light on the bright parts
 ```
 
-- **Cut-outs:** straight alpha with the colour bled into the transparent pixels; black under alpha 0 gives a
+- **Cut-outs:** GPT Image 2.5's `--transparent` subjects come out about 99% opaque (alpha 252-253, never 255)
+  with a faint alpha 1-3 haze around them (measured 2026-10): clamp both when preparing one (alpha over about
+  240 to 255, under about 8 to 0), or a layer moving behind it shows through and the haze picks up colour.
+  Straight alpha with the colour bled into the transparent pixels; black under alpha 0 gives a
   dark rim when the image is shown small. Resize colour and alpha separately (Pillow premultiplies RGBA and
   loses the bleed). Leave `premultiplyAlpha` off on an sRGB texture: it darkens soft edges.
 - **Sharpness:** mipmaps soften a plate shown just under its size by about a sixth; keep them and sample with
@@ -121,7 +124,9 @@ c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8,
 ## One look across many images
 
 - One style block for every prompt, kept in the video's folder and passed with `--style`; one master
-  frame passed with `--ref` to the images that follow it; the model snapshot pinned (the script does).
+  frame passed with `--ref` to the images that follow it (a night plate re-lit to dawn this way kept its
+  composition exactly; the reference adds image-input cost the estimate leaves out: $0.054 billed against
+  $0.041 estimated at 1536×1024 high); the model snapshot pinned (the script does).
 - A subject and its background as separate images (a clean plate, a cut-out with `--transparent`), so a
   move never opens a hole behind the subject.
 - The same treatment in code over every source (one grade, one grain, one halftone screen) makes forty
