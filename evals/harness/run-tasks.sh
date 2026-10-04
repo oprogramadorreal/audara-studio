@@ -10,7 +10,7 @@ cd "$(dirname "$0")/../.."
 TOOLS="${1:-both}"; shift || true
 [ "$TOOLS" = both ] && TOOLS="claude codex"
 MAX=4   # concurrent runs: each may start a browser and render on the GPU
-FIRST="cv-title-card cv-song-brief cv-vertical-explainer st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending"
+FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-images-offered cv-images-used cv-images-no-key st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending"
 LATER=cv-later-session-small-change
 CASES="${CASES:-$FIRST $LATER}"
 for case in $CASES; do

@@ -61,13 +61,33 @@ arguments go to `task.ts` (`--without`, `--model sonnet`).
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
-`lyrics.json`), and `EVAL_PROJECT` (a project made with audara, for the later-session case).
+`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session case), and
+`EVAL_INPUTS` (a folder with `pdoom-pt-BR.mp3` and its `lyrics.txt`, for `cv-lyric-short`, the short
+lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list).
+
+Which user each case stands for: a short prompt that leaves everything open (`cv-zero-asset`,
+`cv-lyric-short`, `cv-range-loop`), direction given in detail or over several turns, a rejection
+included, which must survive a new session (`cv-direction-rejection`, `cv-visual-direction-no-script`,
+`cv-later-session-small-change`), a script the director brings with its words locked (`cv-locked-script`,
+`st-voiceover-no-key`), and the three ways generated images come in: offered once, used within a budget,
+and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`). The set comparisons in their
+assertions (a blind judge on contact sheets, with and `--without` the skills) are the check that the
+skills make the picture better than the model alone, not just correct.
+
+A turn with `"newSession": true` starts a new session in the same folder instead of resuming, as a
+director coming back another day would: it knows only what the project wrote down.
 `st-asks-before-spending` runs against a local ElevenLabs mock (`evals/mocks/elevenlabs.py`) with a fake
 key and logs every request the session makes, so a grader can see that nothing was spent before the user
 said yes; a text-to-speech request's log line also gives where each word really sounds on its audio, to
 check words.json against. The mock's MP3s carry the gapless header ElevenLabs' do (an Info tag with the
 encoder delay, which ffmpeg and browsers drop). The no-key cases run the mock too, with no key
-(`"key": false`): a request made anyway reaches the mock, not ElevenLabs, and shows in its log. The
+(`"key": false`): a request made anyway reaches the mock, not ElevenLabs, and shows in its log.
+`"mock": "openai-images"` (or a list of both) does the same for image generation with
+`evals/mocks/openai_images.py` and `mock-images.jsonl`: `imagegen.py` talks to it through
+`AUDARA_IMAGES_BASE_URL`, with a fake `OPENAI_API_KEY` in Claude Code runs only, to keep a fake key away
+from Codex's own sign-in. Codex's built-in image generation can't be mocked: in a Codex run it would
+draw on the ChatGPT plan's limits, which the image cases check it only does when asked. The harness never
+passes a real `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` to a session, in task or trigger runs. The
 later-session case has a decoy (`"decoy": 5173` in its setup): for the whole run an unrelated Vite app
 answers on 127.0.0.1:5173, as one left running on a developer's machine does, with its page for every path
 and no JSON at `/__audara`, so a grader can see whether the agent checked that the preview it links is its

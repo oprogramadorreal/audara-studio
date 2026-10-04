@@ -1,0 +1,23 @@
+{
+  "id": "cv-images-used",
+  "skill": "code-video",
+  "setup": {
+    "files": [],
+    "mock": "openai-images"
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "make a 15-second opening for a bedtime story app: a fox who collects moonlight in jars, painterly, like a picture book. Generate whatever images you need, you can spend up to $1."
+    },
+    {
+      "prompt": "Render it again at 4K."
+    }
+  ],
+  "assertions": [
+    "Images are generated with skills/code-video/scripts/imagegen.py (mock-images.jsonl): each file in videos/<name>/assets/ has its .request.json beside it and a line in assets/SOURCES.md; the estimated total stays within $1 and the reply states it.",
+    "The 4K render in turn 2 makes no image request (the images are assets, not a build step), and the plates are large enough for it or the reply says how they were scaled.",
+    "The images are material, not slides: on a 4 fps sheet, at least two layers move differently (parallax, a cut-out over a plate), code-drawn light or particles pass over or behind them, and no stretch is a Ken Burns pan over one still.",
+    "render.ts verify passes; an MP4 of 15 +/- 0.5 s exists after turn 1 and a 3840x2160 one after turn 2."
+  ]
+}

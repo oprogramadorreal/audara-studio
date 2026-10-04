@@ -178,7 +178,11 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
     // (codex is a .cmd shim on Windows, which can't take arguments with quotes: the prompt goes on stdin)
     : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', dir, ...(MODEL ? ['-m', MODEL] : []), '-'];
   const t0 = performance.now(), since = Date.now();
-  const p = Bun.spawn(cmd, { cwd: dir, stdin: TOOL === 'codex' ? new Blob([q.query]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
+  // (no keys that spend: a near-miss run acts for up to MAX_TURNS, and a script it runs must not reach a paid API)
+  const env = { ...process.env };
+  delete env.ELEVENLABS_API_KEY;
+  delete env.OPENAI_API_KEY;
+  const p = Bun.spawn(cmd, { cwd: dir, env, stdin: TOOL === 'codex' ? new Blob([q.query]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
   const timer = setTimeout(() => stopTree(p.pid), TIMEOUT_MS);
   const seen = new Set<string>(), used = new Set<string>(), tools: string[] = [];
   let commands = 0, log = '', stop = false, blocked: string | null = null, model: string | null = null, thread: string | null = null;

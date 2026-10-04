@@ -50,9 +50,13 @@ timelines and spliced soundtracks to upstream commit `bdbad53`.
 
 ## The vision: the user directs, the agent builds
 
-audara-studio makes the coding agent a film crew and the user its director. The director brings the
-material and the taste, approves the plan, watches the video take shape in the browser, gives notes by time,
-and says when to render. They never have to write code or run a script, though they can.
+audara-studio makes the coding agent a film crew and the user its director. The director decides what they
+want to decide (the idea, the words, the voice, the music, the look, the pacing, the length), as little as a
+sentence or as much as a shot list; the crew follows that exactly and fills everything left open with its
+own best work. The director watches the video take shape in the browser, gives notes by time, and can take
+back any part at any time. They never have to write code or run a script, though they can. (Round 4, below,
+changed this from "the director brings the material and the taste": with a short prompt nobody brings
+taste, and the model read it as not its job.)
 
 This is how pdoom-video was made: in conversation, watched in a live preview, changed note by note. Every
 part of the design serves that loop:
@@ -76,9 +80,9 @@ part of the design serves that loop:
 
 ### A session, from the director's chair
 
-1. **Brief.** The agent asks only for what's missing (the song or script, length, format, a brand picture
-   or a style) and writes the treatment and storyboard, sized to the piece. The director approves them
-   before any scene is built.
+1. **Brief.** The agent decides what the request leaves open, writes the treatment and storyboard, sized
+   to the piece, shows them and builds on; it waits only for what the director alone can decide. (Until
+   round 4 the director approved the brief before any scene was built.)
 2. **Sound.** For a song, the agent analyzes its beats and lyrics. For narration, it writes the script, asks
    before spending ElevenLabs credits, and generates the voice and music with their timings.
 3. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
@@ -95,7 +99,8 @@ What the agent owes the director:
 - a one-line status during long work;
 - a link for every change;
 - the work shown: contact sheets, numbers, critic verdicts;
-- a question before anything that costs money.
+- a question before anything that costs money, or spending within a budget they set;
+- their decisions and rejections written down in the project, so later sessions keep them.
 
 It doesn't ask for approval of every step in between.
 
@@ -361,8 +366,8 @@ spelled out; generate the key lines several times and keep the most natural take
 
 Add a tool only when it writes data the engine reads or does a step the model can't do by itself, and keep
 it behind one line in SKILL.md. Cheap candidates: SRT captions from the word timings, and a thumbnail mode
-(pdoom-video has `app/thumb.html` and `app/scripts/thumb.ts`). Leave out until a project needs them: image
-generation, stock footage, voice cloning.
+(pdoom-video has `app/thumb.html` and `app/scripts/thumb.ts`). Leave out until a project needs them: stock
+footage, voice cloning. (Image generation joined in round 4, as an option behind the same spending rules.)
 
 ## Lessons from motion-video-kit
 
@@ -762,7 +767,7 @@ in `evals/`; their results stay out of the repo.
 
 ## Built differently from the plan, and why
 
-- **The approval stop is a fixed rule.** The plan made "show the brief, then build" one step of the
+- **The approval stop was a fixed rule (until round 4).** The plan made "show the brief, then build" one step of the
   session, and everything outside the fixed rules is a default the model may override with a reason. In
   the first task evals, five of six new-video runs built and rendered before the director saw a plan:
   Claude wrote "since this session couldn't wait for a reply", and Codex cited its own rule to finish

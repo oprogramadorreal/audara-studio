@@ -9,12 +9,15 @@
 // A case folder holds case.json:
 //   { "id", "skill", "setup": { "files": [fixture name | "<path, $ENV allowed> => <name>"], "project": "init" | null,
 //       "from": "<dir to copy>", "env": {...}, "mock": "elevenlabs", "key": false, "decoy": <port> },
-//     "turns": [{ "prompt": "..." }, ...], "timeoutMinutes": 45, "assertions": ["..."] }
-// The first turn starts a session; each later turn resumes it, as a director replying would. "mock":
+//     "turns": [{ "prompt": "...", "newSession": true? }, ...], "timeoutMinutes": 45, "assertions": ["..."] }
+// The first turn starts a session; each later turn resumes it, as a director replying would, unless it has
+// "newSession": true (a later session in the same folder, which knows only what the project wrote down). "mock":
 // "elevenlabs" starts evals/mocks/elevenlabs.py on a free port and points ELEVENLABS_BASE_URL at it (with a
 // fake key), so a case can check that nothing is spent before the user says yes; with "key": false the session
 // has no key, and the mock logs any request made without one (a key found elsewhere reaches the mock, not
-// ElevenLabs). "decoy": <port> keeps an unrelated Vite app answering on 127.0.0.1:<port> for the whole run, so
+// ElevenLabs). "openai-images" (or a list of both) starts evals/mocks/openai_images.py the same way, for
+// skills/code-video/scripts/imagegen.py (AUDARA_IMAGES_BASE_URL, and a fake OPENAI_API_KEY in Claude Code
+// runs only, to keep a fake key away from Codex's own sign-in; its built-in image generation can't be mocked). "decoy": <port> keeps an unrelated Vite app answering on 127.0.0.1:<port> for the whole run, so
 // a case can check that the agent links its own project's preview, not whatever answers on the port.
 //
 // Claude Code turns run with no MCP servers (--strict-mcp-config, and without the claude.ai connectors), so the
@@ -40,9 +43,11 @@ const flag = (k: string) => argv.includes(`--${k}`);
 
 const REPO = path.resolve(import.meta.dir, '..', '..');
 const CASE_DIR = path.resolve(opt('case')!);
+type Mock = 'elevenlabs' | 'openai-images';
 const CASE = JSON.parse(readFileSync(path.join(CASE_DIR, 'case.json'), 'utf8')) as {
-  id: string; skill: string; setup?: { files?: string[]; project?: 'init' | null; from?: string; env?: Record<string, string>; mock?: 'elevenlabs'; key?: false; decoy?: number };
-  turns: { prompt: string }[]; timeoutMinutes?: number; assertions: string[];
+  id: string; skill: string; setup?: { files?: string[]; project?: 'init' | null; from?: string; env?: Record<string, string>;
+    mock?: Mock | Mock[]; key?: false; decoy?: number };
+  turns: { prompt: string; newSession?: boolean }[]; timeoutMinutes?: number; assertions: string[];
 };
 const TOOL = opt('tool', 'claude') as 'claude' | 'codex';
 const MODEL = opt('model');
@@ -230,17 +235,19 @@ function codexSessionFile(file: string) {
 // ---------------------------------------------------------------- turns
 const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}) };
 delete env.ELEVENLABS_API_KEY; // a case decides whether there is a key; never the real one
+delete env.OPENAI_API_KEY;
 // (and no claude.ai connectors, which Claude Code fetches itself: --strict-mcp-config is documented for
 // configured servers only)
 if (TOOL === 'claude') env.ENABLE_CLAUDEAI_MCP_SERVERS = 'false';
 // (built and checked before anything starts: a Codex that would still reach a browser stops the run here)
 const OFF = TOOL === 'codex' ? codexOff(WORK) : claudeOff();
-let mock: ReturnType<typeof Bun.spawn> | null = null;
-if (CASE.setup?.mock === 'elevenlabs') {
+const mocks: ReturnType<typeof Bun.spawn>[] = [];
+/** Start one of evals/mocks/ on a free port, logging to <RUN>/<log>; its port, once it listens. */
+async function startMock(script: string, log: string, what: string) {
   // (there from the start, so an empty log reads as a mock nobody asked anything)
-  writeFileSync(path.join(RUN, 'mock-requests.jsonl'), '');
-  const m = Bun.spawn(['uv', 'run', path.join(REPO, 'evals', 'mocks', 'elevenlabs.py'), '--port', '0', '--log', path.join(RUN, 'mock-requests.jsonl')], { stdout: 'pipe', stderr: 'pipe' });
-  mock = m;
+  writeFileSync(path.join(RUN, log), '');
+  const m = Bun.spawn(['uv', 'run', path.join(REPO, 'evals', 'mocks', script), '--port', '0', '--log', path.join(RUN, log)], { stdout: 'pipe', stderr: 'pipe' });
+  mocks.push(m);
   // it prints "PORT <n>" once it listens: waiting for that line rather than sending a request keeps the
   // harness out of the request log, which then holds only the session's requests
   const port = await Promise.race([
@@ -256,9 +263,19 @@ if (CASE.setup?.mock === 'elevenlabs') {
     // (unref'd: once the mock is up, this wait mustn't keep the run open at the end)
     new Promise<null>((done) => setTimeout(done, 120_000, null).unref()),
   ]);
-  if (!port) { stopTree(m.pid); throw new Error(`the ElevenLabs mock did not start:\n${await new Response(m.stderr).text()}`); }
+  if (!port) { stopTree(m.pid); throw new Error(`the ${what} mock did not start:\n${await new Response(m.stderr).text()}`); }
+  return port;
+}
+const MOCKS = [CASE.setup?.mock ?? []].flat();
+if (MOCKS.includes('elevenlabs')) {
+  const port = await startMock('elevenlabs.py', 'mock-requests.jsonl', 'ElevenLabs');
   env.ELEVENLABS_BASE_URL = `http://127.0.0.1:${port}`;
-  if (CASE.setup.key !== false) env.ELEVENLABS_API_KEY = 'eval-fake-key-0f3a9c';
+  if (CASE.setup!.key !== false) env.ELEVENLABS_API_KEY = 'eval-fake-key-0f3a9c';
+}
+if (MOCKS.includes('openai-images')) {
+  const port = await startMock('openai_images.py', 'mock-images.jsonl', 'OpenAI images');
+  env.AUDARA_IMAGES_BASE_URL = `http://127.0.0.1:${port}/v1`;
+  if (CASE.setup!.key !== false && TOOL === 'claude') env.OPENAI_API_KEY = 'eval-fake-key-0f3a9c'; // (the mock's MOCK_KEY default)
 }
 
 // "decoy": what another project's Vite dev server, left running on a developer's machine, answers: its
@@ -310,11 +327,13 @@ if (decoy) {
 }
 
 let session: string | null = null;
-const turns: { prompt: string; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
+const sessions: string[] = []; // every session the run started, in order (a newSession turn starts another)
+const turns: { prompt: string; newSession?: boolean; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
   model?: string; effort?: string; timedOut?: boolean; blocked?: string }[] = [];
 const alsoRan = new Set<string>(); // every model the transcripts name, sub-agents' included
 for (const [i, t] of CASE.turns.entries()) {
-  const first = i === 0;
+  const first = i === 0 || t.newSession === true;
+  if (first) session = null;
   const cmd = TOOL === 'claude'
     ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--strict-mcp-config', ...OFF,
        ...(MODEL ? ['--model', MODEL] : []), ...(first ? [] : ['--resume', session!])]
@@ -356,7 +375,7 @@ for (const [i, t] of CASE.turns.entries()) {
   const ran = TOOL === 'claude' ? claudeTurnModels(out) : null;
   for (const m of ran?.used ?? []) alsoRan.add(m);
   // (marked: a turn stopped at the timeout has no reply, and the next prompt answers one nobody saw)
-  turns.push({ prompt: t.prompt, started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file),
+  turns.push({ prompt: t.prompt, ...(i > 0 && first ? { newSession: true } : {}), started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file),
     ...(ran?.model ? { model: ran.model } : {}), ...(timedOut ? { timedOut } : {}), ...(blocked ? { blocked } : {}) });
   console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}`);
   if (blocked) { console.error(`turn ${i + 1} stopped: ${blocked} put a browser or the desktop within the session's reach (see evals/README.md)`); break; }
@@ -364,7 +383,8 @@ for (const [i, t] of CASE.turns.entries()) {
     for (const line of out.split('\n')) {
       try { const ev = JSON.parse(line); session ??= ev.session_id ?? ev.thread_id ?? null; } catch { /* not json */ }
     }
-    if (!session) { console.error(`no session id in the first turn's output; see ${file}`); break; }
+    if (!session) { console.error(`no session id in turn ${i + 1}'s output; see ${file}`); break; }
+    sessions.push(session);
   }
 }
 
@@ -404,7 +424,7 @@ if (TOOL === 'codex') {
       if (s && typeof s.cwd === 'string' && isWork(s.cwd)) codexFiles.push({ file, id: s.id, turns: s.turns });
     }
   }
-  for (const tc of codexFiles.find((s) => s.id === session)?.turns ?? []) {
+  for (const tc of codexFiles.filter((s) => s.id && sessions.includes(s.id)).flatMap((s) => s.turns)) {
     const turn = turns.find((u) => Date.parse(u.started) <= Date.parse(tc.at) && Date.parse(tc.at) <= Date.parse(u.ended));
     if (turn && !turn.model && tc.model) Object.assign(turn, { model: tc.model, ...(tc.effort ? { effort: tc.effort } : {}) });
   }
@@ -417,7 +437,7 @@ writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
   case: CASE.id, skill: CASE.skill, tool: TOOL,
   // (the model as the transcripts name it, each turn's in turns[]; modelArg is what --model asked for)
   model: ranModels.join(', ') || null, ...(efforts.length ? { effort: efforts.join(', ') } : {}), modelArg: MODEL ?? null,
-  ...(otherModels.length ? { otherModels } : {}), arm: ARM, session,
+  ...(otherModels.length ? { otherModels } : {}), arm: ARM, session: sessions[0] ?? null, ...(sessions.length > 1 ? { sessions } : {}),
   ...(CASE.setup?.from ? { from: path.resolve(CASE_DIR, expand(CASE.setup.from)) } : {}), desktopOff: OFF, turns,
   ...(decoy ? { decoy } : {}), previews: [...previews.values()],
   gitStatus: status.split('\n').filter(Boolean), files: tree(WORK), assertions: CASE.assertions,
@@ -440,7 +460,7 @@ function stopUnder(dir: string) {
     : Bun.spawnSync(['pgrep', '-f', dir]).stdout.toString();
   for (const p of pids.split(/\s+/).filter(Boolean).map(Number)) if (p !== process.pid) stopTree(p);
 }
-if (mock?.pid) stopTree(mock.pid);
+for (const m of mocks) if (m.pid) stopTree(m.pid);
 clearInterval(decoyRetry);
 decoyServer?.stop(true);
 stopUnder(WORK);

@@ -1,0 +1,20 @@
+{
+  "id": "cv-images-no-key",
+  "skill": "code-video",
+  "setup": {
+    "files": [],
+    "mock": "openai-images",
+    "key": false
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "make a 15-second opening for a bedtime story app: a fox who collects moonlight in jars, painterly, like a picture book. Use any images you need."
+    }
+  ],
+  "assertions": [
+    "A message says in one line that no OpenAI key is set, what a key would add and roughly what it costs (or, in Codex, that its built-in image generation would use the plan's limits), and the session makes no request to the mock (mock-images.jsonl is empty).",
+    "In Codex, built-in image generation runs only if the reply says it is using the plan's limits because the prompt asked for images; in Claude Code nothing is generated.",
+    "The piece is finished in code (an MP4 of 15 +/- 0.5 s) and reads as painterly on stills."
+  ]
+}

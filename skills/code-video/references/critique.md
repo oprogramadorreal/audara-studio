@@ -267,6 +267,7 @@ whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <fi
 | | What it measures | Default bar |
 |---|---|---|
 | holds | frozen (nothing visibly changes) and nearly frozen (under 0.5% of the frame moves) stretches of half a second or more, measured so that grain can't hide a hold and a moving hairline isn't counted as one | no hold the treatment doesn't call for (the commercial preset's numbers are in `references/treatment-template.md`) |
+| glance | stretches of 1.5 s or more where under 2% of the frame visibly changes at a glance: moves under about 8 px, sway, grain and words changing colour in place don't count, so a picture that only breathes reads as still | none the treatment doesn't call for; a lyric or narrated piece that reads still most of the time is a finding even with no holds |
 | blank frames | near-black and near-empty ranges, flagged at a cut, at t=0 and at the end | none at a cut; frame 0 a finished composition, unless the piece fades in on purpose |
 | loudness | integrated, range, true peak, short-term per second, first and last sound | about -14 LUFS for punchy pieces and -16 for calm ones (platforms play online video at about -14, as of 2026); true peak at or under -1 dBTP; sound as long as the picture |
 | stream | size, fps, frames, codec, pixel format, bitrate, color tags | tagged BT.709, yuv420p, the planned length to the frame |

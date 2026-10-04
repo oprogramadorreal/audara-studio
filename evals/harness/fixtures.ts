@@ -16,6 +16,9 @@ const VOICE = (sec: number) => `aevalsrc='0.4*sin(2*PI*180*t)*sin(2*PI*3*t)*gt(s
 const TEXT: Record<string, string> = {
   'lyrics.txt': 'Every frame is a function of time\nScrub it back and the light stays mine\nCut on the downbeat, land on the line\nEvery frame is a function of time\n',
   'script.txt': 'Every loaf of sourdough starts with a jar of flour and water.\n\nWild yeast and bacteria move in, and they start to feed.\n\nIn a few days the jar bubbles, and doubles every morning. That\'s a starter.\n\nFeed it, and it will raise your bread for years.\n',
+  // A director's script with visual and timing notes beside the narration (43 spoken words): a naive run
+  // would speak the notes, the heading or the comment.
+  'explainer-script.md': '# Why indexes make SQL fast\n<!-- 16:9, about 35 s. Calm, precise. -->\n\n[VISUAL: a library card catalogue, drawers sliding open. Title on screen: "Why indexes make SQL fast".]\nEvery database query is a search. Without an index, SQL reads every row.\n\n[VISUAL: a table of a million rows scrolling; a counter climbs. Cut on "every row".]\nA million rows means a million checks.\n\n[VISUAL: the rows fold into a B-tree; highlight the path. Hold 2 s on the tree.]\nAn index is a sorted tree. Each step halves what is left, so twenty steps find any row.\n\n[VISUAL: the counter shows 20. End card: "Index the columns you search."]\nIndex the columns you search.\n',
   'ad-script.txt': 'Meet Lumen, the desk lamp that follows the sun.\n\nIt warms up at dawn, cools down at dusk, and never asks you to think about it.\n\nLumen. Light that keeps time.\n',
   'revenue.csv': 'year,revenue_musd\n2019,1.2\n2020,2.9\n2021,6.4\n2022,11.8\n2023,19.5\n2024,31.0\n2025,47.3\n',
   'post.md': '# Why we rewrote our scheduler\n\nOur old scheduler assumed every job was short. That stopped being true in March.\n\nThis post walks through what broke and what we built instead.\n',
