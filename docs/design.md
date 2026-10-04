@@ -918,6 +918,14 @@ measurements, and three blind judges ranked each set of videos made from the sam
   field but stayed captions over a background any song could have, no better than the old test; the text
   that names that pattern and asks style frames to differ in idea came after that run.
 - **No stops before something to watch** in any run, with or without the skills.
+- **Codex follows the process better than Claude and its taste less.** On the final text it posted the
+  preview link within two minutes and the style frames within three, recorded the director's words and
+  rejections, and built without stopping; but it kept converging (the paper twin's skeleton in stone and
+  orange after a rejection, the dark-ground archetype with a cool accent for a title card), its style
+  frames restyled one layout, an open toolbox gave a Ken Burns move over one generated illustration, and
+  its critics shipped all of it as justified. Claude's taste carried its runs, while its process (posting
+  early, waiting for critics) slipped. The critic now counts only the treatment's own argument for an
+  archetype and names a camera move over one still.
 - **Direction is kept:** decisions and rejections were written in the director's words, in the treatment and
   in STYLE.md's Avoid marked (director), and a new session read them; an exact timecode stayed off the beat
   grid "by their word"; a locked script's 43 words came out exactly, with only the say map's respelling
