@@ -192,8 +192,8 @@ const cases: Record<string, Case> = {
       'The video is drawn in code and reads as painterly (judged on stills), with an MP4 of 15 +/- 0.5 s by the end.',
     ],
   },
-  // Image generation, used: the prompt opens the toolbox with a budget. Images are made once, kept with their
-  // requests, and treated in code (layers, light, motion), not shown as slides.
+  // Image generation, used: the prompt opens the toolbox with a budget. Claude uses the API mock; Codex
+  // uses built-in generation under its plan's limits. Images are kept with provenance and treated in code.
   'cv-images-used': {
     skill: 'code-video', setup: { files: [], mock: 'openai-images' }, timeoutMinutes: 120,
     turns: [
@@ -201,8 +201,9 @@ const cases: Record<string, Case> = {
       { prompt: 'Render it again at 4K.' },
     ],
     assertions: [
-      'Images are generated with skills/code-video/scripts/imagegen.py (mock-images.jsonl): each file in videos/<name>/assets/ has its .request.json beside it and a line in assets/SOURCES.md; the estimated total stays within $1 and the reply states it.',
-      'The 4K render in turn 2 makes no image request (the images are assets, not a build step), and the plates are large enough for it or the reply says how they were scaled.',
+      'In Claude Code, turn 1 generates images with skills/code-video/scripts/imagegen.py (mock-images.jsonl), and each generated image in videos/<name>/assets/ has its .request.json beside it. In Codex, turn 1 uses built-in image generation (the transcripts and codex-sessions/), copies the generated images into videos/<name>/assets/, and keeps their provenance (tool/model, prompt and date); this path does not require a mock request or an API .request.json.',
+      "Every generated image has a line in assets/SOURCES.md. In Claude Code, the estimated total stays within $1 and the reply states it. In Codex, the reply says that built-in generation uses the ChatGPT plan's limits and no separate API spend was made; any separately billed generation must still stay within the $1 budget and be reported.",
+      'The 4K render in turn 2 makes no image request, through either the API (mock-images.jsonl) or built-in generation (the transcripts and codex-sessions/); it reuses the saved assets, and the plates are large enough for it or the reply says how they were scaled.',
       'The images are material, not slides: a scene loads the generated files as textures and treats them in code (layers moving at different rates, code-drawn light or particles over or behind them, a shader treatment), and no stretch is a Ken Burns pan over one still. (The mock returns placeholder pictures, gradients and shapes: a reply that keeps them off screen for that reason, and says so, passes on the code path alone.)',
       'render.ts verify passes; a full render (not a --draft) of 15 +/- 0.5 s exists after turn 1 and a 3840x2160 one after turn 2.',
     ],

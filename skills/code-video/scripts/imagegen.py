@@ -321,7 +321,7 @@ def retire(path: Path, older: Path) -> Path:
     older.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")  # noqa: DTZ005 (local time: the name is for the director)
     dst, k = older / f"{path.stem}.{stamp}{path.suffix}", 1
-    while dst.exists():
+    while dst.exists() or side(dst).exists():
         dst, k = older / f"{path.stem}.{stamp}-{k}{path.suffix}", k + 1
     try:
         os.replace(path, dst)
@@ -337,7 +337,7 @@ def retire(path: Path, older: Path) -> Path:
 def save_paid(path: Path, data: bytes, record: dict, what: str) -> Path:
     """Write a paid image, then its record, the moment it arrives. If it can't go where it belongs, it is
     kept beside it under a rescue name (the next run with the same request takes it from there, with no
-    API call) and the run stops, saying so."""
+    API call). The caller finishes saving the rest of the paid batch before reporting the failure."""
     try:
         write_bytes(path, data)
         write_json(side(path), record)
@@ -345,7 +345,7 @@ def save_paid(path: Path, data: bytes, record: dict, what: str) -> Path:
     except OSError as e:
         # a short name: Windows refuses paths over 260 characters, and a project can sit deep in a folder tree
         alt, k = path.with_name(f"{path.stem}.rescued{path.suffix}"), 2
-        while alt.exists():
+        while alt.exists() or side(alt).exists():
             alt, k = path.with_name(f"{path.stem}.rescued{k}{path.suffix}"), k + 1
         try:
             alt.write_bytes(data)
@@ -770,6 +770,13 @@ def cmd_generate(a, out: Out) -> None:
     tdir, older = w.assets / "takes", w.assets / "older"
     targets = ([(None, w.assets / f"{name}{ext}")] if a.takes == 1 else
                [(k, tdir / f"{name}.take{k}{ext}") for k in range(1, a.takes + 1)])
+    # an edit of the file this command writes (in either format) would edit its own result on every run, and pay
+    mine = {p.with_suffix("." + e).resolve() for _, p in targets for e in FORMATS}
+    for flag, p in [("--ref", r) for r in refs] + ([("--mask", mask)] if mask else []):
+        if p in mine:
+            raise Fail(USAGE, f"{flag} {rel(p)} is the image this command writes: run again, it would edit its own "
+                              f"result and pay each time. Give the edit its own name (generate {name}-2 {flag} "
+                              f"{rel(p)} ...); nothing was sent.")
 
     def fresh(p: Path) -> bool:
         return p.is_file() and canon((read_json(side(p)) or {}).get("request")) == canon(req)
@@ -783,7 +790,11 @@ def cmd_generate(a, out: Out) -> None:
             side(alt).unlink(missing_ok=True)
             out(f"{rel(p)}: taken from {alt.name}, saved by an earlier run (no API call)")
         todo = [(k, p) for k, p in todo if p not in rescued]
-    others = [p for e in FORMATS if a.takes == 1 and e != fmt and (p := w.assets / f"{name}.{e}").is_file()]
+    # Formats share a request-record name: retire the other format of each image about to be made, takes
+    # included, before writing the new record so every paid image keeps its own provenance and cost. (Not of an
+    # up-to-date one: the record they share is that image's own.)
+    others = [other for _, p in todo for e in FORMATS
+              if e != fmt and (other := p.with_suffix("." + e)).is_file()]
     out.data.update({"name": name, "model": model, "size": size, "quality": quality, "background": body["background"],
                      "endpoint": req["path"]})
     if not todo:
@@ -849,7 +860,7 @@ def cmd_generate(a, out: Out) -> None:
     usage = j.get("usage")
     actual = usage_cost(usage, bool(refs))
     got = min(len(items), n)  # the images the call's cost is shared by (fewer than asked, when the API says so)
-    made = []
+    made, save_errors = [], []
     for (k, p), item in zip(todo, items):
         data = base64.b64decode(item["b64_json"])
         rec = {"kind": "image", "request": req, "inputs": inputs, "model_snapshot": model, "size": size,
@@ -872,7 +883,16 @@ def cmd_generate(a, out: Out) -> None:
             rec["take"] = k
         if os.environ.get(BASE_ENV, "").strip().rstrip("/") not in ("", DEFAULT_BASE):
             rec["server"] = api.base
-        made.append((k, save_paid(p, data, rec, f"{what}" + (f" take {k}" if k else ""))))
+        try:
+            made.append((k, save_paid(p, data, rec, f"{what}" + (f" take {k}" if k else ""))))
+        except Fail as e:
+            # The whole response was paid for: a failed (or rescued) save must not discard later takes.
+            save_errors.append(str(e))
+    if save_errors:
+        if actual is not None:
+            save_errors.append(f"The call cost {usd(actual)} by the API's usage.")
+        raise Fail(ERROR, "\n".join(save_errors), {"status": "save_failed", "files": [rel(p) for _, p in made],
+                                                   "actual_usd": actual})
     report(out, w, name, made, todo, actual, each, a, dims)
 
 

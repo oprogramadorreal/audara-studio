@@ -113,6 +113,16 @@ reach each other's. A Codex run also gets `codex-sessions/`, its session files f
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
 
+## Script tests
+
+`evals/tests/` tests the scripts themselves, offline: no session, no network, no paid call. `imagegen.py`'s
+check that a paid image is never lost or paid for twice (a changed format, a failed save, an edit of
+itself).
+
+```sh
+uv run evals/tests/test_imagegen.py
+```
+
 ## Spec checks
 
 Before a release, each skill passes all three validators, since each catches something the others miss:

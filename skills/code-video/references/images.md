@@ -65,7 +65,9 @@ curl -s "https://openaccess-api.clevelandart.org/api/artworks/?q=<words>&cc0=1&h
   ChatGPT plan's limits: that is spending too, so the same rules apply, and the reply says so. It picks size and quality itself
   (no 4K, no exact aspect): good for textures and plates you'll scale; style frames stay renders in the
   engine, since they prove what code will make. It saves under `$CODEX_HOME/generated_images/`: copy each
-  file into `assets/` and write its record (below). Signed in with an API key instead, it bills that key.
+  file into `assets/`, put its prompt word for word in `<name>.prompt.txt` beside it (there is no request
+  file, and the prompt is how a similar image gets made again), and write its record (below). Signed in
+  with an API key instead, it bills that key.
 - Another provider fits better for some jobs: images beyond 4K or one character across many shots (Google's
   Gemini image models), vector art (Recraft). Use one when the director names it, behind the same rules.
 - Generated video clips stay out unless the director asks (SKILL.md).
@@ -168,6 +170,7 @@ Every file in `videos/<video>/assets/` that didn't come from code has a row in `
 | File | Source | Creator, date | Licence or basis | Credit line | Treatment | Used |
 |---|---|---|---|---|---|---|
 | `fox-plate.png` | generated: `fox-plate.request.json` | GPT Image 2.5, 2026-10-04 | owned by the user (OpenAI terms) | none | halftone, parallax layer | 0:00-0:08 |
+| `jar-glow.png` | generated in Codex ($imagegen): `jar-glow.prompt.txt` | gpt-image-2, 2026-10-04 | owned by the user (OpenAI terms) | none | additive glow layer | 0:04-0:10 |
 | `derby-1896/` | <landing page URL> | <photographer>, 1896 | public domain (US, published 1896) | "<as the source asks>" | dithered, cropped | 0:12-0:15 |
 
 The end card or the video's description carries the credits the licences require.
