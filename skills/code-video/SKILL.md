@@ -20,9 +20,9 @@ The rest is a default: depart from it when the piece gains, and say why.
 
 ## A session
 Keep this checklist in your notes.
-- [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md). Show it briefly and keep building in the same turn; the director steers whenever they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
-- [ ] **Setup.** Check bun, run init, start the preview and give its link.
-- [ ] **Look.** When it's yours, render two or three style frames: the key moment, its words included, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, show them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
+- [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building, the director steers whenever they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
+- [ ] **Setup.** Check bun, run init, start the preview and post its link in a message.
+- [ ] **Look.** When it's yours, render two or three style frames: the key moment, its words included, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, post them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for while you build with a free stand-in (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: one subagent per scene, on your own model (Scene briefs in references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before it's done: a fresh full-cut critic, then its verification (references/critique.md). A plain picture nobody asked for is a finding, not taste.
@@ -41,8 +41,7 @@ Run in the project folder; `<skill>` is this skill's folder. All options: the he
 | Stills, then look | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <entry id>]` |
 | Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: around every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` |
-| Motion clip | `bun scripts/render.ts video --video <video> --from 8 --to 12 --draft` |
-| Render, poster | `bun scripts/render.ts video --video <video>`; `poster --video <video> --t <s>` |
+| Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |
 | QC report | `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json` |
 
 ## Read when
