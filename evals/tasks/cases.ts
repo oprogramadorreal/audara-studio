@@ -95,6 +95,38 @@ const cases: Record<string, Case> = {
       'For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.',
     ],
   },
+  // The short-prompt lyric video, word for word as a user typed it in the 2026-10-03 tests (whose videos had
+  // weak graphics). $EVAL_INPUTS: a folder with pdoom-pt-BR.mp3 and its lyrics.txt (the user's own song, not
+  // committed). Run it --without too: the plugin has to beat the model on its own here.
+  'cv-lyric-short': {
+    skill: 'code-video', setup: { files: ['$EVAL_INPUTS/pdoom-pt-BR.mp3 => pdoom-pt-BR.mp3', '$EVAL_INPUTS/lyrics.txt => lyrics.txt'] }, timeoutMinutes: 120,
+    turns: [
+      { prompt: 'faz um lyric video de uns 30 segundos com o refrão da minha música pdoom-pt-BR.mp3, com a letra aparecendo sincronizada com o canto. A letra completa tá em lyrics.txt' },
+      { prompt: 'Pode seguir. Quero o MP4 e ver os arquivos gerados.' },
+    ],
+    assertions: [
+      'An MP4 of 25-35 s at 16:9 or 9:16 exists by the end, cut from the chorus of pdoom-pt-BR.mp3 (the window holds the sung line "Aumento meu P(doom)"), with the song as its audio.',
+      'Every sung word in the window is on screen in time with the voice: on stills at each word\'s start (from the run\'s words.json, checked against the audio by the grader\'s own alignment or spectrogram), the word is visible or highlighted no earlier than 0.1 s before it is sung and no later than 0.15 s after; the text matches lyrics.txt.',
+      'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide (spending, or a choice with no sensible default); a stop that only asks to approve a plan the defaults already settled fails.',
+      'For the set (judged blind against the --without runs and the 2026-10-03 test videos, from contact sheets at 4 fps and the MP4s): the picture carries images beyond the lyrics\' text, changes where the music changes, and is not judged plainer or less striking than the runs without the skills.',
+    ],
+  },
+  // The README's first prompt: nothing but one casual sentence, so the model makes the concept, the music, the
+  // effects and the look. No key (the mock logs any request made anyway). Run it --without too.
+  'cv-zero-asset': {
+    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 120,
+    turns: [
+      { prompt: 'make a 20-second video showing why the sky is blue, with music and sound effects' },
+      { prompt: 'Go ahead. I want the MP4 and to see the files.' },
+    ],
+    assertions: [
+      'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
+      'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
+      'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
+      'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',
+      'For the set (judged blind against the --without runs, from contact sheets at 4 fps and the MP4s with sound): the picture is judged more striking and better made, not plainer, and the sound is judged to fit the picture.',
+    ],
+  },
   'st-beats-json': {
     skill: 'soundtrack', setup: { files: ['$EVAL_SONG => song.mp3'] }, timeoutMinutes: 30,
     turns: [{ prompt: 'I need the beats and downbeats of song.mp3 as JSON so my animation can cut on the beat.' }],

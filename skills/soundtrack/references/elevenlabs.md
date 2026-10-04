@@ -44,16 +44,20 @@ to direct the voice, the music and the effects. Paths are relative to the skill'
 Every command that costs credits refuses without `--yes`: it prints what it would make (characters
 or seconds, estimated credits, voice, model, the expected length, and the credits left on the
 account) and exits 4. Show the director those lines, wait for a yes, then run the same command
-with `--yes`. A refused run writes nothing. Free: `voices`, `music plan`, every `--pick`, `--snap` /
+with `--yes`. A budget the director set in their own words ("up to 3,000 credits") is that yes for
+whatever fits what's left of it: say what each step cost and what remains, and keep the running total
+with their decisions in the video's TREATMENT.md. A refused run writes nothing. Free: `voices`, `music plan`, every `--pick`, `--snap` /
 `--no-snap`, `sfx --screen`, and re-running anything already made, because an unchanged request makes no
 API call.
 
 For a narrated video the usual order is:
 
-1. `uv run scripts/eleven.py voices --language <code>`: choose a voice with the director.
+1. `uv run scripts/eleven.py voices --language <code>`: choose a voice with the director, or yourself
+   from its description and labels when they leave it to you.
 2. `uv run scripts/eleven.py tts script.md --video <video> --voice <id> --say say.tsv --only 1 --yes`:
-   one paragraph, to approve the voice by ear before paying for the rest (a first run without `--yes`
-   proposes exactly this).
+   one paragraph before paying for the rest (a first run without `--yes` proposes exactly this). Check it
+   by measurement: pace in words per minute (the pace lesson below), loudness, and what it says; the
+   director approves it by ear when they want to, and you say they haven't yet.
 3. `uv run scripts/eleven.py tts script.md --video <video> --yes`: the other paragraphs, then
    `narration.wav` and `data/words.json`, its phrase edges already moved onto the sound.
 4. `--takes 3 --block N --yes` for the lines that matter most, then `--pick K --block N`.
@@ -203,15 +207,17 @@ echris6), learned from client rejections.
   `--from-narration` so the music changes where the chapters change (40% into the silence before
   each). A section under 3 s merges into the next one, so the chunk still starts where the short
   section starts (where its hit lands); then a chunk over 120 s is split.
-- **No long intro, and a clear resolved final chord with a natural ring-out.** The script writes
-  both into the plan, because a plan is sent without the prompt.
+- **No long intro, and a clear resolved final chord with a natural ring-out**, by default: a slow
+  swell or a fade fights the cut. The script writes both into the plan, because a plan is sent without
+  the prompt; `--free-form` leaves them out when the director wants a slow start, a fade or a hard stop.
 - **No brand, artist, band or song names** in prompts or plans: the API refuses them (with a
   suggestion, which the script prints) and the terms forbid them. Describe the sound: genre,
   instruments, tempo, key, mood.
 - **Match the music to the audience, not to the category**, and remember that calm music still
   needs a pulse: a beatless track feels sleepy against cuts and needs too much gain to be heard.
 - **Compare 2-3 takes at the same loudness**, so the director compares music, not volume:
-  `music compose --takes 2` writes level-matched copies to `out/<video>/music/`.
+  `music compose --takes 2` writes level-matched copies to `out/<video>/music/`. When the director
+  leaves the choice to you, keep the take its flags and section loudness favour, and say so.
 - **Reject by short-term loudness**: a near-silent intro, a dip under a key scene, or a decay seconds
   before the end. The script flags all three per take; make another seed (`--seed`) or change the
   plan.
@@ -251,7 +257,7 @@ Also adapted from motion-video-kit (`references/audio.md`, `scripts/sfx-candidat
   (`words.json`'s spoken words); it lists the differences with their times. Numbers and respelled
   names can differ in spelling and still sound right: listen there.
 - The numbers measure, they don't judge. The director approves the voice, the takes and the music
-  by ear; say plainly what nobody has listened to yet.
+  by ear when they want to; say plainly what nobody has listened to yet.
 
 ## What to leave to ElevenLabs' own skills
 

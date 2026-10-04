@@ -1,18 +1,18 @@
 # Treatment template
 
-A treatment is one video's plan: `videos/<video>/TREATMENT.md`, written before any scene exists. Show it to
-the director in the reply that asks for approval (with `out/<video>/window.png` and the click track
-`out/<video>/clicks.m4a` when there is a song), and build once they say yes; scene authors, the critic
-and later sessions all work from it. The look every video in the project shares is in `docs/STYLE.md`
+A treatment is one video's plan: `videos/<video>/TREATMENT.md`, written before any scene exists and kept
+current after. Show it to the director in a short message (with `out/<video>/window.png` and the click
+track `out/<video>/clicks.m4a` when there is a song) and build on; scene authors, the critic and later
+sessions all work from it, its Decisions first. The look every video in the project shares is in `docs/STYLE.md`
 (`references/style-template.md`), so a treatment says only what this video adds or changes.
 
-Everything here is a default, except the stop for approval (SKILL.md, Fixed). Drop what the piece doesn't need, add what it does, and when you depart from
+Everything here is a default. Drop what the piece doesn't need, add what it does, and when you depart from
 a default that matters (a cut off the beat, a long hold, another format), say why in a line. `references/…`
 and `<skill>/…` are this skill's files; every other path is in the project, where commands run.
 
-Contents: Size it to the piece · Ask only what's missing · The skeleton · Choosing the song window · The
-storyboard · The sync map · Words on screen · Scene briefs for scene authors · The commercial preset ·
-Deliverables · Example: a 15-second pool reopening teaser
+Contents: Size it to the piece · Decide what's open, ask only what isn't yours · When the director brings
+the plan · The skeleton · Choosing the song window · The storyboard · The sync map · Words on screen · Scene
+briefs for scene authors · The commercial preset · Deliverables · Example: a 15-second pool reopening teaser
 
 ## Size it to the piece
 
@@ -20,7 +20,7 @@ The treatment grows with the piece, not with this template:
 
 - **A loop, a sting or a title card (up to ~15 s): a few lines.** The idea in a sentence or two, the
   format, a timed line per moment, the look in a line (palette and typeface), what you assumed. A loop also
-  says how it closes: its last frame leads back into its first. Its reply fits in about 15 lines and
+  says how it closes: its last frame leads back into its first. Its message fits in about 15 lines and
   250 words, the questions included, with Also considered in one line at most.
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and
@@ -30,30 +30,38 @@ The treatment grows with the piece, not with this template:
   whole skeleton,** with scene briefs. Length decides, not the kind of video: a 30-s cut of a song is a
   spot.
 
-A short treatment goes into the reply whole; for a long one, the idea, the song window and the storyboard
+A short treatment goes into the message whole; for a long one, the idea, the song window and the storyboard
 with its rows whole, transitions out included. Analysis numbers, file lists and status stay out of it.
 
-## Ask only what's missing
+## Decide what's open, ask only what isn't yours
 
-Read everything the director gave (the request, files, a brand picture or URL, the song) and ask only about
-what it leaves open: at most three questions, so one line can answer them, each asked as a question with
-the default you'll use ("Where will it play? Default: YouTube, 16:9, 1920×1080"), in the same reply as
-the draft so that one answer approves both. Don't re-ask what the request says.
+Read everything the director gave (the request, files, a brand picture or URL, the song, a script) and
+decide what it leaves open yourself, with the defaults below. Ask only what SKILL.md's Brief step says waits
+for them: at most three questions, so one line can answer them, each with the default you'll use ("Where
+will it play? Default: YouTube, 16:9, 1920×1080"), in the same message as the draft. Don't re-ask what the
+request says.
 
-| Open question | Ask when | Default |
+| Open part | Decide when | Default |
 |---|---|---|
 | Which part of the song | the song is longer than the video | the window you'd choose on the music (below), with its reason |
 | Format, platform, length | nothing says where it plays or how long it runs | 16:9, 1920×1080, 60 fps; a named platform sets the shape (Shorts, Reels, TikTok: 9:16, 1080×1920; a feed post: 1:1); the song's length, or the shortest that tells it |
 | Lyrics on screen | the song has words | none; picture events can still land on sung words once their timings exist |
-| Sound | the request has no audio and says nothing about it | none, no audio track: music or effects nobody asked for are a guess the director then has to undo; if they want sound, music synthesized in code is free (generated music costs credits, quoted first) |
+| Sound | the request has no audio and says nothing about it | music, and effects on the picture's actions, synthesized in code (free); a voice or generated music only after a yes, quoted with its cost, built meanwhile with a free stand-in; none when the director says silent or the piece plays muted (a feed loop, a stream background) |
 | Brand assets | it's for a named brand, show, event or person | the name set in the style's type; no invented logo, tagline or label |
 
 Anything you decide that the director didn't say (text they didn't give, their name restyled into
-capitals, the format, the window) goes in the **Assumed** line, where it can be vetoed before it's built.
-The reply ends there, with the draft, the questions and their defaults, and nothing built: one answer
-approves it all. Go ahead without that answer only when the director said not to wait ("just build it"),
-and then list in the reply the defaults you went with. Asking for a video is not saying that, and neither
-is a session that runs with nobody watching: ending the turn is how you wait.
+capitals, the format, the window, the music) goes in the **Assumed** line, where it can be vetoed. Then
+build: the director steers in the preview whenever they like. When something does wait for them, the
+message says what, the defaults you'll use, and that "go" takes them all.
+
+## When the director brings the plan
+
+A script, a shot list, a two-column A/V script or timecodes are the director's storyboard: keep their
+words, order and times, a row per shot, and fill only what they leave open. A timecode they give as exact
+(a client's cut, a broadcast slot) stays exact; a note by time ("at 0:23, on the snare") finds the event it
+means (`references/motion.md`). A script too long for its length, a word the voice will stumble on, a shot
+that can't work: say so with a fix and wait, rather than changing it. Spoken words go to the soundtrack
+skill without the notes.
 
 ## The skeleton
 
@@ -61,15 +69,15 @@ is a session that runs with nobody watching: ending the turn is how you wait.
 # <Title>
 
 <The idea in one paragraph: what the viewer should feel or understand by the end, and the image that
-carries it. If it rests on a transformation or two, name them without effect names ("the receipt becomes
-the city map", not "a morph transition"); name the persistent actor if there is one.>
-<Also considered: two other directions, a line each, when the request left the idea open.>
+carries it. Tie it to the words sideways rather than illustrating each line: the literal picture is the one
+every video of this song or subject shows. If it rests on a transformation or two, name them without effect
+names ("the receipt becomes the city map", not "a morph transition"); name the persistent actor if any.>
+<Also considered: the style frames you didn't pick, a line each, when the look was yours.>
 
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.
 - **Sound:** <the song window below | narration | none: no audio track>.
-- **Look:** `docs/STYLE.md`<, plus what this video changes and why. When the director asked for something
-  unlike the usual, name the usual and how this avoids it.>
+- **Look:** `docs/STYLE.md`<, plus what this video changes and why>; the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
 - **Never claim:** <what would be false or unprovable here; how illustrative values are labelled>. (When
@@ -93,6 +101,10 @@ Song <m:ss.ss>–<m:ss.ss> = <n> bars at <bpm> BPM (<sections>) → video 0:00�
 
 ## Scenes
 <A brief per scene: a line each when one author makes them all, the full form for several.>
+
+## Decisions
+<The director's decisions and notes in their words, dated, newest last, including what they turned down;
+a budget and what has been spent. Read before every change.>
 ```
 
 ## Choosing the song window
@@ -178,7 +190,9 @@ critic checks them frame by frame. The sources (more in `docs/ENGINE.md`, "Data"
 
 ## Words on screen
 
-When sung or spoken words are on screen, as karaoke or captions:
+Words don't replace the picture. Unless the director wants type alone, the frame holds an image the words
+live in; when type is the whole picture, its treatment is the image (it moves, steps, builds, breaks). When
+sung or spoken words are on screen, as karaoke or captions:
 
 - **Readable:** at or above the style's minimum size for the format, and on screen long enough to read.
   A line too long for its time is shortened or held longer; shrinking it only makes it unreadable sooner.
@@ -193,12 +207,13 @@ When sung or spoken words are on screen, as karaoke or captions:
 - **The displayed text is the data's** `w`, with typographic punctuation; narration spelled for the voice
   keeps what was said in `spoken`.
 
-How the words live in the picture (set plainly, riding a shape, typed, stamped, written by a pen) is the
-treatment's call.
+How the words live in the picture (riding a shape, typed, stamped, written by a pen, set into a scene,
+set plainly) is the treatment's call.
 
 ## Scene briefs for scene authors
 
-When several scene authors work at once, each scene gets a brief that stands alone: its author reads it,
+When several scene authors work at once (subagents on your own model: they make the picture), each scene
+gets a brief that stands alone: its author reads it,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
 the lead for engine changes.
