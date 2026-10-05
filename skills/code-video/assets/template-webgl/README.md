@@ -16,7 +16,9 @@ second. The preview keeps running in the background and shows every change as it
 
     bun run render video
 
-writes `out/<video>/<video>.mp4`, with motion blur, in a few minutes. Add `--draft` for a quick look
-without motion blur, or `--scale 2` for 4K.
+writes `out/<video>/<video>.mp4`, with motion blur, in a few minutes. It renders at the size and frame
+rate the video was made at (set in `videos/<video>/video.json`), and its first line says what it will
+write, such as `1920x1080 at 60 fps, 20 s`: if that isn't what you want, stop it with Ctrl+C. Add
+`--scale 2` for twice the size (4K from 1080p), or `--draft` for a quick look without motion blur.
 
 With several videos, add `--video <name>` (its folder in `videos/`) to either command.

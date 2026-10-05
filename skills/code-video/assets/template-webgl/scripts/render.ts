@@ -21,6 +21,7 @@
 //            template's test-card palette, don't fail it). Its renders are fixed (one sub-frame, and four over the
 //            whole frame time at the cuts): --samples and --shutter don't apply
 //   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
+//            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
 //            [--noaudio] [--fps <video's>]. Only the whole video, with every entry and the full-quality path, is
 //            written to <video>.mp4 by default; anything less says what it is in its name, so it can't replace
@@ -659,7 +660,6 @@ async function video(page: Page, info: Info, from: number, to: number, fps: numb
   checkFfmpeg();
   // the final render encodes slowly at a low CRF (fine grain and gradients survive); a draft is for judging motion
   const preset = opt('preset', DRAFT ? 'veryfast' : 'slow')!, crf = opt('crf', DRAFT ? '23' : '16')!;
-  console.log(`${DRAFT ? 'DRAFT, a quick look, not the final render (leave out --draft for that): ' : ''}${describeSampling(SAMPLES)}; x264 ${preset}, CRF ${crf}`);
   mkdirSync(path.dirname(out), { recursive: true });
   // written beside the target and renamed when complete: a failed render leaves no file that passes for one
   const part = `${out}.part`;
@@ -667,6 +667,11 @@ async function video(page: Page, info: Info, from: number, to: number, fps: numb
   const segs = flag('noaudio') ? null : info.audio;
   const args = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${OW}x${OH}`, '-r', String(fps), '-i', 'pipe:0'];
   const frames0 = Math.round(from * fps), frames1 = Math.round(to * fps), total = frames1 - frames0;
+  // what the file will be, before the minutes it takes: a size or length nobody wanted is stopped now, not found at the end
+  const scaled = SCALE !== 1 ? ` (${SCALE}x the video's ${info.logicalWidth}x${info.logicalHeight})` : '';
+  const shown = path.relative(process.cwd(), out);
+  console.log(`-> ${shown.startsWith('..') || path.isAbsolute(shown) ? out : shown}: ${OW}x${OH}${scaled} at ${fps} fps, ${+(to - from).toFixed(3)} s (${total} frames)${segs?.length ? '' : ', no audio'}`);
+  console.log(`${DRAFT ? 'DRAFT, a quick look, not the final render (leave out --draft for that): ' : ''}${describeSampling(SAMPLES)}; x264 ${preset}, CRF ${crf}`);
   if (segs?.length) {
     const s = segs[0]!;
     if (segs.length === 1 && s.at === 0 && s.from === 0 && !s.fadeOut && from < s.dur - 1e-3) {

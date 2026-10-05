@@ -491,3 +491,11 @@ After those runs, `init` also writes a `README.md` into a project that has none:
 the director to watch the preview and render the MP4 without an agent (`bun run render preview`,
 `bun run render video`). It comes from the template, so the copy that skips existing files writes it
 once; a README already there is the director's, never replaced or reported, not even with `--force`.
+
+And a render now says what it will write before it starts: `-> out/<video>/<video>.mp4: 1920x1080 at 60
+fps, 20 s (1200 frames)`, with `(2x the video's 1920x1080)` under `--scale 2`. Until then the size showed
+only on the last line, minutes later, so a director rendering from the README could find a size they
+didn't expect only at the end. The size stays the video's own, set with the director in the brief
+(`video.json`), whatever the aspect ratio: the README says where it comes from, and the hand-off's offer
+names it before the director says "render it". A 720p flag was rejected: scenes are laid out in the
+video's pixels and the renderer scales by whole numbers only.
