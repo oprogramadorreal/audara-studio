@@ -460,3 +460,29 @@ the session that made these changes had to rediscover the 8,000-byte limit, how 
 and the two version fields, and left a stray file. Eval runs work below those notes, and Claude Code reads
 an AGENTS.md or CLAUDE.md from every folder above its own, so the runners now leave both out
 (`claudeMdExcludes`, `evals/README.md`).
+
+### What 0.2.0 checked
+
+`cv-zero-asset`, the README's prompt, on this release's text in both tools (Claude Code with Opus 5.5 and
+Codex with GPT-6 Astra, the user's defaults), each run graded by a fresh grader with its own measurements.
+
+- **Both pass every assertion that could be graded:** a 20 s MP4 with music and effects on picture events,
+  nothing requested from the ElevenLabs mock, true science, no stop before something to watch, `verify`
+  passing. The blind comparison with runs without the skills wasn't made.
+- **Turn 1 ended in the preview in both, with draft renders only.**
+  - Claude, after 67 minutes and two critic rounds. Its reply gave the preview link and the moments to
+    watch first, each critic round, QC on the draft with a link to each still stretch, and the render
+    offered at "about 3–8 minutes".
+  - Codex, after 12 minutes and three rounds. Its reply was terse: no critic verdict, no time for the
+    render. The Hand-off now names both as given every time.
+  - Turn 2's "I want the MP4" rendered it in both.
+- **Claude's turn 2 took 40 minutes and rendered the MP4 three times.** Delivery put the owed review after
+  the render, so each round's findings meant another render: render, full-cut critic, fixes, render,
+  verification, fixes, render. Delivery now reviews a draft first, in one round, and renders once; the
+  fixes it makes come back with their links, since the director hasn't seen them.
+- **Codex's whooshes started on their cuts and peaked 0.3 s after them.** Effects that lead into a cut
+  now go by their peak.
+- **Not changed:** Codex kept one headline-over-diagram layout in all four scenes after its critic flagged
+  it twice, and an arc ran through a label nobody caught (taste and the critic's eye, as in round 4).
+  Claude's turn 2 ended three times while a render ran, and only the tool's background notifications
+  brought it back.

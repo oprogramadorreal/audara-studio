@@ -109,9 +109,9 @@ session that built the video passed it after looking at one frame and an eight-f
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame; a weak picture is not cosmetic when the
   look was left to you), or when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
   round and one verification). After SHIP, what's left goes to the director as open findings, not into
-  the picture: a change after the last round is reviewed at delivery (Delivery, step 6). The director
-  outranks the critic: a finding that goes against their words is reported, not acted on. A choice only
-  the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
+  the picture: a change after the last round is reviewed at delivery, before the render (Delivery,
+  step 2). The director outranks the critic: a finding that goes against their words is reported, not
+  acted on. A choice only the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
@@ -125,7 +125,7 @@ session that built the video passed it after looking at one frame and an eight-f
   A short piece you build alone gets the full-cut round and its verification. Not after every edit:
   notes go through your stills loop and the preview. When the director asks for speed (a quick version,
   a rough cut, a first pass), stop after the full-cut round and its fixes: the hand-off lists those
-  fixes as not yet reviewed, and a render asked for in a later turn gets the review (Delivery, step 6).
+  fixes as not yet reviewed, and a render asked for in a later turn gets the review (Delivery, step 2).
 - **The ledger** is `videos/<video>/CRITIQUE.md`, a row per round, so a later session sees what was
   found, what changed, what was left and why:
 
@@ -291,12 +291,14 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 
 A build ends in the preview: "make a video" asks for the video, and the preview plays it. The final render
 takes minutes and the director's first notes usually change the picture, so it waits until they ask for
-the file (a render, an export, the MP4), in their request or later (Delivery). The reply gives:
+the file (a render, an export, the MP4), in their request or later (Delivery). The reply gives the
+director, every time:
 
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
-- the critic's verdict and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the
-  last full-cut draft (by default `out/<video>/<video>-draft.mp4`), with a `?t=` link to each hold the treatment
-  doesn't mark; and what wasn't checked;
+- the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
+  reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the last
+  full-cut draft (by default `out/<video>/<video>-draft.mp4`), with a `?t=` link to each hold the
+  treatment doesn't mark; and what wasn't checked;
 - the render on offer, with its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a
   render costs) and what it brings: the MP4 with motion blur, sheets, a poster and the QC report.
 
@@ -305,29 +307,33 @@ the file (a render, an export, the MP4), in their request or later (Delivery). T
 When the director asks for a render, in their request or later:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
-2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, and wait for it before you
-   reply: it takes minutes, often past a tool's time limit for one command (then run it in the background
-   and check on it until it ends), the reply needs its result, and a render still running when your turn
-   ends can die with the session. It renders with adaptive motion blur by default (`docs/ENGINE.md`,
-   "Motion blur and sampling"; with a `stateful` scene on screen it takes a fixed 12 sub-frames,
-   `--samples <n>` for another count; `--scale 2` gives 4K). A `--draft` is never the delivery.
-3. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
-4. Sheets labelled with times: the whole video
+2. The review, before the render. A picture changed since the last critic round gets one full-cut round
+   on a `--draft` of the whole video (the last one, when nothing changed after it), and its fixes, unless
+   this turn already ran its rounds (a full-cut round and its verification, or the full-cut round alone
+   when the director asked for speed). That is delivery's only round: fixes made after it are listed as
+   not yet reviewed, not sent through another round and another render. A render made before its review
+   is thrown away when the review finds anything, and each costs minutes.
+3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
+   change, and wait for it before you reply: it takes minutes, often past a tool's time limit for one
+   command (then run it in the background and check on it until it ends), the reply needs its result,
+   and a render still running when your turn ends can die with the session. It renders with adaptive
+   motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful` scene on
+   screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives 4K). A
+   `--draft` is never the delivery.
+4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
+5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).
-5. A poster, the frame that best stands for the video, rendered as the video renders it:
+6. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
-6. The critic's verdict on this render: the last round's. A picture changed after that round gets a new
-   full-cut round, unless this turn already ran its rounds (a full-cut round and its verification, or
-   the full-cut round alone when the director asked for speed): then give that verdict and list the
-   fixes made since as not yet reviewed.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
-the MP4, the sheets and the poster (their paths); the QC report's numbers in
-two or three lines, with a `?t=` link to anything flagged; the critic's verdict and the findings left
-open; and what wasn't checked ("measured, not listened to"; "sampled frames, not every frame"). Every
-claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on the
-beat.
+the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a
+`?t=` link to anything flagged; the critic's verdict (the last round's), the fixes made since it as not
+yet reviewed (each a change the director hasn't seen: its `?t=` link and what moved), and the findings
+left open; and what wasn't checked ("measured, not listened to"; "sampled frames, not every frame").
+Every claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on
+the beat.
 
 ---
 

@@ -86,8 +86,9 @@ part of the design serves that loop:
    snare"). The agent changes the scene and answers with a `?t=` link to that moment. This loop repeats for
    as long as the director wants.
 6. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
-   asked for the MP4 in the request). Each render comes with a quality report, a contact sheet and a
-   poster frame. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
+   asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
+   quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
+   and a poster frame. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
 
 What the agent owes the director:
 
