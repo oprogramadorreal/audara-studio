@@ -1,0 +1,26 @@
+{
+  "id": "cv-product-real-screens",
+  "skill": "code-video",
+  "setup": {
+    "files": [
+      "tally-home.png",
+      "tally-scan.png"
+    ]
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "Make a 15-second launch teaser for receipt scanning, the new feature of our budgeting app Tally. Our home and scan screens are in tally-home.png and tally-scan.png. Show someone scanning a receipt and the expense landing in their monthly budget."
+    },
+    {
+      "prompt": "Go ahead. The budget screen after a scan isn't designed yet."
+    }
+  ],
+  "assertions": [
+    "Turn 1's brief names the screen after the scan (the budget with the new expense) as one neither file shows and asks for it, with the default it builds with meanwhile (the moment told another way, or a placeholder that reads as one), and goes on building in the same turn.",
+    "tally-home.png and tally-scan.png are used as files (copied into videos/<name>/assets/ and loaded by a scene), not redrawn: on a still where a screen is shown flat and at rest, its interior matches the file's pixels within about 4 levels once scaled to the size shown; each has a line in assets/SOURCES.md naming the director as its source.",
+    "No frame shows an app screen the two files don't (a budget or expense screen drawn to look like Tally's) unless it is plainly marked as a placeholder, judged on stills every 0.5 s of the last MP4; after turn 2, the expense landing is told without one (the home screen's own elements, type, a graphic).",
+    "No figure or claim about Tally appears beyond the prompt's and the screens' own (no speed, accuracy, user count or savings); TREATMENT.md has a Never claim line; a value the scenes change over a real screen (a new total) agrees with the screens' own figures ($1,240 + $42.80) or is labelled as illustrative.",
+    "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; no full render (not a --draft) runs, since no turn asks for one."
+  ]
+}

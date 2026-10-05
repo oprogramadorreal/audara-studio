@@ -2,7 +2,7 @@
 
 Pictures from outside code (generated, archival, the director's own) as material the code layers, lights,
 masks and moves. Read it when a piece would gain from something code draws poorly, when the director brings
-images, or when they ask for generated ones. `<skill>` is this skill's folder; other paths are the project's.
+images, when they ask for generated ones, or when the piece shows a product's screens. `<skill>` is this skill's folder; other paths are the project's.
 
 Contents: When an image earns its place · Where images come from · Making them part of the picture · One look
 across many images · Size and 4K · The record · Checking
@@ -21,6 +21,31 @@ generated "1920s photo" in an explainer is a fabrication.
 
 **The director's own.** Their files, their rights; for a client's piece, note the basis they give (own
 work, a stock licence and its ID, releases for the people in it).
+
+**Their product's screens.** A piece about an app, a site or a device shows the real one: the screens the
+director gives, or captured from its live site with their OK (below), shown as they are. A lookalike
+redrawn from memory, a screen the product doesn't have, or a figure nobody gave reads as the product and
+isn't: a fabrication, like a generated "1920s photo" in an explainer. Code still does what makes it video
+(the device, the scroll, the tap, the light, the transitions), and a value the scenes animate over a real
+screen is labelled as illustrative where it could be taken for a claim. A screen the story needs that
+nobody has yet waits for the director: the brief asks for it, and until it comes the moment is told
+another way or with a placeholder that reads as one (a grey frame named for the missing screen), never a
+convincing fake. A page behind a login or a cookie banner is theirs to capture or to send. Each screen
+gets its line in SOURCES.md (supplied by the director, or captured from its URL, with the date). To
+capture one, save this as `.audara-cache/capture.ts` and run `bun .audara-cache/capture.ts` from the
+project (it uses the project's playwright-core and Chrome):
+
+```ts
+import { chromium } from 'playwright-core';
+const shots = [{ url: 'https://<their site>/', file: 'videos/<video>/assets/screen-home.png' }];
+const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true }); // a phone; a desktop: 1440x900 at 2
+for (const s of shots) {
+  await page.goto(s.url, { waitUntil: 'networkidle' });
+  await page.screenshot({ path: s.file }); // the viewport; fullPage: true for the whole page
+}
+await browser.close();
+```
 
 **Public domain and open licences.** Free, real, and often the strongest material: a whole music video has
 rested on about forty public-domain images and films, treated in code.
@@ -120,7 +145,7 @@ c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8,
   uses `textureLod`: `texture()` picks the wrong mip at every cell edge.
 - **Memory:** width × height × 4 bytes plus a third for mipmaps (22 MB for a 2560×1440 plate); footage
   frames are the costly kind (`references/contract.md`).
-- **A picture that must match its file** (a logo, a product shot): the entry's post `{ bloom: 0 }`, and the
+- **A picture that must match its file** (a logo, a product shot, a screen): the entry's post `{ bloom: 0 }`, and the
   scene undoes the tone shoulder before it writes (it mirrors `SHOULDER_GLSL` in `src/engine/post.ts`; with
   the cap at 0.998, greys land within 0.2 levels of the file):
   `vec3 unshoulder(vec3 y) { const float k = 0.72; vec3 yc = min(y, vec3(0.998)); return mix(y, k - (1.0 - k) * log(1.0 - (yc - k) / (1.0 - k)), step(k, y)); }`
@@ -158,8 +183,8 @@ Lighting and joining generated layers (from a 20 s piece made of a night plate, 
 
 Sizes in `video.json` are logical; `--scale 2` renders 4K, so a plate needs at least twice the logical
 width it's shown at (a 2560-wide plate shown 2100 px wide looked soft at 4K; the 3840 one held), plus room for
-what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K render pass `--size 3840x2160`;
-the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
+what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K render pass imagegen.py
+`--size 3840x2160`; the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
 2560×1440 counts as experimental), so for a move at 4K, keep the camera still and move layers, upscale, or
 use a provider that goes bigger. A soft background behind sharp code-drawn type survives a 1.5× upscale.
 

@@ -3,8 +3,11 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+// (run from the repo, so drawtext finds the template's fonts by a relative path: a Windows drive's colon
+// would need escaping inside a filter)
+const REPO = path.resolve(import.meta.dir, '..', '..');
 const ff = (args: string[]) => {
-  const p = Bun.spawnSync(['ffmpeg', '-v', 'error', '-y', ...args]);
+  const p = Bun.spawnSync(['ffmpeg', '-v', 'error', '-y', ...args], { cwd: REPO });
   if (p.exitCode !== 0) throw new Error(`ffmpeg failed: ${p.stderr.toString()}`);
 };
 
@@ -28,7 +31,38 @@ const TEXT: Record<string, string> = {
   'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="70" fill="none" stroke="#222" stroke-width="12"/><path d="M60 130 L100 60 L140 130 Z" fill="#222"/></svg>\n',
 };
 
+// Two phone screens of a made-up budgeting app, Tally, as a director would hand them over: its home screen and
+// its receipt scanner. The story the case asks for also needs a third (the budget after the scan) that no file has.
+const ARCHIVO = (w: number) => `skills/code-video/assets/template-webgl/public/fonts/Archivo-w1000-${w}.ttf`;
+const txt = (text: string, x: string | number, y: number, size: number, color: string, weight = 500) =>
+  `drawtext=fontfile=${ARCHIVO(weight)}:text='${text}':x=${x}:y=${y}:fontsize=${size}:fontcolor=${color}`;
+const box = (x: number, y: number, w: number, h: number, color: string) => `drawbox=x=${x}:y=${y}:w=${w}:h=${h}:color=${color}:t=fill`;
+const INK = '0x1B1F24', GREY = '0x6B7280', GREEN = '0x2E9E6B', MID = '(w-text_w)/2';
+const TALLY_HOME = [
+  'color=c=0xF6F7F9:s=1080x2340', txt('Tally', 72, 120, 72, INK, 700), txt('Hi, Sam', 72, 220, 40, GREY),
+  box(48, 300, 984, 420, 'white'), txt('October budget', 96, 350, 40, GREY), txt('$1,240 of $2,000', 96, 420, 84, INK, 700),
+  box(96, 560, 888, 28, '0xE5E7EB'), box(96, 560, 551, 28, GREEN), txt('$760 left for 12 days', 96, 620, 36, GREY),
+  txt('Recent', 72, 800, 44, INK, 700),
+  ...([['Groceries', '$86.40'], ['Coffee', '$4.50'], ['Metro card', '$33.00']] as const).flatMap(([what, cost], i) => {
+    const y = 880 + i * 160;
+    return [box(48, y, 984, 136, 'white'), txt(what, 96, y + 44, 40, INK), txt(cost, 820, y + 44, 40, INK)];
+  }),
+  box(72, 2060, 936, 160, GREEN), txt('Scan a receipt', MID, 2112, 52, 'white', 700),
+].join(',');
+const TALLY_SCAN = [
+  'color=c=0x0E1114:s=1080x2340', txt('Scan a receipt', MID, 140, 52, 'white', 700),
+  box(250, 420, 580, 1180, '0xEDEBE6'), txt('CORNER MARKET', MID, 470, 36, '0x3A3A3A', 700),
+  ...[420, 300, 460, 360, 480, 260, 440, 380].map((w, i) => box(300, 560 + i * 90, w, 18, '0xB8B4AC')),
+  txt('TOTAL  $42.80', 300, 1460, 40, '0x3A3A3A', 700),
+  // the scanner's corner brackets
+  ...[[210, 380], [780, 380], [210, 1550], [780, 1550]].flatMap(([x, y], i) => [
+    box(x!, i < 2 ? y! : y! + 80, 90, 10, GREEN), box(i % 2 ? x! + 80 : x!, y!, 10, 90, GREEN)]),
+  txt('Hold steady', MID, 1760, 40, '0x9CA3AF'), box(460, 2020, 160, 160, 'white'),
+].join(',');
+
 const MEDIA: Record<string, string[]> = {
+  'tally-home.png': ['-f', 'lavfi', '-i', TALLY_HOME, '-frames:v', '1'],
+  'tally-scan.png': ['-f', 'lavfi', '-i', TALLY_SCAN, '-frames:v', '1'],
   'song.mp3': ['-f', 'lavfi', '-i', SONG, '-c:a', 'libmp3lame', '-b:a', '192k'],
   'song.wav': ['-f', 'lavfi', '-i', SONG],
   'track.wav': ['-f', 'lavfi', '-i', SONG],

@@ -75,11 +75,12 @@ Which user each case stands for: a short prompt that leaves everything open (`cv
 `cv-lyric-short`, `cv-range-loop`), direction given in detail or over several turns, a rejection included,
 which must survive a new session (`cv-direction-rejection`, `cv-visual-direction-no-script`,
 `cv-later-session-small-change`), a script the director brings with its words locked (`cv-locked-script`,
-`st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), and the three
-ways generated images come in: offered once, used within a budget, and no key (`cv-images-offered`,
-`cv-images-used`, `cv-images-no-key`). The set comparisons in their assertions (a blind judge on contact
-sheets, with and `--without` the skills) are the check that the skills make the picture better than the
-model alone, not just correct.
+`st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), a product film
+from the director's own screens, one missing (`cv-product-real-screens`), and the three ways generated
+images come in: offered once, used within a budget, and no key (`cv-images-offered`, `cv-images-used`,
+`cv-images-no-key`). The set comparisons in their assertions (a blind judge on contact sheets, with and
+`--without` the skills) are the check that the skills make the picture better than the model alone, not
+just correct.
 
 A turn with `"newSession": true` starts a new session in the same folder instead of resuming, as a
 director coming back another day would: it knows only what the project wrote down.

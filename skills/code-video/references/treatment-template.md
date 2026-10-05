@@ -25,7 +25,7 @@ The treatment grows with the piece, not with this template:
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and
   its transition out (a hard cut says so), the moments that must land, and "never claim" when it states
-  facts.
+  facts or shows a product.
 - **A whole-song music video, a long explainer, or anything several scene authors make at once: the
   whole skeleton,** with scene briefs. Length decides, not the kind of video: a 30-s cut of a song is a
   spot.
@@ -48,6 +48,7 @@ request says.
 | Lyrics on screen | the song has words | none; picture events can still land on sung words once their timings exist |
 | Sound | the request has no audio and says nothing about it | music, and effects on the picture's actions, synthesized in code (free); a voice or generated music only after a yes, quoted with its cost, built meanwhile with a free stand-in; none when the director says silent or the piece plays muted (a feed loop, a stream background) |
 | Brand assets | it's for a named brand, show, event or person | the name set in the style's type; no invented logo, tagline or label |
+| Product screens and figures | it shows a product (an app, a site, a device) | its real screens, as given or captured from its live site with the director's OK, and only the figures they gave; a screen the story needs that nobody has is asked for, and until then told another way or with a placeholder that reads as one, never a lookalike (`references/images.md`) |
 
 Anything you decide that the director didn't say (text they didn't give, their name restyled into
 capitals, the format, the window, the music) goes in the **Assumed** line, where it can be vetoed. Then
@@ -81,8 +82,8 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
   plus what this video changes and why>, and the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
-- **Never claim:** <what would be false or unprovable here; how illustrative values are labelled>. (When
-  the piece states facts.)
+- **Never claim:** <what would be false or unprovable here, for a product a screen, feature or figure it
+  doesn't have; how illustrative values are labelled>. (When the piece states facts or shows a product.)
 - **Preset:** commercial. (Only when the director chose it.)
 - **Deliver:** <the standard set, plus what this video needs beyond it>.
 
