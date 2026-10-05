@@ -21,6 +21,12 @@ stops the run (a task turn is marked `blocked`; a trigger eval writes no results
 still open a URL (`start`, `Start-Process`): Codex puts it to its automatic reviewer first, Claude Code to
 its auto-mode classifier.
 
+No session reads this repo's own notes either. The runs work inside `evals/results/`, below the repo's
+`AGENTS.md` and `CLAUDE.md`, and Claude Code reads both from every folder above its own; the runners leave
+them out with `claudeMdExcludes` in the same `--settings`. Codex stops at the run folder's own git root.
+(Checked with a canary line: without the setting, a Claude run below an `AGENTS.md` alone quoted it, and
+one below the `CLAUDE.md` saw its import line; with it, neither. A Codex run saw nothing.)
+
 Both runners record the model each run had as the transcripts name it (Claude's init event; Codex's
 session file, since its `--json` stream doesn't), and `modelArg`, what `--model` asked for.
 

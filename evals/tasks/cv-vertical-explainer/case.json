@@ -24,6 +24,6 @@
     "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",
     "No near-empty or near-black frame at t=0 or at a cut, counting the brief's beat times as cuts (a one-scene video has none in verify.json, so check those frames yourself), unless the reply explains a deliberate one; and every hold of about 1.5 s or more that qc.py reports is marked in the treatment or named in the final reply with its time (a ?t= link) and what is read during it; a label such as 'intentional reading holds' doesn't count.",
     "The final reply links a contact sheet, a poster and QC numbers, and the files exist (a path, or a file name under a folder the reply names, counts as a link).",
-    "After the first build's MP4, a full render runs only when a turn asks for one (turn 3); notes are answered in the preview (the transcripts)."
+    "A full render (not a --draft) runs only when a turn asks for one (turn 3); the builds before it end in the preview, offering the render, and notes are answered there (the transcripts)."
   ]
 }

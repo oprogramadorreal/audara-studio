@@ -17,7 +17,7 @@
   ],
   "assertions": [
     "The brief shows the narration it wrote (under 60 words) and what generated voice and music would cost, and spends nothing (mock-requests.jsonl).",
-    "The MP4 is 1080x1920, 30 +/- 0.5 s, with audio; the ground is black (mean luma under 16 outside the subject) and exactly 18 hexagons show at the end.",
+    "Its last MP4 (draft or final) is 1080x1920, 30 +/- 0.5 s, with audio; the ground is black (mean luma under 16 outside the subject) and exactly 18 hexagons show at the end.",
     "The unfolding starts at 5.0 +/- 0.2 s and the last segment settles at 18.0 +/- 0.2 s (stills every 0.5 s), as given, not moved to a beat.",
     "Only one monospace family is used; 'Eighteen mirrors, one eye.' appears verbatim in the last scene.",
     "The music is low strings (the synthesized score's script or the music plan says so), and nothing in the picture contradicts a direction without the reply saying why."

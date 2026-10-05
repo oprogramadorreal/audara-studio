@@ -31,7 +31,9 @@ Open an empty folder and ask:
 > make a 20-second video showing why the sky is blue, with music and sound effects
 
 The agent shows a short plan, gives you a preview link and builds while you watch; redirect it whenever you
-like. It ends with the MP4, a contact sheet, a poster frame and a quality report. Then give notes by time.
+like. It ends with the video in the preview and a critic's review, and offers to render. Give notes by time,
+and say "render it" when you want the MP4, which comes with a contact sheet, a poster frame and a quality
+report (or ask for the MP4 in your first message to get it in one go).
 
 Bring a song and it cuts the picture to it:
 
@@ -56,6 +58,6 @@ voice, pictures drawn in code.
 
 ## More
 
-- How it's designed and why: [docs/design.md](docs/design.md)
+- How it's designed and why: [docs/design.md](docs/design.md); how it got there: [docs/history.md](docs/history.md)
 - Evals: [evals/README.md](evals/README.md)
 - Credits and licenses: [NOTICE](NOTICE), [LICENSE](LICENSE) (MIT; the fonts keep their own licenses)

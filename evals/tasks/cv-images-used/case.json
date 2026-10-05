@@ -11,7 +11,7 @@
       "prompt": "make a 15-second opening for a bedtime story app: a fox who collects moonlight in jars, painterly, like a picture book. Generate whatever images you need, you can spend up to $1."
     },
     {
-      "prompt": "Render it again at 4K."
+      "prompt": "Render it at 4K."
     }
   ],
   "assertions": [
@@ -19,6 +19,6 @@
     "Every generated image has a line in assets/SOURCES.md. In Claude Code, the estimated total stays within $1 and the reply states it. In Codex, the reply says that built-in generation uses the ChatGPT plan's limits and no separate API spend was made; any separately billed generation must still stay within the $1 budget and be reported.",
     "The 4K render in turn 2 makes no image request, through either the API (mock-images.jsonl) or built-in generation (the transcripts and codex-sessions/); it reuses the saved assets, and the plates are large enough for it or the reply says how they were scaled.",
     "The images are material, not slides: a scene loads the generated files as textures and treats them in code (layers moving at different rates, code-drawn light or particles over or behind them, a shader treatment), and no stretch is a Ken Burns pan over one still. (The mock returns placeholder pictures, gradients and shapes: a reply that keeps them off screen for that reason, and says so, passes on the code path alone.)",
-    "render.ts verify passes; a full render (not a --draft) of 15 +/- 0.5 s exists after turn 1 and a 3840x2160 one after turn 2."
+    "render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and after turn 2 a 3840x2160 render of 15 +/- 0.5 s exists."
   ]
 }

@@ -26,7 +26,7 @@ Keep this checklist in your notes.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for while you build with a free stand-in (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: a subagent per scene, on your own model (Scene briefs, references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before it's done: a fresh full-cut critic, then its verification (references/critique.md), each waited for. A plain picture nobody asked for is a finding, not taste.
-- [ ] **Render.** The first build ends with the MP4 unless the director wants to watch the preview first; after that, render when they say. Don't end your turn while it or a critic still runs: background work can die with the turn. The reply links the MP4, sheets and poster, gives qc.py's `motion`, `glance` and `blank` lines with a `?t=` link to each hold the treatment doesn't mark, and the critic's verdict.
+- [ ] **Render** when the director asks for the file (render, export, the MP4); "make a video" alone ends in the preview, offering the render. Replies give the critic's verdict and qc.py's `motion`, `glance` and `blank` lines (on its draft until a render) with a `?t=` link to each hold the treatment doesn't mark; a render adds the MP4, sheets and poster. Don't end your turn while a render or critic runs: it can die with the turn.
 - [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, look at the frames around it, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision, and each thing the director turns down, goes in their words into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them before every change.
 
 Also owed: a status line during long work; the work shown (stills, sheets, numbers).
@@ -42,7 +42,7 @@ Run in the project folder (`<skill>`: this skill's folder); all options: the hea
 | Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: around every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` |
 | Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |
-| QC report | `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json` |
+| QC report | `uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json` |
 
 ## Read when
 - references/treatment-template.md, references/style-template.md: the brief and the look.

@@ -11,6 +11,7 @@ Contents
 - The critic (cadence, ledger)
 - Critic prompts: the tools block, storyboard, scene, full cut, verification
 - Measured checks: `render.ts verify` and `qc.py`
+- Hand-off
 - Delivery
 
 ## The director's loop
@@ -27,8 +28,8 @@ which reading you took and offer the other in a line. A change that moves someth
 approved (the length, a cut on a word, a hold the treatment promises) says so, offers the version that
 keeps it, and says what else you retimed to make room.
 
-A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. After the
-first build's MP4, render when the director asks.
+A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
+when the director asks for the file (Delivery).
 
 ## Your stills loop
 
@@ -118,11 +119,13 @@ session that built the video passed it after looking at one frame and an eight-f
   - a full-cut round on a `--draft` render of the whole video before you call it done, then one
     verification round after its fixes. Then the director gets the sheets and the findings still
     open (they have had the preview link since setup, and watch while the critics work), and any further
-    round follows their notes. The first build then ends with its render (Delivery); later renders wait
-    for their word.
+    round follows their notes. The build then ends in the preview (Hand-off); a render waits for their
+    word (Delivery).
 
   A short piece you build alone gets the full-cut round and its verification. Not after every edit:
-  notes go through your stills loop and the preview.
+  notes go through your stills loop and the preview. When the director asks for speed (a quick version,
+  a rough cut, a first pass), stop after the full-cut round and its fixes: the hand-off lists those
+  fixes as not yet reviewed, and a render asked for in a later turn gets the review (Delivery, step 6).
 - **The ledger** is `videos/<video>/CRITIQUE.md`, a row per round, so a later session sees what was
   found, what changed, what was left and why:
 
@@ -284,10 +287,22 @@ black: when a number misses its bar, fix it or say in a line why it's meant ("th
 the breath before the drop"). The last line of the report, `look at`, lists times worth a sheet
 (`--times`). Loudness is fixed in the mix, with the soundtrack skill, not in the picture.
 
+## Hand-off
+
+A build ends in the preview: "make a video" asks for the video, and the preview plays it. The final render
+takes minutes and the director's first notes usually change the picture, so it waits until they ask for
+the file (a render, an export, the MP4), in their request or later (Delivery). The reply gives:
+
+- the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
+- the critic's verdict and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the
+  last full-cut draft (by default `out/<video>/<video>-draft.mp4`), with a `?t=` link to each hold the treatment
+  doesn't mark; and what wasn't checked;
+- the render on offer, with its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a
+  render costs) and what it brings: the MP4 with motion blur, sheets, a poster and the QC report.
+
 ## Delivery
 
-At the end of the first build (unless the director wants to watch the preview first), and later whenever
-the director asks for a render:
+When the director asks for a render, in their request or later:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, and wait for it before you
@@ -303,8 +318,9 @@ the director asks for a render:
 5. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
 6. The critic's verdict on this render: the last round's. A picture changed after that round gets a new
-   full-cut round, unless this turn already ran a full-cut round and its verification: then give that
-   verdict and list the fixes made since as not yet reviewed.
+   full-cut round, unless this turn already ran its rounds (a full-cut round and its verification, or
+   the full-cut round alone when the director asked for speed): then give that verdict and list the
+   fixes made since as not yet reviewed.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in
