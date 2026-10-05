@@ -17,6 +17,6 @@
   "assertions": [
     "A message mentions generated images once, in a line or two, with what it would make and the estimated cost, and does not hold up the build (scenes are written in the same turn).",
     "No paid image request is made (mock-images.jsonl has no paid=true entry) and no built-in image generation runs, since nobody said yes.",
-    "The video is drawn in code and reads as painterly (judged on stills), with an MP4 of 15 +/- 0.5 s by the end."
+    "The video is drawn in code and reads as painterly (judged on stills), 15 +/- 0.5 s long (its last MP4, draft or final)."
   ]
 }

@@ -12,11 +12,12 @@
 //   --no-install    skip `bun install`
 //   --force         replace project files that differ from the template's, keeping each old one beside it as
 //                   <file>.orig. Never replaced: src/engine/, src/look.ts and docs/ENGINE.md (the project's own
-//                   engine, look and guide: move one away to take the template's), what you wrote in
-//                   AGENTS.md, CLAUDE.md and .gitignore, and every video but example.
+//                   engine, look and guide: move one away to take the template's), README.md, what you
+//                   wrote in AGENTS.md, CLAUDE.md and .gitignore, and every video but example.
 //
 // Steps: check the prerequisites (bun, Chrome, ffmpeg with libx264, uv, git) and say how to install what's
-// missing; copy the template (../assets/template-webgl) without overwriting anything; generate the
+// missing; copy the template (../assets/template-webgl) without overwriting anything (its README.md, the
+// director's commands to watch and render without an agent, only into a project that has none); generate the
 // example's demo track and timing data (./demo-track.ts); scaffold --video; write docs/ENGINE.md (from
 // ../references/engine-guide-template.md), the section of AGENTS.md between <!-- audara:begin --> and
 // <!-- audara:end -->, CLAUDE.md (@AGENTS.md) and the missing .gitignore entries; run bun install.
@@ -272,6 +273,7 @@ function copyTemplate(files: string[], hadEngine: boolean, withExample: boolean)
       ownLook = true; // (the project's palette and post: its look, never replaced, not even with --force)
       continue;
     }
+    if (r === 'README.md' && existsSync(dest)) continue; // (written once, for the director; theirs after that)
     put(r, data, force, t);
   }
   const nFiles = (n: number) => `${n} file${n === 1 ? '' : 's'}`;
@@ -438,7 +440,7 @@ function agentsSection(): string {
     '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; `video --draft` for a quick look; a full `video` render takes minutes: wait for it before replying). Before calling work done: `bun run check` and `verify`.',
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
     "- **The director's decisions:** each video's `TREATMENT.md` ends with Decisions (what they chose, noted and turned down, in their words); project-wide ones are in `docs/STYLE.md` (Decisions, Avoid). Read them before any change and add each new note there: what they decide is followed exactly, and nothing they turned down comes back.",
-    '- **What you owe the director:** for a new video, its treatment shown first (then build on, unless something only they can decide waits); a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money (a budget they set is the yes within it); the MP4 at the end of the first build, later renders when they ask.',
+    '- **What you owe the director:** for a new video, its treatment shown first (then build on, unless something only they can decide waits); a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); a question before anything that costs money (a budget they set is the yes within it); a render when they ask for the file (render, export, the MP4), and otherwise a build that ends in the preview with the render offered.',
     '',
     'Keep this file current as videos are added: running init again (`--video <video>` for a new one) rewrites this section from `videos/*/video.json`.',
     END,

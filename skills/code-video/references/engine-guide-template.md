@@ -55,7 +55,8 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
   name `<video>.mp4`; anything less is named for what it is, so it can't replace the delivery: a range
   adds its times (`<video>-20-25.mp4`), `--only` adds `-only-<ids>`, `--draft` `-draft` and `--as-preview`
   `-preview` (the quick look above writes `<video>-20-25-only-hook-draft.mp4`). `--out <file.mp4>` names
-  it yourself.
+  it yourself. Its first line says what it will write (`-> out/<video>/<video>.mp4: 1920x1080 at 60 fps,
+  20 s (1200 frames)`): the size is `video.json`'s times `--scale`, so check it before the minutes go by.
 - **Poster**: `bun scripts/render.ts poster --video <video> --t 9.5` renders that one frame as the video
   renders it, motion blur included, to `out/<video>/poster.png` (`--out <file.png>` to choose).
 - **Verify** before calling anything done: `bun scripts/render.ts verify --video <video>`. It renders every

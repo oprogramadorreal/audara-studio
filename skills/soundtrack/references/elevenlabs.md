@@ -244,7 +244,8 @@ Also adapted from motion-video-kit (`references/audio.md`, `scripts/sfx-candidat
   hiss or a harsh click; broadband noise reads as a whoosh unless a whoosh was asked for; over 0.8 s
   is long for a transition that repeats. `sfx --screen <files>` does the same for library sounds.
 - **Place each effect by its measured onset, not its file start**: a 33 ms lead-in made every hit
-  two frames late at 60 fps. `--pick` records `onset_s` with the effect.
+  two frames late at 60 fps. `--pick` records `onset_s` with the effect. A whoosh or riser leads into
+  its cut, so it goes by its peak: one started on the cut peaked 0.3 s after it.
 - **Set each level inside the effect's own frequency band against the music** (`mix.py`): about
   +3-4 dB in band, with the ear-sensitive 2-8 kHz lift capped near 4 dB. Keep repeated sounds at
   the same level, deliver a music-only version, and change one thing per round, named by timestamp.

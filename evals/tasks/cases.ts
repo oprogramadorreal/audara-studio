@@ -29,7 +29,7 @@ const cases: Record<string, Case> = {
       "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
       'render.ts verify passes for the video (run it).',
       "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
-      'The first build ends with its MP4 (or the reply says why it waits); turn 2\'s notes are applied and checked in the preview and stills, and a new full render runs only when turn 3 asks for it (the transcripts).',
+      'The builds end in the preview, their replies offering the render: no full render (not a --draft) runs before turn 3 asks for one, and turn 2\'s notes are applied and checked in the preview and stills (the transcripts).',
       'The brief honours "Minimal and elegant": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2\'s "no tagline, just the name" in the director\'s words.',
     ],
   },
@@ -61,7 +61,7 @@ const cases: Record<string, Case> = {
       "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",
       "No near-empty or near-black frame at t=0 or at a cut, counting the brief's beat times as cuts (a one-scene video has none in verify.json, so check those frames yourself), unless the reply explains a deliberate one; and every hold of about 1.5 s or more that qc.py reports is marked in the treatment or named in the final reply with its time (a ?t= link) and what is read during it; a label such as 'intentional reading holds' doesn't count.",
       'The final reply links a contact sheet, a poster and QC numbers, and the files exist (a path, or a file name under a folder the reply names, counts as a link).',
-      'After the first build\'s MP4, a full render runs only when a turn asks for one (turn 3); notes are answered in the preview (the transcripts).',
+      'A full render (not a --draft) runs only when a turn asks for one (turn 3); the builds before it end in the preview, offering the render, and notes are answered there (the transcripts).',
     ],
   },
   // A later session in a project made earlier (run-tasks.sh gives both tools the same one): init runs again
@@ -123,6 +123,7 @@ const cases: Record<string, Case> = {
     ],
     assertions: [
       'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
+      'With the skills, turn 1 ends in the preview, its reply offering the render, and no full render (not a --draft) runs before turn 2 asks for the MP4 (the transcripts).',
       'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
       'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',
@@ -160,7 +161,7 @@ const cases: Record<string, Case> = {
       'words.json has 4 lines and its w sequence equals the narration exactly (43 words, punctuation as written, SQL shown as SQL with its spoken form set); nothing from the notes, the heading or the comment is spoken.',
       'On screen, "Why indexes make SQL fast" and "Index the columns you search." appear exactly as written; any other on-screen narration is verbatim.',
       'The cut to the row table lands within 2 frames of the end of "every row" (its first occurrence, words.json); the tree holds at least 2.0 s; the counter reads 20 within 0.25 s of "twenty".',
-      'An MP4 with the narration exists by the end; render.ts verify passes; no reply rewords the script, and any change was asked about first.',
+      'The video carries the narration (its last MP4, draft or final); render.ts verify passes; no reply rewords the script, and any change was asked about first.',
     ],
   },
   // Detailed visual direction and no script: every instruction followed and measurable; what is left open is the model's.
@@ -172,7 +173,7 @@ const cases: Record<string, Case> = {
     ],
     assertions: [
       'The brief shows the narration it wrote (under 60 words) and what generated voice and music would cost, and spends nothing (mock-requests.jsonl).',
-      'The MP4 is 1080x1920, 30 +/- 0.5 s, with audio; the ground is black (mean luma under 16 outside the subject) and exactly 18 hexagons show at the end.',
+      'Its last MP4 (draft or final) is 1080x1920, 30 +/- 0.5 s, with audio; the ground is black (mean luma under 16 outside the subject) and exactly 18 hexagons show at the end.',
       'The unfolding starts at 5.0 +/- 0.2 s and the last segment settles at 18.0 +/- 0.2 s (stills every 0.5 s), as given, not moved to a beat.',
       "Only one monospace family is used; 'Eighteen mirrors, one eye.' appears verbatim in the last scene.",
       'The music is low strings (the synthesized score\'s script or the music plan says so), and nothing in the picture contradicts a direction without the reply saying why.',
@@ -189,7 +190,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'A message mentions generated images once, in a line or two, with what it would make and the estimated cost, and does not hold up the build (scenes are written in the same turn).',
       'No paid image request is made (mock-images.jsonl has no paid=true entry) and no built-in image generation runs, since nobody said yes.',
-      'The video is drawn in code and reads as painterly (judged on stills), with an MP4 of 15 +/- 0.5 s by the end.',
+      'The video is drawn in code and reads as painterly (judged on stills), 15 +/- 0.5 s long (its last MP4, draft or final).',
     ],
   },
   // Image generation, used: the prompt opens the toolbox with a budget. Claude uses the API mock; Codex
@@ -198,14 +199,14 @@ const cases: Record<string, Case> = {
     skill: 'code-video', setup: { files: [], mock: 'openai-images' }, timeoutMinutes: 120,
     turns: [
       { prompt: 'make a 15-second opening for a bedtime story app: a fox who collects moonlight in jars, painterly, like a picture book. Generate whatever images you need, you can spend up to $1.' },
-      { prompt: 'Render it again at 4K.' },
+      { prompt: 'Render it at 4K.' },
     ],
     assertions: [
       'In Claude Code, turn 1 generates images with skills/code-video/scripts/imagegen.py (mock-images.jsonl), and each generated image in videos/<name>/assets/ has its .request.json beside it. In Codex, turn 1 uses built-in image generation (the transcripts and codex-sessions/), copies the generated images into videos/<name>/assets/, and keeps their provenance (tool/model, prompt and date); this path does not require a mock request or an API .request.json.',
       "Every generated image has a line in assets/SOURCES.md. In Claude Code, the estimated total stays within $1 and the reply states it. In Codex, the reply says that built-in generation uses the ChatGPT plan's limits and no separate API spend was made; any separately billed generation must still stay within the $1 budget and be reported.",
       'The 4K render in turn 2 makes no image request, through either the API (mock-images.jsonl) or built-in generation (the transcripts and codex-sessions/); it reuses the saved assets, and the plates are large enough for it or the reply says how they were scaled.',
       'The images are material, not slides: a scene loads the generated files as textures and treats them in code (layers moving at different rates, code-drawn light or particles over or behind them, a shader treatment), and no stretch is a Ken Burns pan over one still. (The mock returns placeholder pictures, gradients and shapes: a reply that keeps them off screen for that reason, and says so, passes on the code path alone.)',
-      'render.ts verify passes; a full render (not a --draft) of 15 +/- 0.5 s exists after turn 1 and a 3840x2160 one after turn 2.',
+      'render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and after turn 2 a 3840x2160 render of 15 +/- 0.5 s exists.',
     ],
   },
   // The same open toolbox with no key: nothing is generated, the piece is drawn in code, and one line says what a key adds.
@@ -217,7 +218,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'A message says in one line that no OpenAI key is set, what a key would add and roughly what it costs (or, in Codex, that its built-in image generation would use the plan\'s limits), and the session makes no request to the mock (mock-images.jsonl is empty).',
       'In Codex, built-in image generation runs only if the reply says it is using the plan\'s limits because the prompt asked for images; in Claude Code nothing is generated.',
-      'The piece is finished in code (an MP4 of 15 +/- 0.5 s) and reads as painterly on stills.',
+      'The piece is finished in code (15 +/- 0.5 s in its last MP4, draft or final) and reads as painterly on stills.',
     ],
   },
   'st-beats-json': {

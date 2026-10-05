@@ -27,7 +27,7 @@
     "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
     "render.ts verify passes for the video (run it).",
     "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
-    "The first build ends with its MP4 (or the reply says why it waits); turn 2's notes are applied and checked in the preview and stills, and a new full render runs only when turn 3 asks for it (the transcripts).",
+    "The builds end in the preview, their replies offering the render: no full render (not a --draft) runs before turn 3 asks for one, and turn 2's notes are applied and checked in the preview and stills (the transcripts).",
     "The brief honours \"Minimal and elegant\": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2's \"no tagline, just the name\" in the director's words."
   ]
 }

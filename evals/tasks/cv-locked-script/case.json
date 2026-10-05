@@ -22,6 +22,6 @@
     "words.json has 4 lines and its w sequence equals the narration exactly (43 words, punctuation as written, SQL shown as SQL with its spoken form set); nothing from the notes, the heading or the comment is spoken.",
     "On screen, \"Why indexes make SQL fast\" and \"Index the columns you search.\" appear exactly as written; any other on-screen narration is verbatim.",
     "The cut to the row table lands within 2 frames of the end of \"every row\" (its first occurrence, words.json); the tree holds at least 2.0 s; the counter reads 20 within 0.25 s of \"twenty\".",
-    "An MP4 with the narration exists by the end; render.ts verify passes; no reply rewords the script, and any change was asked about first."
+    "The video carries the narration (its last MP4, draft or final); render.ts verify passes; no reply rewords the script, and any change was asked about first."
   ]
 }

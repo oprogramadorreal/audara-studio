@@ -117,8 +117,10 @@ function codexOff(cwd: string): string[] {
   return flags;
 }
 
-/** Claude Code flags: no Claude in Chrome, and the plugins the user's settings enable that are named for a
- *  browser turned off for the run (their other plugins stay on). */
+/** Claude Code flags: no Claude in Chrome, the plugins the user's settings enable that are named for a
+ *  browser turned off for the run (their other plugins stay on), and this repo's own CLAUDE.md and
+ *  AGENTS.md left out: Claude Code reads them from every folder above the run's, and evals/results/ is
+ *  inside the repo (Codex stops at the run's own git root). */
 function claudeOff(): string[] {
   let on: Record<string, unknown> = {};
   try {
@@ -126,7 +128,11 @@ function claudeOff(): string[] {
     on = JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8')).enabledPlugins ?? {};
   } catch { /* no settings */ }
   const off = Object.keys(on).filter((p) => on[p] && DESKTOP.test(p));
-  return ['--no-chrome', ...(off.length ? ['--settings', JSON.stringify({ enabledPlugins: Object.fromEntries(off.map((p) => [p, false])) })] : [])];
+  const settings = {
+    claudeMdExcludes: [path.join(REPO, 'CLAUDE.md'), path.join(REPO, 'AGENTS.md')],
+    ...(off.length ? { enabledPlugins: Object.fromEntries(off.map((p) => [p, false])) } : {}),
+  };
+  return ['--no-chrome', '--settings', JSON.stringify(settings)];
 }
 
 /** What, in one transcript event, puts a browser or the desktop within the session's reach: a tool or MCP
