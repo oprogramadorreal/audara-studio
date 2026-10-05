@@ -159,6 +159,14 @@ function select(): VideoConfig {
   // ?fps= (scripts/render.ts --fps): export at another rate, with frameIdx() counting in it
   const fps = Number(params.get('fps'));
   if (params.has('fps') && Number.isFinite(fps) && fps > 0) v.fps = fps;
+  // ?size=<w>x<h> (scripts/render.ts --size): the video in another format, on the same timeline, sound and
+  // data, its scenes laid out for that frame (they read W and H from engine/gl.ts)
+  const size = params.get('size');
+  if (size !== null) {
+    const m = /^(\d+)x(\d+)$/.exec(size.trim()), w = m ? +m[1]! : 0, h = m ? +m[2]! : 0;
+    if (w >= 16 && h >= 16 && w % 2 === 0 && h % 2 === 0) v.size = [w, h];
+    else VIDEO_ERROR ??= `?size=${size}: <width>x<height> in even whole pixels (H.264 needs even sizes), e.g. 1080x1920`;
+  }
   return v;
 }
 

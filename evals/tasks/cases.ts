@@ -81,6 +81,25 @@ const cases: Record<string, Case> = {
       "The note is recorded in the director's words in videos/<video>/TREATMENT.md's Decisions (a section added if the project predates it), with the reading taken.",
     ],
   },
+  // A second format of a finished video, in a later session on the project a cv-title-card run made (run-tasks.sh
+  // gives it the same project as the later-session case): the 16:9 card recomposed for a vertical frame, not
+  // cropped, sharing its timeline, and the 16:9 left as it was.
+  'cv-second-format': {
+    skill: 'code-video', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 75,
+    turns: [
+      { prompt: 'I also need this title card as a vertical video for Instagram Reels.' },
+      { prompt: 'Render it.' },
+    ],
+    assertions: [
+      "After turn 2 a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), and no full render (not a --draft) ran before turn 2.",
+      'The vertical version is recomposed, not cropped, letterboxed or scaled down: on full-size stills at the treatment\'s beat times, nothing the 16:9 frame shows is cut off at the sides, there are no bars, and the title is laid out for the tall frame (its size and place differ from a centre crop of the 16:9 frame).',
+      "Text meant to be read is at 44 px or more and inside the Reels safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size 1080x1920 frames.",
+      "The two formats share one timeline: the vertical one is the same video at --size 1080x1920 (render.ts's out/<video>/1080x1920/ holds its verify.json and MP4), or the reply says why it needed another edit; its entries start and end at the 16:9 version's times (verify.json timelines).",
+      'The 16:9 version is unchanged: stills at its beat times are pixel-identical to the project as the run started (the setup commit), unless the reply names a change to it and why.',
+      "The vertical format was checked on its own before its render: render.ts verify with --size passed, a sheet of it under out/<video>/1080x1920/ was looked at, and a reply gives its preview link with &size=1080x1920.",
+      "TREATMENT.md's Decisions record the request in the director's words, and its Deliver line names the vertical format.",
+    ],
+  },
   // creative range: run 3 times with the skills and 3 times without (--without); a blind judge compares
   // the two sets of contact sheets. The skills must not make the results narrower or plainer.
   'cv-range-loop': {

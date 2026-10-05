@@ -265,6 +265,22 @@ So three.js adds no new tool; it only needs to be explicit:
   - physics and particle simulations are `stateful`, so they only get fixed-sample motion blur.
 - No React Three Fiber: it would add React for nothing the engine needs.
 
+### Another format: the same video, another frame
+
+A director often wants one piece in two shapes, a 16:9 master and a 9:16 cut for the vertical apps.
+Cropping the master loses what its edges carried and keeps type sized for the other screen, so the second
+format is recomposed. It is the same video at another size: `--size 1080x1920` in every `render.ts` mode
+and `?size=` in the preview, like `--fps`. The timeline, the sound, the timing data and the scenes are
+shared, so a cut or a fix lands in both; the scenes read `W` and `H` and lay out for the frame they get;
+and everything rendered for it goes to `out/<video>/<W>x<H>/`, so neither format's files replace the
+other's.
+
+A second video folder was the other way, and the engine already allowed most of it (another video's
+scenes through `remix`, audio by a relative path). But a video reads its timing data from its own
+`data/`, and `verify` resolves a song window's audio relative to the folder that holds the data, so the
+copy would have needed the song's data and audio copied too, and the two would drift. A format that needs
+another edit (another length, other scenes) is still another video.
+
 ### Remotion: optional, and only when it really helps
 
 The user doesn't want to depend on a paid tool. Remotion is free for individuals and teams of up to three
@@ -529,7 +545,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # (written once, when the project has none; theirs after that)
 ├── package.json, vite.config.ts, index.html, tsconfig.json
 ├── src/                         # the shared engine and preview player; src/look.ts holds the look in code
-├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>
+├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>,
+│                                # --size <w>x<h> for a second format
 ├── public/fonts/                # the shared fonts, with their licenses
 ├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look
 ├── videos/<name>/

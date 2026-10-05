@@ -260,6 +260,14 @@ video, and `sheet --cuts`: frame 0, the last frame and five frames around every 
 session compares against. Work-in-progress clips (`--draft`) need none of it. The **Deliver** line adds
 only what this video needs beyond that, such as another format, a 4K master (`--scale 2`) or captions.
 
+**Another format** (a vertical version for Reels beside the 16:9 master, say) is recomposed, never cropped
+or letterboxed: a crop loses what the edges carried and keeps type sized for the other screen. It is the
+same video at another size (`--size 1080x1920`, `docs/ENGINE.md`, "Another format"), so it shares the
+timeline, the sound and every fix; the scenes lay it out for its own frame, with fewer elements, a
+hierarchy that reads top to bottom, and type at its minimum size inside its safe area
+(`docs/STYLE.md`, Layout). The Deliver line names it, the storyboard says what changes in that format
+when something does, and it gets its own sheets, QC and full-cut critic round on its own draft.
+
 ## Example: a 15-second pool reopening teaser
 
 The request: "a 15 s Reel for the Lindell Pool reopening, the upbeat part of our summer track, the info's on

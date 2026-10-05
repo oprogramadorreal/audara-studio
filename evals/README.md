@@ -60,25 +60,26 @@ bash evals/harness/run-tasks.sh both                                            
 CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh claude
 ```
 
-`run-tasks.sh` runs the cases a few at a time, then the later-session case on the project of the latest
-finished `cv-title-card` run (Claude Code's if there is one, else Codex's), the same project for both
-tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
+`run-tasks.sh` runs the cases a few at a time, then the two cases that start from a finished project (the
+later session and the second format) on the project of the latest finished `cv-title-card` run (Claude
+Code's if there is one, else Codex's), the same project for both tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
 arguments go to `task.ts` (`--without`, `--model sonnet`).
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
-`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session case), and
+`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session and second-format cases), and
 `EVAL_INPUTS` (a folder with `pdoom-pt-BR.mp3` and its `lyrics.txt`, for `cv-lyric-short`, the short
 lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list).
 
 Which user each case stands for: a short prompt that leaves everything open (`cv-zero-asset`,
-`cv-lyric-short`, `cv-range-loop`), direction given in detail or over several turns, a rejection
-included, which must survive a new session (`cv-direction-rejection`, `cv-visual-direction-no-script`,
+`cv-lyric-short`, `cv-range-loop`), direction given in detail or over several turns, a rejection included,
+which must survive a new session (`cv-direction-rejection`, `cv-visual-direction-no-script`,
 `cv-later-session-small-change`), a script the director brings with its words locked (`cv-locked-script`,
-`st-voiceover-no-key`), and the three ways generated images come in: offered once, used within a budget,
-and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`). The set comparisons in their
-assertions (a blind judge on contact sheets, with and `--without` the skills) are the check that the
-skills make the picture better than the model alone, not just correct.
+`st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), and the three
+ways generated images come in: offered once, used within a budget, and no key (`cv-images-offered`,
+`cv-images-used`, `cv-images-no-key`). The set comparisons in their assertions (a blind judge on contact
+sheets, with and `--without` the skills) are the check that the skills make the picture better than the
+model alone, not just correct.
 
 A turn with `"newSession": true` starts a new session in the same folder instead of resuming, as a
 director coming back another day would: it knows only what the project wrote down.

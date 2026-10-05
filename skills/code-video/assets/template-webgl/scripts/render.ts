@@ -51,12 +51,17 @@
 //            .audara-cache/preview.log. It waits until the server answers for this folder, 20 s at most (exit
 //            code 1 and the end of that log when it doesn't), then prints the link. Starts no browser. --stop
 //            ends this project's preview, the dev servers of this folder on those ports and nothing else)
-// Every mode (link and preview take only --video):
+// Every mode (link and preview take only --video and --size):
 //   --video <video> which video (default: the only one, else the first that isn't `example`, else `example`)
 //   --only a,b      load only these timeline entries (the others render black)
 //   --scale N       N x the video's size (--scale 2: 3840x2160 for a 1920x1080 video): stills, posters and
 //                   videos come out at that physical size
 //   --fps N         another frame rate than video.json's (frameIdx() follows it)
+//   --size WxH      the video in another format (--size 1080x1920: a vertical version of a 16:9 video): the
+//                   same timeline, sound and data, its scenes laid out for that frame (they read W and H, so
+//                   they recompose, never crop), and everything written under out/<video>/<W>x<H>/ (verify.json,
+//                   stills, sheets, <video>.mp4), so nothing of the video's own format is replaced. link and
+//                   preview give the preview's link to that format (&size=WxH)
 //   --samples, --shutter  sub-frames per frame (default 1, but auto for video and poster) and the shutter
 //                   they spread over, as a fraction of the frame time (default 0.2); every mode but verify
 //   --as-preview    draw the scenes' preview path (ctx.export false, as the live preview does) instead of their
@@ -127,6 +132,23 @@ function checkVideoJson(name: string) {
 const defaultVideo = (names: string[]) => (names.length <= 1 ? names[0] : names.find((n) => n !== 'example') ?? 'example');
 
 const SCALE = Math.max(1, Math.round(+opt('scale', '1')!));
+/**
+ * --size <w>x<h>: the video in another format (a 9:16 version of a 16:9 one, say): the same timeline, sound
+ * and data, its scenes laid out for that frame (they read W and H), written under out/<video>/<w>x<h>/ so
+ * nothing of the video's own format is replaced. The size video.json already has is no override. Set in
+ * main(), where a bad value can be reported.
+ */
+let SIZE: [number, number] | null = null;
+function parseSize(video: string) {
+  const s = opt('size');
+  if (s === undefined) return;
+  const m = /^(\d+)x(\d+)$/.exec(s.trim()), w = m ? +m[1]! : 0, h = m ? +m[2]! : 0;
+  if (!(w >= 16 && h >= 16 && w % 2 === 0 && h % 2 === 0)) fail(`--size ${s}: <width>x<height> in even whole pixels (H.264 needs even sizes), e.g. 1080x1920`);
+  const own = (JSON.parse(projectText(`videos/${video}/video.json`)) as { size?: unknown }).size;
+  const [ow, oh] = Array.isArray(own) && own.length === 2 ? (own as number[]) : [1920, 1080];
+  SIZE = w === ow && h === oh ? null : [w, h];
+}
+const sizeTag = () => (SIZE ? `${SIZE[0]}x${SIZE[1]}` : null);
 /** A quick look at a video: one sub-frame, a fast encode (see the header). */
 const DRAFT = flag('draft');
 /** The scenes' preview path (ctx.export false) instead of their full-quality one. */
@@ -271,7 +293,7 @@ function linkTime() {
 }
 /** The link to give the director (t as the preview writes it into its own links). */
 const linkTo = (port: number, video: string, t: number | null) =>
-  `http://${PREVIEW_HOST}:${port}/?${new URLSearchParams({ v: video, ...(t === null ? {} : { t: String(+t.toFixed(3)) }) })}`;
+  `http://${PREVIEW_HOST}:${port}/?${new URLSearchParams({ v: video, ...(SIZE ? { size: sizeTag()! } : {}), ...(t === null ? {} : { t: String(+t.toFixed(3)) }) })}`;
 
 /**
  * link: the address of this project's live preview, at --t when given; the lowest port that serves this
@@ -294,7 +316,7 @@ async function link(video: string) {
     ...held((a) => a === 'no answer', 'took the connection but did not answer', 'took the connection but did not answer'),
     ...held(servesHere, `serves this folder through another path ${stale('it')}`, `serve this folder through other paths ${stale('them')}`),
   ];
-  fail(`no preview of this project is running: run \`bun scripts/render.ts preview --video ${video}${t === null ? '' : ` --t ${+t.toFixed(3)}`}\` yourself (the director doesn't run commands); it starts one that keeps running, and prints its link\n`
+  fail(`no preview of this project is running: run \`bun scripts/render.ts preview --video ${video}${SIZE ? ` --size ${sizeTag()}` : ''}${t === null ? '' : ` --t ${+t.toFixed(3)}`}\` yourself (the director doesn't run commands); it starts one that keeps running, and prints its link\n`
     + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_RANGE}.`}`);
 }
 
@@ -454,6 +476,7 @@ async function openPage(browser: Browser, server: Server, video: string, preview
   if (opt('only')) q.set('only', opt('only')!);
   if (SCALE !== 1) q.set('scale', String(SCALE));
   if (opt('fps')) q.set('fps', opt('fps')!);
+  if (SIZE) q.set('size', sizeTag()!);
   for (let load = 1; ; load++) {
     const deps = server.deps();
     await page.goto(`${server.url}/?${q}`);
@@ -494,6 +517,8 @@ async function openPage(browser: Browser, server: Server, video: string, preview
   });
   if (info.width !== info.logicalWidth * SCALE || info.height !== info.logicalHeight * SCALE)
     fail(`the page renders ${info.width}x${info.height}, expected ${info.logicalWidth * SCALE}x${info.logicalHeight * SCALE} (--scale ${SCALE})`);
+  if (SIZE && (info.logicalWidth !== SIZE[0] || info.logicalHeight !== SIZE[1]))
+    fail(`the page lays out ${info.logicalWidth}x${info.logicalHeight}, not the ${sizeTag()} --size asked for (a src/video.ts older than --size: take the template's)`);
   // (a misspelled id would load nothing and render black, and verify would pass on black frames)
   const ids = info.timeline.map((e) => e.id), unknown = ONLY.filter((id) => !ids.includes(id));
   if (unknown.length) fail(`--only ${unknown.join(',')}: no such entry in videos/${video}/timeline.ts. Its entries: ${ids.join(', ') || 'none'}`);
@@ -1105,10 +1130,11 @@ async function main() {
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
+  parseSize(name!);
   if (mode === 'link') return link(name!);
   if (mode === 'preview') return preview(name!);
-  const OUT = path.join(PROJECT, 'out', name!);
-  console.log(`video: ${name}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
+  const OUT = path.join(PROJECT, 'out', name!, ...(SIZE ? [sizeTag()!] : []));
+  console.log(`video: ${name}${SIZE ? ` at ${sizeTag()} (--size: into out/${name}/${sizeTag()}/)` : ''}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
 
   const server = await ensureServer();
   let browser: Browser | undefined;

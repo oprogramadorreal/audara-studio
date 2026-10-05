@@ -358,6 +358,11 @@ When the director asks for a render, in their request or later:
 6. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
 
+A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
+with `--size` on every command, its own review included: a layout that holds in one shape can collide or
+leave the safe area in the other. Its files land in `out/<video>/<W>x<H>/`, and `qc.py` takes that
+folder's `verify.json`.
+
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a
 `?t=` link to anything flagged; the critic's verdict (the last round's), the fixes made since it as not

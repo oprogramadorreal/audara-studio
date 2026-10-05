@@ -7,7 +7,7 @@ and the offline export. This guide is the API and its rules; the reasons behind 
 measurements and the mistakes `verify` can't see, are in the code-video skill's `references/contract.md`.
 
 Contents: Running things · The project and its videos · Data · Writing a scene · Rules · Stateful scenes ·
-Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding a font
+Toolbox · Typography · Output scale (4K) · Another format · Motion blur and sampling · Adding a font
 
 ## Running things
 
@@ -467,6 +467,25 @@ laying out in logical px (`W`, `H`, `ctx.W`, `ctx.H` never change); the engine h
   which is identical at 1× and keeps the 1× ink with sharper edges at 4K (`rampLine` does the same for the
   linear-ramp idiom). `hatch`, `engrave` and `aaStroke` already do this. LOD thresholds and supersampling
   offsets expressed in pixels should be logical (`fwidth(u) * PX_SCALE`, offsets `/ PX_SCALE`).
+
+## Another format
+
+A video can also play in a second format, a 9:16 version of a 16:9 piece, say: `--size 1080x1920` in every
+render.ts mode, and in the preview `?size=1080x1920` (`bun scripts/render.ts preview --video <video> --size
+1080x1920` prints that link). It is the same video, with the same timeline, sound, timing data and scenes,
+so a cut or a fix lands in both formats. Only the frame changes: `W`, `H`, `ctx.W` and `ctx.H` are the new
+size, and render.ts writes everything for it under `out/<video>/<W>x<H>/` (its `verify.json`, stills,
+sheets, `<video>.mp4`), beside the video's own format, never over it.
+
+- Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
+  `H` and the format's safe area (`docs/STYLE.md`), so a scene recomposes instead of cropping.
+- Where a shape needs another composition, branch on it in the scene (`const tall = H > W`): fewer
+  elements, a vertical stack, type at that format's minimum size. What carries the story stays: the
+  timing, the persistent actor, the palette.
+- Check each format on its own (`verify`, sheets and stills with `--size`): a layout that works in one
+  shape can collide, or leave the safe area, in the other.
+- A format that needs another edit (another length, other scenes) is another video, with its own
+  timeline and its own timing data from the soundtrack skill: `--size` shares everything but the frame.
 - Offscreen canvases used as textures (atlases, text planes) keep their own size: make them `SCALE`× larger
   (with `ctx.scale(SCALE, SCALE)`) if they are shown large, or they look soft at 4K.
 - Post (bloom, halation, CA, grain, vignette) and the HUD scale automatically; the bloom pyramid stays at
