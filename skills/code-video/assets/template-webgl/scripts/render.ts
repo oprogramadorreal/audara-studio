@@ -85,6 +85,13 @@ const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu', 'l
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'stills';
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const flag = (k: string) => argv.includes(`--${k}`);
+/**
+ * Every option a mode reads (the header describes them). Anything else stops the run: ignored, an option this
+ * copy doesn't know yet (--size on a render.ts older than it) would render something else under the same name.
+ */
+const OPTIONS = new Set(['as-preview', 'cols', 'crf', 'cuts', 'draft', 'fps', 'from', 'headed', 'max-samples', 'min-samples',
+  'n', 'noaudio', 'only', 'out', 'preset', 'samples', 'scale', 'shutter', 'since', 'size', 'stop', 't', 'thumb', 'times',
+  'to', 'tol', 'tune', 'url', 'video', 'x264']);
 const PROJECT = path.resolve(import.meta.dir, '..');
 
 class Fail extends Error {}
@@ -963,14 +970,15 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
     : was('size', prev.size, [info.logicalWidth, info.logicalHeight]) ?? was('scale', prev.scale, SCALE) ?? was('fps', prev.fps, info.fps)
       ?? was('path', prev.path, info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)') ?? was('--only', prev.only, ONLY.length ? ONLY : null);
   if (why) return { lines: [`changes: not compared with ${from} (${why})`], report: { since: from, compared: false, why } };
-  const key = (t: number) => t.toFixed(4);
-  const before = new Map<string, string>((prev.shots as Shot[]).map((s) => [key(s.t), s.hash]));
+  // (keyed by the exact time: both runs compute it the same way, and JSON keeps a number exactly; a rounded
+  // key would merge a word's frame at 0.49997 s with the half second's at 0.5, two different frames)
+  const before = new Map<number, string>((prev.shots as Shot[]).map((s) => [s.t, s.hash]));
   // stretches of changed frames: a run of them, broken by a frame that is the same (a time only one run
   // rendered, such as a word that moved, is neither)
   const runs: Shot[][] = [];
   let compared = 0, changed = 0, open = false;
   for (const s of shots) {
-    const h = before.get(key(s.t));
+    const h = before.get(s.t);
     if (h === undefined) continue;
     compared++;
     if (h === s.hash) { open = false; continue; }
@@ -1125,6 +1133,9 @@ function measure(page: Page, o: { from: number; n: number; fps: number; bare: bo
 // ------------------------------------------------------------------ main
 async function main() {
   if (!MODES.includes(mode)) fail(`unknown mode '${mode}': use one of ${MODES.join(', ')}`);
+  const unknown = argv.filter((a) => a.startsWith('--') && !OPTIONS.has(a.slice(2)));
+  if (unknown.length)
+    fail(`${unknown.join(', ')}: not an option of this render.ts (its header lists every one). An instruction that names it is for a newer copy: the code-video skill's scripts/init.ts run again with --force updates the project's scripts, keeping each old file as <file>.orig`);
   if (DRAFT && mode !== 'video') fail(`--draft is for video (a quick look at the motion); ${mode} ${mode === 'poster' ? 'is the full-quality frame' : 'renders one sub-frame per frame already'}`);
   parseSampling();
   if (mode === 'verify' && (SAMPLES_GIVEN || opt('shutter') !== undefined))
@@ -1141,6 +1152,14 @@ async function main() {
   if (mode === 'preview') return preview(name!);
   const OUT = path.join(PROJECT, 'out', name!, ...(SIZE ? [sizeTag()!] : []));
   console.log(`video: ${name}${SIZE ? ` at ${sizeTag()} (--size: into out/${name}/${sizeTag()}/)` : ''}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
+  // (an explicit --out wins over --size: one copied from a command for the video's own format, such as
+  // --out out/<video>/sheet.png, would replace that format's file)
+  if (SIZE && opt('out')) {
+    const o = path.resolve(opt('out')!);
+    const under = (dir: string) => { const r = path.relative(dir, o); return !!r && !r.startsWith('..') && !path.isAbsolute(r); };
+    if (under(path.join(PROJECT, 'out', name!)) && !under(OUT))
+      console.log(`warning: --out ${opt('out')} is outside out/${name}/${sizeTag()}/, where --size keeps this format's files: if a file of the video's own format is there, this run replaces it`);
+  }
 
   const server = await ensureServer();
   let browser: Browser | undefined;

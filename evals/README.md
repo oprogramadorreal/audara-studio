@@ -67,7 +67,8 @@ arguments go to `task.ts` (`--without`, `--model sonnet`).
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
-`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session and second-format cases), and
+`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session and second-format cases;
+one from an older release keeps its older `render.ts`, which init's AGENTS.md then says to update), and
 `EVAL_INPUTS` (a folder with `pdoom-pt-BR.mp3` and its `lyrics.txt`, for `cv-lyric-short`, the short
 lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list).
 

@@ -363,8 +363,10 @@ When the director asks for a render, in their request or later:
 
 A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
 with `--size` on every command, its own review included: a layout that holds in one shape can collide or
-leave the safe area in the other. Its files land in `out/<video>/<W>x<H>/`, and `qc.py` takes that
-folder's `verify.json`.
+leave the safe area in the other. Its files land in `out/<video>/<W>x<H>/`, so every path the steps write
+out moves there too: the MP4 `qc.py` reads, its `--cuts` and `--out`, both sheets' `--out`, and the
+critic round's folder. An explicit `--out` wins over `--size`, so a sheet left at `out/<video>/sheet.png`
+replaces the first format's (render.ts warns when an `--out` given with `--size` lands outside its folder).
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a

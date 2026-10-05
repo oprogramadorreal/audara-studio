@@ -118,7 +118,10 @@ what a later session needs:
 - what the agent owes the director.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
-The agent keeps `AGENTS.md` current as videos are added.
+The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
+a project made by an older release keeps its `render.ts`: the generated section names only what that copy
+can do, and says that `init --force` updates it. `render.ts` itself stops on an option it doesn't know,
+since 0.2.0's copy ignored `--size` and rendered the video's own format under the same name.
 
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle

@@ -582,3 +582,18 @@ phrases shortened elsewhere. The new cases (`cv-second-format`, `cv-product-real
 screens of a made-up app drawn by fixtures.ts) and the changed assertions (`cv-zero-asset`,
 `cv-range-loop`, `cv-later-session-small-change`) were written, not run: each takes an hour or more per case
 and tool, and whether a first look changes what critics ship is measured only by them.
+
+A review of the branch by Codex (GPT-6 Astra) before merging found three defects, each confirmed and fixed:
+
+- **The change report could flag a frame that hadn't changed.** It matched the two runs' frames by their
+  time rounded to 0.1 ms, which merged a word's frame at 0.49997 s with the half second's at 0.5 s, two
+  different frames. With a word starting at 0.4833 s on the example, two identical runs reported "1 of 44
+  frames, in 0.500 s"; matched by the exact time, which both runs compute alike and JSON keeps, "no frame".
+- **`init` advertised what an older project couldn't do.** Running it again on a 0.2.0 project rewrites
+  AGENTS.md but keeps the project's `render.ts`, and that copy ignored `--size` and rendered the video's
+  own format under the same name. `init` now reads what the project's `render.ts` documents and leaves out
+  what it lacks, with a line saying `--force` updates it (checked on a project given back 0.2.0's
+  `render.ts`, then updated with `--force`), and `render.ts` stops on an option it doesn't know.
+- **Delivery's second format kept the first format's paths.** Its sheets' explicit `--out` wins over
+  `--size`, so following the steps would have replaced the 16:9 sheets. Delivery now names every path that
+  moves, and `render.ts` warns when an `--out` given with `--size` lands outside that format's folder.

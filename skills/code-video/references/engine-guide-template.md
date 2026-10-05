@@ -88,7 +88,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
 - `--samples` and `--shutter` work in stills, sheet, poster, video and perf: sub-frames per frame (default
   1, `auto` for `video` and `poster`) and the fraction of the frame time they spread over (default 0.2).
   verify's renders are fixed.
-- Every option is in the header of `scripts/render.ts`; this list has the common ones.
+- Every option is in the header of `scripts/render.ts`; this list has the common ones. An option it doesn't
+  know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
+  updates the project's scripts).
 - Typecheck: `bun run check`, or just your files: `bunx tsc --noEmit -p tsconfig.json 2>&1 | grep scenes/yourscene`
   (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`).
 - render.ts prints `SCENE ERRORS` and browser console errors: read them.

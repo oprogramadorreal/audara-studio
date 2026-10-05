@@ -417,9 +417,23 @@ function engineGuide() {
   if (t.copied.length) log('  docs/ENGINE.md: written (the engine guide)');
 }
 
+/**
+ * What the project's own scripts/render.ts can do. init copies the template without replacing a project's
+ * files, so a project made by an older release keeps its older render.ts, and AGENTS.md must not send a later
+ * session to options it lacks: render.ts 0.2.0 ignored --size and rendered the video's own format under the
+ * same name. Each is found by the line its header documents it with.
+ */
+function renderer() {
+  let text = '';
+  try { text = readFileSync(path.join(P, 'scripts', 'render.ts'), 'utf8'); } catch {}
+  return { size: text.includes('--size WxH'), changes: text.includes('--since <report>') };
+}
+
 /** AGENTS.md's generated section: what a later session in this folder needs to know. */
 function agentsSection(): string {
   const vids = listVideos();
+  const r = renderer();
+  const lacks = [...(r.size ? [] : ['`--size` for a second format']), ...(r.changes ? [] : ["`verify`'s list of what changed since its last run"])];
   const cell = (s: string) => s.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
   const rows = vids.length
     ? vids.map((v) => `| \`${v.name}\` | ${cell(v.title)} | \`videos/${v.name}/TREATMENT.md\` | \`bun scripts/render.ts link --video ${v.name}\` |`)
@@ -437,7 +451,8 @@ function agentsSection(): string {
     '',
     `- **Shared look:** \`docs/STYLE.md\` in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
     "- **Preview:** `bun scripts/render.ts preview --video <video> --t <seconds>` starts it unless it runs and prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Run it yourself (the director doesn't run commands), before the first scene and again in a new session; the preview runs in a process of its own, so it outlives your turn, until `preview --stop`. Every change gets a link.",
-    '- **Render:** `bun scripts/render.ts stills|sheet|verify|video|poster --video <video>` (into `out/<video>/`; a second format of the video, recomposed for its frame, is `--size 1080x1920` on any of them and on `preview`, into `out/<video>/1080x1920/`; `video --draft` for a quick look; a full `video` render takes minutes: wait for it before replying). Before calling work done: `bun run check` and `verify`, whose last lines name the stretches whose frames changed since its last run: they should be the ones the note names or forces, and any other is a side effect to undo or to report with its link. With no `out/<video>/verify.json` yet (`out/` isn\'t committed), run `verify` once before you change anything, so there is something to compare with.',
+    `- **Render:** \`bun scripts/render.ts stills|sheet|verify|video|poster --video <video>\` (into \`out/<video>/\`${r.size ? '; a second format of the video, recomposed for its frame, is `--size 1080x1920` on any of them and on `preview`, into `out/<video>/1080x1920/`' : ''}; \`video --draft\` for a quick look; a full \`video\` render takes minutes: wait for it before replying). Before calling work done: \`bun run check\` and \`verify\`${r.changes ? ", whose last lines name the stretches whose frames changed since its last run: they should be the ones the note names or forces, and any other is a side effect to undo or to report with its link. With no `out/<video>/verify.json` yet (`out/` isn't committed), run `verify` once before you change anything, so there is something to compare with." : '.'}`,
+    ...(lacks.length ? [`- **This project's \`scripts/render.ts\` is older than the code-video skill's:** it lacks ${lacks.join(' and ')}. Running the skill's \`scripts/init.ts\` here again with \`--force\` updates it and the template's other files (each replaced file kept beside it as \`<file>.orig\`; the engine, the look, the docs and the videos are never replaced); until then, don't use what it lacks.`] : []),
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike.',
     "- **The director's decisions:** each video's `TREATMENT.md` ends with Decisions (what they chose, noted and turned down, in their words); project-wide ones are in `docs/STYLE.md` (Decisions, Avoid). Read them before any change and add each new note there: what they decide is followed exactly, and nothing they turned down comes back.",
     '- **What you owe the director:** for a new video, its treatment shown first (then build on, unless something only they can decide waits); a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); their product as it is (its real screens, as given or captured with their OK, and only the figures they gave; never a lookalike); a question before anything that costs money (a budget they set is the yes within it); a render when they ask for the file (render, export, the MP4), and otherwise a build that ends in the preview with the render offered.',
@@ -451,6 +466,9 @@ function agentsSection(): string {
 function writeAgents() {
   const file = path.join(P, 'AGENTS.md');
   const section = agentsSection();
+  const r = renderer();
+  if (!r.size || !r.changes)
+    log(`  scripts/render.ts: older than the template's (${[...(r.size ? [] : ['no --size']), ...(r.changes ? [] : ['no change report in verify'])].join(', ')}): run init again with --force to update it (each replaced file is kept as <file>.orig); AGENTS.md says so meanwhile`);
   try {
     if (!existsSync(file)) {
       writeFileSync(file, `# ${path.basename(P)}\n\n${section}\n`);
