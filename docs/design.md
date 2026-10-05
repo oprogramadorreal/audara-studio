@@ -520,6 +520,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 ```
 <project>/                       # one per brand or client, with several videos
 ├── AGENTS.md, CLAUDE.md         # conventions for later sessions ("Coming back later")
+├── README.md                    # for the director: the commands to watch and render without an agent
+│                                # (written once, when the project has none; theirs after that)
 ├── package.json, vite.config.ts, index.html, tsconfig.json
 ├── src/                         # the shared engine and preview player; src/look.ts holds the look in code
 ├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>

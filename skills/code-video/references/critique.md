@@ -300,7 +300,8 @@ director, every time:
   full-cut draft (by default `out/<video>/<video>-draft.mp4`), with a `?t=` link to each hold the
   treatment doesn't mark; and what wasn't checked;
 - the render on offer, with its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a
-  render costs) and what it brings: the MP4 with motion blur, sheets, a poster and the QC report.
+  render costs) and what it brings: the MP4 with motion blur, sheets, a poster and the QC report; and
+  that the project's `README.md` has the commands to watch and render it without an agent.
 
 ## Delivery
 

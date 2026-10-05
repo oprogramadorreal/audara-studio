@@ -12,11 +12,12 @@
 //   --no-install    skip `bun install`
 //   --force         replace project files that differ from the template's, keeping each old one beside it as
 //                   <file>.orig. Never replaced: src/engine/, src/look.ts and docs/ENGINE.md (the project's own
-//                   engine, look and guide: move one away to take the template's), what you wrote in
-//                   AGENTS.md, CLAUDE.md and .gitignore, and every video but example.
+//                   engine, look and guide: move one away to take the template's), README.md, what you
+//                   wrote in AGENTS.md, CLAUDE.md and .gitignore, and every video but example.
 //
 // Steps: check the prerequisites (bun, Chrome, ffmpeg with libx264, uv, git) and say how to install what's
-// missing; copy the template (../assets/template-webgl) without overwriting anything; generate the
+// missing; copy the template (../assets/template-webgl) without overwriting anything (its README.md, the
+// director's commands to watch and render without an agent, only into a project that has none); generate the
 // example's demo track and timing data (./demo-track.ts); scaffold --video; write docs/ENGINE.md (from
 // ../references/engine-guide-template.md), the section of AGENTS.md between <!-- audara:begin --> and
 // <!-- audara:end -->, CLAUDE.md (@AGENTS.md) and the missing .gitignore entries; run bun install.
@@ -272,6 +273,7 @@ function copyTemplate(files: string[], hadEngine: boolean, withExample: boolean)
       ownLook = true; // (the project's palette and post: its look, never replaced, not even with --force)
       continue;
     }
+    if (r === 'README.md' && existsSync(dest)) continue; // (written once, for the director; theirs after that)
     put(r, data, force, t);
   }
   const nFiles = (n: number) => `${n} file${n === 1 ? '' : 's'}`;

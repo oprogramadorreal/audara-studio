@@ -486,3 +486,8 @@ Codex with GPT-6 Astra, the user's defaults), each run graded by a fresh grader 
   it twice, and an arc ran through a label nobody caught (taste and the critic's eye, as in round 4).
   Claude's turn 2 ended three times while a render ran, and only the tool's background notifications
   brought it back.
+
+After those runs, `init` also writes a `README.md` into a project that has none: the two commands for
+the director to watch the preview and render the MP4 without an agent (`bun run render preview`,
+`bun run render video`). It comes from the template, so the copy that skips existing files writes it
+once; a README already there is the director's, never replaced or reported, not even with `--force`.
