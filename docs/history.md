@@ -14,6 +14,7 @@ Contents
 - Built differently from the plan, and why
 - Round 4: direction first, and taste when it's left open (2026-10-04)
 - After round 4: a build ends in the preview (0.2.0, 2026-10-05)
+- Lessons from the motion-engineering article (0.3.0, 2026-10-05)
 
 ## Definition of done
 
@@ -499,3 +500,85 @@ didn't expect only at the end. The size stays the video's own, set with the dire
 (`video.json`), whatever the aspect ratio: the README says where it comes from, and the hand-off's offer
 names it before the director says "render it". A 720p flag was rejected: scenes are laid out in the
 video's pixels and the renderer scales by whole numbers only.
+
+## Lessons from the motion-engineering article (0.3.0, 2026-10-05)
+
+[rari's article](https://x.com/0xwhrrari/status/2105643919119696297) ("Motion Engineering: Build a Video
+Studio Around Opus 5.5", X, 2026-10-01), read through a restatement of it and its replies, makes the same
+case as Hamza Khalid's and motion-video-kit's: the quality comes from the system around the model, a
+deterministic frame function, a gated review loop, and files that let the next film start from the last.
+Most of it was here already:
+
+- the frame as a pure function of time, seeded, seekable: the f(t) rule, which `verify` proves;
+- its five layers (brief, style guide, shot list, renderer, critic): TREATMENT.md, STYLE.md, the timeline
+  and scenes, CRITIQUE.md;
+- each beat with an entry, an exit and a reason, unjustified shots cut: the storyboard's job and
+  transition columns, "a row without one is filler";
+- contact sheets before export and a critic that names its top defects with a time, the evidence and a
+  fix: `sheet --cuts`, the fresh critic and its verification;
+- picture and sound on one beat grid: the soundtrack's data, with every time read from it;
+- "where does taste memory live?" (a reply): Decisions in the director's words, rejections included.
+
+Four things were worth taking, two of them answers to failures recorded above:
+
+- **The full-cut critic looks before it reads.** The article's critic judges the rendered frames with no
+  statement of intent. Ours read the treatment first, and in round 4 critics weighing its arguments
+  shipped a lyric video of nine still type cards as "reading holds" and archetype looks as justified. The
+  critic now writes a first look (what it shows, whether it holds a stranger, its weakest stretch) from
+  qc.py and a sheet of the whole render, with only the director's words and where it plays, before it
+  opens TREATMENT.md or STYLE.md; item 0 of its report quotes it. The director's words still come first:
+  they bind.
+- **`verify` says which stretches changed.** A reply proposed versioned data with pixel-diff checks before
+  every render. The f(t) rule makes such a check exact: verify now hashes the frames at every half second,
+  cut and word start, compares them with the report it replaces (or `--since <report>`), and prints the
+  stretches that differ, their scenes, and the timeline entries that moved. That measures "a note changes
+  only what it names" and catches what 0.2.0's verification found by eye, a regression the first round's
+  fixes made. On the example (16 s, 62 frames rendered, 48 hashed): a constant changed in one GLSL scene
+  gave "10 of 48 frames, in 0.000–3.983 s ('fspass')"; a cut moved a bar gave the two entries' old and new
+  spans and their changed frames; undone, `--since` a copy of the first report gave "no frame". The
+  readback waits for the GPU, about 17 ms a frame at 1080p (verify 2.4 s without it, 3.5 s hashing every
+  frame it renders), so it hashes those frames only, not the four a lyric video renders per word. A
+  verification critic gets the stretches measured since the render it reviewed; the Direct step, the
+  project's AGENTS.md and the later-session case use them after a note. A project copied without `out/`
+  has nothing to compare with, so a session there runs verify before it changes anything.
+- **A second format is recomposed, not cropped** (the article's per-format compositions). Nothing said how to
+  make a 9:16 of a 16:9 video. Reading the engine showed a second video folder couldn't share the first's
+  data: a video reads its timing from its own `data/`, and verify resolves a song window's audio relative to
+  the folder that holds the data, so a copy fails there unless the audio is copied too, and then the two
+  drift. So it is the same video at another size, `--size 1080x1920` in every render.ts mode and `?size=` in
+  the preview, like `--fps`, with its files under `out/<video>/<W>x<H>/`. It refuses a size with the video's
+  own shape: that would be the 720p flag 0.2.0 rejected, the same picture smaller, laid out anew. On the
+  example: verify passes at 1080x1920, its sheet and a draft clip come out 1080x1920, its scenes (which read
+  `W` and `H`) recompose rather than crop, and the 16:9 outputs are untouched.
+- **A product film shows the product's real screens** (the article's main use case: real screens and
+  metrics, never invented; a missing asset means asking). We had "no invented logo, tagline or label" and
+  Never claim, nothing on screens, and the style template's Rights line ("a real product's interface" is
+  out) could read as a reason to redraw the director's own app. The treatment's open parts now have a row
+  for product screens and figures, a screen the story needs that nobody has is asked for and told another
+  way meanwhile, the critics check screens against SOURCES.md, and images.md has a capture recipe with the
+  project's own playwright-core (tested on a local page: a 390×844 phone viewport at 3× gave a 1170×2531
+  PNG).
+
+Left out, and why:
+
+- **Six approval gates:** round 4 measured that the stop before building added nothing and delayed the
+  first frame by 20-27 minutes. "Wait only for what only the director can decide" already covers the
+  article's real stops, a missing asset and an irreversible brand decision.
+- **A 1-5 score per criterion:** the article gives no scale; ranked findings with their evidence and
+  SHIP or ONE MORE PASS say more.
+- **Separate brief, shot list and review files:** the same content as TREATMENT.md and CRITIQUE.md.
+- **Re-rendering only the frames a fix touched:** f(t) would allow it, but delivery already reviews a draft
+  and renders once; it pays only if pieces several minutes long become common.
+- **Checking sound against picture automatically:** the failure it guards (a click that lags, a cut off the
+  beat) is prevented upstream here, since every time comes from the data and mix.py measures the onsets.
+- **p5.brush, GenMotion, a taste memory across projects:** the cookbook's inks and stroke fonts, backends.md
+  and the agents' own memory cover them.
+- **Cheap, with no failure recorded yet:** a check that a feed video earns the first two seconds, motion
+  rules per kind of element in STYLE.md, captions for viewers with the sound off (already a candidate in
+  design.md), the pacing of a reference clip measured with qc.py.
+
+`code-video/SKILL.md` names verify in its Direct step and stays under the limit at 7,999 bytes, with four
+phrases shortened elsewhere. The new cases (`cv-second-format`, `cv-product-real-screens`, with two phone
+screens of a made-up app drawn by fixtures.ts) and the changed assertions (`cv-zero-asset`,
+`cv-range-loop`, `cv-later-session-small-change`) were written, not run: each takes an hour or more per case
+and tool, and whether a first look changes what critics ship is measured only by them.

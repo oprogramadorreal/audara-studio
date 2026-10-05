@@ -277,7 +277,8 @@ format is recomposed. It is the same video at another size: `--size 1080x1920` i
 and `?size=` in the preview, like `--fps`. The timeline, the sound, the timing data and the scenes are
 shared, so a cut or a fix lands in both; the scenes read `W` and `H` and lay out for the frame they get;
 and everything rendered for it goes to `out/<video>/<W>x<H>/`, so neither format's files replace the
-other's.
+other's. A size with the video's own shape is refused: that is the same picture smaller or bigger, the
+720p flag history.md's 0.2.0 entry rejected (`--scale` makes it bigger).
 
 A second video folder was the other way, and the engine already allowed most of it (another video's
 scenes through `remix`, audio by a relative path). But a video reads its timing data from its own
@@ -606,4 +607,5 @@ the formats the engine's `audio.ts` and `words.ts` read.
 - [elevenlabs/skills](https://github.com/elevenlabs/skills)
 - [echris6/motion-video-kit](https://github.com/echris6/motion-video-kit)
 - [Hamza Khalid: How to create motion graphics with Claude Opus 5.5 (Full Course)](https://x.com/humzaakhalid/status/2105203643758895454)
+- [rari: Motion Engineering: Build a Video Studio Around Opus 5.5](https://x.com/0xwhrrari/status/2105643919119696297)
 

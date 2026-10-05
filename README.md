@@ -45,8 +45,12 @@ Other ways in:
 - **Your script:** "make the video for script.txt, keep every word". The words stay as written; the agent
   makes the voice, music and picture, and says so when something in the script won't work.
 - **Your direction:** a paragraph of it, or notes over days ("slower intro", "less blue in the chorus",
-  "no 3D camera moves"). A note changes only what it names, and your decisions are kept in the project, so
-  they hold in later sessions.
+  "no 3D camera moves"). A note changes only what it names (the agent measures which moments changed), and
+  your decisions are kept in the project, so they hold in later sessions.
+- **Your product:** "a 15-second teaser for our app, the screens are in screens/". It shows your real
+  screens as they are, asks for any the story needs that you didn't give, and never draws a lookalike.
+- **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
+  cropped, and a later fix lands in both.
 
 To force the skill (for example when other video skills are installed), use `/audara-studio:code-video` in
 Claude Code or `$audara-studio:code-video` in Codex.
