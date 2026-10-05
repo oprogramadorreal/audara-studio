@@ -593,7 +593,10 @@ A review of the branch by Codex (GPT-6 Astra) before merging found three defects
   AGENTS.md but keeps the project's `render.ts`, and that copy ignored `--size` and rendered the video's
   own format under the same name. `init` now reads what the project's `render.ts` documents and leaves out
   what it lacks, with a line saying `--force` updates it (checked on a project given back 0.2.0's
-  `render.ts`, then updated with `--force`), and `render.ts` stops on an option it doesn't know.
+  `render.ts`, then updated with `--force`), and `render.ts` stops on an option it doesn't know. Codex's
+  second look at the fixes found that line promising `--force` keeps every video: it resets the
+  example's files too (each kept as `.orig`), and the line now says so and asks for what was changed on
+  purpose to be brought back from the `.orig` copies.
 - **Delivery's second format kept the first format's paths.** Its sheets' explicit `--out` wins over
   `--size`, so following the steps would have replaced the 16:9 sheets. Delivery now names every path that
   moves, and `render.ts` warns when an `--out` given with `--size` lands outside that format's folder.
