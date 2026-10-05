@@ -61,7 +61,8 @@
 //                   same timeline, sound and data, its scenes laid out for that frame (they read W and H, so
 //                   they recompose, never crop), and everything written under out/<video>/<W>x<H>/ (verify.json,
 //                   stills, sheets, <video>.mp4), so nothing of the video's own format is replaced. link and
-//                   preview give the preview's link to that format (&size=WxH)
+//                   preview give the preview's link to that format (&size=WxH). A size with the video's own
+//                   shape is refused: that is the same picture at another size (--scale), not a format
 //   --samples, --shutter  sub-frames per frame (default 1, but auto for video and poster) and the shutter
 //                   they spread over, as a fraction of the frame time (default 0.2); every mode but verify
 //   --as-preview    draw the scenes' preview path (ctx.export false, as the live preview does) instead of their
@@ -146,7 +147,12 @@ function parseSize(video: string) {
   if (!(w >= 16 && h >= 16 && w % 2 === 0 && h % 2 === 0)) fail(`--size ${s}: <width>x<height> in even whole pixels (H.264 needs even sizes), e.g. 1080x1920`);
   const own = (JSON.parse(projectText(`videos/${video}/video.json`)) as { size?: unknown }).size;
   const [ow, oh] = Array.isArray(own) && own.length === 2 ? (own as number[]) : [1920, 1080];
-  SIZE = w === ow && h === oh ? null : [w, h];
+  if (w === ow && h === oh) return;
+  // (the same shape at another size is the same picture bigger or smaller, not another format: scenes are
+  // laid out in the video's own pixels, so --scale makes it bigger and nothing makes it smaller)
+  if (Math.abs(w / h - ow! / oh!) < 0.001)
+    fail(`--size ${w}x${h} has the video's own shape (${ow}x${oh}): that is the same picture at another size, not another format. --scale 2 renders it at twice the size; a smaller file is an encode of the render (ffmpeg -vf scale=...)`);
+  SIZE = [w, h];
 }
 const sizeTag = () => (SIZE ? `${SIZE[0]}x${SIZE[1]}` : null);
 /** A quick look at a video: one sub-frame, a fast encode (see the header). */

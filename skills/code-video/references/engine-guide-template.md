@@ -475,7 +475,8 @@ render.ts mode, and in the preview `?size=1080x1920` (`bun scripts/render.ts pre
 1080x1920` prints that link). It is the same video, with the same timeline, sound, timing data and scenes,
 so a cut or a fix lands in both formats. Only the frame changes: `W`, `H`, `ctx.W` and `ctx.H` are the new
 size, and render.ts writes everything for it under `out/<video>/<W>x<H>/` (its `verify.json`, stills,
-sheets, `<video>.mp4`), beside the video's own format, never over it.
+sheets, `<video>.mp4`), beside the video's own format, never over it. A size with the video's own shape
+is refused: that is the same picture at another size, which `--scale` makes.
 
 - Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
   `H` and the format's safe area (`docs/STYLE.md`), so a scene recomposes instead of cropping.
