@@ -19,8 +19,12 @@
 //            different seeks must give identical pixels; motion blur must not carry a scene across a hard cut)
 //            -> out/<video>/verify.json, exit code 1 when it fails (warnings, such as a project still on the
 //            template's test-card palette, don't fail it). Its renders are fixed (one sub-frame, and four over the
-//            whole frame time at the cuts): --samples and --shutter don't apply
-//   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
+//            whole frame time at the cuts): --samples and --shutter don't apply.
+//            It also says what changed since the verify whose report it replaces (or the one --since <report>
+//            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
+//            of their pixels at every half second, cut and word start (exact: a frame is a function of t), with
+//            their scenes, and the timeline entries added, removed or moved
+//   video:  bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
 //            [--noaudio] [--fps <video's>]. Only the whole video, with every entry and the full-quality path, is
@@ -748,15 +752,38 @@ async function verifyInPage(page: Page) {
     const yieldNow = () => new Promise((r) => setTimeout(r, 0));
     const at = (t: number) => TL.filter((e) => t >= e.start && t < e.end).map((e) => e.id);
 
-    // 1. every word, cut and half second
-    const times = new Set<number>([0, D - f1]);
+    const N = p.width * p.height * 4;
+    const ref = new Uint8Array(N), cur = new Uint8Array(N);
+    /**
+     * A 64-bit hash of a frame's pixels (two 32-bit multiply-xor lanes over its 32-bit words). A frame is a
+     * function of t, so the same frame hashes the same in every run: equal hashes, unchanged pixels.
+     */
+    const hash = (b: Uint8Array) => {
+      const u = new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
+      let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+      for (let i = 0; i < u.length; i++) { const k = u[i]!; h1 = Math.imul(h1 ^ k, 2654435761); h2 = Math.imul(h2 ^ k, 1597334677); }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+    };
+
+    // 1. every word, cut and half second. The frames at every half second, frame 0 and the last, both sides of
+    // every cut and each word's first are also hashed, for the next verify to compare (a readback waits for the
+    // GPU, about 17 ms a frame at 1080p, so not every frame: a lyric video has four per word)
+    const times = new Set<number>([0, D - f1]), hashed = new Set<number>([0, D - f1]);
     for (const w of words) for (const t of [w.start - f1, w.start + f1, (w.start + w.end) / 2, w.end]) times.add(t);
-    for (const e of TL) for (const t of [e.start - f1, e.start + f1, e.end - f1]) times.add(t);
-    for (let t = 0; t < D; t += 0.5) times.add(t);
+    for (const w of words) hashed.add(w.start + f1);
+    for (const e of TL) for (const t of [e.start - f1, e.start + f1, e.end - f1]) { times.add(t); hashed.add(t); }
+    for (let t = 0; t < D; t += 0.5) { times.add(t); hashed.add(t); }
     let frames = 0;
+    const shots: { t: number; scenes: string[]; hash: string }[] = [];
     for (const t of [...times].sort((a, b) => a - b)) {
       if (t < 0 || t >= D) continue;
       p.still(t); frames++;
+      if (hashed.has(t)) {
+        await E.readPixelsAsync(ref);
+        shots.push({ t, scenes: at(t), hash: hash(ref) });
+      }
       if (frames % 20 === 0) await yieldNow();
     }
 
@@ -769,8 +796,6 @@ async function verifyInPage(page: Page) {
     const ws = words.length <= 8 ? words : Array.from({ length: 8 }, (_, i) => words[Math.floor((i * words.length) / 8)]!);
     for (const w of ws) probes.add(snap((w.start + w.end) / 2));
     for (let i = 0; i < 16; i++) probes.add(snap(D * ((0.5 + i * 0.6180339887) % 1))); // spread evenly, not on the beat grid
-    const N = p.width * p.height * 4;
-    const ref = new Uint8Array(N), cur = new Uint8Array(N);
     const render = async (from: number, t: number, into: Uint8Array) => {
       E.render(from, f1, false, 1);
       E.render(t, f1, false, 1);
@@ -831,7 +856,7 @@ async function verifyInPage(page: Page) {
     });
     const fileLengths: Record<string, number | null> = {};
     for (const s of segs) if (!(s.file in fileLengths)) fileLengths[s.file] = await meta('/' + s.file.split('/').map(encodeURIComponent).join('/'));
-    return { frames, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
+    return { frames, shots, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
   });
 }
 
@@ -889,8 +914,66 @@ function checkTimingData(video: string, files: string[], duration: number) {
   return { errors, warnings, lengthFix };
 }
 
+type Shot = { t: number; scenes: string[]; hash: string };
+type Entry = { id: string; start: number; end: number };
+/**
+ * What changed since an earlier verify of the same video (`prev`, its report): the frames both rendered at the
+ * same times, compared by the hash of their pixels, so a stretch that changed is exact, not a guess (a frame is
+ * a function of t); and the timeline entries that were added, removed or moved. `lines` are for the console,
+ * `report` for verify.json. A report from another size, scale, frame rate, path or --only isn't compared.
+ */
+function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeline: Entry[]) {
+  const d = typeof prev?.at === 'string' ? new Date(prev.at) : null, two = (n: number) => String(n).padStart(2, '0');
+  const when = d && !isNaN(+d) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}` : 'an earlier run';
+  const head = `changed since the verify of ${when} (${from})`;
+  const was = (k: string, a: unknown, b: unknown) => (JSON.stringify(a) === JSON.stringify(b) ? null : `${k} ${JSON.stringify(a)}, now ${JSON.stringify(b)}`);
+  const why = !Array.isArray(prev?.shots) ? 'it predates frame hashes'
+    : prev.video !== info.video ? `it is of video ${JSON.stringify(prev.video)}`
+    : was('size', prev.size, [info.logicalWidth, info.logicalHeight]) ?? was('scale', prev.scale, SCALE) ?? was('fps', prev.fps, info.fps)
+      ?? was('path', prev.path, info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)') ?? was('--only', prev.only, ONLY.length ? ONLY : null);
+  if (why) return { lines: [`changes: not compared with ${from} (${why})`], report: { since: from, compared: false, why } };
+  const key = (t: number) => t.toFixed(4);
+  const before = new Map<string, string>((prev.shots as Shot[]).map((s) => [key(s.t), s.hash]));
+  // stretches of changed frames: a run of them, broken by a frame that is the same (a time only one run
+  // rendered, such as a word that moved, is neither)
+  const runs: Shot[][] = [];
+  let compared = 0, changed = 0, open = false;
+  for (const s of shots) {
+    const h = before.get(key(s.t));
+    if (h === undefined) continue;
+    compared++;
+    if (h === s.hash) { open = false; continue; }
+    changed++;
+    if (open) runs.at(-1)!.push(s); else { runs.push([s]); open = true; }
+  }
+  const stretches = runs.map((r) => ({ from: r[0]!.t, to: r.at(-1)!.t, scenes: [...new Set(r.flatMap((s) => s.scenes))] }));
+  const named = (ids: string[]) => (ids.length ? ids.map((x) => `'${x}'`).join(', ') : 'no scene');
+  const span = (s: { from: number; to: number }) => (s.from === s.to ? `${s.from.toFixed(3)} s` : `${s.from.toFixed(3)}–${s.to.toFixed(3)} s`);
+  const old = new Map<string, Entry>(Array.isArray(prev.timeline) ? (prev.timeline as Entry[]).map((e) => [e.id, e]) : []);
+  const now = new Map<string, Entry>(timeline.map((e) => [e.id, e]));
+  const moved: string[] = [];
+  const at = (e: Entry) => `${e.start.toFixed(3)}–${e.end.toFixed(3)}`;
+  for (const [id, e] of now) {
+    const o = old.get(id);
+    if (!o) moved.push(`'${id}' added at ${at(e)} s`);
+    else if (Math.abs(o.start - e.start) > 1e-6 || Math.abs(o.end - e.end) > 1e-6) moved.push(`'${id}' ${at(o)} → ${at(e)} s`);
+  }
+  for (const id of old.keys()) if (!now.has(id)) moved.push(`'${id}' removed`);
+  const lines = [!changed
+    ? `${head}: no frame (${compared} compared)`
+    : `${head}: ${changed} of ${compared} frames, in ${stretches.map((s) => `${span(s)} (${named(s.scenes)})`).join('; ')}`
+      + (changed > 0.9 * compared && compared >= 10 ? ' — nearly every frame: as after a change to what every scene shares (src/look.ts, POST, the engine, a font); if nothing like that changed, the browser or the GPU did' : '')];
+  if (moved.length) lines.push(`timeline since then: ${moved.join('; ')}`);
+  return { lines, report: { since: from, at: prev.at ?? null, compared, changed, stretches, timeline: moved } };
+}
+
 async function verify(page: Page, info: Info, logs: string[], out: string) {
   const t0 = performance.now();
+  // the earlier report to compare with: --since <report>, else the one this run replaces
+  const since = opt('since') ? path.resolve(opt('since')!) : out;
+  if (opt('since') && !existsSync(since)) fail(`--since ${opt('since')}: no such report (an earlier verify.json, kept for instance in a critic round's folder)`);
+  let prev: any = null;
+  try { prev = existsSync(since) ? JSON.parse(readFileSync(since, 'utf8')) : null; } catch {}
   const r = await verifyInPage(page);
   const errors: string[] = [], warnings: string[] = [...info.warnings];
   const D = info.duration;
@@ -958,20 +1041,27 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
   errors.push(...browserErrors.map((l) => `browser: ${l}${SECOND_THREE.test(l) ? ` ${SECOND_THREE_FIX}` : ''}`));
   const passed = errors.length === 0;
   const renders = r.probes.reduce((n, p) => n + p.variants.length, 0);
+  const rel = path.relative(PROJECT, since), from = rel.startsWith('..') || path.isAbsolute(rel) ? since : rel.replace(/\\/g, '/');
+  const changes = prev ? changesSince(prev, from, r.shots, info, info.timeline)
+    : { lines: ['changes: none to compare (the first verify here: the next one names the stretches that change after it)'], report: null };
   const result = {
-    passed, video: info.video, title: info.title, duration: D, durationSource: info.durationSource, fps: info.fps,
+    passed, at: new Date().toISOString(), video: info.video, title: info.title, duration: D, durationSource: info.durationSource, fps: info.fps,
     size: [info.logicalWidth, info.logicalHeight], scale: SCALE, frames: r.frames, only: ONLY.length ? ONLY : null,
     path: info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)',
     determinism: { probes: r.probes.length, renders, mismatches: bad.length, perScene, details: r.probes },
     cuts: { times: r.cuts, motionBlurLeaks: r.leaks },
     audio: { segments: r.segments, fileLengths: r.fileLengths },
     timeline: info.timeline, errors, warnings, browserLog: logs, seconds: +((performance.now() - t0) / 1000).toFixed(1),
+    changes: changes.report,
+    // (every frame rendered at step 1, with its pixels' hash: what the next verify compares)
+    shots: r.shots,
   };
   mkdirSync(path.dirname(out), { recursive: true });
   await Bun.write(out, JSON.stringify(result, null, 2));
   console.log(`verify ${info.video}${info.exporting ? '' : " (the scenes' preview path)"}: ${passed ? 'PASS' : 'FAIL'}  ${r.frames} frames, ${r.probes.length} determinism probes (${renders} renders, ${bad.length} mismatched), ${r.cuts.length} cut${r.cuts.length === 1 ? '' : 's'} checked for motion-blur leaks (${r.leaks.length} leaking), ${errors.length} error${errors.length === 1 ? '' : 's'}, ${warnings.length} warning${warnings.length === 1 ? '' : 's'}  (${result.seconds}s)`);
   for (const e of errors) console.log(`  error: ${e}`);
   for (const w of warnings) console.log(`  warning: ${w}`);
+  for (const l of changes.lines) console.log(`  ${l}`);
   console.log(`  report: ${out}`);
   return passed;
 }

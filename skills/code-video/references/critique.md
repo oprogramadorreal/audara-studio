@@ -58,7 +58,12 @@ choose:
 - every frame through a crossfade or a transition: `sheet --from <a> --to <b> --n <(b - a) x fps + 1>`;
 - the moments the treatment ties to the sound (a hit, a word, a title landing), at the times in the
   data, not from memory;
-- after a fix, the cuts next to it: fixes move things into other things.
+- after a fix, the cuts next to it: fixes move things into other things;
+- after any change, what `bun scripts/render.ts verify --video <video>` says changed since its last run:
+  the stretches whose frames differ, measured, not remembered, and the timeline entries that moved. Each
+  should be one the note names or forces; any other is a side effect (a shared helper, the look, a cut
+  that moved), to undo or to tell the director about, with its link. With no `out/<video>/verify.json`
+  yet (a new session on a fresh copy: `out/` isn't committed), run verify before you change anything.
 
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
 costs nothing. Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't
@@ -94,10 +99,15 @@ session that built the video passed it after looking at one frame and an eight-f
 - **It gets** the treatment, `docs/STYLE.md`, the director's own words (the brief and every note,
   quoted from the treatment's Decisions, not summarized), facts about the work (paths, size, fps, duration, scene ids and windows,
   cut times, the timing data) and the commands to render what it wants. In a verification round, the
-  earlier reports too. With another backend, give it that backend's commands for stills and clips;
-  `qc.py` works on any MP4.
-- **It never gets** your reasoning, what you changed, what you believe is fixed, or your sheets. Each
-  of those tells it where to look and what to conclude.
+  earlier reports too, and the stretches `verify --since` measured as changed since the render they
+  reviewed: keep a copy of `out/<video>/verify.json` in the round's folder
+  (`out/<video>/critique/r<N>/verify.json`) when you start a round, and run
+  `verify --video <video> --since out/<video>/critique/r<N>/verify.json` before the next one. With another
+  backend, give it that backend's commands for stills and clips; `qc.py` works on any MP4.
+- **It never gets** your reasoning, your account of what you changed, what you believe is fixed, or your
+  sheets. Each of those tells it where to look and what to conclude. The stretches verify measured are a
+  fact, like the cut times, and they widen its search: a fix that moved something you didn't mean to shows
+  there.
 - **It picks its own frames:** sheets at times it chooses, every frame around every cut, frame 0 and the
   last, and `qc.py` on renders. It writes under `out/<video>/critique/r<N>/` and changes nothing else.
 - **Findings come ranked,** each with its time and place in the frame, the evidence (the image or the
@@ -251,11 +261,13 @@ You are an independent critic; you didn't build this or write the earlier report
 render, or the scene>. Earlier reports: <paths>. <If timings moved: the new cuts or sections.> The
 director's words: "<verbatim>".
 <tools>
+What changed since the render they reviewed, as verify measured it (frames that differ, by the hash of
+their pixels): <its stretches with their scenes, and the timeline entries that moved>.
 For every finding in the earlier reports, give FIXED / PARTLY / STILL PRESENT, with the time and the
-image or number that shows it. Then hunt for new defects, first around the earlier findings, where the
-fixes went in: glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment
-matters most: Check <the hit, the word> at <time>.> A finding the treatment argues for stays a note,
-not a defect.
+image or number that shows it. Then hunt for new defects in every stretch that changed, first around the
+earlier findings, then in the stretches no finding named, where a fix reached what it wasn't meant to:
+glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment matters most: Check
+<the hit, the word> at <time>.> A finding the treatment argues for stays a note, not a defect.
 Report, under 500 words, to out/<video>/critique/r<N>/verify.md, ending with SHIP or ONE MORE PASS (at
 most three fixes, ranked).
 ```
@@ -268,7 +280,10 @@ length against the timeline and any gap between scenes; and checks determinism: 
 by different seeks must come out pixel-identical. That last check guards the rule everything here rests
 on (every frame is a function of `t`). When it fails, the preview and the render disagree, and the
 message names the scene and the time. It writes `out/<video>/verify.json` and exits with 1 on failure;
-fix that before anything else.
+fix that before anything else. Its last lines say what changed since the report it replaces (or the one
+`--since` names): the stretches whose frames differ and their scenes, from a hash of the pixels at every
+half second, cut and word start, so "nothing else moved" is a measurement, and the timeline entries
+added, removed or moved. A stretch you didn't mean to change is a regression until you have looked at it.
 
 **`uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json`**, the QC report, on every render,
 whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <file>` to keep the report,

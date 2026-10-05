@@ -55,7 +55,9 @@ the model read it as not its job; see history.md.)
 This is how pdoom-video was made: in conversation, watched in a live preview, changed note by note. Every
 part of the design serves that loop:
 
-- **The f(t) rule** makes any moment linkable and re-renderable.
+- **The f(t) rule** makes any moment linkable and re-renderable, and a change measurable: the same frame
+  always has the same pixels, so `verify` hashes them and names exactly the stretches a change touched
+  since its last run ("a note changes only what it names" is checked, not hoped for).
 - **The preview** shows a change seconds after it's made.
 - **The briefs** keep the crew consistent.
 - **The critic** catches what the director shouldn't have to.

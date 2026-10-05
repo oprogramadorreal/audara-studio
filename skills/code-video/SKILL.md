@@ -20,16 +20,16 @@ The rest is a default: depart from it when the piece gains, and say why.
 
 ## A session
 Keep this checklist in your notes.
-- [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building, the director steers whenever they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
+- [ ] **Brief.** Write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building; the director steers as they like. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults let "go" answer it.
 - [ ] **Setup.** Check bun, run init, start the preview and post its link in a message.
 - [ ] **Look.** When it's yours, render two or three style frames: the key moment, its words included, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, post them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for while you build with a free stand-in (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: a subagent per scene, on your own model (Scene briefs, references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before it's done: a fresh full-cut critic, then its verification (references/critique.md), each waited for. A plain picture nobody asked for is a finding, not taste.
-- [ ] **Render** when the director asks for the file (render, export, the MP4); "make a video" alone ends in the preview, offering the render. Replies give the critic's verdict and qc.py's `motion`, `glance` and `blank` lines (on its draft until a render) with a `?t=` link to each hold the treatment doesn't mark; a render adds the MP4, sheets and poster. Don't end your turn while a render or critic runs: it can die with the turn.
-- [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, look at the frames around it, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision, and each thing the director turns down, goes in their words into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them before every change.
+- [ ] **Render** when the director asks for the file (render, export, the MP4); "make a video" alone ends in the preview, offering the render. Replies give the critic's verdict and qc.py's `motion`, `glance` and `blank` lines (on its draft until a render) with a `?t=` link to each hold the treatment doesn't mark; a render adds the MP4, sheets and poster. Don't end your turn while a render or critic runs: it dies with the turn.
+- [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, check the frames around it and what verify says changed, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision, and each thing the director turns down, goes in their words into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them before every change.
 
-Also owed: a status line during long work; the work shown (stills, sheets, numbers).
+Also owed: a status line in long work; the work shown: stills, sheets, numbers.
 
 ## Commands
 Run in the project folder (`<skill>`: this skill's folder); all options: the header of `scripts/render.ts`.
@@ -60,6 +60,6 @@ The engine is the default: GLSL passes, three.js, Canvas2D type and GPU lines in
 
 ## Gotchas
 - Time and values come from data: cuts on the beat grid (`ctx.audio`), words by their text (`ctx.words.get('...')`), an explainer's results from its inputs; never typed.
-- Check the cuts, not just the middles: blank frames hide at transitions and at frame 0 (`sheet --cuts`).
+- Check the cuts, not just the middles: blank frames hide at cuts and at frame 0 (`sheet --cuts`).
 - Size type for where it will be watched; vertical video needs large type inside the safe zones (references/style-template.md).
 - A scene too heavy for real time gets a cheaper preview path (`ctx.export` false), not a simpler idea.

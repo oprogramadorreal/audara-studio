@@ -66,7 +66,13 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
   must give identical pixels); and checks that motion blur never carries a scene across a hard cut.
   One-line verdict, details in `out/<video>/verify.json`, exit code 1 on failure. Warnings don't fail it,
   among them one for every video but `example` while `src/look.ts` still has the template's test-card
-  palette, which the preview shows too.
+  palette, which the preview shows too. Then it says what changed since the verify whose report it
+  replaces: the stretches whose frames differ (it hashes the pixels at every half second, cut and word
+  start, so the answer is exact: a frame is a function of `t`), with their scenes, and the timeline
+  entries added, removed or moved. After a change, those should be the stretches you meant to change; any
+  other is a side effect (a shared helper, the look, a moved cut). With no report yet (`out/` isn't
+  committed), run verify before you change anything. `--since <report>` compares with an earlier
+  `verify.json` kept elsewhere instead.
 - **Speed**: `bun scripts/render.ts perf --video <video> --from 20 --to 25 --only hook` prints what a
   frame costs the preview on the scenes' preview path (render until the GPU is done), split into the
   engine's own share (post-processing, paid by every frame) and the scenes', and what an export pays per
