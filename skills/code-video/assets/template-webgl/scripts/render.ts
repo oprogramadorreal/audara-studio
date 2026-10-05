@@ -24,7 +24,7 @@
 //            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
 //            of their pixels at every half second, cut and word start (exact: a frame is a function of t), with
 //            their scenes, and the timeline entries added, removed or moved
-//   video:  bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
+//   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
 //            [--noaudio] [--fps <video's>]. Only the whole video, with every entry and the full-quality path, is
@@ -1084,7 +1084,7 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
     audio: { segments: r.segments, fileLengths: r.fileLengths },
     timeline: info.timeline, errors, warnings, browserLog: logs, seconds: +((performance.now() - t0) / 1000).toFixed(1),
     changes: changes.report,
-    // (every frame rendered at step 1, with its pixels' hash: what the next verify compares)
+    // (the frames step 1 hashed, with their scenes: what the next verify compares)
     shots: r.shots,
   };
   mkdirSync(path.dirname(out), { recursive: true });
