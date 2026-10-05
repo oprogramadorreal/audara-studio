@@ -108,6 +108,11 @@ session that built the video passed it after looking at one frame and an eight-f
   sheets. Each of those tells it where to look and what to conclude. The stretches verify measured are a
   fact, like the cut times, and they widen its search: a fix that moved something you didn't mean to shows
   there.
+- **It looks before it reads,** in a full-cut round: a first look at the render, written down before it
+  opens the treatment or `docs/STYLE.md`, then the review against them. A critic that reads the
+  treatment first sees what it argues for: in testing, critics weighing its arguments shipped a lyric
+  video of nine still type cards as "reading holds", and archetype looks the treatment argued for as
+  justified. The director's words come with the prompt: they bind, whatever a viewer would think.
 - **It picks its own frames:** sheets at times it chooses, every frame around every cut, frame 0 and the
   last, and `qc.py` on renders. It writes under `out/<video>/critique/r<N>/` and changes nothing else.
 - **Findings come ranked,** each with its time and place in the frame, the evidence (the image or the
@@ -218,24 +223,33 @@ fixes worth most.
 ```text
 You are an independent, demanding critic of a finished video; you didn't build it. Judge rendered pixels
 and measured numbers, not intentions. Artifact: <project>/out/<video>/<file>.mp4 (<duration> s,
-<W>x<H>, <fps> fps, <with sound | silent>). It is for: <one line from the treatment>. The director's
-words, which bind: "<verbatim>". Treatment: videos/<video>/TREATMENT.md; look: docs/STYLE.md.
+<W>x<H>, <fps> fps, <with sound | silent>), for <where it plays: the platform, or "not said">. The
+director's words, which bind: "<verbatim>".
 <tools>
-Run qc.py on the MP4 first. Then sheets of the whole video (about five frames a second for a piece under
-a minute, a frame per beat or bar for a longer one), every frame through each cut and transition, frame 0
-and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for motion.
+First look, as a stranger: before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say what
+its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
+second; a frame per bar for a long one) and, if you like, a clip. Write out/<video>/critique/r<N>/first-look.md
+in three to five lines: what the video shows and says, in your words; whether it would hold a stranger
+to the end, and why; its weakest stretch, with the time. Don't revise it afterwards: the treatment can
+explain a choice, not change what a viewer sees.
+Then read the treatment and the look, and review the whole video: sheets (about five frames a second for
+a piece under a minute, a frame per beat or bar for a longer one), every frame through each cut and
+transition, frame 0 and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for
+motion.
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
 <skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
 treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
-0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
-   director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
+0. As a viewer: your first look, quoted, then in two lines whether reading the treatment changed what a
+   viewer gets (it can't make a weak stretch strong). Unless the director's words set that part of the
+   picture, or the treatment's idea calls for restraint and the first look found it holding, a picture
    that reads as slides or a template (the same layout in every scene, a headline beside or above a
    diagram; one composition held for the whole piece; captions over a background any song could have; a
    camera move over one still picture),
    that illustrates a song's words literally, that ignores the music's changes, or that any video on this
-   subject would have, is a top finding with a fix in code, not taste.
+   subject would have, is a top finding with a fix in code, not taste. The stretch the first look called
+   weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.

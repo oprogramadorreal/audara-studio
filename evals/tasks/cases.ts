@@ -93,7 +93,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'An MP4 of 10.00 +/- 0.04 s exists, and the loop seam is clean: the mean absolute difference between the first and the last frame is at most about 1 level (8-bit).',
       'The final message reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.',
-      'If a critic round ran, it was a fresh subagent given the treatment, the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message.',
+      'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
       'No cliché from the style template\'s avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.',
       'For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.',
     ],
@@ -125,6 +125,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
       'With the skills, turn 1 ends in the preview, its reply offering the render, and no full render (not a --draft) runs before turn 2 asks for the MP4 (the transcripts).',
+      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
       'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
       'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',

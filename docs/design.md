@@ -235,7 +235,10 @@ pdoom-video.
   start one subagent per scene, each with its own files.
 - **The critic is a role, not a file.** The one extra role worth having is a **critic** that reviews
   contact sheets against the treatment with fresh eyes (its protocol comes from
-  motion-video-kit: history.md, "Lessons from motion-video-kit"). In v1 the lead starts a general-purpose subagent with the critic prompt from
+  motion-video-kit: history.md, "Lessons from motion-video-kit"). In a full-cut round it looks first as a
+  stranger, from the render and the director's words alone, and writes that down before it reads the
+  treatment, so the treatment's arguments can explain a choice but not change what a viewer saw. In v1 the
+  lead starts a general-purpose subagent with the critic prompt from
   `critique.md`, which works the same in both tools. Add an agent definition only if that falls short.
 
 ## The engine, three.js and other frameworks
