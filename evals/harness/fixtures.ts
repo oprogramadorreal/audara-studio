@@ -80,6 +80,7 @@ const MEDIA: Record<string, string[]> = {
 
 /** Make sure every fixture exists in `dir` (generated once, then reused). */
 export function ensureFixtures(dir: string) {
+  dir = path.resolve(dir); // (ffmpeg runs in the repo: a relative folder would land somewhere else for it)
   mkdirSync(dir, { recursive: true });
   for (const [f, body] of Object.entries(TEXT)) if (!existsSync(path.join(dir, f))) writeFileSync(path.join(dir, f), body);
   for (const [f, args] of Object.entries(MEDIA)) if (!existsSync(path.join(dir, f))) ff([...args, path.join(dir, f)]);
