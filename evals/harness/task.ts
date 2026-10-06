@@ -340,7 +340,8 @@ const sessions: string[] = []; // every session the run started, in order (a new
 const turns: { prompt: string; newSession?: boolean; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
   model?: string; effort?: string; timedOut?: boolean; blocked?: string }[] = [];
 const alsoRan = new Set<string>(); // every model the transcripts name, sub-agents' included
-const CODEX_EFFORT = EFFORT ? ['-c', `model_reasoning_effort="${EFFORT}"`] : [];
+// (no quotes around the value: codex is a .cmd shim, which Bun won't hand a quote; Codex reads a bare word as a string)
+const CODEX_EFFORT = EFFORT ? ['-c', `model_reasoning_effort=${EFFORT}`] : [];
 for (const [i, t] of CASE.turns.entries()) {
   const first = i === 0 || t.newSession === true;
   if (first) session = null;
