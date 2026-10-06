@@ -98,7 +98,8 @@ in Avoid, marked (director).>
   `videos/<video>/assets/SOURCES.md`; a brand's assets as given. Draw your own version of whatever the
   words name (a monster, a myth, a machine); what's out is copying a particular artist's design, a
   franchise's character or another company's product interface. The director's own product appears as
-  itself, its real screens as given or captured, never a lookalike (`references/images.md`).
+  itself, its real screens as given or captured, unless they ask for a concept or mockup, which is marked
+  as one where it could pass for the product (`references/images.md`).
 
 ## Avoid unless the piece calls for them
 <The list at the end of this template, with what this project adds or crosses out.>

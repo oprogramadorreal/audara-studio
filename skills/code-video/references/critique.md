@@ -187,8 +187,9 @@ Check:
   lines change, and cut on downbeats or between lines. Name the rows that don't, with times from the data.
 - Has every row its own composition and job? Which rows are filler?
 - What carries across each cut? Does any row start or end on an empty frame, the first and last included?
-- Is every claim, number and diagram true or labelled, is every product screen the product's real one
-  (assets/SOURCES.md says where it came from), and is nothing claimed that the treatment rules out?
+- Is every claim, number and diagram true or labelled, is every product screen the product's real one or
+  a concept the director asked for, marked as one (assets/SOURCES.md says which), and is nothing claimed
+  that the treatment rules out?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
@@ -241,8 +242,10 @@ Where the treatment argues for a departure (an off-beat cut, a long hold, a unif
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
 <skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
 treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
-Every product screen, logo and figure on screen is the real one (videos/<video>/assets/SOURCES.md) or
-plainly labelled: a lookalike screen or a figure nobody gave is a top finding.
+Every product screen, logo and figure on screen is the real one (videos/<video>/assets/SOURCES.md), or a
+concept or mockup the director's words ask for, marked as one where it could pass for the product (that is
+their request, not a finding). A lookalike nobody asked for, or a feature or figure nobody gave shown as
+the product's, is a top finding.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 0. As a viewer: your first look, quoted, then in two lines whether reading the treatment changed what a
    viewer gets (it can't make a weak stretch strong). Unless the director's words set that part of the

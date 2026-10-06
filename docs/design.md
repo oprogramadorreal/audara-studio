@@ -100,9 +100,11 @@ What the agent owes the director:
 - the work shown: contact sheets, numbers, critic verdicts;
 - a question before anything that costs money, or spending within a budget they set;
 - their decisions and rejections written down in the project, so later sessions keep them;
-- their product as it is: its real screens (given, or captured from its live site with their OK) and only
-  the figures they gave. A lookalike screen reads as the product and isn't, so a screen nobody has yet is
-  asked for and stands in as a placeholder that reads as one.
+- their product as it is in a factual demo: its real screens (given, or captured from its live site with
+  their OK) and only the figures they gave. A lookalike nobody asked for reads as the product and isn't,
+  so a screen nobody has yet is asked for and stands in as a placeholder that reads as one. A concept or
+  mockup the director asks for is theirs to ask for: it is made, and marked as a concept where it could
+  pass for the product. Neither shows an invented feature or figure as the product's.
 
 It doesn't ask for approval of every step in between, and nothing waits on a missing screen but the moment
 that shows it.

@@ -48,7 +48,8 @@ Other ways in:
   "no 3D camera moves"). A note changes only what it names (the agent measures which moments changed), and
   your decisions are kept in the project, so they hold in later sessions.
 - **Your product:** "a 15-second teaser for our app, the screens are in screens/". It shows your real
-  screens as they are, asks for any the story needs that you didn't give, and never draws a lookalike.
+  screens as they are and asks for any the story needs that you didn't give, rather than drawing a
+  lookalike. Ask for a concept or a mockup and it makes one, marked as a concept.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 

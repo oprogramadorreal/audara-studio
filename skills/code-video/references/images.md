@@ -22,18 +22,26 @@ generated "1920s photo" in an explainer is a fabrication.
 **The director's own.** Their files, their rights; for a client's piece, note the basis they give (own
 work, a stock licence and its ID, releases for the people in it).
 
-**Their product's screens.** A piece about an app, a site or a device shows the real one: the screens the
-director gives, or captured from its live site with their OK (below), shown as they are. A lookalike
-redrawn from memory, a screen the product doesn't have, or a figure nobody gave reads as the product and
-isn't: a fabrication, like a generated "1920s photo" in an explainer. Code still does what makes it video
-(the device, the scroll, the tap, the light, the transitions), and a value the scenes animate over a real
-screen is labelled as illustrative where it could be taken for a claim. A screen the story needs that
-nobody has yet waits for the director: the brief asks for it, and until it comes the moment is told
-another way or with a placeholder that reads as one (a grey frame named for the missing screen), never a
-convincing fake. A page behind a login or a cookie banner is theirs to capture or to send. Each screen
-gets its line in SOURCES.md (supplied by the director, or captured from its URL, with the date). To
-capture one, save this as `.audara-cache/capture.ts` and run `bun .audara-cache/capture.ts` from the
-project (it uses the project's playwright-core and Chrome):
+**Their product's screens.** A factual demo of an app, a site or a device shows the real one by default:
+the screens the director gives, or captured from its live site with their OK (below), shown as they are.
+Left to you, a lookalike redrawn from memory, a screen the product doesn't have, or a figure nobody gave
+reads as the product and isn't: a fabrication, like a generated "1920s photo" in an explainer. Code still
+does what makes it video (the device, the scroll, the tap, the light, the transitions), and a value the
+scenes animate over a real screen is labelled as illustrative where it could be taken for a claim. A
+screen a factual demo needs that nobody has yet waits for the director: the brief asks for it, the rest
+builds meanwhile, and until it comes the moment is told another way or with a placeholder that reads as
+one (a grey frame named for the missing screen), never a convincing fake.
+
+A concept, a mockup or a stylized reconstruction the director asks for is theirs to ask for: make it, in
+the product's style when they want that, and mark it as a concept wherever a viewer could take it for
+the shipping product (their own label, such as "Concept", or one you add and say so). What stays out
+either way is an invented feature, result or figure presented as a fact about the product.
+
+A page behind a login or a cookie banner is theirs to capture or to send. Each screen gets its line in
+SOURCES.md, by where it really came from: supplied by the director, captured from its URL (with the date),
+or a concept made for this video at their request (never recorded as a capture). To capture one, save this
+as `.audara-cache/capture.ts` and run `bun .audara-cache/capture.ts` from the project (it uses the
+project's playwright-core and Chrome):
 
 ```ts
 import { chromium } from 'playwright-core';
