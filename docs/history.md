@@ -600,3 +600,68 @@ A review of the branch by Codex (GPT-6 Astra) before merging found three defects
 - **Delivery's second format kept the first format's paths.** Its sheets' explicit `--out` wins over
   `--size`, so following the steps would have replaced the 16:9 sheets. Delivery now names every path that
   moves, and `render.ts` warns when an `--out` given with `--size` lands outside that format's folder.
+
+A second review on the PR found four more, each confirmed and fixed:
+
+- **A word that moved could hide a change.** Each run hashed a word's frame at its current start, and only
+  times both reports shared were compared, so a moved word's old and new samples were both left out. With
+  the reviewer's case (a 1 s video, a frame white only while its one word is sung, the word moved by 0.1 s)
+  the report said "no frame (4 compared)". The new run now also renders the earlier report's sample times,
+  compares them and leaves them out of its own report: "1 of 5 sampled frames, in 0.117 s". A clean report
+  now says "no sampled frame", and no text calls it exact: between samples, a short change can go unseen.
+- **The later-session case couldn't pass on a 0.2.0 project:** the change report needs the new
+  `render.ts`, and updating it broke the assertion that only `videos/` changes. Both now allow for it.
+- **fixtures.ts** wrote the screens elsewhere when given a relative folder, since ffmpeg runs in the repo.
+- **"Never a lookalike" overruled the director.** Asked for a concept screen of a feature that isn't
+  built, the text sent the builder to a real screen, another way or a grey placeholder. A factual demo now
+  shows the real screens by default; a concept, mockup or stylized screen the director asks for is made and
+  marked as a concept where it could pass for the product; neither presents an invented feature, result or
+  figure as the product's; SOURCES.md records each by where it came from. A new case,
+  `cv-product-concept-mockup`, checks that exception.
+
+### What 0.3.0 checked
+
+Five cases in both tools on 2026-10-05 and 06, on `0bfc8cf` (Claude Code with Opus 5.5, Codex with GPT-6
+Astra), each run graded by a fresh grader with its own measurements. Claude's second-format run was cut
+off by a usage limit in its first turn and run again; a grader cut off the same way was run again.
+
+| Case | Claude | Codex |
+|---|---|---|
+| cv-title-card | 6 of 12 | 7 of 12 |
+| cv-zero-asset | 6 of 6 (1 N/A: no --without arm) | 6 of 6 (1 N/A) |
+| cv-product-real-screens | 4 of 5 | 2 of 5 |
+| cv-later-session-small-change | 7 of 7 | 6 of 7 |
+| cv-second-format | 6 of 7 | 5 of 7 |
+
+- **The first look worked in both tools.** Each full-cut critic wrote it before opening the treatment,
+  and the fixes went to the stretch it called weakest: Codex's 5–15 s went from 9.93 to 4.97 s still at a
+  glance; Claude's two rounds fixed a sunset that was "a small orange smudge" and an empty blue frame (47
+  near-empty frames to 15). One Codex critic named a slide-like picture in its first look and then set it
+  aside because "the user did not request a slide treatment", reading item 0's double negative backwards;
+  item 0 now states the finding first and says that not asking for slides is why it is one.
+- **The change report was used as meant.** Both later sessions ran verify before and after the note.
+  Codex's named 1.5–2.0 and 3.0–5.0 s, and the grader's own old-and-new stills differ from 1.05 to 5.15 s
+  and nowhere else. Claude's named 30 of 32 frames: its slower start moved everything after it, and the
+  reply said so, with a link to each moved stretch and a 16 s version on offer that keeps the old hold.
+- **Both second formats used `--size`,** recomposed the name into two lines behind one `H > W` branch in
+  the scene, and left the 16:9 pixel-identical (34 and 35 stills against the starting commit). Codex's ran
+  42 px into Reels' right margin, from margins it made up for a STYLE.md that had only 16:9; the second-
+  format text now points to the style template's Layout tables. Claude's rendered the file in turn 1,
+  reading "I also need this title card as a vertical video for Instagram Reels" as a request for it.
+- **Product screens:** once turn 2 said the third screen wasn't designed, both showed only the two real
+  ones. Claude's matched the files within a level and told the landing on a paper budget strip. Codex's
+  home screen was 9.9 levels off its file, its white at 243: it turned the bloom off but didn't undo the
+  tone shoulder, the step images.md gave as a GLSL function to paste. A post setting does it now,
+  `{ bloom: 0, shoulder: 0 }` (white at 255, measured). Codex's brief didn't name the missing screen. Both
+  first plans redrew the home screen's total for the new expense.
+- **Found on the way, older than this release:**
+  - Claude's sessions again showed the treatment and the preview link only at the end (the title card
+    after 36 minutes, the sky video after 74), as in round 4.
+  - Four runs rendered the file in turn 2. Since 0.2.0 a build ends offering the render, so the scripted
+    "Go ahead" answers it; the two cases written for the older flow now accept that when the reply says so.
+  - A session's synthesized score, a bun script in `videos/<video>/audio/`, broke `bun run check` for its
+    project and every session after it: bun's types reached the browser program. The tsconfigs now keep
+    such scripts with `scripts/`.
+  - A critic left `mix.py measure`'s report at the top of `out/` (run without `--video`), and both
+    title-card replies left out qc.py's numbers.
+- Not run: `cv-product-concept-mockup`, `cv-range-loop`'s creative-range set, and the --without arms.
