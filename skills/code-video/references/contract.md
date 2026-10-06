@@ -289,6 +289,11 @@ much), and the example's scenes 0.3–2.6 ms each. Where a scene's time goes:
   `init()`, redraw a layer only when what it shows changes, and give changing text a layer only as big as
   the text, placed with `rect`.
 - **Precompute in `init()`:** text layouts, geometry, tables, simulations.
+- **A shader compiles at its first draw,** a second or two for a heavy raymarch, and the page stalls
+  meanwhile. The player draws every entry once while it loads (`Engine.warm`, a few seconds with the
+  progress on its info line), so a first play doesn't freeze where a heavy scene enters: two showreels
+  froze 1.0 and 2.35 s there before it, and played at 60 fps after. A program a scene creates later, on a
+  branch the start, middle and end of its entry don't reach, still compiles when it first runs.
 - **The render multiplies a scene's cost** by its sub-frames, on top of what every frame pays: the
   readback (about 15 ms at 1080p), the transfer to ffmpeg and the encode, about 60 ms a frame at 1080p in
   all (measured: the 17-second example's 1,020 frames took 60 s as a `--draft`, one sub-frame each, and
