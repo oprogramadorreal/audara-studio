@@ -19,7 +19,13 @@
 //            different seeks must give identical pixels; motion blur must not carry a scene across a hard cut)
 //            -> out/<video>/verify.json, exit code 1 when it fails (warnings, such as a project still on the
 //            template's test-card palette, don't fail it). Its renders are fixed (one sub-frame, and four over the
-//            whole frame time at the cuts): --samples and --shutter don't apply
+//            whole frame time at the cuts): --samples and --shutter don't apply.
+//            It also says what changed since the verify whose report it replaces (or the one --since <report>
+//            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
+//            of their pixels at every half second, cut and word start, and at the times the earlier report
+//            sampled (a frame is a function of t, so an equal hash is an unchanged frame; between samples, a
+//            short change can go unseen), with their scenes, a change of length (the time only one run has
+//            isn't compared), and the timeline entries added, removed or moved
 //   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
@@ -47,12 +53,18 @@
 //            .audara-cache/preview.log. It waits until the server answers for this folder, 20 s at most (exit
 //            code 1 and the end of that log when it doesn't), then prints the link. Starts no browser. --stop
 //            ends this project's preview, the dev servers of this folder on those ports and nothing else)
-// Every mode (link and preview take only --video):
+// Every mode (link and preview take only --video and --size):
 //   --video <video> which video (default: the only one, else the first that isn't `example`, else `example`)
 //   --only a,b      load only these timeline entries (the others render black)
 //   --scale N       N x the video's size (--scale 2: 3840x2160 for a 1920x1080 video): stills, posters and
 //                   videos come out at that physical size
 //   --fps N         another frame rate than video.json's (frameIdx() follows it)
+//   --size WxH      the video in another format (--size 1080x1920: a vertical version of a 16:9 video): the
+//                   same timeline, sound and data, its scenes laid out for that frame (they read W and H, so
+//                   they recompose, never crop), and everything written under out/<video>/<W>x<H>/ (verify.json,
+//                   stills, sheets, <video>.mp4), so nothing of the video's own format is replaced. link and
+//                   preview give the preview's link to that format (&size=WxH). A size with the video's own
+//                   shape is refused: that is the same picture at another size (--scale), not a format
 //   --samples, --shutter  sub-frames per frame (default 1, but auto for video and poster) and the shutter
 //                   they spread over, as a fraction of the frame time (default 0.2); every mode but verify
 //   --as-preview    draw the scenes' preview path (ctx.export false, as the live preview does) instead of their
@@ -75,6 +87,15 @@ const MODES = ['stills', 'sheet', 'poster', 'verify', 'video', 'perf', 'gpu', 'l
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : 'stills';
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const flag = (k: string) => argv.includes(`--${k}`);
+/**
+ * Every option a mode reads (the header describes them). Anything else stops the run: ignored, an option this
+ * copy doesn't know yet (--size on a render.ts older than it) would render something else under the same name.
+ */
+const OPTIONS = new Set(['as-preview', 'cols', 'crf', 'cuts', 'draft', 'fps', 'from', 'headed', 'max-samples', 'min-samples',
+  'n', 'noaudio', 'only', 'out', 'preset', 'samples', 'scale', 'shutter', 'since', 'size', 'stop', 't', 'thumb', 'times',
+  'to', 'tol', 'tune', 'url', 'video', 'x264']);
+/** The options that take no value; every other one is followed by its value. */
+const FLAGS = new Set(['as-preview', 'cuts', 'draft', 'headed', 'noaudio', 'stop']);
 const PROJECT = path.resolve(import.meta.dir, '..');
 
 class Fail extends Error {}
@@ -123,6 +144,28 @@ function checkVideoJson(name: string) {
 const defaultVideo = (names: string[]) => (names.length <= 1 ? names[0] : names.find((n) => n !== 'example') ?? 'example');
 
 const SCALE = Math.max(1, Math.round(+opt('scale', '1')!));
+/**
+ * --size <w>x<h>: the video in another format (a 9:16 version of a 16:9 one, say): the same timeline, sound
+ * and data, its scenes laid out for that frame (they read W and H), written under out/<video>/<w>x<h>/ so
+ * nothing of the video's own format is replaced. The size video.json already has is no override. Set in
+ * main(), where a bad value can be reported.
+ */
+let SIZE: [number, number] | null = null;
+function parseSize(video: string) {
+  const s = opt('size');
+  if (s === undefined) return;
+  const m = /^(\d+)x(\d+)$/.exec(s.trim()), w = m ? +m[1]! : 0, h = m ? +m[2]! : 0;
+  if (!(w >= 16 && h >= 16 && w % 2 === 0 && h % 2 === 0)) fail(`--size ${s}: <width>x<height> in even whole pixels (H.264 needs even sizes), e.g. 1080x1920`);
+  const own = (JSON.parse(projectText(`videos/${video}/video.json`)) as { size?: unknown }).size;
+  const [ow, oh] = Array.isArray(own) && own.length === 2 ? (own as number[]) : [1920, 1080];
+  if (w === ow && h === oh) return;
+  // (the same shape at another size is the same picture bigger or smaller, not another format: scenes are
+  // laid out in the video's own pixels, so --scale makes it bigger and nothing makes it smaller)
+  if (Math.abs(w / h - ow! / oh!) < 0.001)
+    fail(`--size ${w}x${h} has the video's own shape (${ow}x${oh}): that is the same picture at another size, not another format. --scale 2 renders it at twice the size; a smaller file is an encode of the render (ffmpeg -vf scale=...)`);
+  SIZE = [w, h];
+}
+const sizeTag = () => (SIZE ? `${SIZE[0]}x${SIZE[1]}` : null);
 /** A quick look at a video: one sub-frame, a fast encode (see the header). */
 const DRAFT = flag('draft');
 /** The scenes' preview path (ctx.export false) instead of their full-quality one. */
@@ -267,7 +310,7 @@ function linkTime() {
 }
 /** The link to give the director (t as the preview writes it into its own links). */
 const linkTo = (port: number, video: string, t: number | null) =>
-  `http://${PREVIEW_HOST}:${port}/?${new URLSearchParams({ v: video, ...(t === null ? {} : { t: String(+t.toFixed(3)) }) })}`;
+  `http://${PREVIEW_HOST}:${port}/?${new URLSearchParams({ v: video, ...(SIZE ? { size: sizeTag()! } : {}), ...(t === null ? {} : { t: String(+t.toFixed(3)) }) })}`;
 
 /**
  * link: the address of this project's live preview, at --t when given; the lowest port that serves this
@@ -290,7 +333,7 @@ async function link(video: string) {
     ...held((a) => a === 'no answer', 'took the connection but did not answer', 'took the connection but did not answer'),
     ...held(servesHere, `serves this folder through another path ${stale('it')}`, `serve this folder through other paths ${stale('them')}`),
   ];
-  fail(`no preview of this project is running: run \`bun scripts/render.ts preview --video ${video}${t === null ? '' : ` --t ${+t.toFixed(3)}`}\` yourself (the director doesn't run commands); it starts one that keeps running, and prints its link\n`
+  fail(`no preview of this project is running: run \`bun scripts/render.ts preview --video ${video}${SIZE ? ` --size ${sizeTag()}` : ''}${t === null ? '' : ` --t ${+t.toFixed(3)}`}\` yourself (the director doesn't run commands); it starts one that keeps running, and prints its link\n`
     + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_RANGE}.`}`);
 }
 
@@ -450,6 +493,7 @@ async function openPage(browser: Browser, server: Server, video: string, preview
   if (opt('only')) q.set('only', opt('only')!);
   if (SCALE !== 1) q.set('scale', String(SCALE));
   if (opt('fps')) q.set('fps', opt('fps')!);
+  if (SIZE) q.set('size', sizeTag()!);
   for (let load = 1; ; load++) {
     const deps = server.deps();
     await page.goto(`${server.url}/?${q}`);
@@ -490,6 +534,8 @@ async function openPage(browser: Browser, server: Server, video: string, preview
   });
   if (info.width !== info.logicalWidth * SCALE || info.height !== info.logicalHeight * SCALE)
     fail(`the page renders ${info.width}x${info.height}, expected ${info.logicalWidth * SCALE}x${info.logicalHeight * SCALE} (--scale ${SCALE})`);
+  if (SIZE && (info.logicalWidth !== SIZE[0] || info.logicalHeight !== SIZE[1]))
+    fail(`the page lays out ${info.logicalWidth}x${info.logicalHeight}, not the ${sizeTag()} --size asked for (a src/video.ts older than --size: take the template's)`);
   // (a misspelled id would load nothing and render black, and verify would pass on black frames)
   const ids = info.timeline.map((e) => e.id), unknown = ONLY.filter((id) => !ids.includes(id));
   if (unknown.length) fail(`--only ${unknown.join(',')}: no such entry in videos/${video}/timeline.ts. Its entries: ${ids.join(', ') || 'none'}`);
@@ -739,8 +785,8 @@ async function video(page: Page, info: Info, from: number, to: number, fps: numb
  * verify: the checks that run in the page. Renders a frame at every word (start ±1 frame, middle, end),
  * every cut (±1 frame) and every half second; then the determinism probes; then the soundtrack's files.
  */
-async function verifyInPage(page: Page) {
-  return page.evaluate(async () => {
+async function verifyInPage(page: Page, earlier: number[]) {
+  return page.evaluate(async (earlier: number[]) => {
     const p = (window as any).__audara, E = p.engine;
     const fps: number = p.fps, D: number = p.duration, f1 = 1 / fps;
     const TL = p.timeline as { id: string; start: number; end: number }[];
@@ -748,16 +794,55 @@ async function verifyInPage(page: Page) {
     const yieldNow = () => new Promise((r) => setTimeout(r, 0));
     const at = (t: number) => TL.filter((e) => t >= e.start && t < e.end).map((e) => e.id);
 
-    // 1. every word, cut and half second
-    const times = new Set<number>([0, D - f1]);
+    const N = p.width * p.height * 4;
+    const ref = new Uint8Array(N), cur = new Uint8Array(N);
+    /**
+     * A 64-bit hash of a frame's pixels (two 32-bit xor-multiply-rotate lanes over its 32-bit words). A frame is
+     * a function of t, so the same frame hashes the same in every run: equal hashes, unchanged pixels. (The
+     * rotation matters: a multiply carries bits only upward, so without it a change to a pixel's green or blue,
+     * the high bytes of its word, lived in a few top bits and often cancelled out: one level of blue over part
+     * of a white frame hashed the same as the frame.) A change to it bumps HASH_VERSION.
+     */
+    const hash = (b: Uint8Array) => {
+      const u = new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
+      let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+      for (let i = 0; i < u.length; i++) {
+        const k = u[i]!;
+        h1 = Math.imul(h1 ^ k, 2654435761); h1 = (h1 << 13) | (h1 >>> 19);
+        h2 = Math.imul(h2 ^ k, 1597334677); h2 = (h2 << 17) | (h2 >>> 15);
+      }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+    };
+
+    // 1. every word, cut and half second. The frames at every half second, frame 0 and the last, both sides of
+    // every cut and each word's first are also hashed, for the next verify to compare (a readback waits for the
+    // GPU, about 17 ms a frame at 1080p, so not every frame: a lyric video has four per word)
+    const times = new Set<number>([0, D - f1]), hashed = new Set<number>([0, D - f1]);
     for (const w of words) for (const t of [w.start - f1, w.start + f1, (w.start + w.end) / 2, w.end]) times.add(t);
-    for (const e of TL) for (const t of [e.start - f1, e.start + f1, e.end - f1]) times.add(t);
-    for (let t = 0; t < D; t += 0.5) times.add(t);
+    for (const w of words) hashed.add(w.start + f1);
+    for (const e of TL) for (const t of [e.start - f1, e.start + f1, e.end - f1]) { times.add(t); hashed.add(t); }
+    for (let t = 0; t < D; t += 0.5) { times.add(t); hashed.add(t); }
     let frames = 0;
+    const shots: { t: number; scenes: string[]; hash: string }[] = [];
     for (const t of [...times].sort((a, b) => a - b)) {
       if (t < 0 || t >= D) continue;
       p.still(t); frames++;
+      if (hashed.has(t)) {
+        await E.readPixelsAsync(ref);
+        shots.push({ t, scenes: at(t), hash: hash(ref) });
+      }
       if (frames % 20 === 0) await yieldNow();
+    }
+    // ...and the times the earlier report hashed that this run doesn't sample (a word that moved: its old start),
+    // so a change there is compared too. They are compared, not kept in this report, so the list doesn't grow.
+    const again: { t: number; scenes: string[]; hash: string }[] = [];
+    for (const t of earlier) {
+      if (!(t >= 0 && t < D) || hashed.has(t)) continue;
+      p.still(t);
+      await E.readPixelsAsync(ref);
+      again.push({ t, scenes: at(t), hash: hash(ref) });
     }
 
     // 2. determinism: a frame must not depend on what was rendered before it. Each probe time is rendered
@@ -769,8 +854,6 @@ async function verifyInPage(page: Page) {
     const ws = words.length <= 8 ? words : Array.from({ length: 8 }, (_, i) => words[Math.floor((i * words.length) / 8)]!);
     for (const w of ws) probes.add(snap((w.start + w.end) / 2));
     for (let i = 0; i < 16; i++) probes.add(snap(D * ((0.5 + i * 0.6180339887) % 1))); // spread evenly, not on the beat grid
-    const N = p.width * p.height * 4;
-    const ref = new Uint8Array(N), cur = new Uint8Array(N);
     const render = async (from: number, t: number, into: Uint8Array) => {
       E.render(from, f1, false, 1);
       E.render(t, f1, false, 1);
@@ -831,8 +914,8 @@ async function verifyInPage(page: Page) {
     });
     const fileLengths: Record<string, number | null> = {};
     for (const s of segs) if (!(s.file in fileLengths)) fileLengths[s.file] = await meta('/' + s.file.split('/').map(encodeURIComponent).join('/'));
-    return { frames, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
-  });
+    return { frames, shots, again, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
+  }, earlier);
 }
 
 /** A project file as JSON, or null when it is missing or isn't JSON. */
@@ -889,9 +972,82 @@ function checkTimingData(video: string, files: string[], duration: number) {
   return { errors, warnings, lengthFix };
 }
 
+type Shot = { t: number; scenes: string[]; hash: string };
+/**
+ * How verifyInPage hashes a frame, kept in the report: a report hashed another way isn't compared, since every
+ * frame would differ (2: the lanes rotate their state; 1, unmarked: they didn't).
+ */
+const HASH_VERSION = 2;
+type Entry = { id: string; start: number; end: number };
+/**
+ * What changed since an earlier verify of the same video (`prev`, its report): the frames both rendered at the
+ * same times, compared by the hash of their pixels, so a sampled frame that changed is known, not guessed (a frame is
+ * a function of t); a change of length; and the timeline entries that were added, removed or moved. `lines` are
+ * for the console, `report` for verify.json. A report from another size, scale, frame rate, path or --only isn't
+ * compared.
+ */
+function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeline: Entry[]) {
+  const d = typeof prev?.at === 'string' ? new Date(prev.at) : null, two = (n: number) => String(n).padStart(2, '0');
+  const when = d && !isNaN(+d) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}` : 'an earlier run';
+  const head = `changed since the verify of ${when} (${from})`;
+  const was = (k: string, a: unknown, b: unknown) => (JSON.stringify(a) === JSON.stringify(b) ? null : `${k} ${JSON.stringify(a)}, now ${JSON.stringify(b)}`);
+  const why = !Array.isArray(prev?.shots) ? 'it predates frame hashes'
+    : (prev.hashVersion ?? 1) !== HASH_VERSION ? 'another copy of render.ts hashed its frames another way'
+    : prev.video !== info.video ? `it is of video ${JSON.stringify(prev.video)}`
+    : was('size', prev.size, [info.logicalWidth, info.logicalHeight]) ?? was('scale', prev.scale, SCALE) ?? was('fps', prev.fps, info.fps)
+      ?? was('path', prev.path, info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)') ?? was('--only', prev.only, ONLY.length ? ONLY : null);
+  if (why) return { lines: [`changes: not compared with ${from} (${why})`], report: { since: from, compared: false, why } };
+  // a change of length: the time only one run has can't be compared, so it is named (a video cut to half its
+  // length with its timeline left as it was would otherwise show no sampled frame changed)
+  const D = info.duration, D0 = typeof prev.duration === 'number' && Number.isFinite(prev.duration) ? prev.duration : D;
+  const resized = Math.abs(D0 - D) > 1e-6, both = Math.min(D0, D);
+  // (keyed by the exact time: both runs compute it the same way, and JSON keeps a number exactly; a rounded
+  // key would merge a word's frame at 0.49997 s with the half second's at 0.5, two different frames)
+  const before = new Map<number, string>((prev.shots as Shot[]).map((s) => [s.t, s.hash]));
+  // stretches of changed frames: a run of them, broken by a frame that is the same (a time only one run
+  // rendered, such as a word that moved, is neither)
+  const runs: Shot[][] = [];
+  let compared = 0, changed = 0, open = false;
+  for (const s of [...shots].sort((a, b) => a.t - b.t)) {
+    const h = before.get(s.t);
+    if (h === undefined) continue;
+    compared++;
+    if (h === s.hash) { open = false; continue; }
+    changed++;
+    if (open) runs.at(-1)!.push(s); else { runs.push([s]); open = true; }
+  }
+  const stretches = runs.map((r) => ({ from: r[0]!.t, to: r.at(-1)!.t, scenes: [...new Set(r.flatMap((s) => s.scenes))] }));
+  const named = (ids: string[]) => (ids.length ? ids.map((x) => `'${x}'`).join(', ') : 'no scene');
+  const span = (s: { from: number; to: number }) => (s.from === s.to ? `${s.from.toFixed(3)} s` : `${s.from.toFixed(3)}–${s.to.toFixed(3)} s`);
+  const old = new Map<string, Entry>(Array.isArray(prev.timeline) ? (prev.timeline as Entry[]).map((e) => [e.id, e]) : []);
+  const now = new Map<string, Entry>(timeline.map((e) => [e.id, e]));
+  const moved: string[] = [];
+  const at = (e: Entry) => `${e.start.toFixed(3)}–${e.end.toFixed(3)}`;
+  for (const [id, e] of now) {
+    const o = old.get(id);
+    if (!o) moved.push(`'${id}' added at ${at(e)} s`);
+    else if (Math.abs(o.start - e.start) > 1e-6 || Math.abs(o.end - e.end) > 1e-6) moved.push(`'${id}' ${at(o)} → ${at(e)} s`);
+  }
+  for (const id of old.keys()) if (!now.has(id)) moved.push(`'${id}' removed`);
+  const lines = [!changed
+    ? `${head}: no sampled frame${resized ? ` in the 0–${both.toFixed(3)} s both runs have` : ''} (${compared} compared)`
+    : `${head}: ${changed} of ${compared} sampled frames, in ${stretches.map((s) => `${span(s)} (${named(s.scenes)})`).join('; ')}`
+      + (changed > 0.9 * compared && compared >= 10 ? ' — nearly every frame: as after a change to what every scene shares (src/look.ts, POST, the engine, a font); if nothing like that changed, the browser or the GPU did' : '')];
+  if (resized) lines.push(`length since then: ${D0.toFixed(3)} → ${D.toFixed(3)} s (${both.toFixed(3)}–${Math.max(D0, D).toFixed(3)} s ${D < D0 ? 'removed' : 'added'}, not compared)`);
+  if (moved.length) lines.push(`timeline since then: ${moved.join('; ')}`);
+  return { lines, report: { since: from, at: prev.at ?? null, compared, changed, stretches, duration: resized ? { was: D0, now: D } : null, timeline: moved } };
+}
+
 async function verify(page: Page, info: Info, logs: string[], out: string) {
   const t0 = performance.now();
-  const r = await verifyInPage(page);
+  // the earlier report to compare with: --since <report>, else the one this run replaces
+  const since = opt('since') ? path.resolve(opt('since')!) : out;
+  if (opt('since') && !existsSync(since)) fail(`--since ${opt('since')}: no such report (an earlier verify.json, kept for instance in a critic round's folder)`);
+  let prev: any = null;
+  try { prev = existsSync(since) ? JSON.parse(readFileSync(since, 'utf8')) : null; } catch {}
+  // (the earlier report's sample times, so a frame it sampled that this run wouldn't, such as a moved word's, is compared too)
+  const earlier: number[] = Array.isArray(prev?.shots) ? prev.shots.map((s: Shot) => s.t).filter((t: unknown) => typeof t === 'number' && Number.isFinite(t)) : [];
+  const r = await verifyInPage(page, earlier);
   const errors: string[] = [], warnings: string[] = [...info.warnings];
   const D = info.duration;
   // scene and boot errors, as they stand after all those renders
@@ -958,20 +1114,27 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
   errors.push(...browserErrors.map((l) => `browser: ${l}${SECOND_THREE.test(l) ? ` ${SECOND_THREE_FIX}` : ''}`));
   const passed = errors.length === 0;
   const renders = r.probes.reduce((n, p) => n + p.variants.length, 0);
+  const rel = path.relative(PROJECT, since), from = rel.startsWith('..') || path.isAbsolute(rel) ? since : rel.replace(/\\/g, '/');
+  const changes = prev ? changesSince(prev, from, [...r.shots, ...r.again], info, info.timeline)
+    : { lines: ['changes: none to compare (the first verify here: the next one names the stretches that change after it)'], report: null };
   const result = {
-    passed, video: info.video, title: info.title, duration: D, durationSource: info.durationSource, fps: info.fps,
+    passed, at: new Date().toISOString(), video: info.video, title: info.title, duration: D, durationSource: info.durationSource, fps: info.fps,
     size: [info.logicalWidth, info.logicalHeight], scale: SCALE, frames: r.frames, only: ONLY.length ? ONLY : null,
     path: info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)',
     determinism: { probes: r.probes.length, renders, mismatches: bad.length, perScene, details: r.probes },
     cuts: { times: r.cuts, motionBlurLeaks: r.leaks },
     audio: { segments: r.segments, fileLengths: r.fileLengths },
     timeline: info.timeline, errors, warnings, browserLog: logs, seconds: +((performance.now() - t0) / 1000).toFixed(1),
+    changes: changes.report,
+    // (the frames step 1 hashed, with their scenes: what the next verify compares)
+    hashVersion: HASH_VERSION, shots: r.shots,
   };
   mkdirSync(path.dirname(out), { recursive: true });
   await Bun.write(out, JSON.stringify(result, null, 2));
   console.log(`verify ${info.video}${info.exporting ? '' : " (the scenes' preview path)"}: ${passed ? 'PASS' : 'FAIL'}  ${r.frames} frames, ${r.probes.length} determinism probes (${renders} renders, ${bad.length} mismatched), ${r.cuts.length} cut${r.cuts.length === 1 ? '' : 's'} checked for motion-blur leaks (${r.leaks.length} leaking), ${errors.length} error${errors.length === 1 ? '' : 's'}, ${warnings.length} warning${warnings.length === 1 ? '' : 's'}  (${result.seconds}s)`);
   for (const e of errors) console.log(`  error: ${e}`);
   for (const w of warnings) console.log(`  warning: ${w}`);
+  for (const l of changes.lines) console.log(`  ${l}`);
   console.log(`  report: ${out}`);
   return passed;
 }
@@ -1004,6 +1167,13 @@ function measure(page: Page, o: { from: number; n: number; fps: number; bare: bo
 // ------------------------------------------------------------------ main
 async function main() {
   if (!MODES.includes(mode)) fail(`unknown mode '${mode}': use one of ${MODES.join(', ')}`);
+  const unknown = argv.filter((a) => a.startsWith('--') && !OPTIONS.has(a.slice(2)));
+  if (unknown.length)
+    fail(`${unknown.join(', ')}: not an option of this render.ts (its header lists every one). An instruction that names it is for a newer copy: the code-video skill's scripts/init.ts run again with --force updates the project's scripts, keeping each old file as <file>.orig`);
+  // (an option given without its value reads as not given: --size alone would render the video's own format
+  // into its own folder, a bare --out would write to the default path)
+  const bare = argv.filter((a, i) => a.startsWith('--') && !FLAGS.has(a.slice(2)) && (argv[i + 1] === undefined || argv[i + 1]!.startsWith('--')));
+  if (bare.length) fail(`${bare.join(', ')}: no value after it (the header says what each option takes)`);
   if (DRAFT && mode !== 'video') fail(`--draft is for video (a quick look at the motion); ${mode} ${mode === 'poster' ? 'is the full-quality frame' : 'renders one sub-frame per frame already'}`);
   parseSampling();
   if (mode === 'verify' && (SAMPLES_GIVEN || opt('shutter') !== undefined))
@@ -1015,10 +1185,19 @@ async function main() {
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
+  parseSize(name!);
   if (mode === 'link') return link(name!);
   if (mode === 'preview') return preview(name!);
-  const OUT = path.join(PROJECT, 'out', name!);
-  console.log(`video: ${name}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
+  const OUT = path.join(PROJECT, 'out', name!, ...(SIZE ? [sizeTag()!] : []));
+  console.log(`video: ${name}${SIZE ? ` at ${sizeTag()} (--size: into out/${name}/${sizeTag()}/)` : ''}${opt('video') ? '' : ` (default; others: ${videos.filter((v) => v !== name).join(', ') || 'none'})`}`);
+  // (an explicit --out wins over --size: one copied from a command for the video's own format, such as
+  // --out out/<video>/sheet.png, would replace that format's file)
+  if (SIZE && opt('out')) {
+    const o = path.resolve(opt('out')!);
+    const under = (dir: string) => { const r = path.relative(dir, o); return !!r && !r.startsWith('..') && !path.isAbsolute(r); };
+    if (under(path.join(PROJECT, 'out', name!)) && !under(OUT))
+      console.log(`warning: --out ${opt('out')} is outside out/${name}/${sizeTag()}/, where --size keeps this format's files: if a file of the video's own format is there, this run replaces it`);
+  }
 
   const server = await ensureServer();
   let browser: Browser | undefined;

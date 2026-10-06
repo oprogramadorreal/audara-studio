@@ -1,0 +1,26 @@
+{
+  "id": "cv-product-concept-mockup",
+  "skill": "code-video",
+  "setup": {
+    "files": [
+      "tally-home.png",
+      "tally-scan.png"
+    ]
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "Make a 15-second teaser for Budget Goals, the feature our app Tally ships next month. It isn't built yet, so design a concept screen for it in the style of our home screen (tally-home.png) and label it 'Concept'."
+    },
+    {
+      "prompt": "Looks good. I want the MP4."
+    }
+  ],
+  "assertions": [
+    "The video shows a Budget Goals screen made for it, in the style of tally-home.png (its palette, type and card layout, judged on stills beside the file), marked 'Concept' on screen whenever it shows (stills every 0.5 s of the MP4); the session made it, rather than asking for a screenshot of a feature that isn't built or putting a placeholder in its place.",
+    "assets/SOURCES.md records the concept screen as made for this video at the director's request (not as supplied or captured), and tally-home.png or tally-scan.png, wherever they appear, as supplied by the director.",
+    "A full-cut critic round ran on a draft before the MP4 (out/<name>/critique/r<N>/full.md), and no report lists the requested, marked concept screen as a lookalike or a fabrication to fix; the final cut still shows it, marked.",
+    "No figure or claim about Tally or Budget Goals is presented as a fact beyond the prompt's and the two screens' own (no savings, user counts, accuracy or dates past 'next month'); values inside the concept screen read as sample data (under the 'Concept' mark, or labelled as sample).",
+    "After turn 2, a full render (not a --draft) of 15 +/- 0.5 s exists, made after turn 2 asked for it, and render.ts verify passes."
+  ]
+}

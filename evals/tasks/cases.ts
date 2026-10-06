@@ -29,7 +29,7 @@ const cases: Record<string, Case> = {
       "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
       'render.ts verify passes for the video (run it).',
       "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
-      'The builds end in the preview, their replies offering the render: no full render (not a --draft) runs before turn 3 asks for one, and turn 2\'s notes are applied and checked in the preview and stills (the transcripts).',
+      "Turn 1's build ends in the preview, its reply offering the render, with no full render (not a --draft) in that turn. Since 0.2.0 that offer can make turn 2's \"Go ahead\" a yes to it: a full render in turn 2 passes when the reply says it took the words that way, and otherwise none runs before turn 3 asks for one. Turn 2's notes are applied and checked in the preview and stills before any render (the transcripts).",
       'The brief honours "Minimal and elegant": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2\'s "no tagline, just the name" in the director\'s words.',
     ],
   },
@@ -73,11 +73,31 @@ const cases: Record<string, Case> = {
     turns: [{ prompt: 'the title comes in too fast at the start, make the intro slower' }],
     assertions: [
       "Before replying, the session itself ran `bun run check` and `render.ts verify`, and the scene keeps its existing timing scheme (fractions of the scene's entry, a beat grid or timing data), with no typed seconds.",
-      'Only files under videos/<video>/ change; src/, scripts/ and other videos are unchanged (git diff); docs/STYLE.md may change only to correct what the change made wrong.',
+      "Only files under videos/<video>/ change; src/, scripts/ and other videos are unchanged (git diff); docs/STYLE.md may change only to correct what the change made wrong. The one exception: when the setup commit's scripts/render.ts is older than the skill's (its header doesn't document `--since <report>`) and the session updated the project as AGENTS.md says (init --force), the files init replaced may change, each beside its .orig copy.",
+      "When the setup commit's scripts/render.ts documents `--since <report>` (a project made with 0.3.0 or later): the project starts without out/, so the session ran verify before its change as well as after (transcript order), and the last verify compared the two: out/<video>/verify.json's `changes` names the stretches that changed. The reply's account of what moved agrees with them, and any stretch outside the intro that changed is named in the reply with its link, or undone. With an older render.ts, the same holds if the session updated it first; if it didn't, the reply says that what changed couldn't be measured, and why.",
       "The reply links this project's running preview, <address>/?v=<video>&t=<s>, where <address>/__audara returned this work folder during the run (result.json previews, or the transcript shows the agent checked it), with t inside the changed span or up to about 0.5 s before it. The changed span runs from where the title (not the background) first differs visibly between stills of the old and the new version at the same times to where the two match again.",
       "The change answers the note at the start: on stills of the old and the new version at the same times, over the ~1.5 s after the title first visibly changes in the old version, the new version shows less of the title (lit, drawn or opaque), because it starts later (the reading 'too soon') or comes in slower ('too quick'); a change that only stretches the end fails. And the reply names the reading it took and offers the other.",
       'No full MP4 render is made unless asked.',
       "The note is recorded in the director's words in videos/<video>/TREATMENT.md's Decisions (a section added if the project predates it), with the reading taken.",
+    ],
+  },
+  // A second format of a finished video, in a later session on the project a cv-title-card run made (run-tasks.sh
+  // gives it the same project as the later-session case): the 16:9 card recomposed for a vertical frame, not
+  // cropped, sharing its timeline, and the 16:9 left as it was.
+  'cv-second-format': {
+    skill: 'code-video', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 75,
+    turns: [
+      { prompt: 'I also need this title card as a vertical video for Instagram Reels.' },
+      { prompt: 'Render it.' },
+    ],
+    assertions: [
+      "After turn 2 a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), and no full render (not a --draft) ran before turn 2.",
+      'The vertical version is recomposed, not cropped, letterboxed or scaled down: on full-size stills at the treatment\'s beat times, nothing the 16:9 frame shows is cut off at the sides, there are no bars, and the title is laid out for the tall frame (its size and place differ from a centre crop of the 16:9 frame).',
+      "Text meant to be read is at 44 px or more and inside the Reels safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size 1080x1920 frames.",
+      "The two formats share one timeline: the vertical one is the same video at --size 1080x1920 (render.ts's out/<video>/1080x1920/ holds its verify.json and MP4), or the reply says why it needed another edit; its entries start and end at the 16:9 version's times (verify.json timelines).",
+      'The 16:9 version is unchanged: stills at its beat times are pixel-identical to the project as the run started (the setup commit), unless the reply names a change to it and why.',
+      "The vertical format was checked on its own before its render: render.ts verify with --size passed, a sheet of it under out/<video>/1080x1920/ was looked at, and a reply gives its preview link with &size=1080x1920.",
+      "TREATMENT.md's Decisions record the request in the director's words, and its Deliver line names the vertical format.",
     ],
   },
   // creative range: run 3 times with the skills and 3 times without (--without); a blind judge compares
@@ -92,7 +112,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'An MP4 of 10.00 +/- 0.04 s exists, and the loop seam is clean: the mean absolute difference between the first and the last frame is at most about 1 level (8-bit).',
       'The final message reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.',
-      'If a critic round ran, it was a fresh subagent given the treatment, the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message.',
+      'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
       'No cliché from the style template\'s avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.',
       'For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.',
     ],
@@ -124,6 +144,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
       'With the skills, turn 1 ends in the preview, its reply offering the render, and no full render (not a --draft) runs before turn 2 asks for the MP4 (the transcripts).',
+      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
       'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
       'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',
@@ -162,6 +183,39 @@ const cases: Record<string, Case> = {
       'On screen, "Why indexes make SQL fast" and "Index the columns you search." appear exactly as written; any other on-screen narration is verbatim.',
       'The cut to the row table lands within 2 frames of the end of "every row" (its first occurrence, words.json); the tree holds at least 2.0 s; the counter reads 20 within 0.25 s of "twenty".',
       'The video carries the narration (its last MP4, draft or final); render.ts verify passes; no reply rewords the script, and any change was asked about first.',
+    ],
+  },
+  // A product film from the director's own screens, one of which the story needs and nobody has: the real
+  // screens shown as they are, no lookalike for the missing one, no figure nobody gave.
+  'cv-product-real-screens': {
+    skill: 'code-video', setup: { files: ['tally-home.png', 'tally-scan.png'] }, timeoutMinutes: 120,
+    turns: [
+      { prompt: "Make a 15-second launch teaser for receipt scanning, the new feature of our budgeting app Tally. Our home and scan screens are in tally-home.png and tally-scan.png. Show someone scanning a receipt and the expense landing in their monthly budget." },
+      { prompt: "Go ahead. The budget screen after a scan isn't designed yet." },
+    ],
+    assertions: [
+      "Turn 1's brief names the screen after the scan (the budget with the new expense) as one neither file shows and asks for it, with the default it builds with meanwhile (the moment told another way, or a placeholder that reads as one), and goes on building in the same turn.",
+      "tally-home.png and tally-scan.png are used as files (copied into videos/<name>/assets/ and loaded by a scene), not redrawn: on a still where a screen is shown flat and at rest, its interior matches the file's pixels within about 4 levels once scaled to the size shown; each has a line in assets/SOURCES.md naming the director as its source.",
+      "No frame shows an app screen the two files don't (a budget or expense screen drawn to look like Tally's) unless it is plainly marked as a placeholder, judged on stills every 0.5 s of the last MP4; after turn 2, the expense landing is told without one (the home screen's own elements, type, a graphic).",
+      "No figure or claim about Tally appears beyond the prompt's and the screens' own (no speed, accuracy, user count or savings); TREATMENT.md has a Never claim line; a value the scenes change over a real screen (a new total) agrees with the screens' own figures ($1,240 + $42.80) or is labelled as illustrative.",
+      "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and a full render in turn 2 passes only when turn 1 offered it and the reply says it took \"Go ahead\" as the yes.",
+    ],
+  },
+  // The exception to the case above: a concept screen the director asks for, of a feature that isn't built. The
+  // request is honoured and marked as a concept, the full-cut critic doesn't flag what was asked for, and claims
+  // about the product still need a source. Turn 2 asks for the file in so many words.
+  'cv-product-concept-mockup': {
+    skill: 'code-video', setup: { files: ['tally-home.png', 'tally-scan.png'] }, timeoutMinutes: 120,
+    turns: [
+      { prompt: "Make a 15-second teaser for Budget Goals, the feature our app Tally ships next month. It isn't built yet, so design a concept screen for it in the style of our home screen (tally-home.png) and label it 'Concept'." },
+      { prompt: 'Looks good. I want the MP4.' },
+    ],
+    assertions: [
+      "The video shows a Budget Goals screen made for it, in the style of tally-home.png (its palette, type and card layout, judged on stills beside the file), marked 'Concept' on screen whenever it shows (stills every 0.5 s of the MP4); the session made it, rather than asking for a screenshot of a feature that isn't built or putting a placeholder in its place.",
+      "assets/SOURCES.md records the concept screen as made for this video at the director's request (not as supplied or captured), and tally-home.png or tally-scan.png, wherever they appear, as supplied by the director.",
+      "A full-cut critic round ran on a draft before the MP4 (out/<name>/critique/r<N>/full.md), and no report lists the requested, marked concept screen as a lookalike or a fabrication to fix; the final cut still shows it, marked.",
+      "No figure or claim about Tally or Budget Goals is presented as a fact beyond the prompt's and the two screens' own (no savings, user counts, accuracy or dates past 'next month'); values inside the concept screen read as sample data (under the 'Concept' mark, or labelled as sample).",
+      'After turn 2, a full render (not a --draft) of 15 +/- 0.5 s exists, made after turn 2 asked for it, and render.ts verify passes.',
     ],
   },
   // Detailed visual direction and no script: every instruction followed and measurable; what is left open is the model's.

@@ -7,7 +7,7 @@ and the offline export. This guide is the API and its rules; the reasons behind 
 measurements and the mistakes `verify` can't see, are in the code-video skill's `references/contract.md`.
 
 Contents: Running things · The project and its videos · Data · Writing a scene · Rules · Stateful scenes ·
-Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding a font
+Toolbox · Typography · Output scale (4K) · Another format · Motion blur and sampling · Adding a font
 
 ## Running things
 
@@ -66,7 +66,14 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
   must give identical pixels); and checks that motion blur never carries a scene across a hard cut.
   One-line verdict, details in `out/<video>/verify.json`, exit code 1 on failure. Warnings don't fail it,
   among them one for every video but `example` while `src/look.ts` still has the template's test-card
-  palette, which the preview shows too.
+  palette, which the preview shows too. Then it says what changed since the verify whose report it
+  replaces: the stretches whose frames differ (it hashes the pixels at every half second, cut and word
+  start, and again at the times the earlier report sampled, such as a moved word's old start; a frame is a
+  function of `t`, so an equal hash is an unchanged frame), with their scenes, a change of length (the
+  time only one run has isn't compared), and the timeline entries added, removed or moved. After a change, those should be the stretches you meant to change; any
+  other is a side effect (a shared helper, the look, a moved cut). With no report yet (`out/` isn't
+  committed), run verify before you change anything. `--since <report>` compares with an earlier
+  `verify.json` kept elsewhere instead.
 - **Speed**: `bun scripts/render.ts perf --video <video> --from 20 --to 25 --only hook` prints what a
   frame costs the preview on the scenes' preview path (render until the GPU is done), split into the
   engine's own share (post-processing, paid by every frame) and the scenes', and what an export pays per
@@ -82,9 +89,14 @@ Toolbox · Typography · Output scale (4K) · Motion blur and sampling · Adding
 - `--samples` and `--shutter` work in stills, sheet, poster, video and perf: sub-frames per frame (default
   1, `auto` for `video` and `poster`) and the fraction of the frame time they spread over (default 0.2).
   verify's renders are fixed.
-- Every option is in the header of `scripts/render.ts`; this list has the common ones.
+- Every option is in the header of `scripts/render.ts`; this list has the common ones. An option it doesn't
+  know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
+  updates the project's scripts), and so does one given without its value (`--size` alone would otherwise
+  render the video's own format).
 - Typecheck: `bun run check`, or just your files: `bunx tsc --noEmit -p tsconfig.json 2>&1 | grep scenes/yourscene`
-  (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`).
+  (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`). A bun script in a
+  video's `audio/` (a synthesized score, say) is checked with `scripts/`, under bun's types, not with the
+  scenes: bun's typing of `import.meta.hot` would break the browser program's.
 - render.ts prints `SCENE ERRORS` and browser console errors: read them.
 - 4K: add `--scale 2` to any mode (`stills` then saves full-resolution PNGs). Check your scene at both
   scales: downscaled, the 4K frame should look like the 1x one, only sharper.
@@ -277,7 +289,8 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   uniforms and three.js, and `rgba('<key>', alpha)` for Canvas2D (`src/engine/palette.ts`). Values from
   about 0.7 up start to bloom (`bloomThreshold` 1 with a soft knee) and the tone shoulder rolls off
   everything above 0.72: a large area of a near-white or fully saturated colour reads a little softer
-  than its hex, and values above 1 glow.
+  than its hex, and values above 1 glow. A frame showing a picture that must match its file (a screen, a
+  logo) returns `{ bloom: 0, shoulder: 0 }`: both off, its white stays 255.
 - `ctx.params` holds the timeline entry's params (one module can serve several entries); `ctx.start`,
   `ctx.end` its window; `ctx.W`, `ctx.H` the logical frame; `ctx.export` whether render.ts is rendering
   (see performance, below); `f.lt`/`f.p` local time and progress.
@@ -461,6 +474,28 @@ laying out in logical px (`W`, `H`, `ctx.W`, `ctx.H` never change); the engine h
   which is identical at 1× and keeps the 1× ink with sharper edges at 4K (`rampLine` does the same for the
   linear-ramp idiom). `hatch`, `engrave` and `aaStroke` already do this. LOD thresholds and supersampling
   offsets expressed in pixels should be logical (`fwidth(u) * PX_SCALE`, offsets `/ PX_SCALE`).
+
+## Another format
+
+A video can also play in a second format, a 9:16 version of a 16:9 piece, say: `--size 1080x1920` in every
+render.ts mode, and in the preview `?size=1080x1920` (`bun scripts/render.ts preview --video <video> --size
+1080x1920` prints that link). It is the same video, with the same timeline, sound, timing data and scenes,
+so a cut or a fix lands in both formats. Only the frame changes: `W`, `H`, `ctx.W` and `ctx.H` are the new
+size, and render.ts writes everything for it under `out/<video>/<W>x<H>/` (its `verify.json`, stills,
+sheets, `<video>.mp4`), beside the video's own format, never over it. A size with the video's own shape
+is refused: that is the same picture at another size, which `--scale` makes.
+
+- Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
+  `H` and the format's safe area (`docs/STYLE.md`; for a format the project hasn't used yet, the Layout
+  tables in the code-video skill's `references/style-template.md`), so a scene recomposes instead of
+  cropping.
+- Where a shape needs another composition, branch on it in the scene (`const tall = H > W`): fewer
+  elements, a vertical stack, type at that format's minimum size. What carries the story stays: the
+  timing, the persistent actor, the palette.
+- Check each format on its own (`verify`, sheets and stills with `--size`): a layout that works in one
+  shape can collide, or leave the safe area, in the other.
+- A format that needs another edit (another length, other scenes) is another video, with its own
+  timeline and its own timing data from the soundtrack skill: `--size` shares everything but the frame.
 - Offscreen canvases used as textures (atlases, text planes) keep their own size: make them `SCALE`× larger
   (with `ctx.scale(SCALE, SCALE)`) if they are shown large, or they look soft at 4K.
 - Post (bloom, halation, CA, grain, vignette) and the HUD scale automatically; the bloom pyramid stays at

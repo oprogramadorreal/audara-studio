@@ -15,5 +15,6 @@
     "noImplicitOverride": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "videos"]
+  "include": ["src", "videos"],
+  "exclude": ["videos/*/audio"]
 }

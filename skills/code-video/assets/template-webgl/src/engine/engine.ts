@@ -142,16 +142,17 @@ export class Engine {
     am.blendSrc = THREE.OneFactor; am.blendDst = THREE.OneFactor;
     am.blendSrcAlpha = THREE.ZeroFactor; am.blendDstAlpha = THREE.OneFactor;
     // sampling error: per block of B x B physical px (2x2 logical), how far the displayed average moves when a
-    // step's new sub-frames (2n, summed in b) are merged with the n before them (summed in a): 2/3 of the gap
+    // step's new sub-frames (2n, summed in b) are merged with the n before them (summed in a): 2/3 of the gap,
+    // through as much of the tone shoulder as the frame's post applies (it flattens the highlights' gaps)
     const B = 2 * SCALE, ew = Math.ceil(PW / B), eh = Math.ceil(PH / B), R = 16;
     const small = { depthBuffer: false, type: THREE.FloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, pxScale: 1 } as const;
     this.errRT = makeRT(ew, eh, small);
     this.maxRT = makeRT(Math.ceil(ew / R), Math.ceil(eh / R), small);
     this.errBuf = new Float32Array(this.maxRT.width * this.maxRT.height * 4);
     this.errPass = new FSPass(/* glsl */ `
-      uniform sampler2D a; uniform sampler2D b; uniform float invA, invB;
+      uniform sampler2D a; uniform sampler2D b; uniform float invA, invB, shoulderAmt;
       ${SHOULDER_GLSL}
-      vec3 disp(vec3 x) { return toSRGB(sat(shoulder(max(x, 0.0)))); }
+      vec3 disp(vec3 x) { x = max(x, 0.0); return toSRGB(sat(mix(x, shoulder(x), shoulderAmt))); }
       void main() {
         ivec2 p0 = ivec2(gl_FragCoord.xy) * ${B}, lim = ivec2(${PW - 1}, ${PH - 1});
         vec3 sa = vec3(0.0), sb = vec3(0.0);
@@ -161,7 +162,7 @@ export class Engine {
         }
         vec3 e = abs(disp(sa * (invA / ${B * B}.0)) - disp(sb * (invB / ${B * B}.0)));
         fragColor = vec4(170.0 * max(e.r, max(e.g, e.b)), 0.0, 0.0, 1.0);
-      }`, { a: { value: null }, b: { value: null }, invA: { value: 1 }, invB: { value: 1 } });
+      }`, { a: { value: null }, b: { value: null }, invA: { value: 1 }, invB: { value: 1 }, shoulderAmt: { value: 1 } });
     this.maxPass = new FSPass(/* glsl */ `
       uniform sampler2D e;
       void main() {
@@ -381,7 +382,8 @@ export class Engine {
         for (let l = lo; l < hi; l++) {
           clearRT(r, this.newRT, [0, 0, 0], 0);
           for (let k = n; k < 3 * n; k++) sub(k, u[k]!, this.newRT, (dt * shutter) / (3 * n));
-          const err = this.sampleError(n) / 2;
+          // (the post is the frame's already: the first set holds the sub-frame at POST_U)
+          const err = this.sampleError(n, post.shoulder) / 2;
           this.lastErrors.push(err);
           this.comp.draw(r, this.newRT.texture, this.sumRT, { mode: 'add', opacity: 1, premult: false });
           n *= 3;
@@ -410,15 +412,16 @@ export class Engine {
 
   /**
    * How far the displayed frame (8-bit levels, worst block) moves when the 2n sub-frames summed in newRT
-   * are merged with the n summed in sumRT. Stepped copies of a fast edge differ between the two
-   * interleaved sets; a converged streak does not.
+   * are merged with the n summed in sumRT, through the frame's tone shoulder (`shoulder`, its post's).
+   * Stepped copies of a fast edge differ between the two interleaved sets; a converged streak does not.
    */
-  private sampleError(n: number) {
+  private sampleError(n: number, shoulder: number) {
     const r = this.renderer;
     this.errPass.u.a!.value = this.sumRT.texture;
     this.errPass.u.b!.value = this.newRT.texture;
     this.errPass.u.invA!.value = 1 / n;
     this.errPass.u.invB!.value = 1 / (2 * n);
+    this.errPass.u.shoulderAmt!.value = shoulder;
     this.errPass.render(r, this.errRT);
     this.maxPass.u.e!.value = this.errRT.texture;
     this.maxPass.render(r, this.maxRT);

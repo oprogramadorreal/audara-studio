@@ -25,7 +25,7 @@ The treatment grows with the piece, not with this template:
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and
   its transition out (a hard cut says so), the moments that must land, and "never claim" when it states
-  facts.
+  facts or shows a product.
 - **A whole-song music video, a long explainer, or anything several scene authors make at once: the
   whole skeleton,** with scene briefs. Length decides, not the kind of video: a 30-s cut of a song is a
   spot.
@@ -48,6 +48,7 @@ request says.
 | Lyrics on screen | the song has words | none; picture events can still land on sung words once their timings exist |
 | Sound | the request has no audio and says nothing about it | music, and effects on the picture's actions, synthesized in code (free); a voice or generated music only after a yes, quoted with its cost, built meanwhile with a free stand-in; none when the director says silent or the piece plays muted (a feed loop, a stream background) |
 | Brand assets | it's for a named brand, show, event or person | the name set in the style's type; no invented logo, tagline or label |
+| Product screens and figures | it shows a product (an app, a site, a device) | a factual demo: its real screens, as given or captured from its live site with the director's OK, and only the figures they gave; a screen it needs that nobody has is asked for, and until then told another way or with a placeholder that reads as one. A concept or mockup they ask for: made, and marked as one where it could pass for the product. Neither presents an invented feature, result or figure as the product's (`references/images.md`) |
 
 Anything you decide that the director didn't say (text they didn't give, their name restyled into
 capitals, the format, the window, the music) goes in the **Assumed** line, where it can be vetoed. Then
@@ -81,8 +82,9 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
   plus what this video changes and why>, and the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
-- **Never claim:** <what would be false or unprovable here; how illustrative values are labelled>. (When
-  the piece states facts.)
+- **Never claim:** <what would be false or unprovable here, for a product a feature, result or figure it
+  doesn't have, shown as its own (a concept the director asked for is marked as one); how illustrative
+  values are labelled>. (When the piece states facts or shows a product.)
 - **Preset:** commercial. (Only when the director chose it.)
 - **Deliver:** <the standard set, plus what this video needs beyond it>.
 
@@ -259,6 +261,15 @@ video, and `sheet --cuts`: frame 0, the last frame and five frames around every 
 (`references/critique.md`, "Delivery"). Keep it all: it is what the director checks and what a later
 session compares against. Work-in-progress clips (`--draft`) need none of it. The **Deliver** line adds
 only what this video needs beyond that, such as another format, a 4K master (`--scale 2`) or captions.
+
+**Another format** (a vertical version for Reels beside the 16:9 master, say) is recomposed, never cropped
+or letterboxed: a crop loses what the edges carried and keeps type sized for the other screen. It is the
+same video at another size (`--size 1080x1920`, `docs/ENGINE.md`, "Another format"), so it shares the
+timeline, the sound and every fix; the scenes lay it out for its own frame, with fewer elements, a
+hierarchy that reads top to bottom, and type at its minimum size inside its safe area. A project made in
+one format has only that one's in `docs/STYLE.md`: copy the new format's row from the Layout tables in
+`references/style-template.md` there first (Reels keeps 200 px clear on the right, not the left's 60). The Deliver line names it, the storyboard says what changes in that format
+when something does, and it gets its own sheets, QC and full-cut critic round on its own draft.
 
 ## Example: a 15-second pool reopening teaser
 

@@ -58,7 +58,12 @@ choose:
 - every frame through a crossfade or a transition: `sheet --from <a> --to <b> --n <(b - a) x fps + 1>`;
 - the moments the treatment ties to the sound (a hit, a word, a title landing), at the times in the
   data, not from memory;
-- after a fix, the cuts next to it: fixes move things into other things.
+- after a fix, the cuts next to it: fixes move things into other things;
+- after any change, what `bun scripts/render.ts verify --video <video>` says changed since its last run:
+  the stretches whose frames differ, measured, not remembered, a change of length, and the timeline
+  entries that moved. Each should be one the note names or forces; any other is a side effect (a shared
+  helper, the look, a cut that moved), to undo or to tell the director about, with its link. With no `out/<video>/verify.json`
+  yet (a new session on a fresh copy: `out/` isn't committed), run verify before you change anything.
 
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
 costs nothing. Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't
@@ -94,10 +99,20 @@ session that built the video passed it after looking at one frame and an eight-f
 - **It gets** the treatment, `docs/STYLE.md`, the director's own words (the brief and every note,
   quoted from the treatment's Decisions, not summarized), facts about the work (paths, size, fps, duration, scene ids and windows,
   cut times, the timing data) and the commands to render what it wants. In a verification round, the
-  earlier reports too. With another backend, give it that backend's commands for stills and clips;
-  `qc.py` works on any MP4.
-- **It never gets** your reasoning, what you changed, what you believe is fixed, or your sheets. Each
-  of those tells it where to look and what to conclude.
+  earlier reports too, and the stretches `verify --since` measured as changed since the render they
+  reviewed: keep a copy of `out/<video>/verify.json` in the round's folder
+  (`out/<video>/critique/r<N>/verify.json`) when you start a round, and run
+  `verify --video <video> --since out/<video>/critique/r<N>/verify.json` before the next one. With another
+  backend, give it that backend's commands for stills and clips; `qc.py` works on any MP4.
+- **It never gets** your reasoning, your account of what you changed, what you believe is fixed, or your
+  sheets. Each of those tells it where to look and what to conclude. The stretches verify measured are a
+  fact, like the cut times, and they widen its search: a fix that moved something you didn't mean to shows
+  there.
+- **It looks before it reads,** in a full-cut round: a first look at the render, written down before it
+  opens the treatment or `docs/STYLE.md`, then the review against them. A critic that reads the
+  treatment first sees what it argues for: in testing, critics weighing its arguments shipped a lyric
+  video of nine still type cards as "reading holds", and archetype looks the treatment argued for as
+  justified. The director's words come with the prompt: they bind, whatever a viewer would think.
 - **It picks its own frames:** sheets at times it chooses, every frame around every cut, frame 0 and the
   last, and `qc.py` on renders. It writes under `out/<video>/critique/r<N>/` and changes nothing else.
 - **Findings come ranked,** each with its time and place in the frame, the evidence (the image or the
@@ -172,7 +187,9 @@ Check:
   lines change, and cut on downbeats or between lines. Name the rows that don't, with times from the data.
 - Has every row its own composition and job? Which rows are filler?
 - What carries across each cut? Does any row start or end on an empty frame, the first and last included?
-- Is every claim, number and diagram true or labelled, and is nothing claimed that the treatment rules out?
+- Is every claim, number and diagram true or labelled, is every product screen the product's real one or
+  a concept the director asked for, marked as one (assets/SOURCES.md says which), and is nothing claimed
+  that the treatment rules out?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
@@ -208,24 +225,37 @@ fixes worth most.
 ```text
 You are an independent, demanding critic of a finished video; you didn't build it. Judge rendered pixels
 and measured numbers, not intentions. Artifact: <project>/out/<video>/<file>.mp4 (<duration> s,
-<W>x<H>, <fps> fps, <with sound | silent>). It is for: <one line from the treatment>. The director's
-words, which bind: "<verbatim>". Treatment: videos/<video>/TREATMENT.md; look: docs/STYLE.md.
+<W>x<H>, <fps> fps, <with sound | silent>), for <where it plays: the platform, or "not said">. The
+director's words, which bind: "<verbatim>".
 <tools>
-Run qc.py on the MP4 first. Then sheets of the whole video (about five frames a second for a piece under
-a minute, a frame per beat or bar for a longer one), every frame through each cut and transition, frame 0
-and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for motion.
+First look, as a stranger: before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say what
+its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
+second; a frame per bar for a long one) and, if you like, a clip. Write out/<video>/critique/r<N>/first-look.md
+in three to five lines: what the video shows and says, in your words; whether it would hold a stranger
+to the end, and why; its weakest stretch, with the time. Don't revise it afterwards: the treatment can
+explain a choice, not change what a viewer sees.
+Then read the treatment and the look, and review the whole video: sheets (about five frames a second for
+a piece under a minute, a frame per beat or bar for a longer one), every frame through each cut and
+transition, frame 0 and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for
+motion.
 Where the treatment argues for a departure (an off-beat cut, a long hold, a uniform drift), judge whether
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
 <skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
 treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
+Every product screen, logo and figure on screen is the real one (videos/<video>/assets/SOURCES.md), or a
+concept or mockup the director's words ask for, marked as one where it could pass for the product (that is
+their request, not a finding). A lookalike nobody asked for, or a feature or figure nobody gave shown as
+the product's, is a top finding.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
-0. As a viewer, in two lines: would it hold a stranger's attention to the end, and why? Unless the
-   director's words set that part of the picture, or the treatment's idea calls for restraint, a picture
-   that reads as slides or a template (the same layout in every scene, a headline beside or above a
-   diagram; one composition held for the whole piece; captions over a background any song could have; a
-   camera move over one still picture),
-   that illustrates a song's words literally, that ignores the music's changes, or that any video on this
-   subject would have, is a top finding with a fix in code, not taste.
+0. As a viewer: your first look, quoted, then in two lines whether reading the treatment changed what a
+   viewer gets (it can't make a weak stretch strong). A picture that reads as slides or a template (the
+   same layout in every scene, a headline beside or above a diagram; one composition held for the whole
+   piece; captions over a background any song could have; a camera move over one still picture), that
+   illustrates a song's words literally, that ignores the music's changes, or that any video on this
+   subject would have, is a top finding with a fix in code, not taste, unless the director's words asked
+   for that picture, or the treatment's idea calls for restraint and the first look found it holding.
+   That the director didn't ask for slides is why such a picture is a finding, never a reason to set it
+   aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.
@@ -251,11 +281,13 @@ You are an independent critic; you didn't build this or write the earlier report
 render, or the scene>. Earlier reports: <paths>. <If timings moved: the new cuts or sections.> The
 director's words: "<verbatim>".
 <tools>
+What changed since the render they reviewed, as verify measured it (frames that differ, by the hash of
+their pixels): <its stretches with their scenes, and the timeline entries that moved>.
 For every finding in the earlier reports, give FIXED / PARTLY / STILL PRESENT, with the time and the
-image or number that shows it. Then hunt for new defects, first around the earlier findings, where the
-fixes went in: glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment
-matters most: Check <the hit, the word> at <time>.> A finding the treatment argues for stays a note,
-not a defect.
+image or number that shows it. Then hunt for new defects in every stretch that changed, first around the
+earlier findings, then in the stretches no finding named, where a fix reached what it wasn't meant to:
+glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment matters most: Check
+<the hit, the word> at <time>.> A finding the treatment argues for stays a note, not a defect.
 Report, under 500 words, to out/<video>/critique/r<N>/verify.md, ending with SHIP or ONE MORE PASS (at
 most three fixes, ranked).
 ```
@@ -268,7 +300,12 @@ length against the timeline and any gap between scenes; and checks determinism: 
 by different seeks must come out pixel-identical. That last check guards the rule everything here rests
 on (every frame is a function of `t`). When it fails, the preview and the render disagree, and the
 message names the scene and the time. It writes `out/<video>/verify.json` and exits with 1 on failure;
-fix that before anything else.
+fix that before anything else. Its last lines say what changed since the report it replaces (or the one
+`--since` names): the stretches whose frames differ and their scenes, from a hash of the pixels at every
+half second, cut and word start (and the earlier report's times), so "nothing else moved" is measured at
+those frames, though a change shorter than half a second between them can go unseen; a change of length
+(the time only one run has isn't compared); and the timeline entries added, removed or moved. A stretch you didn't mean to change is a regression until you have
+looked at it.
 
 **`uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json`**, the QC report, on every render,
 whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <file>` to keep the report,
@@ -328,6 +365,13 @@ When the director asks for a render, in their request or later:
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).
 6. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
+
+A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
+with `--size` on every command, its own review included: a layout that holds in one shape can collide or
+leave the safe area in the other. Its files land in `out/<video>/<W>x<H>/`, so every path the steps write
+out moves there too: the MP4 `qc.py` reads, its `--cuts` and `--out`, both sheets' `--out`, and the
+critic round's folder. An explicit `--out` wins over `--size`, so a sheet left at `out/<video>/sheet.png`
+replaces the first format's (render.ts warns when an `--out` given with `--size` lands outside its folder).
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a

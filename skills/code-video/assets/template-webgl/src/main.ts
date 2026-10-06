@@ -1,6 +1,7 @@
 // Entry: the preview player (default) or the export API (?export=1, driven by scripts/render.ts).
 // URL: ?v=<video> (see video.ts), ?t=<seconds> to start there, ?scale=2 for 4K, ?only=a,b to load
-// just those timeline entries, ?fps=<n> to export at another rate, and with ?export=1, ?preview=1 to draw
+// just those timeline entries, ?fps=<n> to export at another rate, ?size=<w>x<h> for the video in another
+// format (its scenes laid out for that frame), and with ?export=1, ?preview=1 to draw
 // the scenes' preview path (ctx.export false, as in the player: render.ts --as-preview).
 import { Engine, type AdaptiveSampling, type TimelineEntry } from './engine/engine';
 import { PW, PH, W, H, SCALE } from './engine/gl';
@@ -157,6 +158,7 @@ function setupPicker() {
     const p = new URLSearchParams(location.search);
     p.set('v', pick.value);
     p.delete('t');
+    p.delete('size'); // (another video opens in its own format)
     location.search = p.toString();
   };
 }
@@ -303,7 +305,7 @@ function setupPlayer() {
     const e = entryAt(t);
     markEls.forEach((m, i) => m.classList.toggle('on', TL[i] === e));
     const l = engine.words.lineAt(t);
-    info.textContent = `${VIDEO.name}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}`;
+    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}`;
     if (engine.errorsVersion !== shownErrors) { shownErrors = engine.errorsVersion; showErrors(); }
     requestAnimationFrame(tick);
   };

@@ -232,8 +232,9 @@ The rule, applied to three.js:
 - They pass through the same post as everything else: the bloom lifts the blacks around a bright image
   (from 0 to 11–23 next to a white frame) and the tone shoulder lands white at 243 even with `{ bloom: 0 }`
   (measured). A picture that must match its file (a logo, a screenshot, a product shot) needs its entry's
-  bloom off and the shoulder undone in the scene (`references/images.md`, which also covers images as
-  material: plates, cut-outs, treatments, sizes for 4K).
+  post `{ bloom: 0, shoulder: 0 }`, which brings that white back to 255 (`references/images.md`, which
+  also covers an engine older than the setting and images as material: plates, cut-outs, treatments,
+  sizes for 4K).
 - Footage (the director's own clips) never plays through an `HTMLVideoElement` or a `VideoTexture`: it runs
   on the wall clock and seeks asynchronously, `render()` can't wait, and the preview, stills and render
   would each show a different frame for the same `t`. Extract the frames with ffmpeg at the size they're

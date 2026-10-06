@@ -20,7 +20,7 @@ for them
   pixels, measured rather than remembered; match its type to the nearest voice below or add the brand's
   own typeface; use the logo as given, since a redrawn logo is no longer the brand's mark.
 - **A product URL:** the site's CSS (custom properties, `@font-face`) names its colours and fonts, and its
-  copy gives the tone.
+  copy gives the tone; its pages are where the product's real screens come from (`references/images.md`).
 - **Words** ("dark and engraved", a film, an era): that look is the director's. The style frames try ways
   to make it, all inside what they said; what they didn't say (palette, type, light) is yours.
 - **None of these:** the look is yours (SKILL.md, "When the look is yours"). Start from the idea: what the
@@ -97,7 +97,9 @@ in Avoid, marked (director).>
 - Rights: only fonts, images and marks the project owns or licenses, each listed in
   `videos/<video>/assets/SOURCES.md`; a brand's assets as given. Draw your own version of whatever the
   words name (a monster, a myth, a machine); what's out is copying a particular artist's design, a
-  franchise's character or a real product's interface.
+  franchise's character or another company's product interface. The director's own product appears as
+  itself, its real screens as given or captured, unless they ask for a concept or mockup, which is marked
+  as one where it could pass for the product (`references/images.md`).
 
 ## Avoid unless the piece calls for them
 <The list at the end of this template, with what this project adds or crosses out.>
@@ -122,7 +124,8 @@ in Avoid, marked (director).>
   allowed to; small type stays out of it, and crisp.
 - **Brand colours.** Above 0.72 linear the tone shoulder compresses, so a large field of a saturated brand
   colour or a near-white renders a little softer than its hex (pure white comes out at 246 of 255 with the
-  default bloom, 243 without it). When it has to match, sample a rendered still and adjust.
+  default bloom, 243 without it). When it has to match, sample a rendered still and adjust; a picture
+  that must match its file is shown with the post `{ bloom: 0, shoulder: 0 }` (`references/images.md`).
 
 ## Type: the voices
 

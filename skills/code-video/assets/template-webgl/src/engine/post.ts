@@ -18,6 +18,13 @@ vec3 shoulder(vec3 x) {
 
 export interface PostParams {
   exposure: number;
+  /**
+   * 0..1: how much of the tone shoulder applies (1, the default, rolls values above 0.72 off toward white). 0
+   * leaves them as they are, so a frame showing a picture that must match its file (a product's screen, a logo)
+   * keeps its whites at 255 instead of 243: an entry's post `{ bloom: 0, shoulder: 0 }`. It is the frame's, so
+   * anything brighter than 1 elsewhere in it clips.
+   */
+  shoulder: number;
   bloom: number; // bloom strength
   bloomThreshold: number; // linear luminance where bloom starts
   bloomKnee: number; // soft knee width
@@ -46,6 +53,7 @@ export interface PostParams {
 /** The engine's neutral defaults: a clean image (only a mild bloom on values above 1). */
 export const ENGINE_POST: PostParams = {
   exposure: 1,
+  shoulder: 1,
   bloom: 0.35,
   bloomThreshold: 1.0,
   bloomKnee: 0.3,
@@ -128,7 +136,7 @@ ${SCALE === 1 ? `        c += texture(src, vUv + texel * vec2(-1, -1)).rgb; c +=
       }`, { src: { value: null }, prev: { value: null }, texel: { value: new THREE.Vector2() }, radius: { value: 1 } });
     this.final = new FSPass(/* glsl */ `
       uniform sampler2D src; uniform sampler2D bloomTex; uniform sampler2D haloTex; uniform sampler2D hudTex;
-      uniform float exposure, bloom, halation, ca, grain, vignette, hud, fade, flash, time, zoom, invert;
+      uniform float exposure, shoulderAmt, bloom, halation, ca, grain, vignette, hud, fade, flash, time, zoom, invert;
       uniform vec2 shake; uniform vec2 res;
       ${SHOULDER_GLSL}
       void main() {
@@ -148,7 +156,7 @@ ${SCALE === 1 ? `        c += texture(src, vUv + texel * vec2(-1, -1)).rgb; c +=
         // HUD is composited in linear space before the shoulder so it gets grain & vignette too
         vec4 h = texture(hudTex, vUv);
         col = mix(col, h.rgb / max(h.a, 1e-4), h.a * hud);
-        col = shoulder(col);
+        col = mix(col, shoulder(col), shoulderAmt);
         col = mix(col, max(C_BG + C_FG - col, 0.0), invert); // bg <-> fg (the palette's two ends swap)
         col += C_FG * flash;
         // vignette
@@ -169,7 +177,7 @@ ${SCALE === 1 ? `        float g1 = hash12(gl_FragCoord.xy + fract(time * 13.37)
         fragColor = vec4(sat(s), 1.0);
       }`, {
       src: { value: null }, bloomTex: { value: null }, haloTex: { value: null }, hudTex: { value: null },
-      exposure: { value: 1 }, bloom: { value: 0.5 }, halation: { value: 0.2 }, ca: { value: 1 }, grain: { value: 0.05 },
+      exposure: { value: 1 }, shoulderAmt: { value: 1 }, bloom: { value: 0.5 }, halation: { value: 0.2 }, ca: { value: 1 }, grain: { value: 0.05 },
       vignette: { value: 0.3 }, hud: { value: 1 }, fade: { value: 0 }, flash: { value: 0 }, time: { value: 0 },
       zoom: { value: 1 }, invert: { value: 0 }, shake: { value: new THREE.Vector2() }, res: { value: new THREE.Vector2(W, H) },
     });
@@ -206,6 +214,7 @@ ${SCALE === 1 ? `        float g1 = hash12(gl_FragCoord.xy + fract(time * 13.37)
     f.haloTex!.value = this.ups[3]!.texture;
     f.hudTex!.value = hud;
     f.exposure!.value = p.exposure;
+    f.shoulderAmt!.value = p.shoulder;
     f.bloom!.value = p.bloom / 3; // pyramid sums ~MIPS levels; normalize
     f.halation!.value = p.halation;
     f.ca!.value = p.ca;

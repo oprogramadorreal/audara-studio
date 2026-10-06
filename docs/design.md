@@ -55,7 +55,10 @@ the model read it as not its job; see history.md.)
 This is how pdoom-video was made: in conversation, watched in a live preview, changed note by note. Every
 part of the design serves that loop:
 
-- **The f(t) rule** makes any moment linkable and re-renderable.
+- **The f(t) rule** makes any moment linkable and re-renderable, and a change measurable: the same frame
+  always has the same pixels, so `verify` hashes them and names the stretches a change touched since its
+  last run, at the frames it samples, and any change of length ("a note changes only what it names" is
+  checked, not hoped for, though a change shorter than half a second between samples can go unseen).
 - **The preview** shows a change seconds after it's made.
 - **The briefs** keep the crew consistent.
 - **The critic** catches what the director shouldn't have to.
@@ -96,9 +99,15 @@ What the agent owes the director:
 - a link for every change;
 - the work shown: contact sheets, numbers, critic verdicts;
 - a question before anything that costs money, or spending within a budget they set;
-- their decisions and rejections written down in the project, so later sessions keep them.
+- their decisions and rejections written down in the project, so later sessions keep them;
+- their product as it is in a factual demo: its real screens (given, or captured from its live site with
+  their OK) and only the figures they gave. A lookalike nobody asked for reads as the product and isn't,
+  so a screen nobody has yet is asked for and stands in as a placeholder that reads as one. A concept or
+  mockup the director asks for is theirs to ask for: it is made, and marked as a concept where it could
+  pass for the product. Neither shows an invented feature or figure as the product's.
 
-It doesn't ask for approval of every step in between.
+It doesn't ask for approval of every step in between, and nothing waits on a missing screen but the moment
+that shows it.
 
 ### Coming back later
 
@@ -112,7 +121,13 @@ what a later session needs:
 - what the agent owes the director.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
-The agent keeps `AGENTS.md` current as videos are added.
+The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
+a project made by an older release keeps its `render.ts`: the generated section names only what that copy
+can do, and says that `init --force` updates it. `render.ts` itself stops on an option it doesn't know,
+since 0.2.0's copy ignored `--size` and rendered the video's own format under the same name, and on one
+given without its value, which would read as not given in the same way. Its engine, `src/engine/`, is never
+replaced, not even by `--force`, so a setting the engine gained later (the post's `shoulder`) does nothing
+there: where the skill names one, it says how to tell and what to do instead (`references/images.md`).
 
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
@@ -233,7 +248,10 @@ pdoom-video.
   start one subagent per scene, each with its own files.
 - **The critic is a role, not a file.** The one extra role worth having is a **critic** that reviews
   contact sheets against the treatment with fresh eyes (its protocol comes from
-  motion-video-kit: history.md, "Lessons from motion-video-kit"). In v1 the lead starts a general-purpose subagent with the critic prompt from
+  motion-video-kit: history.md, "Lessons from motion-video-kit"). In a full-cut round it looks first as a
+  stranger, from the render and the director's words alone, and writes that down before it reads the
+  treatment, so the treatment's arguments can explain a choice but not change what a viewer saw. In v1 the
+  lead starts a general-purpose subagent with the critic prompt from
   `critique.md`, which works the same in both tools. Add an agent definition only if that falls short.
 
 ## The engine, three.js and other frameworks
@@ -259,6 +277,23 @@ So three.js adds no new tool; it only needs to be explicit:
   - scenes render into `out`, in linear color;
   - physics and particle simulations are `stateful`, so they only get fixed-sample motion blur.
 - No React Three Fiber: it would add React for nothing the engine needs.
+
+### Another format: the same video, another frame
+
+A director often wants one piece in two shapes, a 16:9 master and a 9:16 cut for the vertical apps.
+Cropping the master loses what its edges carried and keeps type sized for the other screen, so the second
+format is recomposed. It is the same video at another size: `--size 1080x1920` in every `render.ts` mode
+and `?size=` in the preview, like `--fps`. The timeline, the sound, the timing data and the scenes are
+shared, so a cut or a fix lands in both; the scenes read `W` and `H` and lay out for the frame they get;
+and everything rendered for it goes to `out/<video>/<W>x<H>/`, so neither format's files replace the
+other's. A size with the video's own shape is refused: that is the same picture smaller or bigger, the
+720p flag history.md's 0.2.0 entry rejected (`--scale` makes it bigger).
+
+A second video folder was the other way, and the engine already allowed most of it (another video's
+scenes through `remix`, audio by a relative path). But a video reads its timing data from its own
+`data/`, and `verify` resolves a song window's audio relative to the folder that holds the data, so the
+copy would have needed the song's data and audio copied too, and the two would drift. A format that needs
+another edit (another length, other scenes) is still another video.
 
 ### Remotion: optional, and only when it really helps
 
@@ -524,7 +559,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # (written once, when the project has none; theirs after that)
 ├── package.json, vite.config.ts, index.html, tsconfig.json
 ├── src/                         # the shared engine and preview player; src/look.ts holds the look in code
-├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>
+├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>,
+│                                # --size <w>x<h> for a second format
 ├── public/fonts/                # the shared fonts, with their licenses
 ├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look
 ├── videos/<name>/
@@ -580,4 +616,5 @@ the formats the engine's `audio.ts` and `words.ts` read.
 - [elevenlabs/skills](https://github.com/elevenlabs/skills)
 - [echris6/motion-video-kit](https://github.com/echris6/motion-video-kit)
 - [Hamza Khalid: How to create motion graphics with Claude Opus 5.5 (Full Course)](https://x.com/humzaakhalid/status/2105203643758895454)
+- [rari: Motion Engineering: Build a Video Studio Around Opus 5.5](https://x.com/0xwhrrari/status/2105643919119696297)
 

@@ -14,6 +14,7 @@ Contents
 - Built differently from the plan, and why
 - Round 4: direction first, and taste when it's left open (2026-10-04)
 - After round 4: a build ends in the preview (0.2.0, 2026-10-05)
+- Lessons from the motion-engineering article (0.3.0, 2026-10-05)
 
 ## Definition of done
 
@@ -499,3 +500,209 @@ didn't expect only at the end. The size stays the video's own, set with the dire
 (`video.json`), whatever the aspect ratio: the README says where it comes from, and the hand-off's offer
 names it before the director says "render it". A 720p flag was rejected: scenes are laid out in the
 video's pixels and the renderer scales by whole numbers only.
+
+## Lessons from the motion-engineering article (0.3.0, 2026-10-05)
+
+[rari's article](https://x.com/0xwhrrari/status/2105643919119696297) ("Motion Engineering: Build a Video
+Studio Around Opus 5.5", X, 2026-10-01), read through a restatement of it and its replies, makes the same
+case as Hamza Khalid's and motion-video-kit's: the quality comes from the system around the model, a
+deterministic frame function, a gated review loop, and files that let the next film start from the last.
+Most of it was here already:
+
+- the frame as a pure function of time, seeded, seekable: the f(t) rule, which `verify` proves;
+- its five layers (brief, style guide, shot list, renderer, critic): TREATMENT.md, STYLE.md, the timeline
+  and scenes, CRITIQUE.md;
+- each beat with an entry, an exit and a reason, unjustified shots cut: the storyboard's job and
+  transition columns, "a row without one is filler";
+- contact sheets before export and a critic that names its top defects with a time, the evidence and a
+  fix: `sheet --cuts`, the fresh critic and its verification;
+- picture and sound on one beat grid: the soundtrack's data, with every time read from it;
+- "where does taste memory live?" (a reply): Decisions in the director's words, rejections included.
+
+Four things were worth taking, two of them answers to failures recorded above:
+
+- **The full-cut critic looks before it reads.** The article's critic judges the rendered frames with no
+  statement of intent. Ours read the treatment first, and in round 4 critics weighing its arguments
+  shipped a lyric video of nine still type cards as "reading holds" and archetype looks as justified. The
+  critic now writes a first look (what it shows, whether it holds a stranger, its weakest stretch) from
+  qc.py and a sheet of the whole render, with only the director's words and where it plays, before it
+  opens TREATMENT.md or STYLE.md; item 0 of its report quotes it. The director's words still come first:
+  they bind.
+- **`verify` says which stretches changed.** A reply proposed versioned data with pixel-diff checks before
+  every render. The f(t) rule makes such a check exact: verify now hashes the frames at every half second,
+  cut and word start, compares them with the report it replaces (or `--since <report>`), and prints the
+  stretches that differ, their scenes, and the timeline entries that moved. That measures "a note changes
+  only what it names" and catches what 0.2.0's verification found by eye, a regression the first round's
+  fixes made. On the example (16 s, 62 frames rendered, 48 hashed): a constant changed in one GLSL scene
+  gave "10 of 48 frames, in 0.000–3.983 s ('fspass')"; a cut moved a bar gave the two entries' old and new
+  spans and their changed frames; undone, `--since` a copy of the first report gave "no frame". The
+  readback waits for the GPU, about 17 ms a frame at 1080p (verify 2.4 s without it, 3.5 s hashing every
+  frame it renders), so it hashes those frames only, not the four a lyric video renders per word. A
+  verification critic gets the stretches measured since the render it reviewed; the Direct step, the
+  project's AGENTS.md and the later-session case use them after a note. A project copied without `out/`
+  has nothing to compare with, so a session there runs verify before it changes anything.
+- **A second format is recomposed, not cropped** (the article's per-format compositions). Nothing said how to
+  make a 9:16 of a 16:9 video. Reading the engine showed a second video folder couldn't share the first's
+  data: a video reads its timing from its own `data/`, and verify resolves a song window's audio relative to
+  the folder that holds the data, so a copy fails there unless the audio is copied too, and then the two
+  drift. So it is the same video at another size, `--size 1080x1920` in every render.ts mode and `?size=` in
+  the preview, like `--fps`, with its files under `out/<video>/<W>x<H>/`. It refuses a size with the video's
+  own shape: that would be the 720p flag 0.2.0 rejected, the same picture smaller, laid out anew. On the
+  example: verify passes at 1080x1920, its sheet and a draft clip come out 1080x1920, its scenes (which read
+  `W` and `H`) recompose rather than crop, and the 16:9 outputs are untouched.
+- **A product film shows the product's real screens** (the article's main use case: real screens and
+  metrics, never invented; a missing asset means asking). We had "no invented logo, tagline or label" and
+  Never claim, nothing on screens, and the style template's Rights line ("a real product's interface" is
+  out) could read as a reason to redraw the director's own app. The treatment's open parts now have a row
+  for product screens and figures, a screen the story needs that nobody has is asked for and told another
+  way meanwhile, the critics check screens against SOURCES.md, and images.md has a capture recipe with the
+  project's own playwright-core (tested on a local page: a 390×844 phone viewport at 3× gave a 1170×2531
+  PNG).
+
+Left out, and why:
+
+- **Six approval gates:** round 4 measured that the stop before building added nothing and delayed the
+  first frame by 20-27 minutes. "Wait only for what only the director can decide" already covers the
+  article's real stops, a missing asset and an irreversible brand decision.
+- **A 1-5 score per criterion:** the article gives no scale; ranked findings with their evidence and
+  SHIP or ONE MORE PASS say more.
+- **Separate brief, shot list and review files:** the same content as TREATMENT.md and CRITIQUE.md.
+- **Re-rendering only the frames a fix touched:** f(t) would allow it, but delivery already reviews a draft
+  and renders once; it pays only if pieces several minutes long become common.
+- **Checking sound against picture automatically:** the failure it guards (a click that lags, a cut off the
+  beat) is prevented upstream here, since every time comes from the data and mix.py measures the onsets.
+- **p5.brush, GenMotion, a taste memory across projects:** the cookbook's inks and stroke fonts, backends.md
+  and the agents' own memory cover them.
+- **Cheap, with no failure recorded yet:** a check that a feed video earns the first two seconds, motion
+  rules per kind of element in STYLE.md, captions for viewers with the sound off (already a candidate in
+  design.md), the pacing of a reference clip measured with qc.py.
+
+`code-video/SKILL.md` names verify in its Direct step and stays under the limit at 7,999 bytes, with four
+phrases shortened elsewhere. The new cases (`cv-second-format`, `cv-product-real-screens`, with two phone
+screens of a made-up app drawn by fixtures.ts) and the changed assertions (`cv-zero-asset`,
+`cv-range-loop`, `cv-later-session-small-change`) were written, not run: each takes an hour or more per case
+and tool, and whether a first look changes what critics ship is measured only by them.
+
+A review of the branch by Codex (GPT-6 Astra) before merging found three defects, each confirmed and fixed:
+
+- **The change report could flag a frame that hadn't changed.** It matched the two runs' frames by their
+  time rounded to 0.1 ms, which merged a word's frame at 0.49997 s with the half second's at 0.5 s, two
+  different frames. With a word starting at 0.4833 s on the example, two identical runs reported "1 of 44
+  frames, in 0.500 s"; matched by the exact time, which both runs compute alike and JSON keeps, "no frame".
+- **`init` advertised what an older project couldn't do.** Running it again on a 0.2.0 project rewrites
+  AGENTS.md but keeps the project's `render.ts`, and that copy ignored `--size` and rendered the video's
+  own format under the same name. `init` now reads what the project's `render.ts` documents and leaves out
+  what it lacks, with a line saying `--force` updates it (checked on a project given back 0.2.0's
+  `render.ts`, then updated with `--force`), and `render.ts` stops on an option it doesn't know. Codex's
+  second look at the fixes found that line promising `--force` keeps every video: it resets the
+  example's files too (each kept as `.orig`), and the line now says so and asks for what was changed on
+  purpose to be brought back from the `.orig` copies.
+- **Delivery's second format kept the first format's paths.** Its sheets' explicit `--out` wins over
+  `--size`, so following the steps would have replaced the 16:9 sheets. Delivery now names every path that
+  moves, and `render.ts` warns when an `--out` given with `--size` lands outside that format's folder.
+
+A second review on the PR found four more, each confirmed and fixed:
+
+- **A word that moved could hide a change.** Each run hashed a word's frame at its current start, and only
+  times both reports shared were compared, so a moved word's old and new samples were both left out. With
+  the reviewer's case (a 1 s video, a frame white only while its one word is sung, the word moved by 0.1 s)
+  the report said "no frame (4 compared)". The new run now also renders the earlier report's sample times,
+  compares them and leaves them out of its own report: "1 of 5 sampled frames, in 0.117 s". A clean report
+  now says "no sampled frame", and no text calls it exact: between samples, a short change can go unseen.
+- **The later-session case couldn't pass on a 0.2.0 project:** the change report needs the new
+  `render.ts`, and updating it broke the assertion that only `videos/` changes. Both now allow for it.
+- **fixtures.ts** wrote the screens elsewhere when given a relative folder, since ffmpeg runs in the repo.
+- **"Never a lookalike" overruled the director.** Asked for a concept screen of a feature that isn't
+  built, the text sent the builder to a real screen, another way or a grey placeholder. A factual demo now
+  shows the real screens by default; a concept, mockup or stylized screen the director asks for is made and
+  marked as a concept where it could pass for the product; neither presents an invented feature, result or
+  figure as the product's; SOURCES.md records each by where it came from. A new case,
+  `cv-product-concept-mockup`, checks that exception.
+
+### What 0.3.0 checked
+
+Five cases in both tools on 2026-10-05 and 06, on `0bfc8cf` (Claude Code with Opus 5.5, Codex with GPT-6
+Astra), each run graded by a fresh grader with its own measurements. Claude's second-format run was cut
+off by a usage limit in its first turn and run again; a grader cut off the same way was run again.
+
+| Case | Claude | Codex |
+|---|---|---|
+| cv-title-card | 6 of 12 | 7 of 12 |
+| cv-zero-asset | 6 of 6 (1 N/A: no --without arm) | 6 of 6 (1 N/A) |
+| cv-product-real-screens | 4 of 5 | 2 of 5 |
+| cv-later-session-small-change | 7 of 7 | 6 of 7 |
+| cv-second-format | 6 of 7 | 5 of 7 |
+
+- **The first look worked in both tools.** Each full-cut critic wrote it before opening the treatment,
+  and the fixes went to the stretch it called weakest: Codex's 5–15 s went from 9.93 to 4.97 s still at a
+  glance; Claude's two rounds fixed a sunset that was "a small orange smudge" and an empty blue frame (47
+  near-empty frames to 15). One Codex critic named a slide-like picture in its first look and then set it
+  aside because "the user did not request a slide treatment", reading item 0's double negative backwards;
+  item 0 now states the finding first and says that not asking for slides is why it is one.
+- **The change report was used as meant.** Both later sessions ran verify before and after the note.
+  Codex's named 1.5–2.0 and 3.0–5.0 s, and the grader's own old-and-new stills differ from 1.05 to 5.15 s
+  and nowhere else. Claude's named 30 of 32 frames: its slower start moved everything after it, and the
+  reply said so, with a link to each moved stretch and a 16 s version on offer that keeps the old hold.
+- **Both second formats used `--size`,** recomposed the name into two lines behind one `H > W` branch in
+  the scene, and left the 16:9 pixel-identical (34 and 35 stills against the starting commit). Codex's ran
+  42 px into Reels' right margin, from margins it made up for a STYLE.md that had only 16:9; the second-
+  format text now points to the style template's Layout tables. Claude's rendered the file in turn 1,
+  reading "I also need this title card as a vertical video for Instagram Reels" as a request for it.
+- **Product screens:** once turn 2 said the third screen wasn't designed, both showed only the two real
+  ones. Claude's matched the files within a level and told the landing on a paper budget strip. Codex's
+  home screen was 9.9 levels off its file, its white at 243: it turned the bloom off but didn't undo the
+  tone shoulder, the step images.md gave as a GLSL function to paste. A post setting does it now,
+  `{ bloom: 0, shoulder: 0 }` (white at 255, measured). Codex's brief didn't name the missing screen. Both
+  first plans redrew the home screen's total for the new expense.
+- **Found on the way, older than this release:**
+  - Claude's sessions again showed the treatment and the preview link only at the end (the title card
+    after 36 minutes, the sky video after 74), as in round 4.
+  - Four runs rendered the file in turn 2. Since 0.2.0 a build ends offering the render, so the scripted
+    "Go ahead" answers it; the two cases written for the older flow now accept that when the reply says so.
+  - A session's synthesized score, a bun script in `videos/<video>/audio/`, broke `bun run check` for its
+    project and every session after it: bun's types reached the browser program. The tsconfigs now keep
+    such scripts with `scripts/`.
+  - A critic left `mix.py measure`'s report at the top of `out/` (run without `--video`), and both
+    title-card replies left out qc.py's numbers.
+- Not run: `cv-product-concept-mockup`, `cv-range-loop`'s creative-range set, and the --without arms.
+
+A third review by Codex, after those runs, found three more, each confirmed and fixed:
+
+- **The change report's hash missed changes to green and blue.** Its two lanes multiplied each pixel's
+  32-bit word in, and a multiply carries bits only upward, so a change to a word's high bytes (green, blue)
+  stayed in a few top bits of the state and often cancelled out. Over a 1080p frame, changing the first n
+  pixels hashed the same as the unchanged frame for 16 values of n on black (blue 0 to 128, the reviewer's
+  case), 31 on white (blue 255 to 254, one level) and 63 on white (green 255 to 127); a lane alone, for up
+  to 4,088. Each lane now rotates its state after the multiply, and no lane collided in twelve such cases
+  (three backgrounds, four changes), 2 million values of n each. Verify takes as long as before (3.5 s on
+  the example). Codex's second look at the fixes found that the new hash changes every digest, so a report
+  written by the old one, the branch's own, would have shown every frame as changed. A report now records
+  its `hashVersion`, and one hashed another way isn't compared, saying why: with a report from the
+  previous `render.ts`, "not compared (another copy of render.ts hashed its frames another way)", then "no
+  sampled frame (48 compared)" on the next run.
+- **`shoulder: 0` undersampled bright motion.** The adaptive sampling's error estimate ran every frame
+  through the full tone shoulder, which flattens the gaps between highlights, so on a frame with the
+  shoulder off it measured about half the error the picture showed (2.35 levels for 0.875 against 1,
+  where the shown gap is 4.85) and stopped below the tolerance of 3 too soon. It now applies as much of the
+  shoulder as the frame's post does. A thin bar at 2.0 sweeping over grey 0.8, shoulder off: 36 sub-frames
+  a frame before, 108 now. The example, shoulder off, samples as before (24 frames); with the shoulder on,
+  the estimate is the old one.
+- **`--size` without its value rendered the video's own format,** into its own folder, as `opt()` reads a
+  missing value as an absent option. Any option but the six flags given without its value now stops the
+  run, by name.
+
+A fourth review by Codex (2026-10-06) found two more, each confirmed and fixed:
+
+- **A shorter video showed no change.** verify compares the frames both runs sampled, so the time only one
+  run has went unmentioned: the example cut from 17 s to 8 s with video.json's `duration` printed "no
+  sampled frame (20 compared)", and only its last entry's moved end hinted at the 9 s that went. A change
+  of length is now a line of its own, "length since then: 17.000 → 8.000 s (8.000–17.000 s removed, not
+  compared)", and the frame line says "in the 0–8.000 s both runs have"; lengthened to 20 s, it names
+  17.000–20.000 s as added. verify.json's `changes` records `duration: { was, now }`. With the length
+  unchanged it prints as before.
+- **`shoulder: 0` did nothing in an older project's engine.** init never replaces `src/engine/`, not even
+  with `--force`, and 0.2.0's `PostParams` has no `shoulder`: returned from a `render()` without a declared
+  type, the setting is ignored and the white stays at 243 (in a timeline entry, `bun run check` rejects it,
+  checked with tsc). images.md now says how to tell (no `shoulder` in `post.ts`'s `PostParams`) and to
+  undo the shoulder in the scene there, with the `unshoulder` function it already gave for a frame that
+  needs its glow; the shoulder curve is the same in every release.
