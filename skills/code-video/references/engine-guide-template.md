@@ -288,7 +288,8 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   uniforms and three.js, and `rgba('<key>', alpha)` for Canvas2D (`src/engine/palette.ts`). Values from
   about 0.7 up start to bloom (`bloomThreshold` 1 with a soft knee) and the tone shoulder rolls off
   everything above 0.72: a large area of a near-white or fully saturated colour reads a little softer
-  than its hex, and values above 1 glow.
+  than its hex, and values above 1 glow. A frame showing a picture that must match its file (a screen, a
+  logo) returns `{ bloom: 0, shoulder: 0 }`: both off, its white stays 255.
 - `ctx.params` holds the timeline entry's params (one module can serve several entries); `ctx.start`,
   `ctx.end` its window; `ctx.W`, `ctx.H` the logical frame; `ctx.export` whether render.ts is rendering
   (see performance, below); `f.lt`/`f.p` local time and progress.

@@ -124,7 +124,8 @@ in Avoid, marked (director).>
   allowed to; small type stays out of it, and crisp.
 - **Brand colours.** Above 0.72 linear the tone shoulder compresses, so a large field of a saturated brand
   colour or a near-white renders a little softer than its hex (pure white comes out at 246 of 255 with the
-  default bloom, 243 without it). When it has to match, sample a rendered still and adjust.
+  default bloom, 243 without it). When it has to match, sample a rendered still and adjust; a picture
+  that must match its file is shown with the post `{ bloom: 0, shoulder: 0 }` (`references/images.md`).
 
 ## Type: the voices
 
