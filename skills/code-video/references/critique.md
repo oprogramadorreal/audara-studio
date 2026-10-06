@@ -60,9 +60,9 @@ choose:
   data, not from memory;
 - after a fix, the cuts next to it: fixes move things into other things;
 - after any change, what `bun scripts/render.ts verify --video <video>` says changed since its last run:
-  the stretches whose frames differ, measured, not remembered, and the timeline entries that moved. Each
-  should be one the note names or forces; any other is a side effect (a shared helper, the look, a cut
-  that moved), to undo or to tell the director about, with its link. With no `out/<video>/verify.json`
+  the stretches whose frames differ, measured, not remembered, a change of length, and the timeline
+  entries that moved. Each should be one the note names or forces; any other is a side effect (a shared
+  helper, the look, a cut that moved), to undo or to tell the director about, with its link. With no `out/<video>/verify.json`
   yet (a new session on a fresh copy: `out/` isn't committed), run verify before you change anything.
 
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
@@ -303,8 +303,8 @@ message names the scene and the time. It writes `out/<video>/verify.json` and ex
 fix that before anything else. Its last lines say what changed since the report it replaces (or the one
 `--since` names): the stretches whose frames differ and their scenes, from a hash of the pixels at every
 half second, cut and word start (and the earlier report's times), so "nothing else moved" is measured at
-those frames, though a change shorter than half a second between them can go unseen; and the timeline
-entries added, removed or moved. A stretch you didn't mean to change is a regression until you have
+those frames, though a change shorter than half a second between them can go unseen; a change of length
+(the time only one run has isn't compared); and the timeline entries added, removed or moved. A stretch you didn't mean to change is a regression until you have
 looked at it.
 
 **`uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json`**, the QC report, on every render,

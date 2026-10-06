@@ -69,8 +69,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   palette, which the preview shows too. Then it says what changed since the verify whose report it
   replaces: the stretches whose frames differ (it hashes the pixels at every half second, cut and word
   start, and again at the times the earlier report sampled, such as a moved word's old start; a frame is a
-  function of `t`, so an equal hash is an unchanged frame), with their scenes, and the timeline
-  entries added, removed or moved. After a change, those should be the stretches you meant to change; any
+  function of `t`, so an equal hash is an unchanged frame), with their scenes, a change of length (the
+  time only one run has isn't compared), and the timeline entries added, removed or moved. After a change, those should be the stretches you meant to change; any
   other is a side effect (a shared helper, the look, a moved cut). With no report yet (`out/` isn't
   committed), run verify before you change anything. `--since <report>` compares with an earlier
   `verify.json` kept elsewhere instead.

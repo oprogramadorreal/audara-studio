@@ -157,9 +157,11 @@ c += C_ACCENT * 1.4 * exp(-pow((b - sweep) / 0.09, 2.0)) * smoothstep(0.35, 0.8,
   `{ bloom: 0, shoulder: 0 }` (in the timeline, or returned from `render()` for the frames that show it).
   The bloom lifts the blacks around it and the tone shoulder lands its white at 243; with both off, a white
   screen comes out at 255 (measured). The shoulder setting is the frame's, so anything brighter than 1
-  elsewhere in that frame clips: when the frame also needs its glow, keep the shoulder and undo it in the
-  scene for the picture alone (it mirrors `SHOULDER_GLSL` in `src/engine/post.ts`; with the cap at 0.998,
-  greys land within 0.2 levels of the file):
+  elsewhere in that frame clips. Two cases keep the shoulder and undo it in the scene for the picture alone:
+  a frame that also needs its glow, and a project whose engine predates the setting (init never replaces a
+  project's `src/engine/`, and one whose `PostParams` in `post.ts` has no `shoulder` ignores it). The
+  function mirrors `SHOULDER_GLSL` in `src/engine/post.ts`, the same curve in every release; with the cap
+  at 0.998, greys land within 0.2 levels of the file:
   `vec3 unshoulder(vec3 y) { const float k = 0.72; vec3 yc = min(y, vec3(0.998)); return mix(y, k - (1.0 - k) * log(1.0 - (yc - k) / (1.0 - k)), step(k, y)); }`
 
 Lighting and joining generated layers (from a 20 s piece made of a night plate, its dawn variant and a cut-out):

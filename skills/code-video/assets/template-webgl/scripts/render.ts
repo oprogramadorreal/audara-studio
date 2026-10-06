@@ -24,7 +24,8 @@
 //            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
 //            of their pixels at every half second, cut and word start, and at the times the earlier report
 //            sampled (a frame is a function of t, so an equal hash is an unchanged frame; between samples, a
-//            short change can go unseen), with their scenes, and the timeline entries added, removed or moved
+//            short change can go unseen), with their scenes, a change of length (the time only one run has
+//            isn't compared), and the timeline entries added, removed or moved
 //   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
@@ -981,8 +982,9 @@ type Entry = { id: string; start: number; end: number };
 /**
  * What changed since an earlier verify of the same video (`prev`, its report): the frames both rendered at the
  * same times, compared by the hash of their pixels, so a sampled frame that changed is known, not guessed (a frame is
- * a function of t); and the timeline entries that were added, removed or moved. `lines` are for the console,
- * `report` for verify.json. A report from another size, scale, frame rate, path or --only isn't compared.
+ * a function of t); a change of length; and the timeline entries that were added, removed or moved. `lines` are
+ * for the console, `report` for verify.json. A report from another size, scale, frame rate, path or --only isn't
+ * compared.
  */
 function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeline: Entry[]) {
   const d = typeof prev?.at === 'string' ? new Date(prev.at) : null, two = (n: number) => String(n).padStart(2, '0');
@@ -995,6 +997,10 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
     : was('size', prev.size, [info.logicalWidth, info.logicalHeight]) ?? was('scale', prev.scale, SCALE) ?? was('fps', prev.fps, info.fps)
       ?? was('path', prev.path, info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)') ?? was('--only', prev.only, ONLY.length ? ONLY : null);
   if (why) return { lines: [`changes: not compared with ${from} (${why})`], report: { since: from, compared: false, why } };
+  // a change of length: the time only one run has can't be compared, so it is named (a video cut to half its
+  // length with its timeline left as it was would otherwise show no sampled frame changed)
+  const D = info.duration, D0 = typeof prev.duration === 'number' && Number.isFinite(prev.duration) ? prev.duration : D;
+  const resized = Math.abs(D0 - D) > 1e-6, both = Math.min(D0, D);
   // (keyed by the exact time: both runs compute it the same way, and JSON keeps a number exactly; a rounded
   // key would merge a word's frame at 0.49997 s with the half second's at 0.5, two different frames)
   const before = new Map<number, string>((prev.shots as Shot[]).map((s) => [s.t, s.hash]));
@@ -1024,11 +1030,12 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
   }
   for (const id of old.keys()) if (!now.has(id)) moved.push(`'${id}' removed`);
   const lines = [!changed
-    ? `${head}: no sampled frame (${compared} compared)`
+    ? `${head}: no sampled frame${resized ? ` in the 0–${both.toFixed(3)} s both runs have` : ''} (${compared} compared)`
     : `${head}: ${changed} of ${compared} sampled frames, in ${stretches.map((s) => `${span(s)} (${named(s.scenes)})`).join('; ')}`
       + (changed > 0.9 * compared && compared >= 10 ? ' — nearly every frame: as after a change to what every scene shares (src/look.ts, POST, the engine, a font); if nothing like that changed, the browser or the GPU did' : '')];
+  if (resized) lines.push(`length since then: ${D0.toFixed(3)} → ${D.toFixed(3)} s (${both.toFixed(3)}–${Math.max(D0, D).toFixed(3)} s ${D < D0 ? 'removed' : 'added'}, not compared)`);
   if (moved.length) lines.push(`timeline since then: ${moved.join('; ')}`);
-  return { lines, report: { since: from, at: prev.at ?? null, compared, changed, stretches, timeline: moved } };
+  return { lines, report: { since: from, at: prev.at ?? null, compared, changed, stretches, duration: resized ? { was: D0, now: D } : null, timeline: moved } };
 }
 
 async function verify(page: Page, info: Info, logs: string[], out: string) {

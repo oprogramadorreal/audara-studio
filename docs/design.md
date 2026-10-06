@@ -57,8 +57,8 @@ part of the design serves that loop:
 
 - **The f(t) rule** makes any moment linkable and re-renderable, and a change measurable: the same frame
   always has the same pixels, so `verify` hashes them and names the stretches a change touched since its
-  last run, at the frames it samples ("a note changes only what it names" is checked, not hoped for, though
-  a change shorter than half a second between samples can go unseen).
+  last run, at the frames it samples, and any change of length ("a note changes only what it names" is
+  checked, not hoped for, though a change shorter than half a second between samples can go unseen).
 - **The preview** shows a change seconds after it's made.
 - **The briefs** keep the crew consistent.
 - **The critic** catches what the director shouldn't have to.
@@ -125,7 +125,9 @@ The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a
 a project made by an older release keeps its `render.ts`: the generated section names only what that copy
 can do, and says that `init --force` updates it. `render.ts` itself stops on an option it doesn't know,
 since 0.2.0's copy ignored `--size` and rendered the video's own format under the same name, and on one
-given without its value, which would read as not given in the same way.
+given without its value, which would read as not given in the same way. Its engine, `src/engine/`, is never
+replaced, not even by `--force`, so a setting the engine gained later (the post's `shoulder`) does nothing
+there: where the skill names one, it says how to tell and what to do instead (`references/images.md`).
 
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle

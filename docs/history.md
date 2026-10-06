@@ -690,3 +690,19 @@ A third review by Codex, after those runs, found three more, each confirmed and 
 - **`--size` without its value rendered the video's own format,** into its own folder, as `opt()` reads a
   missing value as an absent option. Any option but the six flags given without its value now stops the
   run, by name.
+
+A fourth review by Codex (2026-10-06) found two more, each confirmed and fixed:
+
+- **A shorter video showed no change.** verify compares the frames both runs sampled, so the time only one
+  run has went unmentioned: the example cut from 17 s to 8 s with video.json's `duration` printed "no
+  sampled frame (20 compared)", and only its last entry's moved end hinted at the 9 s that went. A change
+  of length is now a line of its own, "length since then: 17.000 → 8.000 s (8.000–17.000 s removed, not
+  compared)", and the frame line says "in the 0–8.000 s both runs have"; lengthened to 20 s, it names
+  17.000–20.000 s as added. verify.json's `changes` records `duration: { was, now }`. With the length
+  unchanged it prints as before.
+- **`shoulder: 0` did nothing in an older project's engine.** init never replaces `src/engine/`, not even
+  with `--force`, and 0.2.0's `PostParams` has no `shoulder`: returned from a `render()` without a declared
+  type, the setting is ignored and the white stays at 243 (in a timeline entry, `bun run check` rejects it,
+  checked with tsc). images.md now says how to tell (no `shoulder` in `post.ts`'s `PostParams`) and to
+  undo the shoulder in the scene there, with the `unshoulder` function it already gave for a frame that
+  needs its glow; the shoulder curve is the same in every release.
