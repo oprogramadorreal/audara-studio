@@ -1,5 +1,6 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["bun"] },
-  "include": ["scripts"]
+  "include": ["scripts", "videos/*/audio"],
+  "exclude": []
 }

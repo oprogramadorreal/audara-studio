@@ -93,7 +93,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
   updates the project's scripts).
 - Typecheck: `bun run check`, or just your files: `bunx tsc --noEmit -p tsconfig.json 2>&1 | grep scenes/yourscene`
-  (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`).
+  (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`). A bun script in a
+  video's `audio/` (a synthesized score, say) is checked with `scripts/`, under bun's types, not with the
+  scenes: bun's typing of `import.meta.hot` would break the browser program's.
 - render.ts prints `SCENE ERRORS` and browser console errors: read them.
 - 4K: add `--scale 2` to any mode (`stills` then saves full-resolution PNGs). Check your scene at both
   scales: downscaled, the 4K frame should look like the 1x one, only sharper.
