@@ -151,6 +151,45 @@ const cases: Record<string, Case> = {
       'For the set (judged blind against the --without runs, from contact sheets at 4 fps and the MP4s with sound): the picture is judged more striking and better made, not plainer, and the sound is judged to fit the picture.',
     ],
   },
+  // The 2026-10-06 showreel experiment's two prompts, word for word: a form the director names (a showreel for a
+  // résumé) and a style (psychedelic, hypnotic), everything else left open. In those runs the model alone made
+  // chaptered reels and the plugin made one film around a circle, its Avoid list and critic taking out a reel's
+  // labels and an RGB split. Run them --without too (Codex as the user ran it: --effort ultra), all rendered, so
+  // the set is judged blind on finals with motion blur: the plugin must not make the model's own reel plainer.
+  'cv-showreel-resume': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 150,
+    turns: [
+      { prompt: "make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are, like it's your showreel for a résumé. go all out" },
+      { prompt: 'Render it.' },
+    ],
+    assertions: [
+      'After turn 2 an MP4 of 15.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
+      'With the skills, turn 1 ends in the preview with the render offered, and no full render (not a --draft) runs before turn 2 asks for it (the transcripts).',
+      "With the skills, the lead built the scenes itself: no subagent was started to write a scene (Claude Code's Agent calls; Codex's spawn_agent in its session files); a critic's or the soundtrack's own subagent is fine. Turn 1 ran one full-cut critic round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery).",
+      'It is made as a showreel: at least four visibly different chapters or techniques (judged on a sheet at 2 fps), and nothing that defines a reel (chapter labels, timecodes, a fast montage of contrasting looks) is ruled out or removed for being on the Avoid list: TREATMENT.md, docs/STYLE.md and the critic reports never cite the list against one.',
+      "No on-screen text comes from the skill or its example video: the f(t) rule in any wording ('every frame is a function of time'), 'f(t)', 'Lorem ipsum' (stills every 0.5 s, read by eye).",
+      'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece flashes or wipes there on purpose.',
+      'Turn 1, to its hand-off, takes under 60 minutes (result.json); report the time either way.',
+      'For the set (judged blind against the --without runs, from contact sheets at 4 fps, full-size stills and the final MP4s with sound): the skill runs are judged at least as impressive and as varied as the runs without them, and the sound fits the picture.',
+    ],
+  },
+  'cv-showreel-psychedelic': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 150,
+    turns: [
+      { prompt: 'make a dynamic 20-second motion graphics video that shows what an incredible motion designer you are, psychedelic and hypnotic. make it feel like a showreel piece. go all out.' },
+      { prompt: 'Render it.' },
+    ],
+    assertions: [
+      'After turn 2 an MP4 of 20.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
+      'With the skills, turn 1 ends in the preview with the render offered, and no full render (not a --draft) runs before turn 2 asks for it (the transcripts).',
+      "With the skills, the lead built the scenes itself: no subagent was started to write a scene (Claude Code's Agent calls; Codex's spawn_agent in its session files); a critic's or the soundtrack's own subagent is fine. Turn 1 ran one full-cut critic round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery).",
+      'It is psychedelic and a showreel piece: saturated full-spectrum colour or colour splitting, hypnotic repetition (tunnels, op-art, kaleidoscopes, moiré) and more than one technique (judged on a sheet at 2 fps); none of these is ruled out or removed for being on the Avoid list (TREATMENT.md, docs/STYLE.md and the critic reports never cite the list against them).',
+      "No on-screen text comes from the skill or its example video: the f(t) rule in any wording ('every frame is a function of time'), 'f(t)', 'Lorem ipsum' (stills every 0.5 s, read by eye).",
+      'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece flashes or wipes there on purpose.',
+      'Turn 1, to its hand-off, takes under 60 minutes (result.json); report the time either way.',
+      'For the set (judged blind against the --without runs, from contact sheets at 4 fps, full-size stills and the final MP4s with sound): the skill runs are judged at least as impressive and as varied as the runs without them, and the sound fits the picture.',
+    ],
+  },
   // Detailed direction over several turns, a rejection that must survive a new session (turn 5 starts one), and
   // a small note that must change only what it names.
   'cv-direction-rejection': {

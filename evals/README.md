@@ -56,6 +56,7 @@ no-skill baselines got wrong. Each case is `evals/tasks/<id>/case.json` (written
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool claude
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool codex
 bun evals/harness/task.ts --case evals/tasks/cv-title-card --tool claude --without   # baseline arm
+bun evals/harness/task.ts --case evals/tasks/cv-showreel-resume --tool codex --effort ultra
 bash evals/harness/run-tasks.sh both                                                 # every case, both tools
 CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh claude
 ```
@@ -63,17 +64,22 @@ CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks
 `run-tasks.sh` runs the cases a few at a time, then the two cases that start from a finished project (the
 later session and the second format) on the project of the latest finished `cv-title-card` run (Claude
 Code's if there is one, else Codex's), the same project for both tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
-arguments go to `task.ts` (`--without`, `--model sonnet`).
+arguments go to `task.ts` (`--without`, `--model sonnet`, `--effort ultra`). `--effort` sets the reasoning effort the
+user's settings would otherwise pick (Claude Code's `--effort`, Codex's `model_reasoning_effort`), so a run can
+match how the user runs the tool.
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
 `lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session and second-format cases;
 one from an older release keeps its older `render.ts`, which init's AGENTS.md then says to update), and
 `EVAL_INPUTS` (a folder with `pdoom-pt-BR.mp3` and its `lyrics.txt`, for `cv-lyric-short`, the short
-lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list).
+lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list, nor are
+`cv-showreel-resume` and `cv-showreel-psychedelic`, the 2026-10-06 showreel prompts, judged as a set with their
+`--without` runs).
 
 Which user each case stands for: a short prompt that leaves everything open (`cv-zero-asset`,
-`cv-lyric-short`, `cv-range-loop`), direction given in detail or over several turns, a rejection included,
+`cv-lyric-short`, `cv-range-loop`) or names only a form or a style (`cv-showreel-resume`,
+`cv-showreel-psychedelic`), direction given in detail or over several turns, a rejection included,
 which must survive a new session (`cv-direction-rejection`, `cv-visual-direction-no-script`,
 `cv-later-session-small-change`), a script the director brings with its words locked (`cv-locked-script`,
 `st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), a product film
