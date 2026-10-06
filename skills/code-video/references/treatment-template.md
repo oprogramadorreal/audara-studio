@@ -266,8 +266,9 @@ only what this video needs beyond that, such as another format, a 4K master (`--
 or letterboxed: a crop loses what the edges carried and keeps type sized for the other screen. It is the
 same video at another size (`--size 1080x1920`, `docs/ENGINE.md`, "Another format"), so it shares the
 timeline, the sound and every fix; the scenes lay it out for its own frame, with fewer elements, a
-hierarchy that reads top to bottom, and type at its minimum size inside its safe area
-(`docs/STYLE.md`, Layout). The Deliver line names it, the storyboard says what changes in that format
+hierarchy that reads top to bottom, and type at its minimum size inside its safe area. A project made in
+one format has only that one's in `docs/STYLE.md`: copy the new format's row from the Layout tables in
+`references/style-template.md` there first (Reels keeps 200 px clear on the right, not the left's 60). The Deliver line names it, the storyboard says what changes in that format
 when something does, and it gets its own sheets, QC and full-cut critic round on its own draft.
 
 ## Example: a 15-second pool reopening teaser

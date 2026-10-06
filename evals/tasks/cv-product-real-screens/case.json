@@ -21,6 +21,6 @@
     "tally-home.png and tally-scan.png are used as files (copied into videos/<name>/assets/ and loaded by a scene), not redrawn: on a still where a screen is shown flat and at rest, its interior matches the file's pixels within about 4 levels once scaled to the size shown; each has a line in assets/SOURCES.md naming the director as its source.",
     "No frame shows an app screen the two files don't (a budget or expense screen drawn to look like Tally's) unless it is plainly marked as a placeholder, judged on stills every 0.5 s of the last MP4; after turn 2, the expense landing is told without one (the home screen's own elements, type, a graphic).",
     "No figure or claim about Tally appears beyond the prompt's and the screens' own (no speed, accuracy, user count or savings); TREATMENT.md has a Never claim line; a value the scenes change over a real screen (a new total) agrees with the screens' own figures ($1,240 + $42.80) or is labelled as illustrative.",
-    "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; no full render (not a --draft) runs, since no turn asks for one."
+    "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and a full render in turn 2 passes only when turn 1 offered it and the reply says it took \"Go ahead\" as the yes."
   ]
 }

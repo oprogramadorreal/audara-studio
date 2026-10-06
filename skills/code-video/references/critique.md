@@ -248,14 +248,14 @@ their request, not a finding). A lookalike nobody asked for, or a feature or fig
 the product's, is a top finding.
 Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
 0. As a viewer: your first look, quoted, then in two lines whether reading the treatment changed what a
-   viewer gets (it can't make a weak stretch strong). Unless the director's words set that part of the
-   picture, or the treatment's idea calls for restraint and the first look found it holding, a picture
-   that reads as slides or a template (the same layout in every scene, a headline beside or above a
-   diagram; one composition held for the whole piece; captions over a background any song could have; a
-   camera move over one still picture),
-   that illustrates a song's words literally, that ignores the music's changes, or that any video on this
-   subject would have, is a top finding with a fix in code, not taste. The stretch the first look called
-   weakest is a finding too, ranked by what it costs a viewer.
+   viewer gets (it can't make a weak stretch strong). A picture that reads as slides or a template (the
+   same layout in every scene, a headline beside or above a diagram; one composition held for the whole
+   piece; captions over a background any song could have; a camera move over one still picture), that
+   illustrates a song's words literally, that ignores the music's changes, or that any video on this
+   subject would have, is a top finding with a fix in code, not taste, unless the director's words asked
+   for that picture, or the treatment's idea calls for restraint and the first look found it holding.
+   That the director didn't ask for slides is why such a picture is a finding, never a reason to set it
+   aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
 1. Per scene: time range, what's on screen, its problems ranked.

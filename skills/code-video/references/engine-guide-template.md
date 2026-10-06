@@ -485,7 +485,9 @@ sheets, `<video>.mp4`), beside the video's own format, never over it. A size wit
 is refused: that is the same picture at another size, which `--scale` makes.
 
 - Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
-  `H` and the format's safe area (`docs/STYLE.md`), so a scene recomposes instead of cropping.
+  `H` and the format's safe area (`docs/STYLE.md`; for a format the project hasn't used yet, the Layout
+  tables in the code-video skill's `references/style-template.md`), so a scene recomposes instead of
+  cropping.
 - Where a shape needs another composition, branch on it in the scene (`const tall = H > W`): fewer
   elements, a vertical stack, type at that format's minimum size. What carries the story stays: the
   timing, the persistent actor, the palette.

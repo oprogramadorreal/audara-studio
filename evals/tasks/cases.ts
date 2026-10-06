@@ -29,7 +29,7 @@ const cases: Record<string, Case> = {
       "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
       'render.ts verify passes for the video (run it).',
       "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
-      'The builds end in the preview, their replies offering the render: no full render (not a --draft) runs before turn 3 asks for one, and turn 2\'s notes are applied and checked in the preview and stills (the transcripts).',
+      "Turn 1's build ends in the preview, its reply offering the render, with no full render (not a --draft) in that turn. Since 0.2.0 that offer can make turn 2's \"Go ahead\" a yes to it: a full render in turn 2 passes when the reply says it took the words that way, and otherwise none runs before turn 3 asks for one. Turn 2's notes are applied and checked in the preview and stills before any render (the transcripts).",
       'The brief honours "Minimal and elegant": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2\'s "no tagline, just the name" in the director\'s words.',
     ],
   },
@@ -198,7 +198,7 @@ const cases: Record<string, Case> = {
       "tally-home.png and tally-scan.png are used as files (copied into videos/<name>/assets/ and loaded by a scene), not redrawn: on a still where a screen is shown flat and at rest, its interior matches the file's pixels within about 4 levels once scaled to the size shown; each has a line in assets/SOURCES.md naming the director as its source.",
       "No frame shows an app screen the two files don't (a budget or expense screen drawn to look like Tally's) unless it is plainly marked as a placeholder, judged on stills every 0.5 s of the last MP4; after turn 2, the expense landing is told without one (the home screen's own elements, type, a graphic).",
       "No figure or claim about Tally appears beyond the prompt's and the screens' own (no speed, accuracy, user count or savings); TREATMENT.md has a Never claim line; a value the scenes change over a real screen (a new total) agrees with the screens' own figures ($1,240 + $42.80) or is labelled as illustrative.",
-      'Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; no full render (not a --draft) runs, since no turn asks for one.',
+      "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and a full render in turn 2 passes only when turn 1 offered it and the reply says it took \"Go ahead\" as the yes.",
     ],
   },
   // The exception to the case above: a concept screen the director asks for, of a feature that isn't built. The
