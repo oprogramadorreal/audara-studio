@@ -1,6 +1,6 @@
 // The example's 'linebatch' scene (bars 7–8 and the ring-out): GPU lines (LineBatch) and pen writing in a
 // single-stroke font (stroke.ts). One pen runs a small plotter program timed on the beat grid: it plots a
-// Lissajous figure (three beats), lifts and moves (one beat), then writes "f(t)", one glyph per beat, so the
+// Lissajous figure (three beats), lifts and moves (one beat), then writes "fin.", one glyph per beat, so the
 // last stroke ends on the final hit. Everything on screen but the labels is LineBatch segments: a lattice of
 // registration crosses re-coloured around the pen every frame, a dashed preview of the program, the inked
 // lines, and the pen's head, brighter than 1.0 (linear) so the bloom gives it a glow.
@@ -25,7 +25,7 @@ const mix = (a: RGB, b: RGB, k: number): RGB => [lerp(a[0], b[0], k), lerp(a[1],
 const mul = (a: RGB, k: number): RGB => [a[0] * k, a[1] * k, a[2] * k];
 
 const PITCH = 40; // the lattice's spacing (px); the figure and the word's baseline sit on it
-const WORD = 'f(t)';
+const WORD = 'fin.';
 const FONT = 'readable'; // EMS Readability: a plain single-line sans, one pen stroke per glyph here
 const HOT = 90; // px of fresh ink behind the head that still glows
 

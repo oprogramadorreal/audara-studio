@@ -93,7 +93,7 @@ Song <m:ss.ss>–<m:ss.ss> = <n> bars at <bpm> BPM (<sections>) → video 0:00�
 `audio/<song>-window.wav`. <Why this part.> <How it ends, and what is sung there.>
 
 ## Storyboard
-| Time | What the viewer sees | The moment's job | Transition out (what carries over) |
+| Time | What the viewer sees | The moment's job | Transition out (a cut, or what carries over) |
 |---|---|---|---|
 
 ## Sync
@@ -162,9 +162,9 @@ several rows.
   or `0:01.50`, never `1:30` for 1.5 s.
 - **What the viewer sees,** concretely: what is where, how big, what moves.
 - **The moment's job:** what it tells, sets up or pays off. A row without one is filler.
-- **Transition out:** how it hands over and what crosses the cut: an object, a shape, a colour, a direction
-  of motion, a word. Name it, because the author on the far side has to pick it up (a shared pose,
-  `references/motion.md`). A hard cut that carries nothing is fine when it's meant; say so.
+- **Transition out:** how it hands over: a hard cut (a montage's usual one, on the beat), or what crosses
+  the cut: an object, a shape, a colour, a direction of motion, a word. Name what crosses, because the
+  scene on the far side has to pick it up (a shared pose, `references/motion.md`).
 
 Empty frames tend to appear at cuts, where one scene's exit meets another's entrance, so the storyboard
 makes the first frame (often the thumbnail) and both sides of every cut finished compositions, and nothing
@@ -195,6 +195,8 @@ critic checks them frame by frame. The sources (more in `docs/ENGINE.md`, "Data"
 
 ## Words on screen
 
+The words come from the director, the subject and the piece's idea, never from this skill: its rules (the
+f(t) rule, the critic's terms) and its example video's lines are how you work, not what a video says.
 Words don't replace the picture. Unless the director wants type alone, the frame holds an image of this song
 or this subject, not a background any video could have, and the words live in it: they act on it, or it on
 them. When type is the whole picture, its treatment is the image (it moves, steps, builds, breaks). When
@@ -218,8 +220,10 @@ set plainly) is the treatment's call.
 
 ## Scene briefs for scene authors
 
-When several scene authors work at once (subagents on your own model, each started with only its brief:
-in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
+A piece up to about 30 s is built by one author, you, in one pass: you hold the whole piece, and the
+briefs and the reading each new author needs cost more than they save. Past that, when several scene
+authors work at once (subagents on your own model, each started with only its brief: in Codex,
+`fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
 treatment's Decisions,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask

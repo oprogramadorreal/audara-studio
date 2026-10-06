@@ -26,7 +26,7 @@ Match the size of a change to the size of its musical unit:
 
 | What changes | Lands on | Read it from |
 |---|---|---|
-| A scene or a composition | a section or phrase start, on its downbeat | `audio.sections`, `audio.downbeats`; the example timeline's `bar(n)` |
+| A scene or a composition | a section or phrase start, on its downbeat (a montage's chapters, as often as every bar) | `audio.sections`, `audio.downbeats`; the example timeline's `bar(n)` |
 | A camera move, a big gesture | its end on a downbeat | `audio.downbeats` |
 | An accent: a punch, a flash, a step | a beat, an onset or a word | `audio.beatAt(t)`, `f.a.kick`, `audio.hit('snare', t, 0.1)`, `audio.events('kick', t0, t1)` |
 | Text, and what it sets off | its word | `words.get('…')`, `words.findWords('…')`, `Words.wordProgress(w, t)` |
@@ -68,9 +68,11 @@ Match the size of a change to the size of its musical unit:
 - **Density from hierarchy**: one primary move, supporting motion staggered behind it, fine detail under
   that, all overlapping. The whole frame starting and stopping on every beat, or everything pulsing on every
   kick, is the visualizer reflex: let the music drive one or two things and the rest follow the structure.
-- **One persistent actor**, when the piece wants continuity: something (a line, a word, a shape, a product, a
-  character) that keeps its identity across scenes and carries the eye through the cuts. Unrelated reveals in
-  a row read as a slideshow, however well each is animated. A montage built on contrast doesn't need one.
+- **Continuity or contrast**, whichever the piece is. One persistent actor (a line, a word, a shape, a
+  product, a character) can keep its identity across scenes and carry the eye through the cuts. A montage (a
+  showreel, a sampler of styles) shows range instead: each chapter its own look, hard cuts on the beat, held
+  together by the music, the type and the frame. Neither is the default. Reveals with neither, unrelated
+  and off the music, read as a slideshow, however well each is animated.
 - **The foreground as the transition**: the next scene is already in place while something in front (a word,
   a shape, the actor) scales through the camera, wipes or opens onto it, so no frame is empty between scenes.
   In the engine, overlap the two entries and let the incoming scene composite `f.under` itself
@@ -84,7 +86,8 @@ Match the size of a change to the size of its musical unit:
   already reads. A fade from black, or a loop that starts empty to match its end, is a choice the treatment
   states.
 - **Hard cuts work** when subject, scale, direction or material match across them and the motion continues
-  after the cut. Keep one wipe direction and one title position through a run of similar scenes; outgoing
+  after the cut, or in a montage, where the contrast is the point and the cut lands on the beat. Keep one
+  wipe direction and one title position through a run of similar scenes; outgoing
   text leaves before a wipe and incoming text enters after it, so two titles never splice into one word.
 
 ## Starting from rest

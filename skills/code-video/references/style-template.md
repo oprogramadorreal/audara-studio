@@ -21,12 +21,14 @@ for them
   own typeface; use the logo as given, since a redrawn logo is no longer the brand's mark.
 - **A product URL:** the site's CSS (custom properties, `@font-face`) names its colours and fonts, and its
   copy gives the tone; its pages are where the product's real screens come from (`references/images.md`).
-- **Words** ("dark and engraved", a film, an era): that look is the director's. The style frames try ways
-  to make it, all inside what they said; what they didn't say (palette, type, light) is yours.
+- **Words** ("dark and engraved", a film, an era, a style like psychedelic) **or a form** (a showreel, a
+  trailer, a title sequence): that look is the director's, and so is what defines the form or the style (a
+  reel's chapters and their labels, psychedelia's full spectrum and colour splitting). The style frames try
+  ways to make it, all inside what they said; what they didn't say (palette, type, light) is yours.
 - **None of these:** the look is yours (SKILL.md, "When the look is yours"). Start from the idea: what the
   piece should make a viewer feel and the image that carries it, the music's character, a typographic idea,
-  a material or a light, a constraint the piece sets itself. Not from the genre (the look that comes first
-  for "night", "tech", "music" or "data" is the one every other video already has), and not from the
+  a material or a light, a constraint the piece sets itself. Not from the subject (the look that comes
+  first for "night", "tech", "music" or "data" is the one every other video already has), and not from the
   subject's props drawn flat on a plain ground. Try two or three directions as style frames: the key moment
   in the engine, each made a different way (a lit form, a flat graphic field, a treated photograph, type
   alone: whatever the idea suggests), not one layout recoloured; one scene file and a still each, no sync.
@@ -115,6 +117,9 @@ in Avoid, marked (director).>
   every other key for its job in this piece, so scenes say what a colour is for and a palette change
   restyles every scene; the test card's `surface`, `line`, `muted`, `accent` and `accent2` are one way to
   name roles, not a set to fill.
+- **A montage** (a showreel, a sampler of styles) shows range: STYLE.md keeps what its chapters share
+  (type, rhythm, the frame's labels), and each chapter can take its own palette and medium, named in the
+  treatment's storyboard (keys per chapter, `reelA`, `reelB`, or a module of their own).
 - Renaming or deleting a key breaks every scene that uses it (`C_<KEY>`, `LIN.<key>`, `rgba('<key>')`):
   update those scenes. The template's example video (`videos/example/`) keeps its own palette, so a
   new palette never breaks it: leave it, or delete it when the director asks.
@@ -186,8 +191,10 @@ a contact sheet is usually shown scaled down, so its thumbnails understate what 
 Copy this list into `docs/STYLE.md` and adapt it. These are defaults, not choices: what models reach for
 when nothing steers them, so each reads as generic. One is fine when the director asks for it or the
 treatment argues for it, except an item marked (director): that is their decision, and no treatment brings
-it back. The list says what is tired, not what is good: steering clear of all of it is not a look, and
-turning one item inside out gives its twin, which is listed too.
+it back. A form or a style the director names asks for what defines it, so for that piece it is off the
+list: a showreel's chapter labels and timecodes, psychedelia's full spectrum and colour splitting,
+synthwave's grid and sun. The list says what is tired, not what is good: steering clear of all of it is not
+a look, and turning one item inside out gives its twin, which is listed too.
 
 - a navy or near-black ground with ivory or bone type and one warm accent, often glowing; or teal, amber
   and violet on navy;
