@@ -665,3 +665,28 @@ off by a usage limit in its first turn and run again; a grader cut off the same 
   - A critic left `mix.py measure`'s report at the top of `out/` (run without `--video`), and both
     title-card replies left out qc.py's numbers.
 - Not run: `cv-product-concept-mockup`, `cv-range-loop`'s creative-range set, and the --without arms.
+
+A third review by Codex, after those runs, found three more, each confirmed and fixed:
+
+- **The change report's hash missed changes to green and blue.** Its two lanes multiplied each pixel's
+  32-bit word in, and a multiply carries bits only upward, so a change to a word's high bytes (green, blue)
+  stayed in a few top bits of the state and often cancelled out. Over a 1080p frame, changing the first n
+  pixels hashed the same as the unchanged frame for 16 values of n on black (blue 0 to 128, the reviewer's
+  case), 31 on white (blue 255 to 254, one level) and 63 on white (green 255 to 127); a lane alone, for up
+  to 4,088. Each lane now rotates its state after the multiply, and no lane collided in twelve such cases
+  (three backgrounds, four changes), 2 million values of n each. Verify takes as long as before (3.5 s on
+  the example). Codex's second look at the fixes found that the new hash changes every digest, so a report
+  written by the old one, the branch's own, would have shown every frame as changed. A report now records
+  its `hashVersion`, and one hashed another way isn't compared, saying why: with a report from the
+  previous `render.ts`, "not compared (another copy of render.ts hashed its frames another way)", then "no
+  sampled frame (48 compared)" on the next run.
+- **`shoulder: 0` undersampled bright motion.** The adaptive sampling's error estimate ran every frame
+  through the full tone shoulder, which flattens the gaps between highlights, so on a frame with the
+  shoulder off it measured about half the error the picture showed (2.35 levels for 0.875 against 1,
+  where the shown gap is 4.85) and stopped below the tolerance of 3 too soon. It now applies as much of the
+  shoulder as the frame's post does. A thin bar at 2.0 sweeping over grey 0.8, shoulder off: 36 sub-frames
+  a frame before, 108 now. The example, shoulder off, samples as before (24 frames); with the shoulder on,
+  the estimate is the old one.
+- **`--size` without its value rendered the video's own format,** into its own folder, as `opt()` reads a
+  missing value as an absent option. Any option but the six flags given without its value now stops the
+  run, by name.

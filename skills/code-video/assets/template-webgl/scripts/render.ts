@@ -93,6 +93,8 @@ const flag = (k: string) => argv.includes(`--${k}`);
 const OPTIONS = new Set(['as-preview', 'cols', 'crf', 'cuts', 'draft', 'fps', 'from', 'headed', 'max-samples', 'min-samples',
   'n', 'noaudio', 'only', 'out', 'preset', 'samples', 'scale', 'shutter', 'since', 'size', 'stop', 't', 'thumb', 'times',
   'to', 'tol', 'tune', 'url', 'video', 'x264']);
+/** The options that take no value; every other one is followed by its value. */
+const FLAGS = new Set(['as-preview', 'cuts', 'draft', 'headed', 'noaudio', 'stop']);
 const PROJECT = path.resolve(import.meta.dir, '..');
 
 class Fail extends Error {}
@@ -794,13 +796,20 @@ async function verifyInPage(page: Page, earlier: number[]) {
     const N = p.width * p.height * 4;
     const ref = new Uint8Array(N), cur = new Uint8Array(N);
     /**
-     * A 64-bit hash of a frame's pixels (two 32-bit multiply-xor lanes over its 32-bit words). A frame is a
-     * function of t, so the same frame hashes the same in every run: equal hashes, unchanged pixels.
+     * A 64-bit hash of a frame's pixels (two 32-bit xor-multiply-rotate lanes over its 32-bit words). A frame is
+     * a function of t, so the same frame hashes the same in every run: equal hashes, unchanged pixels. (The
+     * rotation matters: a multiply carries bits only upward, so without it a change to a pixel's green or blue,
+     * the high bytes of its word, lived in a few top bits and often cancelled out: one level of blue over part
+     * of a white frame hashed the same as the frame.) A change to it bumps HASH_VERSION.
      */
     const hash = (b: Uint8Array) => {
       const u = new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
       let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-      for (let i = 0; i < u.length; i++) { const k = u[i]!; h1 = Math.imul(h1 ^ k, 2654435761); h2 = Math.imul(h2 ^ k, 1597334677); }
+      for (let i = 0; i < u.length; i++) {
+        const k = u[i]!;
+        h1 = Math.imul(h1 ^ k, 2654435761); h1 = (h1 << 13) | (h1 >>> 19);
+        h2 = Math.imul(h2 ^ k, 1597334677); h2 = (h2 << 17) | (h2 >>> 15);
+      }
       h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
       h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
       return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
@@ -963,6 +972,11 @@ function checkTimingData(video: string, files: string[], duration: number) {
 }
 
 type Shot = { t: number; scenes: string[]; hash: string };
+/**
+ * How verifyInPage hashes a frame, kept in the report: a report hashed another way isn't compared, since every
+ * frame would differ (2: the lanes rotate their state; 1, unmarked: they didn't).
+ */
+const HASH_VERSION = 2;
 type Entry = { id: string; start: number; end: number };
 /**
  * What changed since an earlier verify of the same video (`prev`, its report): the frames both rendered at the
@@ -976,6 +990,7 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
   const head = `changed since the verify of ${when} (${from})`;
   const was = (k: string, a: unknown, b: unknown) => (JSON.stringify(a) === JSON.stringify(b) ? null : `${k} ${JSON.stringify(a)}, now ${JSON.stringify(b)}`);
   const why = !Array.isArray(prev?.shots) ? 'it predates frame hashes'
+    : (prev.hashVersion ?? 1) !== HASH_VERSION ? 'another copy of render.ts hashed its frames another way'
     : prev.video !== info.video ? `it is of video ${JSON.stringify(prev.video)}`
     : was('size', prev.size, [info.logicalWidth, info.logicalHeight]) ?? was('scale', prev.scale, SCALE) ?? was('fps', prev.fps, info.fps)
       ?? was('path', prev.path, info.exporting ? 'full quality (ctx.export)' : 'preview (--as-preview)') ?? was('--only', prev.only, ONLY.length ? ONLY : null);
@@ -1105,7 +1120,7 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
     timeline: info.timeline, errors, warnings, browserLog: logs, seconds: +((performance.now() - t0) / 1000).toFixed(1),
     changes: changes.report,
     // (the frames step 1 hashed, with their scenes: what the next verify compares)
-    shots: r.shots,
+    hashVersion: HASH_VERSION, shots: r.shots,
   };
   mkdirSync(path.dirname(out), { recursive: true });
   await Bun.write(out, JSON.stringify(result, null, 2));
@@ -1148,6 +1163,10 @@ async function main() {
   const unknown = argv.filter((a) => a.startsWith('--') && !OPTIONS.has(a.slice(2)));
   if (unknown.length)
     fail(`${unknown.join(', ')}: not an option of this render.ts (its header lists every one). An instruction that names it is for a newer copy: the code-video skill's scripts/init.ts run again with --force updates the project's scripts, keeping each old file as <file>.orig`);
+  // (an option given without its value reads as not given: --size alone would render the video's own format
+  // into its own folder, a bare --out would write to the default path)
+  const bare = argv.filter((a, i) => a.startsWith('--') && !FLAGS.has(a.slice(2)) && (argv[i + 1] === undefined || argv[i + 1]!.startsWith('--')));
+  if (bare.length) fail(`${bare.join(', ')}: no value after it (the header says what each option takes)`);
   if (DRAFT && mode !== 'video') fail(`--draft is for video (a quick look at the motion); ${mode} ${mode === 'poster' ? 'is the full-quality frame' : 'renders one sub-frame per frame already'}`);
   parseSampling();
   if (mode === 'verify' && (SAMPLES_GIVEN || opt('shutter') !== undefined))

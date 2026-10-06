@@ -91,7 +91,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   verify's renders are fixed.
 - Every option is in the header of `scripts/render.ts`; this list has the common ones. An option it doesn't
   know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
-  updates the project's scripts).
+  updates the project's scripts), and so does one given without its value (`--size` alone would otherwise
+  render the video's own format).
 - Typecheck: `bun run check`, or just your files: `bunx tsc --noEmit -p tsconfig.json 2>&1 | grep scenes/yourscene`
   (PowerShell: `bunx tsc --noEmit -p tsconfig.json | Select-String scenes/yourscene`). A bun script in a
   video's `audio/` (a synthesized score, say) is checked with `scripts/`, under bun's types, not with the
