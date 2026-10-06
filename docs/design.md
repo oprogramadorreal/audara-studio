@@ -83,7 +83,9 @@ part of the design serves that loop:
 2. **Sound.** For a song, the agent analyzes its beats and lyrics. For narration, it writes the script, asks
    before spending ElevenLabs credits, and generates the voice and music with their timings.
 3. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
-4. **Build.** It writes the scenes, several in parallel when there are many, and a critic reviews each one.
+4. **Build.** It writes the scenes, alone for a short piece and with several authors in parallel for a long
+   one, and a fresh critic reviews the whole cut. (Until 0.4.0 a short piece was split among authors too;
+   history.md says why it changed.)
    The preview reloads as scenes change.
 5. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes the scene and answers with a `?t=` link to that moment. This loop repeats for
@@ -176,14 +178,22 @@ How the skills could still limit it, and what prevents that:
 
 - **Anchoring on examples.** pdoom-video's scenes and taste (engraving, ink and orange) would pull every
   video toward one look. The example scenes are indexed by technique, not style, and the templates carry no
-  pdoom-video palette, tone or motifs.
+  pdoom-video palette, tone or motifs. The example's words are placeholders, and the f(t) rule is marked as
+  the code's: its sentence once became a showreel's message.
 - **Process overhead on small requests.** The brief scales with the piece: a ten-second loop needs a few
-  lines, a music video a full treatment.
+  lines, a music video a full treatment. A piece up to about 30 s is built by the lead alone, after it has
+  worked the whole piece out, with one critic round before the hand-off: split among scene authors, a
+  showreel's concept was fixed after 2–3.5K tokens of thought (88–118K when the model built it alone), and
+  the build took three times as long.
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
-  over their defaults, including the list of clichés to avoid.
+  over their defaults, including the list of clichés to avoid. A form or a style the director names (a
+  showreel, psychedelic) brings what defines it: the Avoid list, the critic and the motion grammar's
+  persistent actor step aside for it, since they had taken a reel's labels and a psychedelic piece's colour
+  splitting out, and built four showreels around one circle.
 - **A slow preview killing an idea.** A scene too heavy for real time gets a cheaper preview path (lower
   resolution, fewer samples) rather than a simpler idea. pdoom-video's shoggoth already renders its G-buffer
-  at half resolution.
+  at half resolution. The player compiles every scene's shaders while it loads, so a heavy scene doesn't
+  freeze the first play where it enters.
 
 The evals check this directly (see "Writing the skills").
 
@@ -245,7 +255,8 @@ pdoom-video.
   (the standard Codex, Cursor and Copilot adopted in August 2026) leaves agents, hooks and commands out,
   and Claude Code doesn't support it yet. Both tools can start general-purpose subagents, so put the
   coordination in the skill: write the briefing docs from their templates and, when there are many scenes,
-  start one subagent per scene, each with its own files.
+  start one subagent per scene, each with its own files, for a long piece (one up to about 30 s is the lead's
+  alone).
 - **The critic is a role, not a file.** The one extra role worth having is a **critic** that reviews
   contact sheets against the treatment with fresh eyes (its protocol comes from
   motion-video-kit: history.md, "Lessons from motion-video-kit"). In a full-cut round it looks first as a
