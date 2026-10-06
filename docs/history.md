@@ -777,10 +777,11 @@ than they add:
   montage, each chapter its own look, hard cuts on the beat), neither the default; the storyboard's column
   is "a cut, or what carries over"; a montage's STYLE.md keeps type and rhythm and lets each chapter take
   its own palette.
-- **A short piece is one author's, with one critic round.** Up to about 30 s the lead works the whole
-  piece out, then writes the treatment and builds every scene itself; scene subagents are for longer
-  pieces. Its build ends after the full-cut round and its fixes, which the render's own review checks
-  (Delivery, step 2), so nothing renders unreviewed; past 30 s the verification round stays.
+- **The lead works the whole piece out first, and a short piece gets one critic round.** The brief now
+  starts "Work out the whole piece, then write the treatment". Up to about 30 s the build ends after the
+  full-cut round and its fixes, which the render's own review checks (Delivery, step 2), so nothing renders
+  unreviewed; past 30 s the verification round stays. Scene subagents stay as they were: a first version
+  had the lead build a short piece alone, and its runs scored lower blind ("What 0.4.0 checked").
 - **The skill's words stay off screen.** SKILL.md's f(t) rule says it is the code's, never a line in the
   video, and so do the treatment template and the AGENTS.md init writes; the example video's lyric is now
   "Lorem ipsum / dolor sit amet, / sed do." and its pen writes "fin.".

@@ -220,10 +220,8 @@ set plainly) is the treatment's call.
 
 ## Scene briefs for scene authors
 
-A piece up to about 30 s is built by one author, you, in one pass: you hold the whole piece, and the
-briefs and the reading each new author needs cost more than they save. Past that, when several scene
-authors work at once (subagents on your own model, each started with only its brief: in Codex,
-`fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
+When several scene authors work at once (subagents on your own model, each started with only its brief:
+in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
 treatment's Decisions,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
