@@ -22,8 +22,9 @@
 //            whole frame time at the cuts): --samples and --shutter don't apply.
 //            It also says what changed since the verify whose report it replaces (or the one --since <report>
 //            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
-//            of their pixels at every half second, cut and word start (exact: a frame is a function of t), with
-//            their scenes, and the timeline entries added, removed or moved
+//            of their pixels at every half second, cut and word start, and at the times the earlier report
+//            sampled (a frame is a function of t, so an equal hash is an unchanged frame; between samples, a
+//            short change can go unseen), with their scenes, and the timeline entries added, removed or moved
 //   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
 //            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
@@ -781,8 +782,8 @@ async function video(page: Page, info: Info, from: number, to: number, fps: numb
  * verify: the checks that run in the page. Renders a frame at every word (start ±1 frame, middle, end),
  * every cut (±1 frame) and every half second; then the determinism probes; then the soundtrack's files.
  */
-async function verifyInPage(page: Page) {
-  return page.evaluate(async () => {
+async function verifyInPage(page: Page, earlier: number[]) {
+  return page.evaluate(async (earlier: number[]) => {
     const p = (window as any).__audara, E = p.engine;
     const fps: number = p.fps, D: number = p.duration, f1 = 1 / fps;
     const TL = p.timeline as { id: string; start: number; end: number }[];
@@ -823,6 +824,15 @@ async function verifyInPage(page: Page) {
         shots.push({ t, scenes: at(t), hash: hash(ref) });
       }
       if (frames % 20 === 0) await yieldNow();
+    }
+    // ...and the times the earlier report hashed that this run doesn't sample (a word that moved: its old start),
+    // so a change there is compared too. They are compared, not kept in this report, so the list doesn't grow.
+    const again: { t: number; scenes: string[]; hash: string }[] = [];
+    for (const t of earlier) {
+      if (!(t >= 0 && t < D) || hashed.has(t)) continue;
+      p.still(t);
+      await E.readPixelsAsync(ref);
+      again.push({ t, scenes: at(t), hash: hash(ref) });
     }
 
     // 2. determinism: a frame must not depend on what was rendered before it. Each probe time is rendered
@@ -894,8 +904,8 @@ async function verifyInPage(page: Page) {
     });
     const fileLengths: Record<string, number | null> = {};
     for (const s of segs) if (!(s.file in fileLengths)) fileLengths[s.file] = await meta('/' + s.file.split('/').map(encodeURIComponent).join('/'));
-    return { frames, shots, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
-  });
+    return { frames, shots, again, probes: probeResults, cuts: E.cuts as number[], leaks, segments: segs, fileLengths };
+  }, earlier);
 }
 
 /** A project file as JSON, or null when it is missing or isn't JSON. */
@@ -956,7 +966,7 @@ type Shot = { t: number; scenes: string[]; hash: string };
 type Entry = { id: string; start: number; end: number };
 /**
  * What changed since an earlier verify of the same video (`prev`, its report): the frames both rendered at the
- * same times, compared by the hash of their pixels, so a stretch that changed is exact, not a guess (a frame is
+ * same times, compared by the hash of their pixels, so a sampled frame that changed is known, not guessed (a frame is
  * a function of t); and the timeline entries that were added, removed or moved. `lines` are for the console,
  * `report` for verify.json. A report from another size, scale, frame rate, path or --only isn't compared.
  */
@@ -977,7 +987,7 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
   // rendered, such as a word that moved, is neither)
   const runs: Shot[][] = [];
   let compared = 0, changed = 0, open = false;
-  for (const s of shots) {
+  for (const s of [...shots].sort((a, b) => a.t - b.t)) {
     const h = before.get(s.t);
     if (h === undefined) continue;
     compared++;
@@ -999,8 +1009,8 @@ function changesSince(prev: any, from: string, shots: Shot[], info: Info, timeli
   }
   for (const id of old.keys()) if (!now.has(id)) moved.push(`'${id}' removed`);
   const lines = [!changed
-    ? `${head}: no frame (${compared} compared)`
-    : `${head}: ${changed} of ${compared} frames, in ${stretches.map((s) => `${span(s)} (${named(s.scenes)})`).join('; ')}`
+    ? `${head}: no sampled frame (${compared} compared)`
+    : `${head}: ${changed} of ${compared} sampled frames, in ${stretches.map((s) => `${span(s)} (${named(s.scenes)})`).join('; ')}`
       + (changed > 0.9 * compared && compared >= 10 ? ' — nearly every frame: as after a change to what every scene shares (src/look.ts, POST, the engine, a font); if nothing like that changed, the browser or the GPU did' : '')];
   if (moved.length) lines.push(`timeline since then: ${moved.join('; ')}`);
   return { lines, report: { since: from, at: prev.at ?? null, compared, changed, stretches, timeline: moved } };
@@ -1013,7 +1023,9 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
   if (opt('since') && !existsSync(since)) fail(`--since ${opt('since')}: no such report (an earlier verify.json, kept for instance in a critic round's folder)`);
   let prev: any = null;
   try { prev = existsSync(since) ? JSON.parse(readFileSync(since, 'utf8')) : null; } catch {}
-  const r = await verifyInPage(page);
+  // (the earlier report's sample times, so a frame it sampled that this run wouldn't, such as a moved word's, is compared too)
+  const earlier: number[] = Array.isArray(prev?.shots) ? prev.shots.map((s: Shot) => s.t).filter((t: unknown) => typeof t === 'number' && Number.isFinite(t)) : [];
+  const r = await verifyInPage(page, earlier);
   const errors: string[] = [], warnings: string[] = [...info.warnings];
   const D = info.duration;
   // scene and boot errors, as they stand after all those renders
@@ -1081,7 +1093,7 @@ async function verify(page: Page, info: Info, logs: string[], out: string) {
   const passed = errors.length === 0;
   const renders = r.probes.reduce((n, p) => n + p.variants.length, 0);
   const rel = path.relative(PROJECT, since), from = rel.startsWith('..') || path.isAbsolute(rel) ? since : rel.replace(/\\/g, '/');
-  const changes = prev ? changesSince(prev, from, r.shots, info, info.timeline)
+  const changes = prev ? changesSince(prev, from, [...r.shots, ...r.again], info, info.timeline)
     : { lines: ['changes: none to compare (the first verify here: the next one names the stretches that change after it)'], report: null };
   const result = {
     passed, at: new Date().toISOString(), video: info.video, title: info.title, duration: D, durationSource: info.durationSource, fps: info.fps,

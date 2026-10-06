@@ -299,8 +299,10 @@ on (every frame is a function of `t`). When it fails, the preview and the render
 message names the scene and the time. It writes `out/<video>/verify.json` and exits with 1 on failure;
 fix that before anything else. Its last lines say what changed since the report it replaces (or the one
 `--since` names): the stretches whose frames differ and their scenes, from a hash of the pixels at every
-half second, cut and word start, so "nothing else moved" is a measurement, and the timeline entries
-added, removed or moved. A stretch you didn't mean to change is a regression until you have looked at it.
+half second, cut and word start (and the earlier report's times), so "nothing else moved" is measured at
+those frames, though a change shorter than half a second between them can go unseen; and the timeline
+entries added, removed or moved. A stretch you didn't mean to change is a regression until you have
+looked at it.
 
 **`uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json`**, the QC report, on every render,
 whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <file>` to keep the report,
