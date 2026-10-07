@@ -183,8 +183,8 @@ How the skills could still limit it, and what prevents that:
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
   A piece up to about 30 s gets one critic round before the hand-off, and the render's review is its
-  second. Scene authors stay: a lead that built two showreels alone saved little time and scored lower blind
-  (history.md, 0.4.0).
+  second. Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
+  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
   over their defaults, including the list of clichés to avoid. A form or a style the director names (a
   showreel, psychedelic) brings what defines it: the Avoid list, the critic and the motion grammar's

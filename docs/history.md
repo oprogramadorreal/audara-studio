@@ -805,3 +805,76 @@ Considered and rejected:
 - **Warming a scene again after a hot reload:** without asynchronous compilation (three.js's
   `compileAsync` wants a scene graph the passes don't have) the stall can only move, and the `?t=` link
   each change comes with reloads the page, which warms every scene.
+
+### What 0.4.0 checked
+
+Headless runs on 2026-10-06 and 07 on this machine (Windows 11, RTX 5070), Claude Code with Opus 5.5 at
+xhigh and Codex with GPT-6 Astra at ultra (`task.ts --effort`), ElevenLabs mocked. Each run was graded by
+a fresh grader with its own measurements (`grade.md` beside the run). Three blind judges (Opus 5.5) scored
+each set from contact sheets at 4 fps, full-size stills and the MP4s, under shuffled letters, with the
+files' metadata stripped. The scores below are their "would impress" means, 1–10. Most runs in this
+section were made on the release's first text, in which a piece up to about 30 s was built by the lead
+alone.
+
+- **On the showreel prompts the lead alone lost to 0.3.0, in both tools.** The 0.3.0 and no-plugin runs
+  are the user's, with Claude's 0.3.0 projects rendered to finals for the comparison.
+
+  | | Claude | Codex |
+  |---|---|---|
+  | Résumé reel, no plugin | 9.0 | 7.3 |
+  | Résumé reel, 0.3.0 | 8.7 | 6.7 |
+  | Résumé reel, 0.4.0's first text | 8.3 | 6.3 and 5.0 (two runs) |
+  | Psychedelic reel, no plugin | 8.3 | 4.7 |
+  | Psychedelic reel, 0.3.0 | 9.0 | 6.3 |
+  | Psychedelic reel, 0.4.0's first text | 7.0 | 5.3 and 5.0 |
+
+  One run per arm is noisy, and a gap of 0.3–0.4 is within it. Still, all four comparisons with 0.3.0 went
+  the same way, and the psychedelic reel's Claude gap was 2 points with every judge agreeing. The judges'
+  weakest moments were unfinished craft: a raymarch and a kaleidoscope gone "murky olive-teal", a dim end
+  card, "a flared orange vase that looks unfinished". The psychedelic reel had half the frame-to-frame
+  motion of 0.3.0's (one judge measured 11.2 against 23.3). Claude's lead wrote the résumé reel's seven
+  chapters, a wall and an end card in 20 minutes, where 0.3.0's eight scene authors had worked 19–47
+  minutes each. The psychedelic reel's six chapters took 17. Turn 1 got shorter (84.7 and 53.5 minutes
+  against 116 and 96.5), and turn 2, the render's review and the render, took 28 and 31 more. Codex took about as long
+  as before (23 and 32 minutes, 28 and 18, against 34 and 26). Scene subagents are back for every piece
+  with many scenes, as in 0.3.0.
+- **On the short single-idea prompts the lead alone kept the plugin's lift.**
+
+  | | Claude with | Claude without | Codex with | Codex without |
+  |---|---|---|---|---|
+  | `cv-zero-asset` (sky) | 8.0 | 7.0 | 6.3 | 4.0 |
+  | `cv-lyric-short` | 9.0 | 6.3 | 6.7 | 3.0 |
+
+  Every judge put Claude's plugin video first in both sets, as in round 4 (sky 8 against 6.3, lyric 9
+  against 7). Both tools passed every graded assertion on the sky video. On the lyric video, 42 of 44
+  words were on time in Claude's, with two lit early by a hand correction of its own. Codex's had 47 of 47.
+  Without the plugin, Claude's had 40 of 44 by a strict reading and Codex's 23 of 47, from Whisper's
+  attention timings. The runs without the plugin took 5–19 minutes. The runs with it took 18–79 minutes in
+  turn 1 and 17–28 more to render.
+- **What the release is for held.**
+  - Claude's showreels kept their chapter labels and timecodes (seven and six labelled chapters), and the
+    psychedelic one its full spectrum and colour splitting. STYLE.md crossed both off the Avoid list for
+    the piece. One critic still called a kaleidoscope's "purple and cyan neon on navy" an Avoid-list look,
+    and the fix kept the kaleidoscope and moved it onto the full spectrum.
+  - No run put the skill's words on screen: no f(t) line and no Lorem ipsum.
+  - Claude ended every first turn in the preview.
+  - The leads thought more before the treatment: 10.7K, 23.8K and 39.6K output tokens, against 2.2K and
+    3.5K in 0.3.0.
+- **The final text was only partly run.** Two Codex showreel runs on it each started two scene authors and
+  one full-cut critic. Their turn 1 took 21 and 17 minutes, and they weren't judged. Claude's two re-runs
+  each started seven scene authors, one per chapter, then were lost when the session ended. A second
+  attempt was stopped at its style frames to finish the release. The interrupted lyric run's final was rendered from its
+  finished project with its own command, and verify found no sampled frame changed.
+- **Found and not changed:**
+  - **Codex renders a showreel unasked.** It ran the full render in turn 1 in all six showreel runs
+    ("A render is included to make the requested video directly usable"), against "make a video alone
+    ends in the preview". It didn't on the sky or lyric prompts.
+  - **verify's determinism probe fails on 1/255.** It failed now and then on a few hundred pixels at 1/255
+    and passed on a rerun. It hit three of Claude's four runs here and 0.3.0's test-2 run. In the sky run it cost about 23 minutes: the chase found one real bug (a `pow()` of a negative base,
+    NaN in a shader) and then merged two timeline entries to make the failure go away. A 1/255 difference
+    on a few hundred pixels that a rerun doesn't repeat could count as a warning, not a failure.
+  - **Critics missed sound and sync.** Five bells rang over the sky video's frozen last second and a half
+    with nothing on screen. The lyric critic checked sync on four words and missed the two early ones.
+  - **A lyric final came out at 374 MB** for 30 s (99 Mb/s at CRF 16).
+  - **A Codex run without the plugin read this repo's AGENTS.md** from the folder above its work folder,
+    with its own `Get-Content`. That AGENTS.md describes the plugin, not its skills.
