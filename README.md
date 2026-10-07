@@ -40,6 +40,15 @@ Bring a song and it cuts the picture to it:
 
 > make a lyric video for the chorus of song.mp3, the lyrics are in lyrics.txt
 
+Or leave it all open and name only a form or a style; what defines it is kept (a reel's chapters, a
+psychedelic piece's colour):
+
+> make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are,
+> like it's your showreel for a résumé. go all out
+
+> make a dynamic 20-second motion graphics video that shows what an incredible motion designer you are,
+> psychedelic and hypnotic. make it feel like a showreel piece. go all out.
+
 Other ways in:
 
 - **Your script:** "make the video for script.txt, keep every word". The words stay as written; the agent

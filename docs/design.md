@@ -31,8 +31,9 @@ timelines and spliced soundtracks to upstream commit `bdbad53`.
 
   A project that needs another typeface (a brand's own, or a script these don't cover) adds it then; the
   engine guide explains how. Any OFL font works, for example from Google Fonts. A variable font first goes
-  through a static-instance script like pdoom-video's `analysis/make_fonts.py`, because Canvas2D and
-  opentype.js need static outlines.
+  through the template's `scripts/font-instances.py` (after pdoom-video's `analysis/make_fonts.py`):
+  Canvas2D and opentype.js draw a variable font only at its default instance, so each width or weight a
+  video uses becomes its own static file.
 
 ## Principles from the user
 
@@ -66,39 +67,50 @@ part of the design serves that loop:
 ### How it's used
 
 - **Install once per machine.** In Claude Code: `/plugin marketplace add oprogramadorreal/audara-studio`,
-  then install it from `/plugin`. In Codex: its plugin command. In either:
-  `npx skills add oprogramadorreal/audara-studio`.
+  then `/plugin install audara-studio@audara-studio`. In Codex: `codex plugin marketplace add
+  oprogramadorreal/audara-studio`, then `codex plugin add audara-studio@audara-studio`. The skills alone, in
+  either: `npx skills add oprogramadorreal/audara-studio`.
 - **Then talk naturally.** Open a folder and ask for a video: "make a 60-second video for `song.mp3`, dark
   and engraved". The skills load on their own: each skill's short description is in every session, and a
   matching request loads the rest.
 - **Name a skill only to force it**, when the request is vague, or when other video skills (Remotion,
   HyperFrames) are installed and audara must win. In Claude Code that's `/audara-studio:code-video`; in
-  Codex, `$code-video`.
+  Codex, `$audara-studio:code-video` (as the README says).
 
 ### A session, from the director's chair
 
-1. **Brief.** The agent decides what the request leaves open, writes the treatment and storyboard, sized
-   to the piece, shows them and builds on; it waits only for what the director alone can decide. (Until
-   round 4 the director approved the brief before any scene was built; history.md says why it changed.)
-2. **Sound.** For a song, the agent analyzes its beats and lyrics. For narration, it writes the script, asks
-   before spending ElevenLabs credits, and generates the voice and music with their timings.
-3. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
-4. **Build.** It writes the scenes, several in parallel when there are many, and a fresh critic reviews the
-   whole cut.
-   The preview reloads as scenes change.
-5. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
-   snare"). The agent changes the scene and answers with a `?t=` link to that moment. This loop repeats for
-   as long as the director wants.
-6. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
+The steps follow SKILL.md's session checklist, in its order:
+
+1. **Brief.** The agent works the whole piece out and decides what the request leaves open, then writes the
+   treatment and storyboard, sized to the piece, posts it and builds on; it waits only for what the
+   director alone can decide. (Until round 4 the director approved the brief before any scene was built;
+   history.md says why it changed.)
+2. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
+3. **Look.** When the look is left to it, it renders two or three style frames of the key moment, each a
+   different idea, picks one by looking, and writes the shared look down (`docs/STYLE.md`, `src/look.ts`).
+4. **Sound.** For a song, it analyzes the beats, sections and lyrics and cuts the window the video uses.
+   For narration, it asks before spending ElevenLabs credits and makes the voice with its word timings,
+   with a free stand-in voice meanwhile. Music and effects nobody gave are synthesized in code (free)
+   unless generated ones are asked for. The picture never waits for the sound.
+5. **Build.** It writes the scenes, one subagent per scene when there are many, and looks at each scene's
+   stills. The preview reloads as scenes change.
+6. **Critic.** A fresh critic reviews a draft of the whole cut, looking first as a stranger, and the agent
+   fixes what it finds; a piece longer than about 30 s also gets a verification round.
+7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
    asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
    quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
    and a poster frame. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
+8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
+   snare"). The agent changes what the note names and what it forces, checks what `verify` says changed,
+   and answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
 
 What the agent owes the director:
 
 - a one-line status during long work;
-- a link for every change;
-- the work shown: contact sheets, numbers, critic verdicts;
+- a link for every change, with what moved;
+- for a note that reads two ways, the reading taken and the other on offer;
+- the work shown: contact sheets, numbers (`qc.py`'s holds and blank frames, with a link to each),
+  critic verdicts;
 - a question before anything that costs money, or spending within a budget they set;
 - their decisions and rejections written down in the project, so later sessions keep them;
 - their product as it is in a factual demo: its real screens (given, or captured from its live site with
@@ -119,6 +131,8 @@ what a later session needs:
 - the shared style and the engine guide;
 - the preview and render commands;
 - the f(t) rule, in one line;
+- where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
+  to read before every change;
 - what the agent owes the director.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
@@ -129,6 +143,8 @@ since 0.2.0's copy ignored `--size` and rendered the video's own format under th
 given without its value, which would read as not given in the same way. Its engine, `src/engine/`, is never
 replaced, not even by `--force`, so a setting the engine gained later (the post's `shoulder`) does nothing
 there: where the skill names one, it says how to tell and what to do instead (`references/images.md`).
+The player outside it (`src/main.ts`) is updated by `--force`, so it checks what the engine has: on an
+engine from before 0.4.0 it skips the shader warm-up and plays as before.
 
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
@@ -260,9 +276,10 @@ pdoom-video.
   contact sheets against the treatment with fresh eyes (its protocol comes from
   motion-video-kit: history.md, "Lessons from motion-video-kit"). In a full-cut round it looks first as a
   stranger, from the render and the director's words alone, and writes that down before it reads the
-  treatment, so the treatment's arguments can explain a choice but not change what a viewer saw. In v1 the
-  lead starts a general-purpose subagent with the critic prompt from
-  `critique.md`, which works the same in both tools. Add an agent definition only if that falls short.
+  treatment, so the treatment's arguments can explain a choice but not change what a viewer saw. The lead
+  starts a general-purpose subagent with the critic prompt from `critique.md`, which works the same in both
+  tools, and waits for it (a critic left running dies with the turn). Add an agent definition only if
+  that falls short.
 
 ## The engine, three.js and other frameworks
 
@@ -272,8 +289,8 @@ The engine is built on three.js (0.186): its render targets, shader materials an
 combine four ways of drawing in the same frame:
 
 - fullscreen GLSL passes (`FSPass`);
-- three.js scenes with meshes and cameras: `stack.ts` falls through an `InstancedMesh` with a perspective
-  camera and fog, and `loss.ts` flies over a terrain mesh with its own shader;
+- three.js scenes with meshes and cameras: pdoom-video's `stack.ts` falls through an `InstancedMesh` with
+  a perspective camera and fog, and its `loss.ts` flies over a terrain mesh with its own shader;
 - Canvas2D layers for type (`Layer2D`);
 - GPU lines (`LineBatch`).
 
@@ -348,7 +365,8 @@ tells the director why. Paid tools keep their license caveat.
 ## Sound and ElevenLabs
 
 Worth adding, as an optional part of `soundtrack`. With a key, the model can make the whole soundtrack;
-without one, nothing else changes.
+without one, nothing else changes: music and effects are synthesized in code, `standin.py` gives a free
+local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as before.
 
 ### Why it earns its place
 
@@ -385,9 +403,11 @@ without one, nothing else changes.
    take. Generate once, keep the file, and save the exact request next to it (text, voice, model, settings,
    seed). Renders never call the API, and a script regenerates only when its request has changed.
    pdoom-video did this by hand: `docs/letra-explicada-pt-br/tts/` holds the exact text of each generation.
-2. **Ask before spending.** Before generating, say what it will make (characters, length) and confirm. For
-   music, show the free plan first. Make the voice's first block and check it before generating the rest
-   (by ear when the director wants to; by measurement otherwise). A budget the director sets counts as the yes.
+2. **Ask before spending.** Before generating, say what it will make (characters, length) and confirm:
+   without `--yes`, `eleven.py` prints what it would make and what it would cost, and exits without
+   spending. For music, show the free plan first. Make the voice's first block and check it before
+   generating the rest (by ear when the director wants to; by measurement otherwise). A budget the director
+   sets counts as the yes.
 3. **Keep the key out of the repo.** Read `ELEVENLABS_API_KEY` from the environment (the name the SDK and
    the official skills use). Never write it to a tracked file, print it or pass it as a command-line
    argument. If it's missing, the scripts say so and the skill goes on with the user's own audio or a silent
@@ -399,17 +419,18 @@ without one, nothing else changes.
 5. **Check the result by transcription.** Speech-to-text on the generated file confirms that it says what
    the text says. The user approves it by ear when they want to.
 
-Lessons from pdoom-video's explainer to put in `references/elevenlabs.md` (`ROTEIRO.md`, "Geração no
-ElevenLabs"): one voice and the same settings for every file; one paragraph of text is one block, and the
-picture cuts in the silence between blocks; acronyms read better written as they appear on screen than
-spelled out; generate the key lines several times and keep the most natural take.
+Lessons from pdoom-video's explainer are in `references/elevenlabs.md` (from its `ROTEIRO.md`, "Geração
+no ElevenLabs"): one voice and the same settings for every file; one paragraph of text is one block, and
+the picture cuts in the silence between blocks; acronyms read better written as they appear on screen
+than spelled out; generate the key lines several times and keep the most natural take.
 
 ### Adding more tools later
 
 Add a tool only when it writes data the engine reads or does a step the model can't do by itself, and keep
-it behind one line in SKILL.md. Cheap candidates: SRT captions from the word timings, and a thumbnail mode
-(pdoom-video has `app/thumb.html` and `app/scripts/thumb.ts`). Leave out until a project needs them: stock
-footage, voice cloning. (Image generation joined in round 4, as an option behind the same spending rules.)
+it behind one line in SKILL.md. A cheap candidate: SRT captions from the word timings. Leave out until a
+project needs them: stock footage, voice cloning. (A thumbnail mode came as `render.ts poster`, one frame at
+full quality; image generation joined in round 4, as an option behind the same spending rules; Blender and
+math references came as optional tools, each read only when in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
@@ -421,7 +442,7 @@ they differ, follow the stricter rule. What that means here:
 
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
-    v1 needs none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
+    the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
   - Both skills stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own.
 - **`name`:** lowercase letters, digits and hyphens; at most 64 characters; the same as the folder name; no
@@ -463,9 +484,11 @@ they differ, follow the stricter rule. What that means here:
   See "Room for the model".
 - **One default per choice, with a way out:** the template by default, and another approach when it serves
   the video better.
-- **Imperative steps with explicit inputs and outputs** (OpenAI): "Run `scripts/eleven.py tts <script>`: it
-  writes the narration, its word timings and a record of the request into `videos/<name>/`."
-- **Checklists for workflows, loops for quality:** the six director steps as a list the agent can copy;
+- **Imperative steps with explicit inputs and outputs** (OpenAI): "`uv run <skill>/scripts/eleven.py tts
+  script.txt --video <video> --voice <id>` prints what it would make and cost; with `--yes` it writes the
+  narration to `audio/`, its word timings to `data/words.json` and a request record beside each file."
+- **Checklists for workflows, loops for quality:** the session's eight steps as a checklist the agent
+  keeps in its notes;
   render stills, look and fix; `verify` and fix; critic, fix and verify.
 - **One term per idea:** "scene" (pdoom-video also says "plate"), "treatment", "timeline", "preview",
   "render", "cut".
@@ -498,7 +521,9 @@ they differ, follow the stricter rule. What that means here:
   default model.
 - **Claude A and Claude B:** one session improves the skills while a fresh one uses them on real tasks.
   Watch which files it reads: a file never read is unnecessary or badly linked.
-- **Tools:**
+- **Tools:** the evals run on their own harness (`evals/harness/`: trigger sets of 20 requests per skill,
+  multi-turn task cases, mocks of the paid APIs), since skill-creator's trigger loop and `claude plugin
+  eval` need a shell native Windows doesn't give them (`evals/README.md`). Also used:
   - Anthropic's skill-creator plugin: task evals, benchmarks, the description optimizer;
   - Codex's built-in `$skill-creator` and its validator;
   - `skills-ref validate ./skills/<name>`;
@@ -528,8 +553,9 @@ audara-studio/
     │   ├── scripts/demo-track.ts     # the example video's synthesized demo track
     │   ├── scripts/qc.py             # holds, still at a glance, blank frames, loudness, stream tags on any MP4
     │   ├── scripts/imagegen.py       # optional: generated images, each with its request record
-    │   └── assets/template-webgl/    # engine, preview player, render.ts, fonts, an example video
-    │                                 # with one scene per way of drawing; pdoom specifics removed
+    │   └── assets/template-webgl/    # engine, preview player, render.ts, font-instances.py, fonts, an
+    │                                 # example video with one scene per way of drawing; pdoom specifics
+    │                                 # removed
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
@@ -567,10 +593,12 @@ the formats the engine's `audio.ts` and `words.ts` read.
 ├── AGENTS.md, CLAUDE.md         # conventions for later sessions ("Coming back later")
 ├── README.md                    # for the director: the commands to watch and render without an agent
 │                                # (written once, when the project has none; theirs after that)
-├── package.json, vite.config.ts, index.html, tsconfig.json
-├── src/                         # the shared engine and preview player; src/look.ts holds the look in code
-├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, video, poster; --video <name>,
-│                                # --size <w>x<h> for a second format
+├── package.json, vite.config.ts, index.html, tsconfig.json, tsconfig.scripts.json
+├── src/                         # the shared engine (src/engine/) and preview player (src/main.ts);
+│                                # src/look.ts holds the look in code
+├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, gpu, video, poster;
+│                                # --video <name>, --size <w>x<h> for a second format
+├── scripts/font-instances.py    # static instances of a variable font, for a typeface a project adds
 ├── public/fonts/                # the shared fonts, with their licenses
 ├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look
 ├── videos/<name>/
@@ -579,6 +607,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │   ├── CRITIQUE.md              # the critic rounds' ledger
 │   ├── timeline.ts, scenes/     # its edit and its scene modules
 │   ├── audio/                   # song, narration, music, effects, each with its request record
+│   ├── mix.json                 # the mix of voice, music and effects that mix.py builds
 │   ├── assets/                  # images and footage, each with a line in SOURCES.md
 │   └── data/                    # audio.json, and words.json for sung or spoken lines
 ├── .audara-cache/               # caches and scratch work, git-ignored
