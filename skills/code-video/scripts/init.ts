@@ -590,7 +590,7 @@ const vids = listVideos().map((v) => v.name);
 const show = newVideos.at(-1) ?? defaultVideo(vids);
 const here = path.relative(process.cwd(), P) === '';
 // (one command per line: Windows PowerShell 5.1 has no &&)
-log('\nNext: start the preview and get its link (it keeps running on its own, until `bun scripts/render.ts preview --stop`):');
+log('\nNext: start the preview and post its link to the director in a message (it keeps running on its own, until `bun scripts/render.ts preview --stop`):');
 if (!here) log(`  cd "${P}"`);
 if (needInstall) log('  bun install');
 log(`  bun scripts/render.ts preview --video ${show ?? '<video>'}`);
