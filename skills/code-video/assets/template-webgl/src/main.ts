@@ -52,9 +52,11 @@ async function boot() {
     // project plays as it did. The warm-up only saves a stall, so it never keeps the player from starting.
     engine.render(Math.max(0, Math.min(FROM ?? 0, engine.duration - 0.001)));
     const info = document.getElementById('info');
-    if (typeof engine.warm === 'function') {
+    // (typed as optional, so this file also typechecks against an engine without it)
+    const warm = (engine as unknown as { warm?: (onEntry: (i: number, n: number, id: string) => void) => Promise<void> }).warm;
+    if (typeof warm === 'function') {
       try {
-        await engine.warm((i, n, id) => { if (info) info.textContent = `preparing the scenes to play smoothly: ${i + 1} of ${n} (${id})`; });
+        await warm.call(engine, (i, n, id) => { if (info) info.textContent = `preparing the scenes to play smoothly: ${i + 1} of ${n} (${id})`; });
       } catch (err) {
         console.warn('[audara] scene warm-up stopped; scenes compile as they first play', err);
       }

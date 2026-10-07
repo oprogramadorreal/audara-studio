@@ -885,7 +885,9 @@ A review by Codex on the PR found two more in the warm-up, each confirmed and fi
   `src/engine/`, so a 0.3.0 project updated that way called `warm()` on an engine without it. In headless
   Chrome its preview threw "engine.warm is not a function" and never showed the player. The player now
   warms only an engine that has `warm()`, and a warm-up that throws only logs a warning, since it saves a
-  stall and nothing more. The new player on a 0.3.0 engine started in 0.7 s.
+  stall and nothing more. The new player on a 0.3.0 engine started in 0.7 s. Codex's second look found
+  that `bun run check` still failed on such a project (TS2339 on `warm`, TS7006 on its callback), so the
+  check is typed as an optional method, and the player typechecks against both engines.
 - **A short stateful entry played on from where warming left it.** `warm()` reset the engine's last time,
   not each scene's. A stateful entry shorter than the 0.25 s seek window then looked continuous when
   playback reached it, skipped its reset and played on from its end. In Codex's reproduction, a 1.0–1.2 s
