@@ -15,6 +15,7 @@ Contents
 - Round 4: direction first, and taste when it's left open (2026-10-04)
 - After round 4: a build ends in the preview (0.2.0, 2026-10-05)
 - Lessons from the motion-engineering article (0.3.0, 2026-10-05)
+- The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
 
 ## Definition of done
 
@@ -291,7 +292,7 @@ in `evals/`; their results stay out of the repo.
   anchors no style". Grey with a cyan and a magenta reads as a placeholder, and `verify` warns while a
   real video still uses it, so no project inherits a look nobody chose.
 - **The evals have their own harness.** skill-creator's trigger loop and `claude plugin eval` need a shell
-  this machine doesn't give them on native Windows, so `evals/harness/` runs the queries and the
+  that native Windows doesn't give them, so `evals/harness/` runs the queries and the
   multi-turn cases directly, with a decoy app on Vite's default port, a record of every live preview, a
   copy of Codex's session files and a mock of ElevenLabs that looks like a real account, and cleans what
   the runs leave in the tools' own settings. Its runs keep computer-use and browser plugins off in both tools:
@@ -416,8 +417,8 @@ measurements, and three blind judges ranked each set of videos made from the sam
   the idea. Two script bugs were found and fixed: `align.py` gave an acronym's held vowel to the next word
   (RLHF 0.6 s early), and contact sheets over 3.75 MiB were re-encoded to 256 colours by Claude Code's image
   reader, painting grey haze into the critics' view.
-- **Not run:** the stand-alone second wave of the short prompts on the final text (stopped when the machine
-  ran low on memory with four renders at once), real image generation and real ElevenLabs music with
+- **Not run:** the stand-alone second wave of the short prompts on the final text (stopped when the test
+  machine ran low on memory with four renders at once), real image generation and real ElevenLabs music with
   `--free-form` (no paid calls were made), and Blender or Manim outside Windows.
 
 ## After round 4: a build ends in the preview (0.2.0, 2026-10-05)
@@ -706,3 +707,190 @@ A fourth review by Codex (2026-10-06) found two more, each confirmed and fixed:
   checked with tsc). images.md now says how to tell (no `shoulder` in `post.ts`'s `PostParams`) and to
   undo the shoulder in the scene there, with the `unshoulder` function it already gave for a frame that
   needs its glow; the shoulder curve is the same in every release.
+
+## The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
+
+The user ran two short prompts word for word, each in Claude Code (Opus 5.5, xhigh) and in Codex (GPT-6
+Astra, ultra), with and without the plugin (0.3.0): eight runs, each in a project folder of its own.
+
+- "make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are,
+  like it's your showreel for a résumé. go all out"
+- "make a dynamic 20-second motion graphics video that shows what an incredible motion designer you are,
+  psychedelic and hypnotic. make it feel like a showreel piece. go all out."
+
+They judged the runs without the plugin more impressive, in both tools; valued what the plugin gave (one
+project structure, a preview to direct from); and found the plugin runs slow, and one of them saying
+"every frame is a function of time". Two sessions analyzed the runs independently (the transcripts and
+their subagents', the projects, contact sheets, qc.py on all eight MP4s, the previews played in Chrome)
+and agreed on the causes:
+
+- **The taste defaults worked against the genre the director named.** Every run without the plugin made a
+  reel in chapters: labels naming each technique, timecodes, a new look per chapter, cuts on the beat.
+  They even used the Avoid list's own archetypes as chapters (a dark ground with off-white type and one
+  warm accent, an RGB split, neon titles), and won. Every plugin run made one film around a circle carried
+  by match cuts (a ball, a lens, a chrome form, an aperture), after motion.md's "one persistent actor…
+  unrelated reveals in a row read as a slideshow" and the storyboard's "what carries over" column; the
+  hand-offs at the centre made most frames centred. Claude's prompt-2 style frames had a reel's labels and
+  timecode; minutes after reading the Avoid list ("chrome nobody asked for: header and footer labels…"),
+  its treatment said "no HUD or labels". Its critic removed an RGB split as "a glitch trope" and flagged
+  "stock holographic colour" in a piece asked to be psychedelic, and its STYLE.md banned a rainbow.
+  STYLE.md gave each piece one palette, and Codex's plugin runs moved in 4-second blocks where its prompt-1
+  run without the plugin cut every bar. A critic's first look called the reel's range a risk: "it reads
+  as a sampler of techniques rather than one idea that builds". For a showreel, a sampler is the brief.
+- **The concept got almost no thought.** Without the plugin, Opus spent 118K and 88K output tokens
+  thinking the whole piece through, concept and code, before writing a file. With it, the concept was
+  fixed in the treatment after 2.2K and 3.5K (minutes 3 and 1.5), turned into briefs with coordinates, and
+  built by scene subagents that couldn't change it: eight authors took 19–47 minutes each on 1.9-second
+  scenes. Output tokens in all, subagents included: 596K against 155K (prompt 1), 375K against 153K.
+- **Time:** Claude 116 and 96 minutes against 33 and 29; Codex 34 and 26 against 12.5 and 11.6. Claude's
+  prompt-1 run spent 19 minutes on the brief, look and sound, 47 on its scene authors and 47 on two critic
+  rounds and their fixes. The first round fixed real defects in all four runs (late hits, frozen and blank
+  frames, an illegible sign-off, a broken burst, audio over its ceiling); the verification round found
+  only polish in all four.
+- **"Every frame is a function of time" came from the skill.** It was in Claude's prompt-2 treatment 88
+  seconds in, when the only text the model had read that holds it was SKILL.md's Fixed rule; the example
+  video copied into every project sings the same sentence, and its pen writes "f(t)", which the reel also
+  showed. A prompt that asks the model to show what it is sends it looking for its identity, and the
+  skill's rule was the nearest statement of one.
+- **The Claude comparison was tilted.** Claude's plugin runs ended in the preview, as 0.2.0 asks: no
+  motion blur, and on a first play in a fresh Chrome the preview froze 1.0 s at prompt 1's drop and 2.35 s
+  where prompt 2's chrome world entered, while WebGL compiled their shaders (60 fps on a second play). The
+  runs without the plugin were finals with motion blur (Codex's prompt-2 one excepted). Codex's plugin
+  runs were finals too, rendered unasked against 0.2.0's rule, and still lost: the taste defaults are the
+  main cause, not the presentation.
+- **What the plugin did better:** the cleanest measurements of the eight (no clipping, no blank frame by
+  accident; Claude's prompt-2 run without it peaked at +1.4 dBTP), more ambitious rendering (raymarched
+  liquid metal, fluid ink, a Droste of live worlds) and a project a director can come back to, where each
+  run without it invented a one-off setup.
+
+The principle the changes follow: the plugin supplies what the model lacks (a preview to direct from, the
+f(t) contract, sync from data, the project's memory, measured checks, a critic for defects) and stays out
+of concept, taste and pacing unless the brief leaves a known weak spot. So they narrow and remove more
+than they add:
+
+- **A form or a style the director names counts as their words.** What defines it (a reel's chapters and
+  labels, psychedelia's full spectrum and colour splitting, synthwave's grid and sun) is off the Avoid list
+  for that piece, and never a critic's finding; the style template's "not from the genre" now reads "not
+  from the subject", which is what it meant. SKILL.md's taste paragraph names it next to the song and the
+  explainer.
+- **A montage is a form of its own.** motion.md offers continuity (one persistent actor) or contrast (a
+  montage, each chapter its own look, hard cuts on the beat), neither the default; the storyboard's column
+  is "a cut, or what carries over"; a montage's STYLE.md keeps type and rhythm and lets each chapter take
+  its own palette.
+- **The lead works the whole piece out first, and a short piece gets one critic round.** The brief now
+  starts "Work out the whole piece, then write the treatment". Up to about 30 s the build ends after the
+  full-cut round and its fixes, which the render's own review checks (Delivery, step 2), so nothing renders
+  unreviewed; past 30 s the verification round stays. Scene subagents stay as they were: a first version
+  had the lead build a short piece alone, and its runs scored lower blind ("What 0.4.0 checked").
+- **The skill's words stay off screen.** SKILL.md's f(t) rule says it is the code's, never a line in the
+  video, and so do the treatment template and the AGENTS.md init writes; the example video's lyric is now
+  "Lorem ipsum / dolor sit amet, / sed do." and its pen writes "fin.".
+- **The preview compiles every scene before it plays.** `Engine.warm()` draws each timeline entry off
+  screen at its start, middle and end while the page loads, with the progress on the info line. On copies
+  of the two Claude projects with only that changed, in a fresh headless Chrome, twice each: ready after
+  2.8–3.3 s (0.3–0.9 s before), and a first play at 60.0 fps with no frame over 25 ms, where it had stalled
+  0.97–1.0 s and 2.0 s.
+- **The evals:** `cv-showreel-resume` and `cv-showreel-psychedelic`, the two prompts word for word with a
+  "Render it." turn, judged as a set with `--without` runs on finals; `task.ts --effort` runs a tool at the
+  effort the user runs it (Codex had run at its config default, medium).
+
+Considered and rejected:
+
+- **Removing the Avoid list or the critic's taste check:** round 4 measured them lifting lyric videos and
+  explainers above the model alone, where its own default is plain. They now keep to what nobody asked for.
+- **Rewording the f(t) rule out of SKILL.md:** it names the contract verify checks and every reference
+  cites. It is marked as the code's instead, and the example's words are placeholders.
+- **Ending a short piece with its render:** 0.2.0 made a build end in the preview at this user's request.
+  The preview's first play is now smooth, and the render stays one word away.
+- **Warming a scene again after a hot reload:** without asynchronous compilation (three.js's
+  `compileAsync` wants a scene graph the passes don't have) the stall can only move, and the `?t=` link
+  each change comes with reloads the page, which warms every scene.
+
+### What 0.4.0 checked
+
+Headless runs on 2026-10-06 and 07 on one Windows 11 PC (an RTX 5070), Claude Code with Opus 5.5 at
+xhigh and Codex with GPT-6 Astra at ultra (`task.ts --effort`), ElevenLabs mocked. Each run was graded by
+a fresh grader with its own measurements. Three blind judges (Opus 5.5) scored
+each set from contact sheets at 4 fps, full-size stills and the MP4s, under shuffled letters, with the
+files' metadata stripped. The scores below are their "would impress" means, 1–10. Most runs in this
+section were made on the release's first text, in which a piece up to about 30 s was built by the lead
+alone.
+
+- **On the showreel prompts the lead alone lost to 0.3.0, in both tools.** The 0.3.0 and no-plugin runs
+  are the user's, with Claude's 0.3.0 projects rendered to finals for the comparison.
+
+  | | Claude | Codex |
+  |---|---|---|
+  | Résumé reel, no plugin | 9.0 | 7.3 |
+  | Résumé reel, 0.3.0 | 8.7 | 6.7 |
+  | Résumé reel, 0.4.0's first text | 8.3 | 6.3 and 5.0 (two runs) |
+  | Psychedelic reel, no plugin | 8.3 | 4.7 |
+  | Psychedelic reel, 0.3.0 | 9.0 | 6.3 |
+  | Psychedelic reel, 0.4.0's first text | 7.0 | 5.3 and 5.0 |
+
+  One run per arm is noisy, and a gap of 0.3–0.4 is within it. Still, all four comparisons with 0.3.0 went
+  the same way, and the psychedelic reel's Claude gap was 2 points with every judge agreeing. The judges'
+  weakest moments were unfinished craft: a raymarch and a kaleidoscope gone "murky olive-teal", a dim end
+  card, "a flared orange vase that looks unfinished". The psychedelic reel had half the frame-to-frame
+  motion of 0.3.0's (one judge measured 11.2 against 23.3). Claude's lead wrote the résumé reel's seven
+  chapters, a wall and an end card in 20 minutes, where 0.3.0's eight scene authors had worked 19–47
+  minutes each. The psychedelic reel's six chapters took 17. Turn 1 got shorter (84.7 and 53.5 minutes
+  against 116 and 96.5), and turn 2, the render's review and the render, took 28 and 31 more. Codex took
+  about as long as before (23 and 32 minutes, 28 and 18, against 34 and 26). Scene subagents are back for every piece
+  with many scenes, as in 0.3.0.
+- **On the short single-idea prompts the lead alone kept the plugin's lift.**
+
+  | | Claude with | Claude without | Codex with | Codex without |
+  |---|---|---|---|---|
+  | `cv-zero-asset` (sky) | 8.0 | 7.0 | 6.3 | 4.0 |
+  | `cv-lyric-short` | 9.0 | 6.3 | 6.7 | 3.0 |
+
+  Every judge put Claude's plugin video first in both sets, as in round 4 (sky 8 against 6.3, lyric 9
+  against 7). Both tools passed every graded assertion on the sky video. On the lyric video, 42 of 44
+  words were on time in Claude's, with two lit early by a hand correction of its own. Codex's had 47 of 47.
+  Without the plugin, Claude's had 40 of 44 by a strict reading and Codex's 23 of 47, from Whisper's
+  attention timings. The runs without the plugin took 5–19 minutes. The runs with it took 18–79 minutes in
+  turn 1 and 17–28 more to render.
+- **What the release is for held.**
+  - Claude's showreels kept their chapter labels and timecodes (seven and six labelled chapters), and the
+    psychedelic one its full spectrum and colour splitting. STYLE.md crossed both off the Avoid list for
+    the piece. One critic still called a kaleidoscope's "purple and cyan neon on navy" an Avoid-list look,
+    and the fix kept the kaleidoscope and moved it onto the full spectrum.
+  - No run put the skill's words on screen: no f(t) line and no Lorem ipsum.
+  - Claude ended every first turn in the preview.
+  - The leads thought more before the treatment: 10.7K, 23.8K and 39.6K output tokens, against 2.2K and
+    3.5K in 0.3.0.
+- **The final text was only partly run.** Two Codex showreel runs on it each started two scene authors and
+  one full-cut critic. Their turn 1 took 21 and 17 minutes, and they weren't judged. Claude's two re-runs
+  each started seven scene authors, one per chapter, then were lost when the session ended. A second
+  attempt was stopped at its style frames to finish the release. The interrupted lyric run's final was rendered from its
+  finished project with its own command, and verify found no sampled frame changed.
+- **Found and not changed:**
+  - **Codex renders a showreel unasked.** It ran the full render in turn 1 in all six showreel runs
+    ("A render is included to make the requested video directly usable"), against "make a video alone
+    ends in the preview". It didn't on the sky or lyric prompts.
+  - **verify's determinism probe fails on 1/255.** It failed now and then on a few hundred pixels at 1/255
+    and passed on a rerun. It hit three of Claude's four runs here and 0.3.0's test-2 run. In the sky run it cost about 23 minutes: the chase found one real bug (a `pow()` of a negative base,
+    NaN in a shader) and then merged two timeline entries to make the failure go away. A 1/255 difference
+    on a few hundred pixels that a rerun doesn't repeat could count as a warning, not a failure.
+  - **Critics missed sound and sync.** Five bells rang over the sky video's frozen last second and a half
+    with nothing on screen. The lyric critic checked sync on four words and missed the two early ones.
+  - **A lyric final came out at 374 MB** for 30 s (99 Mb/s at CRF 16).
+  - **A Codex run without the plugin read this repo's AGENTS.md** from the folder above its work folder,
+    with its own `Get-Content`. That AGENTS.md describes the plugin, not its skills.
+
+A review by Codex on the PR found two more in the warm-up, each confirmed and fixed:
+
+- **An updated project's player stopped before it started.** `init --force` replaces `src/main.ts` but never
+  `src/engine/`, so a 0.3.0 project updated that way called `warm()` on an engine without it. In headless
+  Chrome its preview threw "engine.warm is not a function" and never showed the player. The player now
+  warms only an engine that has `warm()`, and a warm-up that throws only logs a warning, since it saves a
+  stall and nothing more. The new player on a 0.3.0 engine started in 0.7 s. Codex's second look found
+  that `bun run check` still failed on such a project (TS2339 on `warm`, TS7006 on its callback), so the
+  check is typed as an optional method, and the player typechecks against both engines.
+- **A short stateful entry played on from where warming left it.** `warm()` reset the engine's last time,
+  not each scene's. A stateful entry shorter than the 0.25 s seek window then looked continuous when
+  playback reached it, skipped its reset and played on from its end. In Codex's reproduction, a 1.0–1.2 s
+  entry started at simulation step 48 instead of 1. Warming now resets every scene's last time too, and
+  the same reproduction starts at step 1, as without warming. A showreel preview still loaded in 3.0 s and
+  played its first time at 60.0 fps with no frame over 25 ms.

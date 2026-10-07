@@ -3,8 +3,10 @@
 // (or without them, for the baseline arm), and keep everything a grader needs: each turn's transcript,
 // the folder as it ends up, and timings. Grading is separate (evals/README.md).
 //
-//   bun evals/harness/task.ts --case evals/tasks/<id> --tool claude|codex [--model <id>] [--without]
-//       [--work <dir>] [--keep-sessions]
+//   bun evals/harness/task.ts --case evals/tasks/<id> --tool claude|codex [--model <id>] [--effort <level>]
+//       [--without] [--work <dir>] [--keep-sessions]
+// --effort sets the reasoning effort the user's settings would otherwise pick: Claude Code's --effort (low ..
+// max), Codex's model_reasoning_effort (low .. ultra), e.g. --effort ultra for a Codex run like the user's own.
 //
 // A case folder holds case.json:
 //   { "id", "skill", "setup": { "files": [fixture name | "<path, $ENV allowed> => <name>"], "project": "init" | null,
@@ -51,10 +53,11 @@ const CASE = JSON.parse(readFileSync(path.join(CASE_DIR, 'case.json'), 'utf8')) 
 };
 const TOOL = opt('tool', 'claude') as 'claude' | 'codex';
 const MODEL = opt('model');
+const EFFORT = opt('effort');
 const ARM = flag('without') ? 'without' : 'with';
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-');
 const T0 = Date.now();
-const RUN = path.resolve(opt('work', path.join(REPO, 'evals', 'results', 'tasks', `${CASE.id}-${TOOL}${MODEL ? '-' + MODEL : ''}-${ARM}-${STAMP}`))!);
+const RUN = path.resolve(opt('work', path.join(REPO, 'evals', 'results', 'tasks', `${CASE.id}-${TOOL}${MODEL ? '-' + MODEL : ''}${EFFORT ? '-' + EFFORT : ''}-${ARM}-${STAMP}`))!);
 const WORK = path.join(RUN, 'work');
 const TIMEOUT_MS = (CASE.timeoutMinutes ?? 45) * 60_000;
 // (a dev server or Codex may spell the folder's path in another case, which names the same folder on Windows)
@@ -337,16 +340,18 @@ const sessions: string[] = []; // every session the run started, in order (a new
 const turns: { prompt: string; newSession?: boolean; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
   model?: string; effort?: string; timedOut?: boolean; blocked?: string }[] = [];
 const alsoRan = new Set<string>(); // every model the transcripts name, sub-agents' included
+// (no quotes around the value: codex is a .cmd shim, which Bun won't hand a quote; Codex reads a bare word as a string)
+const CODEX_EFFORT = EFFORT ? ['-c', `model_reasoning_effort=${EFFORT}`] : [];
 for (const [i, t] of CASE.turns.entries()) {
   const first = i === 0 || t.newSession === true;
   if (first) session = null;
   const cmd = TOOL === 'claude'
     ? ['claude', '-p', t.prompt, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--strict-mcp-config', ...OFF,
-       ...(MODEL ? ['--model', MODEL] : []), ...(first ? [] : ['--resume', session!])]
+       ...(MODEL ? ['--model', MODEL] : []), ...(EFFORT ? ['--effort', EFFORT] : []), ...(first ? [] : ['--resume', session!])]
     // (codex is a .cmd shim on Windows: prompts go on stdin)
     : first
-      ? ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', WORK, ...(MODEL ? ['-m', MODEL] : []), '-']
-      : ['codex', 'exec', 'resume', '--json', '--skip-git-repo-check', ...OFF, ...(MODEL ? ['-m', MODEL] : []), session!, '-'];
+      ? ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', WORK, ...(MODEL ? ['-m', MODEL] : []), ...CODEX_EFFORT, '-']
+      : ['codex', 'exec', 'resume', '--json', '--skip-git-repo-check', ...OFF, ...(MODEL ? ['-m', MODEL] : []), ...CODEX_EFFORT, session!, '-'];
   const t0 = performance.now(), started = new Date().toISOString();
   const p = Bun.spawn(cmd, { cwd: WORK, env, stdin: TOOL === 'codex' ? new Blob([t.prompt]) : 'ignore', stdout: 'pipe', stderr: 'pipe' });
   let timedOut = false, blocked: string | null = null;
@@ -442,7 +447,7 @@ const otherModels = [...alsoRan].filter((m) => !ranModels.includes(m));
 writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
   case: CASE.id, skill: CASE.skill, tool: TOOL,
   // (the model as the transcripts name it, each turn's in turns[]; modelArg is what --model asked for)
-  model: ranModels.join(', ') || null, ...(efforts.length ? { effort: efforts.join(', ') } : {}), modelArg: MODEL ?? null,
+  model: ranModels.join(', ') || null, ...(efforts.length ? { effort: efforts.join(', ') } : {}), modelArg: MODEL ?? null, effortArg: EFFORT ?? null,
   ...(otherModels.length ? { otherModels } : {}), arm: ARM, session: sessions[0] ?? null, ...(sessions.length > 1 ? { sessions } : {}),
   ...(CASE.setup?.from ? { from: path.resolve(CASE_DIR, expand(CASE.setup.from)) } : {}), desktopOff: OFF, turns,
   ...(decoy ? { decoy } : {}), previews: [...previews.values()],

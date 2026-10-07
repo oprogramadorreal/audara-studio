@@ -83,7 +83,8 @@ part of the design serves that loop:
 2. **Sound.** For a song, the agent analyzes its beats and lyrics. For narration, it writes the script, asks
    before spending ElevenLabs credits, and generates the voice and music with their timings.
 3. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
-4. **Build.** It writes the scenes, several in parallel when there are many, and a critic reviews each one.
+4. **Build.** It writes the scenes, several in parallel when there are many, and a fresh critic reviews the
+   whole cut.
    The preview reloads as scenes change.
 5. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes the scene and answers with a `?t=` link to that moment. This loop repeats for
@@ -176,14 +177,23 @@ How the skills could still limit it, and what prevents that:
 
 - **Anchoring on examples.** pdoom-video's scenes and taste (engraving, ink and orange) would pull every
   video toward one look. The example scenes are indexed by technique, not style, and the templates carry no
-  pdoom-video palette, tone or motifs.
+  pdoom-video palette, tone or motifs. The example's words are placeholders, and the f(t) rule is marked as
+  the code's: its sentence once became a showreel's message.
 - **Process overhead on small requests.** The brief scales with the piece: a ten-second loop needs a few
-  lines, a music video a full treatment.
+  lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
+  a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
+  A piece up to about 30 s gets one critic round before the hand-off, and the render's review is its
+  second. Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
+  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
-  over their defaults, including the list of clichés to avoid.
+  over their defaults, including the list of clichés to avoid. A form or a style the director names (a
+  showreel, psychedelic) brings what defines it: the Avoid list, the critic and the motion grammar's
+  persistent actor step aside for it, since they had taken a reel's labels and a psychedelic piece's colour
+  splitting out, and built four showreels around one circle.
 - **A slow preview killing an idea.** A scene too heavy for real time gets a cheaper preview path (lower
   resolution, fewer samples) rather than a simpler idea. pdoom-video's shoggoth already renders its G-buffer
-  at half resolution.
+  at half resolution. The player compiles every scene's shaders while it loads, so a heavy scene doesn't
+  freeze the first play where it enters.
 
 The evals check this directly (see "Writing the skills").
 

@@ -26,7 +26,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   ←/→ ±1 s (shift ±5 s), `,`/`.` ±1 frame, `[`/`]` previous/next timeline entry, `l` loop the current
   entry, `h` hide the UI, `c` copy a link to this moment. While paused or seeking, the address bar's `?t=`
   follows the playhead, so it is always a link to what is on screen. A project with several videos shows
-  a picker.
+  a picker. While the page loads it draws every timeline entry once off screen, so each scene's shaders
+  are compiled before anything plays (a few seconds for heavy scenes, counted on the info line): without
+  it, a heavy scene froze the first play where it entered.
 - **Saving files while it plays:** a scene, or a helper a scene imports, swaps in place and the rest
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),

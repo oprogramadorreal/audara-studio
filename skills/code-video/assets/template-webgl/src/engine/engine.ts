@@ -277,6 +277,31 @@ export class Engine {
   }
 
   /**
+   * Draw every entry once off screen, at its start, middle and end, so each scene's shaders are compiled
+   * before the player needs them. WebGL compiles a program at its first draw, and a heavy scene's compile
+   * stalls the page where that scene first plays: two showreels froze 1.0 s and 2.35 s there on a first
+   * play, then played at 60 fps the second time. The player calls this once before it plays; `onEntry`
+   * reports progress, and the page gets a frame before each entry to show it.
+   */
+  async warm(onEntry?: (i: number, n: number, id: string) => void) {
+    const es = this.timeline.filter((e) => this.loaded.get(e.id)?.scene);
+    try {
+      for (let i = 0; i < es.length; i++) {
+        const e = es[i]!;
+        onEntry?.(i, es.length, e.id);
+        await new Promise((r) => requestAnimationFrame(r));
+        for (const f of [0, 0.5, 1]) this.render(Math.max(0, Math.min(e.start + (e.end - e.start) * f, e.end, this.duration) - 1e-3 * f), 1 / VIDEO.fps, false);
+      }
+    } finally {
+      // every scene starts again as if never drawn, so its first frame in the player counts as a seek: a
+      // stateful entry shorter than the 0.25 s seek window would otherwise play on from the state warming
+      // left at its end, and the preview would no longer match the render
+      this.lastT = -1;
+      for (const rec of this.loaded.values()) rec.lastT = -1;
+    }
+  }
+
+  /**
    * Current errors: boot problems, then every entry whose scene failed to load or threw while rendering
    * (`[id] message`; a render error is recorded once, until the scene reloads).
    */

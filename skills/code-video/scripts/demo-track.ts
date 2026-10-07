@@ -10,7 +10,8 @@
 //   data/audio.json    exact beats, downbeats, 4 sections (A-D, 2 bars each), envelopes at 100 fps
 //                      (rms low mid high drums bass, measured on the synthesized parts, 0..1; vocal and
 //                      other 0) and onsets (kick snare hat, [t, strength]), in the engine's AudioJSON format
-//   data/words.json    "Every frame / is a function / of time." on the beats of bars 5-6
+//   data/words.json    "Lorem ipsum / dolor sit amet, / sed do." on the beats of bars 5-6 (placeholder
+//                      words, so nothing in the example reads as something a video should say)
 //
 //   bun demo-track.ts <videoDir>        e.g. bun demo-track.ts videos/example
 // init.ts calls makeDemoTrack(videoDir).
@@ -173,9 +174,9 @@ export function makeDemoTrack(videoDir: string): string[] {
     ({ i, text: words.map((x) => x.w).join(' '), start: words[0]!.start, end: words[words.length - 1]!.end, words });
   const words = {
     lines: [
-      line(0, [w('Every', 8.0, 8.5, [[8.0, 8.25], [8.25, 8.5]]), w('frame', 8.5, 9.0)]),
-      line(1, [w('is', 9.0, 9.5), w('a', 9.5, 10.0), w('function', 10.0, 10.5, [[10.0, 10.25], [10.25, 10.5]])]),
-      line(2, [w('of', 10.5, 11.0), w('time.', 11.0, 11.75)]),
+      line(0, [w('Lorem', 8.0, 8.5, [[8.0, 8.25], [8.25, 8.5]]), w('ipsum', 8.5, 9.0)]),
+      line(1, [w('dolor', 9.0, 9.5), w('sit', 9.5, 10.0), w('amet,', 10.0, 10.5, [[10.0, 10.25], [10.25, 10.5]])]),
+      line(2, [w('sed', 10.5, 11.0), w('do.', 11.0, 11.75)]),
     ],
     notes: 'Demo words for the example video, timed to the beats of bars 5-6 (skills/code-video/scripts/demo-track.ts).',
   };

@@ -46,7 +46,23 @@ async function boot() {
   if (unknown.length) engine.bootErrors.push(`?only=${ONLY}: ${VIDEO.dir}/timeline.ts has no entry ${unknown.map((x) => `'${x}'`).join(', ')} (its entries: ${engine.timeline.map((e) => e.id).join(', ')})`);
   for (const w of engine.warnings) console.info(`[audara] ${w}`);
   if (EXPORT) setupExport();
-  else setupPlayer();
+  else {
+    // the frame the link asks for first, then every scene compiled before anything plays (Engine.warm). An
+    // engine from before it has no warm(): init --force updates this file but never src/engine/, so such a
+    // project plays as it did. The warm-up only saves a stall, so it never keeps the player from starting.
+    engine.render(Math.max(0, Math.min(FROM ?? 0, engine.duration - 0.001)));
+    const info = document.getElementById('info');
+    // (typed as optional, so this file also typechecks against an engine without it)
+    const warm = (engine as unknown as { warm?: (onEntry: (i: number, n: number, id: string) => void) => Promise<void> }).warm;
+    if (typeof warm === 'function') {
+      try {
+        await warm.call(engine, (i, n, id) => { if (info) info.textContent = `preparing the scenes to play smoothly: ${i + 1} of ${n} (${id})`; });
+      } catch (err) {
+        console.warn('[audara] scene warm-up stopped; scenes compile as they first play', err);
+      }
+    }
+    setupPlayer();
+  }
 }
 
 // ------------------------------------------------------------------ export API

@@ -18,7 +18,7 @@ import { LIN, rgba } from './_palette'; // the example's own test card (the proj
 
 const LABEL = 'Layer2D · Canvas2D type · videos/example/scenes/layer2d.ts';
 /** The lines this scene sets, looked up in data/words.json by their text. */
-const QUERIES = ['Every frame', 'is a function', 'of time'];
+const QUERIES = ['Lorem ipsum', 'dolor sit amet', 'sed do'];
 /**
  * Archivo [width, weight]: unsung (0), being sung (1→3, a step per quarter of the word), sung (3).
  * The fonts are static instances (type.ts), so the width steps: there is nothing in between to tween.

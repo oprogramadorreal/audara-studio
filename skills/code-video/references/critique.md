@@ -131,16 +131,17 @@ session that built the video passed it after looking at one frame and an eight-f
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
   - a scene round when separate authors make the scenes (or one round per few scenes);
-  - a full-cut round on a `--draft` render of the whole video before you call it done, then one
-    verification round after its fixes. Then the director gets the sheets and the findings still
-    open (they have had the preview link since setup, and watch while the critics work), and any further
-    round follows their notes. The build then ends in the preview (Hand-off); a render waits for their
-    word (Delivery).
+  - a full-cut round on a `--draft` render of the whole video before you call it done, then, past
+    about 30 s, one verification round after its fixes. Then the director gets the sheets and the
+    findings still open (they have had the preview link since setup, and watch while the critics work),
+    and any further round follows their notes. The build then ends in the preview (Hand-off); a render
+    waits for their word (Delivery).
 
-  A short piece you build alone gets the full-cut round and its verification. Not after every edit:
-  notes go through your stills loop and the preview. When the director asks for speed (a quick version,
-  a rough cut, a first pass), stop after the full-cut round and its fixes: the hand-off lists those
-  fixes as not yet reviewed, and a render asked for in a later turn gets the review (Delivery, step 2).
+  A short piece (up to about 30 s) stops after the full-cut round and its fixes: the hand-off lists
+  those fixes as not yet reviewed, and the render gets the review (Delivery, step 2). A second round
+  there cost 10–14 minutes and found only polish in four test runs out of four. A longer piece stops
+  there too when the director asks for speed (a quick version, a rough cut, a first pass). Not after
+  every edit: notes go through your stills loop and the preview.
 - **The ledger** is `videos/<video>/CRITIQUE.md`, a row per round, so a later session sees what was
   found, what changed, what was left and why:
 
@@ -186,7 +187,8 @@ Check:
 - Does the structure follow the sound? Rows should change where the music's sections or the narration's
   lines change, and cut on downbeats or between lines. Name the rows that don't, with times from the data.
 - Has every row its own composition and job? Which rows are filler?
-- What carries across each cut? Does any row start or end on an empty frame, the first and last included?
+- What carries across each cut, or is it a cut the piece means (a montage's, on the beat)? Does any row
+  start or end on an empty frame, the first and last included?
 - Is every claim, number and diagram true or labelled, is every product screen the product's real one or
   a concept the director asked for, marked as one (assets/SOURCES.md says which), and is nothing claimed
   that the treatment rules out?
@@ -242,6 +244,8 @@ Where the treatment argues for a departure (an off-beat cut, a long hold, a unif
 it works, not whether it follows the default. Hold the look against the Avoid lists in docs/STYLE.md and
 <skill>/references/style-template.md: an archetype from them that the director didn't ask for and the
 treatment doesn't argue for in its own words is a finding (don't argue it in for them); one marked (director) never comes back, whatever is argued.
+What defines a form or a style the director named (a showreel's chapters and labels, psychedelia's colour
+splitting) is theirs: never a finding, whatever the lists say.
 Every product screen, logo and figure on screen is the real one (videos/<video>/assets/SOURCES.md), or a
 concept or mockup the director's words ask for, marked as one where it could pass for the product (that is
 their request, not a finding). A lookalike nobody asked for, or a feature or figure nobody gave shown as
@@ -349,7 +353,7 @@ When the director asks for a render, in their request or later:
 2. The review, before the render. A picture changed since the last critic round gets one full-cut round
    on a `--draft` of the whole video (the last one, when nothing changed after it), and its fixes, unless
    this turn already ran its rounds (a full-cut round and its verification, or the full-cut round alone
-   when the director asked for speed). That is delivery's only round: fixes made after it are listed as
+   for a short piece or when the director asked for speed). That is delivery's only round: fixes made after it are listed as
    not yet reviewed, not sent through another round and another render. A render made before its review
    is thrown away when the review finds anything, and each costs minutes.
 3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
