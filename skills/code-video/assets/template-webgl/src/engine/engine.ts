@@ -285,13 +285,20 @@ export class Engine {
    */
   async warm(onEntry?: (i: number, n: number, id: string) => void) {
     const es = this.timeline.filter((e) => this.loaded.get(e.id)?.scene);
-    for (let i = 0; i < es.length; i++) {
-      const e = es[i]!;
-      onEntry?.(i, es.length, e.id);
-      await new Promise((r) => requestAnimationFrame(r));
-      for (const f of [0, 0.5, 1]) this.render(Math.max(0, Math.min(e.start + (e.end - e.start) * f, e.end, this.duration) - 1e-3 * f), 1 / VIDEO.fps, false);
+    try {
+      for (let i = 0; i < es.length; i++) {
+        const e = es[i]!;
+        onEntry?.(i, es.length, e.id);
+        await new Promise((r) => requestAnimationFrame(r));
+        for (const f of [0, 0.5, 1]) this.render(Math.max(0, Math.min(e.start + (e.end - e.start) * f, e.end, this.duration) - 1e-3 * f), 1 / VIDEO.fps, false);
+      }
+    } finally {
+      // every scene starts again as if never drawn, so its first frame in the player counts as a seek: a
+      // stateful entry shorter than the 0.25 s seek window would otherwise play on from the state warming
+      // left at its end, and the preview would no longer match the render
+      this.lastT = -1;
+      for (const rec of this.loaded.values()) rec.lastT = -1;
     }
-    this.lastT = -1; // (the player's first frame counts as a seek)
   }
 
   /**

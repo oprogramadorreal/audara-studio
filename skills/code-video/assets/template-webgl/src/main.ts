@@ -47,10 +47,18 @@ async function boot() {
   for (const w of engine.warnings) console.info(`[audara] ${w}`);
   if (EXPORT) setupExport();
   else {
-    // the frame the link asks for first, then every scene compiled before anything plays (Engine.warm)
+    // the frame the link asks for first, then every scene compiled before anything plays (Engine.warm). An
+    // engine from before it has no warm(): init --force updates this file but never src/engine/, so such a
+    // project plays as it did. The warm-up only saves a stall, so it never keeps the player from starting.
     engine.render(Math.max(0, Math.min(FROM ?? 0, engine.duration - 0.001)));
     const info = document.getElementById('info');
-    await engine.warm((i, n, id) => { if (info) info.textContent = `preparing the scenes to play smoothly: ${i + 1} of ${n} (${id})`; });
+    if (typeof engine.warm === 'function') {
+      try {
+        await engine.warm((i, n, id) => { if (info) info.textContent = `preparing the scenes to play smoothly: ${i + 1} of ${n} (${id})`; });
+      } catch (err) {
+        console.warn('[audara] scene warm-up stopped; scenes compile as they first play', err);
+      }
+    }
     setupPlayer();
   }
 }

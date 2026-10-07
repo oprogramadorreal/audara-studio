@@ -292,8 +292,10 @@ much), and the example's scenes 0.3–2.6 ms each. Where a scene's time goes:
 - **A shader compiles at its first draw,** a second or two for a heavy raymarch, and the page stalls
   meanwhile. The player draws every entry once while it loads (`Engine.warm`, a few seconds with the
   progress on its info line), so a first play doesn't freeze where a heavy scene enters: two showreels
-  froze 1.0 and 2.35 s there before it, and played at 60 fps after. A program a scene creates later, on a
-  branch the start, middle and end of its entry don't reach, still compiles when it first runs.
+  froze 1.0 and 2.35 s there before it, and played at 60 fps after. Warming leaves no state behind: each
+  scene's first frame in the player counts as a seek, so a stateful scene re-simulates from its entry's
+  start. A program a scene creates later, on a branch the start, middle and end of its entry don't reach,
+  still compiles when it first runs.
 - **The render multiplies a scene's cost** by its sub-frames, on top of what every frame pays: the
   readback (about 15 ms at 1080p), the transfer to ffmpeg and the encode, about 60 ms a frame at 1080p in
   all (measured: the 17-second example's 1,020 frames took 60 s as a `--draft`, one sub-frame each, and

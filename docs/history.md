@@ -835,8 +835,8 @@ alone.
   motion of 0.3.0's (one judge measured 11.2 against 23.3). Claude's lead wrote the résumé reel's seven
   chapters, a wall and an end card in 20 minutes, where 0.3.0's eight scene authors had worked 19–47
   minutes each. The psychedelic reel's six chapters took 17. Turn 1 got shorter (84.7 and 53.5 minutes
-  against 116 and 96.5), and turn 2, the render's review and the render, took 28 and 31 more. Codex took about as long
-  as before (23 and 32 minutes, 28 and 18, against 34 and 26). Scene subagents are back for every piece
+  against 116 and 96.5), and turn 2, the render's review and the render, took 28 and 31 more. Codex took
+  about as long as before (23 and 32 minutes, 28 and 18, against 34 and 26). Scene subagents are back for every piece
   with many scenes, as in 0.3.0.
 - **On the short single-idea prompts the lead alone kept the plugin's lift.**
 
@@ -878,3 +878,17 @@ alone.
   - **A lyric final came out at 374 MB** for 30 s (99 Mb/s at CRF 16).
   - **A Codex run without the plugin read this repo's AGENTS.md** from the folder above its work folder,
     with its own `Get-Content`. That AGENTS.md describes the plugin, not its skills.
+
+A review by Codex on the PR found two more in the warm-up, each confirmed and fixed:
+
+- **An updated project's player stopped before it started.** `init --force` replaces `src/main.ts` but never
+  `src/engine/`, so a 0.3.0 project updated that way called `warm()` on an engine without it. In headless
+  Chrome its preview threw "engine.warm is not a function" and never showed the player. The player now
+  warms only an engine that has `warm()`, and a warm-up that throws only logs a warning, since it saves a
+  stall and nothing more. The new player on a 0.3.0 engine started in 0.7 s.
+- **A short stateful entry played on from where warming left it.** `warm()` reset the engine's last time,
+  not each scene's. A stateful entry shorter than the 0.25 s seek window then looked continuous when
+  playback reached it, skipped its reset and played on from its end. In Codex's reproduction, a 1.0–1.2 s
+  entry started at simulation step 48 instead of 1. Warming now resets every scene's last time too, and
+  the same reproduction starts at step 1, as without warming. A showreel preview still loaded in 3.0 s and
+  played its first time at 60.0 fps with no frame over 25 ms.
