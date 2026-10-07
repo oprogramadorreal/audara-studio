@@ -25,7 +25,9 @@ No session reads this repo's own notes either. The runs work inside `evals/resul
 `AGENTS.md` and `CLAUDE.md`, and Claude Code reads both from every folder above its own; the runners leave
 them out with `claudeMdExcludes` in the same `--settings`. Codex stops at the run folder's own git root.
 (Checked with a canary line: without the setting, a Claude run below an `AGENTS.md` alone quoted it, and
-one below the `CLAUDE.md` saw its import line; with it, neither. A Codex run saw nothing.)
+one below the `CLAUDE.md` saw its import line; with it, neither. A Codex run saw nothing.) A session can
+still open them with a command of its own: on 2026-10-06 a Codex run without the skills read the repo's
+`AGENTS.md` with `Get-Content` (history.md, 0.4.0).
 
 Both runners record the model each run had as the transcripts name it (Claude's init event; Codex's
 session file, since its `--json` stream doesn't), and `modelArg`, what `--model` asked for.

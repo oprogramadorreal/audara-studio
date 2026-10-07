@@ -292,7 +292,7 @@ in `evals/`; their results stay out of the repo.
   anchors no style". Grey with a cyan and a magenta reads as a placeholder, and `verify` warns while a
   real video still uses it, so no project inherits a look nobody chose.
 - **The evals have their own harness.** skill-creator's trigger loop and `claude plugin eval` need a shell
-  this machine doesn't give them on native Windows, so `evals/harness/` runs the queries and the
+  that native Windows doesn't give them, so `evals/harness/` runs the queries and the
   multi-turn cases directly, with a decoy app on Vite's default port, a record of every live preview, a
   copy of Codex's session files and a mock of ElevenLabs that looks like a real account, and cleans what
   the runs leave in the tools' own settings. Its runs keep computer-use and browser plugins off in both tools:
@@ -417,8 +417,8 @@ measurements, and three blind judges ranked each set of videos made from the sam
   the idea. Two script bugs were found and fixed: `align.py` gave an acronym's held vowel to the next word
   (RLHF 0.6 s early), and contact sheets over 3.75 MiB were re-encoded to 256 colours by Claude Code's image
   reader, painting grey haze into the critics' view.
-- **Not run:** the stand-alone second wave of the short prompts on the final text (stopped when the machine
-  ran low on memory with four renders at once), real image generation and real ElevenLabs music with
+- **Not run:** the stand-alone second wave of the short prompts on the final text (stopped when the test
+  machine ran low on memory with four renders at once), real image generation and real ElevenLabs music with
   `--free-form` (no paid calls were made), and Blender or Manim outside Windows.
 
 ## After round 4: a build ends in the preview (0.2.0, 2026-10-05)
@@ -711,7 +711,7 @@ A fourth review by Codex (2026-10-06) found two more, each confirmed and fixed:
 ## The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
 
 The user ran two short prompts word for word, each in Claude Code (Opus 5.5, xhigh) and in Codex (GPT-6
-Astra, ultra), with and without the plugin (0.3.0): eight runs, in `audara-studio-test-{1,2}[-ASTRA][_no_studio]`.
+Astra, ultra), with and without the plugin (0.3.0): eight runs, each in a project folder of its own.
 
 - "make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are,
   like it's your showreel for a résumé. go all out"
@@ -808,9 +808,9 @@ Considered and rejected:
 
 ### What 0.4.0 checked
 
-Headless runs on 2026-10-06 and 07 on this machine (Windows 11, RTX 5070), Claude Code with Opus 5.5 at
+Headless runs on 2026-10-06 and 07 on one Windows 11 PC (an RTX 5070), Claude Code with Opus 5.5 at
 xhigh and Codex with GPT-6 Astra at ultra (`task.ts --effort`), ElevenLabs mocked. Each run was graded by
-a fresh grader with its own measurements (`grade.md` beside the run). Three blind judges (Opus 5.5) scored
+a fresh grader with its own measurements. Three blind judges (Opus 5.5) scored
 each set from contact sheets at 4 fps, full-size stills and the MP4s, under shuffled letters, with the
 files' metadata stripped. The scores below are their "would impress" means, 1–10. Most runs in this
 section were made on the release's first text, in which a piece up to about 30 s was built by the lead

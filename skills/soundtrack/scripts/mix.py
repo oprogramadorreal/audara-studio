@@ -21,7 +21,7 @@
            it, at full range and through a phone-like 300 Hz high-pass, the first sound and dead tails. Writes a
            loudness-curve PNG and a JSON. Reports, not gates: a weak hit or a flat build is a warning.
 
-Run it through uv (Python only through uv on this machine; no pip):
+Run it through uv (no pip):
   uv run <skill>/scripts/mix.py build --video launch
   uv run <skill>/scripts/mix.py measure videos/launch/audio/mix.wav --sections videos/launch/data/audio.json --hit 20
 
