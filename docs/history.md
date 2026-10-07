@@ -16,6 +16,7 @@ Contents
 - After round 4: a build ends in the preview (0.2.0, 2026-10-05)
 - Lessons from the motion-engineering article (0.3.0, 2026-10-05)
 - The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
+- 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
 
 ## Definition of done
 
@@ -894,3 +895,86 @@ A review by Codex on the PR found two more in the warm-up, each confirmed and fi
   entry started at simulation step 48 instead of 1. Warming now resets every scene's last time too, and
   the same reproduction starts at step 1, as without warming. A showreel preview still loaded in 3.0 s and
   played its first time at 60.0 fps with no frame over 25 ms.
+
+## 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
+
+After 0.4.0 merged, the user ran the two showreel prompts again by hand in Claude Code (Opus 5.5), one
+folder each and at the same time on one PC, with no "Render it." turn: the check "What 0.4.0 checked"
+left open. They found both pieces good and had two complaints: one session gave the preview link only at
+the end, and both took long. Neither piece was rendered or judged blind. One Claude session read both
+transcripts, their subagents' and the projects; a Codex review of that reading confirmed the timings and
+the engine findings and sharpened some numbers below.
+
+- **What the release is for held.** Both made reels in labelled chapters, each chapter a different craft:
+  seven in the résumé reel, which again carried one dot through every cut as all four 0.3.0 runs did, and
+  eight worlds in the psychedelic one, each born in the centre of the one before, with a recap under big
+  chapter numbers. No scene holds the skill's words. Each ran one full-cut critic round, fixed what it
+  found and ended in the preview with the render offered and those fixes listed as not yet reviewed.
+  verify passed in both with no determinism failure. The leads thought 24.6K and 25.6K output tokens
+  before writing the treatment.
+- **The link came at minute 1 in one run and minute 19 in the other.** The psychedelic run posted the
+  preview link a minute in and the treatment at minute 6. The résumé run posted neither until minute 19,
+  when its first chapter played, and then only the treatment's path. Both got the same output from
+  `render.ts preview`: the link, with nothing about passing it on. This is the third time it is recorded
+  in Claude (round 4, then 0.3.0's title card and sky video), each time with the rule already in SKILL.md.
+- **Time.** Turn 1 took 91 and 93 minutes (0.3.0: 116 and 96; the eval cases ask for under 60). Along the
+  critical path:
+
+  | | Résumé (15 s) | Psychedelic (20 s) |
+  |---|---|---|
+  | Brief, look, sound and timeline, until the scene authors start | 14 min | 13 min |
+  | Scene authors, to the slowest one's report | 43 (5 authors, 25–42 each) | 47 (7 authors, 24–46 each) |
+  | verify, a full-cut draft, qc.py | 4 | 3.5 |
+  | The full-cut critic | 11 | 15 |
+  | Its fixes, by the authors and the lead | 15 | 10 |
+  | verify, a draft, qc.py, sheets, the hand-off | 3 | 4 |
+
+  An author's time went into its stills loop: over its first build and its fixes, 58–184 model calls at
+  14–25 s each (latency included), 22–101 stills and sheets looked at, against 3–11 minutes of waiting on
+  tools. That says where the time went, not that every pass was needed: no run has compared a budget for
+  that loop, and the model alone made reels in a third of the time that judges scored about as high
+  (0.4.0's showreel table).
+- **The drafts cost about 5 % of it.** The lead's full-cut drafts, with the qc.py runs chained to them,
+  took 4.1 minutes (three, one forced by a mix rebuild) and 3.2 (two); each author's chapter clips 0.7–1.8,
+  in parallel. Both critics worked from the draft: qc.py, a per-frame motion measure, 5 fps tiles, and a
+  re-encode at a streaming bitrate. Dropping it would save minutes and take the critic's view of motion
+  away. The bigger cost of a short
+  piece is where 0.4.0 moved its second round: the render's review (Delivery, step 2), which "render it"
+  starts in turn 2, though the director has watched those fixes in the preview by then. That round cost
+  10–14 minutes and found only polish in four runs out of four (critique.md), and 0.4.0's first text took
+  28 and 31 minutes in turn 2.
+- **The critic earned its 25 minutes.** Its top findings became the reels' most visible fixes. The résumé
+  reel's chrome and particles read as stock ("chrome blobs on a blue gradient, then a spiral galaxy"); they
+  came back reflecting and recapping the reel's own earlier chapters. The psychedelic reel's "born in the
+  centre" showed only at its two portals; the lead added a peek of the next world at every cut, and a
+  murky fractal came back vivid.
+
+What changed:
+
+- `render.ts preview` asks the agent to post the link now, on the line before it (the link stays last, for
+  a `| tail -1`), whether it started the server or found it running, as a new session does; the line says
+  it's for the agent, since the director runs the preview too. `link` still prints the link alone, and
+  init's last line says to post it. Whether Claude now posts it early isn't measured yet.
+- `mix.py build` names a running preview when it can't replace a mix: on Windows the preview held
+  `mix.wav`, the message blamed "a player or editor?", and the lead had to guess.
+
+Found and not changed:
+
+- **The HUD costs about 10 ms a frame when it changes every frame.** A reel's labels and timecodes, which
+  0.4.0 keeps, redraw it every frame, and a full-frame Canvas2D upload takes most of the preview's
+  16.7 ms (the résumé reel's particles author measured 10.5 ms with it, 1.2 without). Both leads
+  rewrote the engine's overlay on their own: one uploads two fixed 160 px bands, which would clip a HUD
+  drawn elsewhere; the other added an opt-in strip, and a frame of its title went from 10.9 to 3.9 ms. An
+  opt-in bounded layer is the likelier upstream fix.
+- **Grid times rounded to the millisecond land a frame late at some tempos.** At 144 BPM a beat is 25
+  frames, and a downbeat at 6.6667 s is written 6.667, after its frame, so its cut and its beat fire a
+  frame later (bars 2, 5, 8 and 11 of 12). Codex reproduced it with the template's AudioData at 60 fps:
+  90 BPM late on the same bars, 180 BPM on bars 3, 6, 9 and 12. Two scene authors reported it; the lead
+  snapped the timeline's cuts to frames and read beats 1 ms ahead in `frameFor`, which misses a scene that
+  calls `audio.beatAt` itself. Snapping grid times within about 1 ms of a frame removes these cases, but a
+  general fix needs the video's own fps, keeps the audio's offsets, and tells a generated grid's rounding
+  from measured or authored times (sections and cues cut too); it wants its own change.
+- **The render's review of a short piece.** Letting the director's "render it", after watching the fixes
+  in the preview, stand for that review would save that round in turn 2 (an estimate: nothing measured the
+  time or the quality without it). It trades a check for time, and the showreel cases assert the review,
+  so it waits for a decision.

@@ -85,7 +85,9 @@ The steps follow SKILL.md's session checklist, in its order:
    treatment and storyboard, sized to the piece, posts it and builds on; it waits only for what the
    director alone can decide. (Until round 4 the director approved the brief before any scene was built;
    history.md says why it changed.)
-2. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link.
+2. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link at
+   once. The preview command asks for that where it prints the link, since the skill's text alone didn't
+   hold: Claude sessions held the link back for 20 to 90 minutes.
 3. **Look.** When the look is left to it, it renders two or three style frames of the key moment, each a
    different idea, picks one by looking, and writes the shared look down (`docs/STYLE.md`, `src/look.ts`).
 4. **Sound.** For a song, it analyzes the beats, sections and lyrics and cuts the window the video uses.

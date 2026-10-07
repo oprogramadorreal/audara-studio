@@ -51,7 +51,8 @@
 //            preview first when none runs: the project's own Vite, in a process of its own that outlives this
 //            command, your turn and the shell that ran it, on the first free port of 5173-5199, its output in
 //            .audara-cache/preview.log. It waits until the server answers for this folder, 20 s at most (exit
-//            code 1 and the end of that log when it doesn't), then prints the link. Starts no browser. --stop
+//            code 1 and the end of that log when it doesn't), then prints the link, after a line asking the agent
+//            to post it to the director (link prints the link alone). Starts no browser. --stop
 //            ends this project's preview, the dev servers of this folder on those ports and nothing else)
 // Every mode (link and preview take only --video and --size):
 //   --video <video> which video (default: the only one, else the first that isn't `example`, else `example`)
@@ -386,8 +387,16 @@ async function inheritNothing(): Promise<string | undefined> {
  */
 async function preview(video: string) {
   const t = linkTime();
+  // (said where the link is printed, whether this started the server or found it running, as a new session
+  // does: sessions that read it only in the skill often held it back for 20 to 90 minutes. The director runs
+  // this too, so it names who it's for; the link stays the last line, for a `| tail -1`. `link` prints the
+  // link alone)
+  const share = (port: number) => {
+    console.log('(For the agent at work here: post this link to the director in a message now; they watch the build grow there.)');
+    console.log(linkTo(port, video, t));
+  };
   const found = await thisPreview();
-  if (found) return void console.log(linkTo(found.port, video, t));
+  if (found) return share(found.port);
   const vite = path.join(PROJECT, 'node_modules', 'vite');
   let bin: unknown;
   try { bin = (JSON.parse(readFileSync(path.join(vite, 'package.json'), 'utf8')) as { bin?: unknown }).bin; }
@@ -414,7 +423,7 @@ async function preview(video: string) {
         ? `until process ${server.pid} is ended (this project's vite.config.ts, older than render.ts's preview, doesn't say which process serves it, so \`preview --stop\` can't stop it)`
         : 'until `bun scripts/render.ts preview --stop`';
       console.log(`started this project's preview (Vite on port ${up.port}, process ${up.pid ?? server.pid}; its log: .audara-cache/preview.log). It keeps running after this command and your turn, ${until}.`);
-      return void console.log(linkTo(up.port, video, t));
+      return share(up.port);
     }
     const code = server.exitCode;
     if (code === null && Date.now() - t0 < 20000) continue;

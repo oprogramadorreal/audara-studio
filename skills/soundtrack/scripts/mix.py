@@ -782,7 +782,9 @@ def write_wav(path: Path, x: np.ndarray) -> None:
         os.replace(tmp, path)
     except PermissionError:
         tmp.unlink(missing_ok=True)
-        raise failure(f"cannot replace {path}: the file is open somewhere (a player or editor?). Close it and run again.")
+        raise failure(f"cannot replace {path}: the file is open somewhere (a project's running preview, a player "
+                      "or an editor?). Close it and run again; for the preview, `bun scripts/render.ts preview --stop`, "
+                      "then start it again after the mix.")
     except OSError as e:
         tmp.unlink(missing_ok=True)
         raise failure(f"cannot write {path}: {e}")
