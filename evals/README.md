@@ -34,19 +34,26 @@ session file, since its `--json` stream doesn't), and `modelArg`, what `--model`
 
 ## Trigger evals
 
-Does a fresh session load the skill for a realistic request, and leave near-misses alone? Twenty requests
-per skill, half near-misses, three runs each.
+Does a fresh session load the skill for a realistic request, and leave near-misses alone? About twenty
+requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
+they compete as they do once the plugin is installed; code-video's set ends with two requests for ideas
+only, which belong to video-ideas.
 
 ```sh
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/code-video.json
 bun evals/harness/trigger.ts --tool claude --model sonnet --set evals/trigger/soundtrack.json
 bun evals/harness/trigger.ts --tool codex                 --set evals/trigger/code-video.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-ideas.json
 ```
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
-fails only when the skill is used (one of its scripts runs). `--description <file>` tries an alternative
-description without editing SKILL.md.
+fails only when the skill is used (one of its scripts runs). video-ideas has no scripts, so its use can't be
+seen that way: it is reported as not measured, and its Codex near-misses fail on the load, as Claude's do, a
+stricter test (the summary's `nearMissCriterion` says which applied). Each run also reports script-use
+signals observed before it stops (`usedSkills`). Positive runs stop when the target skill loads, so the `vi-`
+task cases, not the trigger pass rate, check that ideas requests never continue into production.
+`--description <file>` tries an alternative description without editing SKILL.md.
 
 ## Task evals
 
@@ -63,17 +70,18 @@ bash evals/harness/run-tasks.sh both                                            
 CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh claude
 ```
 
-`run-tasks.sh` runs the cases a few at a time, then the two cases that start from a finished project (the
-later session and the second format) on the project of the latest finished `cv-title-card` run (Claude
-Code's if there is one, else Codex's), the same project for both tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
+`run-tasks.sh` runs the cases a few at a time, then the three cases that start from a finished project (the
+later session, the second format and ideas for another video) on the project of the latest finished
+`cv-title-card` run (Claude Code's if there is one, else Codex's), the same project for both tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
 arguments go to `task.ts` (`--without`, `--model sonnet`, `--effort ultra`). `--effort` sets the reasoning effort the
 user's settings would otherwise pick (Claude Code's `--effort`, Codex's `model_reasoning_effort`), so a run can
 match how the user runs the tool.
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
-`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session and second-format cases;
-one from an older release keeps its older `render.ts`, which init's AGENTS.md then says to update), and
+`lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session, second-format and
+existing-project ideas cases; one from an older release keeps its older `render.ts`, which init's AGENTS.md
+then says to update), and
 `EVAL_INPUTS` (a folder with `pdoom-pt-BR.mp3` and its `lyrics.txt`, for `cv-lyric-short`, the short
 lyric-video prompt of the 2026-10-03 tests word for word; it isn't in `run-tasks.sh`'s default list, nor are
 `cv-showreel-resume` and `cv-showreel-psychedelic`, the 2026-10-06 showreel prompts, judged as a set with their
@@ -87,9 +95,16 @@ which must survive a new session (`cv-direction-rejection`, `cv-visual-direction
 `st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
-a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`). The set comparisons in
-their assertions (a blind judge on contact sheets, with and `--without` the skills) are the check that the
-skills make the picture better than the model alone, not just correct.
+a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`). The `vi-` cases stand
+for someone choosing what to make: ideas only, from nothing or from product screens, in an empty folder or
+an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project`), a prompt to improve or
+one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and
+the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
+together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas-and-make`). Most are text
+only and take minutes. The `vi-` cases are graded on the conversation, preservation of constraints,
+faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
+judging with and `--without` the skills: they are the check that the skills make the picture better than
+the model alone, not just correct.
 
 A turn with `"newSession": true` starts a new session in the same folder instead of resuming, as a
 director coming back another day would: it knows only what the project wrote down.
@@ -154,5 +169,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack`. Two checks no validator makes: SKILL.md stays
-under 8,000 bytes (Codex cuts an invoked skill there) and is saved without a byte-order mark.
+UTF-8 on Windows. Run the same three on `skills/soundtrack` and `skills/video-ideas`. Two checks no
+validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
+a byte-order mark.

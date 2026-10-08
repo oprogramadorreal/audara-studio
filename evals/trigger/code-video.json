@@ -20,6 +20,8 @@
     { "id": "cv-17", "should_trigger": false, "files": ["wedding.mp4"], "query": "edit my wedding video: cut the boring parts and put some romantic music under it" },
     { "id": "cv-18", "should_trigger": false, "files": [], "query": "what bitrate and frame rate should I export my Premiere project at for YouTube 4K?" },
     { "id": "cv-19", "should_trigger": false, "files": [], "query": "write a GLSL water shader with caustics for my Unity game" },
-    { "id": "cv-20", "should_trigger": false, "files": [], "query": "make a slide deck about our Q3 results, about 8 slides" }
+    { "id": "cv-20", "should_trigger": false, "files": [], "query": "make a slide deck about our Q3 results, about 8 slides" },
+    { "id": "cv-21", "should_trigger": false, "files": [], "query": "give me a few ideas for a short video about my coffee shop, don't make anything yet" },
+    { "id": "cv-22", "should_trigger": false, "files": ["song.mp3"], "query": "help me write a prompt for a music video for song.mp3 that I can paste into another session" }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "id": "vi-silent-long",
+  "skill": "video-ideas",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "Help me write a prompt for a 90-second silent animated short about a bug that doesn't want to be fixed. Just the prompt."
+    }
+  ],
+  "assertions": [
+    "The reply settles what \"silent\" means (no dialogue, or no audio at all): as a question with its default, or stated in the prompt as an assumption the user can change; the prompt doesn't quietly pick one.",
+    "The prompt keeps 90 seconds as the user's length; the reply says, outside the prompt, that a piece over a minute takes much longer to build (or that code-video will confirm the length first), and may offer a shorter cut as an option, not as a change.",
+    "The prompt stands alone and is the only deliverable: nothing is produced and the work folder ends as it started (git status)."
+  ]
+}

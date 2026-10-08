@@ -1,0 +1,19 @@
+{
+  "id": "vi-existing-project",
+  "skill": "video-ideas",
+  "setup": {
+    "from": "$EVAL_PROJECT",
+    "project": "init"
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "Give me some ideas for a second video for this channel. Don't build anything yet."
+    }
+  ],
+  "assertions": [
+    "Nothing changes in the project (git status and git diff against the setup commit are empty) and no init.ts, render.ts or soundtrack script runs, no preview starts and nothing is generated (the transcripts).",
+    "The directions preserve applicable project-wide decisions in docs/STYLE.md and any earlier user constraints for this request. Existing videos can inform the channel's context, but their video-specific duration, format, sound and rejected ideas are not automatically requirements for a new video.",
+    "The directions differ in what the viewer sees, and the reply ends with directions or a prompt, not with a build plan or a treatment file."
+  ]
+}

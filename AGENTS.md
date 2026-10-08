@@ -1,10 +1,12 @@
 # audara-studio
 
-A plugin for Claude Code and Codex with two Agent Skills; `skills/` is the product. `skills/code-video/`
+A plugin for Claude Code and Codex with three Agent Skills; `skills/` is the product. `skills/code-video/`
 makes the picture (SKILL.md, references, scripts, and `assets/template-webgl/`, the engine `init.ts` copies
-into each user's project); `skills/soundtrack/` makes the audio and its timing data. `evals/` tests both.
+into each user's project); `skills/soundtrack/` makes the audio and its timing data; `skills/video-ideas/`
+(text only) helps choose what to make and writes a starting prompt. `evals/` tests all three.
 `docs/design.md` says how it works and why, `docs/history.md` how it got there, with the evidence: search
 them for the topic before changing a behavior, since most choices answer something that once went wrong.
+`docs/research/` holds dated research snapshots, not current behavior: they aren't updated as it changes.
 
 ## How we work
 - Simple and effective over complete: a tool joins only when it clearly earns its place. Free tools first;

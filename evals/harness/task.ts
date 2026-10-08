@@ -96,7 +96,9 @@ Bun.spawnSync(['git', '-c', 'user.name=eval', '-c', 'user.email=eval@local', 'co
 if (ARM === 'with') {
   const link = TOOL === 'claude' ? path.join(WORK, '.claude', 'skills') : path.join(WORK, '.agents', 'skills');
   mkdirSync(link, { recursive: true });
-  for (const s of ['code-video', 'soundtrack']) symlinkSync(path.join(REPO, 'skills', s), path.join(link, s), 'junction');
+  for (const s of readdirSync(path.join(REPO, 'skills'))) {
+    if (existsSync(path.join(REPO, 'skills', s, 'SKILL.md'))) symlinkSync(path.join(REPO, 'skills', s), path.join(link, s), 'junction');
+  }
   // the links are the harness's, not the work's: keep them out of git status
   writeFileSync(path.join(WORK, '.git', 'info', 'exclude'), '.claude/skills/\n.agents/skills/\n');
 }

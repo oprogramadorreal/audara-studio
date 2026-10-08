@@ -41,6 +41,11 @@ for them: at most three questions, so one line can answer them, each with the de
 will it play? Default: YouTube, 16:9, 1920×1080"), in the same message as the draft. Don't re-ask what the
 request says.
 
+A prompt the video-ideas skill wrote, or one like it, keeps three things apart: what the director decided
+(follow it exactly), the idea they chose (develop it, don't swap it), and suggestions they never confirmed,
+marked as replaceable (copy, a length, a sound, a staging): those are open, yours to keep or better, and
+what you keep goes in the Assumed line. In the same session, their own earlier words count too.
+
 | Open part | Decide when | Default |
 |---|---|---|
 | Which part of the song | the song is longer than the video | the window you'd choose on the music (below), with its reason |

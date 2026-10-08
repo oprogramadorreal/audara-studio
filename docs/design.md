@@ -72,7 +72,8 @@ part of the design serves that loop:
   either: `npx skills add oprogramadorreal/audara-studio`.
 - **Then talk naturally.** Open a folder and ask for a video: "make a 60-second video for `song.mp3`, dark
   and engraved". The skills load on their own: each skill's short description is in every session, and a
-  matching request loads the rest.
+  matching request loads the rest. Someone who doesn't know yet what to make asks for ideas instead ("give
+  me some ideas for a video for my bakery"), and gets them without a build ("Before the brief").
 - **Name a skill only to force it**, when the request is vague, or when other video skills (Remotion,
   HyperFrames) are installed and audara must win. In Claude Code that's `/audara-studio:code-video`; in
   Codex, `$audara-studio:code-video` (as the README says).
@@ -124,6 +125,45 @@ What the agent owes the director:
 It doesn't ask for approval of every step in between, and nothing waits on a missing screen but the moment
 that shows it.
 
+### Before the brief: choosing what to make
+
+A sentence is enough to start a video. When its premise is left open, code-video's lead develops one in the
+treatment, then builds while the user can redirect. `video-ideas` offers a separate opportunity to compare
+directions before production: the user asks for ideas, sees two or three that differ in what the viewer
+would see, picks or refines one, and leaves with a starting prompt. It never stands in front of a request
+just to make a video, which still goes straight to code-video.
+
+- **It stops at the prompt.** When production hasn't already been requested, ideas, a prompt or "I like
+  the second one" start nothing: no project, no preview, nothing generated, and no file unless the user
+  asks to save the prompt. "Make it" continues with code-video in the same session, with the prompt and the
+  user's earlier instructions, under its usual production and render rules; a request that already asked
+  for the video ("pick the strongest and make it") goes on without a second yes, after showing the chosen
+  direction so the user can redirect; the prompt also works pasted into another session.
+- **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
+  facts, length, sound, what they ruled out); the idea they chose; and what the assistant only suggested
+  (copy, a length, a staging), marked as replaceable. code-video follows the first exactly, develops the
+  second, and treats the third as open, putting what it keeps in the Assumed line (treatment template).
+  Without that split, a helper writing in the user's voice would turn its own guesses into requirements.
+- **What the user left open in the look stays open,** and the visual constraints they set are kept,
+  without one brand colour, typeface or reference taken for a whole look: code-video explores the rest in
+  its style frames. A look the assistant suggests is marked optional.
+- **A prompt found elsewhere is adapted:** its idea, creative direction and delivery requirements kept
+  (frame shape, size, rate, motion and finish can describe the result), incidental implementation (a
+  Remotion component, an HTML-page setup) translated, role-play openers and "ignore your skills" removed,
+  and the changes said in a line. A tool the user chose on purpose stays.
+- **Decisions apply where they belong.** In a project, `docs/STYLE.md` and the relevant video's Decisions
+  are kept; one video's own choices (its length, its silence) don't bind an unrelated new one.
+- **Text only.** No scripts, no engine, no generated options to look at: drawing alternatives is
+  production, under code-video's rules. Costs and asset needs come up only when they affect the choice.
+
+Why a skill of its own: code-video loads for any video request and in any project with
+`videos/*/video.json`, and its routing and checklist can pull an ideas request toward production; its
+SKILL.md has no room left either. Considered and left out: documenting code-video's "plan first" instead
+(the lightest route, but only for users who know to say it, and it plans one video rather than comparing
+ideas), an interview inside production (the stop before building that round 4 removed), and a required
+fresh session. The research behind it is in `docs/research/` (dated snapshots), the decision in history.md
+(0.5.0).
+
 ### Coming back later
 
 A project outlives the session that started it. `init` writes a short `AGENTS.md` into the project with
@@ -135,7 +175,8 @@ what a later session needs:
 - the f(t) rule, in one line;
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
-- what the agent owes the director.
+- what the agent owes the director, including that a request for ideas or a prompt alone gets those and
+  nothing built.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
 The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
@@ -167,9 +208,11 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has two skills: **`code-video`** for the picture and **`soundtrack`** for the sound. `soundtrack` turns a
-song or a script into audio files plus the timing data the engine reads. When the user provides an
-ElevenLabs API key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs").
+It has three skills: **`code-video`** for the picture, **`soundtrack`** for the sound and **`video-ideas`**
+for deciding what to make. `soundtrack` turns a song or a script into audio files plus the timing data the
+engine reads. When the user provides an ElevenLabs API key, it can also generate narration, music and sound
+effects (see "Sound and ElevenLabs"). `video-ideas` is text only and ends with a starting prompt (see
+"Before the brief").
 
 ### Room for the model
 
@@ -436,7 +479,7 @@ math references came as optional tools, each read only when in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-Both skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All three skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -445,16 +488,17 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - Both skills stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+  - All three stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own.
 - **`name`:** lowercase letters, digits and hyphens; at most 64 characters; the same as the folder name; no
-  "claude" or "anthropic". `code-video` and `soundtrack` pass.
+  "claude" or "anthropic". `code-video`, `soundtrack` and `video-ideas` pass.
 - **`description`:** at most 1,024 characters, in the third person.
   - **Content:** what the skill does and when to use it, the main use case first, in the words users
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
     "render").
-  - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage or
-    for generating clips with AI video models.
+  - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage, for
+    generating clips with AI video models, or for ideas and a prompt alone; `video-ideas` is not for making a
+    video, for prompts for other generators, or for ideas for filmed content.
   - **A little insistent** (Anthropic), because models tend to under-trigger skills: "use it whenever the
     user wants a video made from code, even if they don't say 'motion graphics'".
   - **First sentence first:** Claude Code cuts each listing at 1,536 characters, and Codex shortens
@@ -523,9 +567,9 @@ they differ, follow the stricter rule. What that means here:
   default model.
 - **Claude A and Claude B:** one session improves the skills while a fresh one uses them on real tasks.
   Watch which files it reads: a file never read is unnecessary or badly linked.
-- **Tools:** the evals run on their own harness (`evals/harness/`: trigger sets of 20 requests per skill,
-  multi-turn task cases, mocks of the paid APIs), since skill-creator's trigger loop and `claude plugin
-  eval` need a shell native Windows doesn't give them (`evals/README.md`). Also used:
+- **Tools:** the evals run on their own harness (`evals/harness/`: trigger sets of about 20 requests per
+  skill, multi-turn task cases, mocks of the paid APIs), since skill-creator's trigger loop and `claude
+  plugin eval` need a shell native Windows doesn't give them (`evals/README.md`). Also used:
   - Anthropic's skill-creator plugin: task evals, benchmarks, the description optimizer;
   - Codex's built-in `$skill-creator` and its validator;
   - `skills-ref validate ./skills/<name>`;
@@ -545,6 +589,7 @@ audara-studio/
 ├── plugin.json                       # Agent Plugins 1.0, with Codex's fields under extensions.com.openai
 ├── .agents/plugins/marketplace.json  # Codex's marketplace
 ├── docs/design.md, docs/history.md   # how it works and why; how it got here
+├── docs/research/                    # dated research snapshots: the video-ideas proposal, its sources
 ├── evals/                            # trigger and task evals, their harness, mocks of the paid APIs
 └── skills/
     ├── code-video/                   # the picture: the engine and the method
@@ -558,6 +603,8 @@ audara-studio/
     │   └── assets/template-webgl/    # engine, preview player, render.ts, font-instances.py, fonts, an
     │                                 # example video with one scene per way of drawing; pdoom specifics
     │                                 # removed
+    ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt out
+    │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons

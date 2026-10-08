@@ -17,6 +17,7 @@ Contents
 - Lessons from the motion-engineering article (0.3.0, 2026-10-05)
 - The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
 - 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
+- A place to choose the idea: video-ideas (0.5.0, 2026-10-08)
 
 ## Definition of done
 
@@ -978,3 +979,108 @@ Found and not changed:
   in the preview, stand for that review would save that round in turn 2 (an estimate: nothing measured the
   time or the quality without it). It trades a check for time, and the showreel cases assert the review,
   so it waits for a decision.
+
+## A place to choose the idea: video-ideas (0.5.0, 2026-10-08)
+
+The user asked for a skill that helps people who aren't prompt writers start well: triggered by a request
+for video prompt ideas, informed by the prompts published on Skillry and Prompt Motion, and with a workflow
+to settle (rewrite the prompt and start code-video, or hand the user a prompt to paste into another
+session). They named the gap themselves: code-video fills in what a prompt leaves open, but goes on into
+production; what's missing is a space to explore ideas and leave with a good prompt before building anything.
+
+A Codex session (GPT-6 Astra) researched the two galleries through its Chrome integration and wrote four
+documents; a Claude Code session (Opus 5.5) analyzed the question on its own, then the two sessions, talking
+through Herdr, argued each difference out until they agreed, first on the design and then on the documents.
+The research, cut from four files (84 KB) to three (33 KB), is in `docs/research/`, as dated snapshots.
+
+What the evidence said:
+
+- **The recorded failures do not establish weak prompts as their cause.** Short prompts gave the plugin
+  some of its best blind scores, while the showreel review identified taste defaults as a cause of losses
+  (0.4.0). The case for this skill is an opportunity to compare ideas before production. code-video already
+  lets the user redirect from its treatment and preview; in the two 0.4.1 runs the links arrived at minutes
+  1 and 19, and the first turns finished after 91 and 93 minutes. Whether exploration saves time or improves
+  the finished video remains unmeasured.
+- **The galleries show range, not a formula.** One-line requests (a train window through four seasons, a
+  poster escaping its frame) sit beside multi-page production specifications; both README showreel prompts
+  are there, posted by several creators with different results. The long prompts are mostly what
+  code-video already owns (renderers, timing functions, export settings); what carries over is the idea,
+  the relationships between picture and sound, and the facts and files only the user has. "One-shot"
+  labels are the galleries' claims. Permission from each creator to republish the full prompts isn't
+  established, so the research links and describes them and keeps no copies.
+- **A stop before building added nothing** (round 4): every default was accepted, and the first frame came
+  20–27 minutes later. So the skill is optional and never stands in front of a request to make a video.
+- **The director's words bind,** and a look named in words before any frame exists was one cause of weak
+  videos (round 4). A helper writing its guesses in the user's voice would turn them into requirements and
+  switch off the style frames.
+
+What changed:
+
+- **`skills/video-ideas/`**, text only (SKILL.md, 6,709 bytes): two or three directions that differ in what
+  the viewer sees, or the user's own idea refined; in a project, `docs/STYLE.md` and the relevant video's
+  Decisions kept, without one video's choices binding an unrelated new one; needs and costs mentioned only
+  when they affect the choice; one self-contained prompt that keeps what the user decided exact, the chosen
+  idea as theirs, and the assistant's suggestions marked as replaceable, with what the user left open in the
+  look left open; a found prompt adapted (its idea, direction and delivery requirements kept, incidental
+  implementation translated, role-play and "ignore your skills" removed, the changes stated, a tool the
+  user chose on purpose kept). When production hasn't been requested it stops at the prompt: nothing is
+  built, started or generated, and no file is written unless the user asks to save the prompt. "Make it"
+  continues with code-video in the same session, with the prompt and the user's earlier instructions; a
+  request that already asked for the video goes on after showing the chosen direction, with no second yes.
+- **code-video:** its description says ideas or prompts alone go to video-ideas (7,997 bytes, after "with
+  motion blur and 4K" became "motion blur, 4K"); the treatment template says how to read such a prompt:
+  decisions followed, the chosen idea developed, suggestions open, and what's kept goes in the Assumed
+  line.
+- **init's AGENTS.md** names the skill and owes the director "for a request for ideas or a prompt alone,
+  those, with nothing built, started or generated until they ask for the video", since code-video loads in
+  any project with `videos/*/video.json` and the section spoke only of building on.
+- **README, design.md ("Before the brief"), the manifests** (Codex's third starter prompt is now "Give me
+  three ideas for a short video about my bakery", in place of one that needed a finished video), 0.5.0.
+- **The evals:** the harness links every skill in `skills/` and handles one without scripts: its use is
+  reported as not measured, its Codex near-misses fail on the load (the summary's `nearMissCriterion`), and
+  each trigger run lists the script-use signals it saw before stopping (`usedSkills`);
+  `evals/trigger/video-ideas.json` (twelve requests, two of them asking for the video too, and ten
+  near-misses: making a video, prompts for other generators, ideas for filmed content, general advice); two
+  ideas-only near-misses at the end of code-video's set; nine `vi-` task cases, graded on the conversation.
+
+Considered and rejected:
+
+- **Documenting code-video's "plan first" instead:** the lightest route and the bar to beat, but it serves
+  only users who know to say it, and it plans one video rather than comparing ideas.
+- **A mode inside code-video:** its trigger and checklist pull toward production, and its SKILL.md had 31
+  bytes to spare.
+- **An interview inside production** (the product-film skill on Prompt Motion works that way): the stop
+  before building that round 4 removed.
+- **Always rewriting and building at once,** or **always a new session:** the first breaks the stopping
+  point an ideas request asks for, the second adds work and loses context; both are offered, neither forced.
+- **A reference of example prompts loaded with the skill:** examples anchor looks and motifs (design.md,
+  "Room for the model"); the research's examples stay outside the skill.
+
+A review by Codex of the implementation, before it was committed, found seven things, each taken:
+
+- **Every video's Decisions** were to be kept, so an old title card's silence or length could bind an
+  unrelated new video; now the shared style and the relevant video's.
+- **Adapting a found prompt** dropped its frame size, rate, spring motion and finish as another tool's
+  settings, and the case rewarded that; they can describe the result, so they stay, and only the
+  implementation is translated.
+- **A choice made after "make the one I pick"** would have stopped at the prompt, and "make it" could lose
+  an earlier "and the MP4"; both now follow the user's earlier instructions.
+- **The look** read as if one typeface settled it, and **real screens** as needed by any product, though a
+  lamp or a brand film has none.
+- **The trigger report** gave a skill without scripts a use rate of 0% rather than "not measured".
+- **Composite requests had no trigger queries, and improving a prompt and making the video had no task
+  case;** both are now covered (the new case first required 1080x1920 although the user supplied only
+  vertical framing).
+- **The history and design overstated what the runs established** about weak prompts and the time before
+  comparing premises; they now distinguish preview links at minutes 1 and 19 from completed turns at 91 and
+  93, and leave the benefit unmeasured.
+
+What was checked: the three validators pass on all three skills, each SKILL.md is under 8,000 bytes with no
+byte-order mark, `init.ts` writes the new AGENTS.md lines into a fresh project, the harness files parse, a
+trigger run with no queries writes `nearMissCriterion: "load"` and "used on near-misses not measured" for
+video-ideas, and `bun evals/tasks/cases.ts` writes the nine new cases without changing the others.
+**Not run:** the trigger
+sets and the `vi-` cases. The skill was built before the baseline the proposal asked for, at the user's
+request; that baseline (the model brainstorming alone, code-video asked to plan only, and the skill, on
+casual and explicit requests) is still what decides whether it earns its place. If it can't beat the
+plan-first route without more friction or routing mistakes, the documented route replaces it.

@@ -1,0 +1,23 @@
+{
+  "id": "vi-ideas-only",
+  "skill": "video-ideas",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "any ideas for a short video I could post for my bakery? I don't really know what I want yet."
+    },
+    {
+      "prompt": "I like the second one."
+    }
+  ],
+  "assertions": [
+    "Turn 1 offers two or three directions that differ in what the viewer sees and how it changes (not only in adjectives, palette or mood), each in a few lines; any questions come with a default, and none of it is a form the user must fill in before seeing a direction.",
+    "Turn 2 returns one self-contained prompt that develops the second direction, in a fenced block, with a line outside it saying it can be made here or pasted into another session; it reads on its own (no \"option 2\", \"as above\").",
+    "Nothing is produced in either turn: no init.ts, render.ts or soundtrack script runs, no preview, no image, voice or music request, and the work folder ends as it started (git status), since nobody asked to save the prompt.",
+    "The prompt states no fact about the bakery the user didn't give (a name, products, prices, a place, opening hours); what it needs and doesn't have is named as missing or left to the user.",
+    "The prompt leaves the look open (no palette, hex code or typeface the user didn't give) or marks a suggested look as optional, names no engine, library, frame rate or resolution, and marks what the user never confirmed (copy, a length, a sound) as replaceable."
+  ]
+}

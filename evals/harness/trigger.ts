@@ -9,7 +9,11 @@
 //
 // A run counts as triggered when the session loads the skill (Claude: a Skill call naming it, or a read of
 // its SKILL.md; Codex: a command reading <skill>/SKILL.md). Codex models often open a plausible skill just
-// to decide, so a run also records whether the skill was *used*: a command running one of its scripts.
+// to decide, so a run also records whether the skill was *used*: a command running one of its scripts. A
+// skill with no scripts (video-ideas) can't be seen being used: its use is reported as not measured (null),
+// and its Codex near-misses fail on the load, as Claude's do. Every run also lists the script-use signals it
+// saw before it stopped (usedSkills: code-video's init on a request for ideas only, say); a should-trigger
+// run stops at the load, so the task cases, not this, check that an ideas request never reaches production.
 // A should-trigger run stops at the load; a near-miss run keeps going for a few turns to see whether the
 // skill is acted on. What matters is the decision, not the work. No run can reach the user's desktop or their
 // own browser (see "no computer use" below), and the results name the model each run had, as its transcript
@@ -34,7 +38,8 @@ const RUNS = +opt('runs', '3')!;
 const MODEL = opt('model');
 const J = +opt('j', TOOL === 'claude' ? '6' : '4')!;
 const ONLY = opt('only')?.split(',');
-const SKILLS = ['code-video', 'soundtrack'];
+// (every skill in the repo: they compete with each other, as they do once the plugin is installed)
+const SKILLS = readdirSync(path.join(REPO, 'skills')).filter((s) => existsSync(path.join(REPO, 'skills', s, 'SKILL.md')));
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-');
 const WORK = path.resolve(opt('work', path.join(REPO, 'evals', 'results', 'trigger-runs', `${TOOL}-${SET.skill}-${STAMP}`))!);
 const OUT = path.resolve(opt('out', path.join(REPO, 'evals', 'results', `trigger-${TOOL}-${MODEL ?? 'default'}-${SET.skill}-${STAMP}.json`))!);
@@ -169,11 +174,15 @@ function codexModel(thread: string, since: number): string | null {
 let halt: string | null = null;
 
 const skillRe = (s: string) => new RegExp(`(?:^|[^\\w-])(?:[\\w-]+:)?${s}(?:[/\\\\]+SKILL\\.md|["'\\s,}]|$)`, 'i');
-// a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align)
-const useRe: Record<string, RegExp> = {
+// a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align); a skill
+// with no scripts has no entry
+const useRe: Record<string, RegExp | undefined> = {
   'code-video': /code-video[/\\]+scripts[/\\]+\w+\.(ts|py)|scripts[/\\]+render\.ts|init\.ts/i,
   'soundtrack': /soundtrack[/\\]+scripts[/\\]+(beats|eleven|mix|align)\.py/i,
 };
+
+// (whether the skill under test has scripts, so that its use can be seen at all)
+const SCRIPTED = !!useRe[SET.skill];
 
 async function runOnce(q: (typeof SET.queries)[number], k: number) {
   const dir = path.join(WORK, `${q.id}-${k}`);
@@ -208,7 +217,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
           const blob = JSON.stringify(c.input ?? {});
           for (const s of SKILLS) {
             if ((c.name === 'Skill' && skillRe(s).test(String(c.input?.skill ?? c.input?.command ?? ''))) || (c.name === 'Read' && skillRe(s).test(blob))) seen.add(s);
-            if (c.name === 'Bash' && useRe[s]!.test(blob)) used.add(s);
+            if (c.name === 'Bash' && useRe[s]?.test(blob)) used.add(s);
           }
         }
       } else {
@@ -216,7 +225,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
         const item = ev?.item;
         if (item?.type === 'command_execution' && ev.type === 'item.started') {
           commands++; tools.push('cmd');
-          for (const s of SKILLS) if (useRe[s]!.test(String(item.command ?? ''))) used.add(s);
+          for (const s of SKILLS) if (useRe[s]?.test(String(item.command ?? ''))) used.add(s);
         }
         for (const s of SKILLS) if (new RegExp(`${s}[/\\\\]+SKILL\\.md`, 'i').test(line)) seen.add(s);
         if (commands >= CODEX_MAX_COMMANDS) stop = true;
@@ -229,7 +238,7 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
   writeFileSync(path.join(dir, '_transcript.jsonl'), log);
   if (blocked) halt ??= `${q.id}#${k}: ${blocked}`;
   if (thread) model = codexModel(thread, since);
-  return { k, triggered: seen.has(SET.skill), used: used.has(SET.skill), skills: [...seen], tools: tools.slice(0, 8), ms: Math.round(performance.now() - t0),
+  return { k, triggered: seen.has(SET.skill), used: SCRIPTED ? used.has(SET.skill) : null, skills: [...seen], usedSkills: [...used], tools: tools.slice(0, 8), ms: Math.round(performance.now() - t0),
     model, ...(blocked ? { blocked } : {}) };
 }
 
@@ -240,7 +249,7 @@ let next = 0, done = 0;
 async function worker() {
   while (next < jobs.length && !halt) {
     const { q, k } = jobs[next++]!;
-    const r = await runOnce(q, k).catch((e) => ({ k, triggered: false, used: false, skills: [], tools: [`error: ${e}`], ms: 0, model: null }));
+    const r = await runOnce(q, k).catch((e) => ({ k, triggered: false, used: SCRIPTED ? false : null, skills: [], usedSkills: [], tools: [`error: ${e}`], ms: 0, model: null }));
     (results.get(q.id) ?? results.set(q.id, []).get(q.id)!).push(r);
     done++;
     process.stderr.write(`\r${done}/${jobs.length}  ${q.id}#${k} ${r.triggered ? 'TRIGGERED' : '-'}   `);
@@ -257,27 +266,33 @@ if (halt) {
   process.exit(1);
 }
 
+// what fails a near-miss: Codex reads plausible skills to decide, so for a skill whose use shows (it has
+// scripts) only using it fails; otherwise, and always in Claude Code, loading it does
+const NEAR_MISS: 'script-use' | 'load' = TOOL === 'codex' && SCRIPTED ? 'script-use' : 'load';
 const rows = queries.map((q) => {
   const rs = results.get(q.id) ?? [];
   const rate = rs.filter((r) => r.triggered).length / Math.max(1, rs.length);
-  const useRate = rs.filter((r) => r.used).length / Math.max(1, rs.length);
+  const useRate = SCRIPTED ? rs.filter((r) => r.used).length / Math.max(1, rs.length) : null;
   // near-misses: Claude loads a skill only when it means to follow it, so a load is the failure; Codex reads
-  // plausible skills to decide (it then often declines in its next message), so there the failure is using it
-  const pass = q.should_trigger ? rate >= 0.5 : TOOL === 'codex' ? useRate < 0.5 : rate < 0.5;
+  // plausible skills to decide (it then often declines in its next message), so there the failure is using
+  // it, where using shows (NEAR_MISS above)
+  const pass = q.should_trigger ? rate >= 0.5 : NEAR_MISS === 'script-use' ? useRate! < 0.5 : rate < 0.5;
   return { id: q.id, should_trigger: q.should_trigger, rate, useRate, pass, query: q.query, runs: rs };
 });
 // (the model as the runs' transcripts or session files name it; modelArg is what --model asked for)
 const models = [...new Set([...results.values()].flat().flatMap((r) => r.model ?? []))];
 const summary = {
   tool: TOOL, model: models.join(', ') || null, modelArg: MODEL ?? null, skill: SET.skill, runs: RUNS, plugin: flag('plugin'), description: opt('description') ?? null,
+  nearMissCriterion: NEAR_MISS,
   desktopOff: OFF,
   passed: rows.filter((r) => r.pass).length, total: rows.length,
   recall: rows.filter((r) => r.should_trigger).reduce((a, r) => a + r.rate, 0) / Math.max(1, rows.filter((r) => r.should_trigger).length),
   falseRate: rows.filter((r) => !r.should_trigger).reduce((a, r) => a + r.rate, 0) / Math.max(1, rows.filter((r) => !r.should_trigger).length),
-  falseUseRate: rows.filter((r) => !r.should_trigger).reduce((a, r) => a + r.useRate, 0) / Math.max(1, rows.filter((r) => !r.should_trigger).length),
+  // (null when the skill has no scripts: its use isn't measured)
+  falseUseRate: SCRIPTED ? rows.filter((r) => !r.should_trigger).reduce((a, r) => a + r.useRate!, 0) / Math.max(1, rows.filter((r) => !r.should_trigger).length) : null,
 };
 mkdirSync(path.dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify({ summary, rows }, null, 1));
-console.log(`${TOOL} ${summary.model ?? MODEL ?? '(model not named)'} ${SET.skill}: ${summary.passed}/${summary.total} pass · loaded on should ${(summary.recall * 100).toFixed(0)}% · loaded on near-misses ${(summary.falseRate * 100).toFixed(0)}% · used on near-misses ${(summary.falseUseRate * 100).toFixed(0)}%`);
-for (const r of rows) if (!r.pass) console.log(`  FAIL ${r.id} (${r.should_trigger ? 'should' : 'should not'}) load ${r.rate.toFixed(2)} use ${r.useRate.toFixed(2)}: ${r.query}`);
+console.log(`${TOOL} ${summary.model ?? MODEL ?? '(model not named)'} ${SET.skill}: ${summary.passed}/${summary.total} pass · loaded on should ${(summary.recall * 100).toFixed(0)}% · loaded on near-misses ${(summary.falseRate * 100).toFixed(0)}% · used on near-misses ${summary.falseUseRate === null ? 'not measured' : `${(summary.falseUseRate * 100).toFixed(0)}%`} · near-misses fail on ${NEAR_MISS === 'load' ? 'a load' : 'script use'}`);
+for (const r of rows) if (!r.pass) console.log(`  FAIL ${r.id} (${r.should_trigger ? 'should' : 'should not'}) load ${r.rate.toFixed(2)} use ${r.useRate === null ? 'not measured' : r.useRate.toFixed(2)}: ${r.query}`);
 console.log(OUT);
