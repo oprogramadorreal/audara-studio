@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the task evals in both tools, a few at a time, then the cases that start from a finished project
-# (a later session, a second format) on a project the title-card case made. Results land in
+# (a later session, a second format, ideas for another video) on a project the title-card case made. Results land in
 # evals/results/tasks/, each run's log named like its folder: log-<case>-<tool>[-<model>]-<with|without>.txt.
 # Needs EVAL_SONG and EVAL_SONG_DATA (see evals/README.md); EVAL_PROJECT is set here from the title-card runs.
 #   bash evals/harness/run-tasks.sh [claude|codex|both] [extra task.ts args, e.g. --model sonnet]
@@ -10,8 +10,8 @@ cd "$(dirname "$0")/../.."
 TOOLS="${1:-both}"; shift || true
 [ "$TOOLS" = both ] && TOOLS="claude codex"
 MAX=4   # concurrent runs: each may start a browser and render on the GPU
-FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-product-real-screens cv-product-concept-mockup cv-images-offered cv-images-used cv-images-no-key st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending"
-LATER="cv-later-session-small-change cv-second-format"
+FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-product-real-screens cv-product-concept-mockup cv-images-offered cv-images-used cv-images-no-key st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending vi-ideas-only vi-product-screens vi-refine-keeps-constraints vi-adapt-found-prompt vi-silent-long vi-improve-and-make vi-select-then-make vi-ideas-and-make"
+LATER="cv-later-session-small-change cv-second-format vi-existing-project"
 CASES="${CASES:-$FIRST $LATER}"
 for case in $CASES; do
   [ -f "evals/tasks/$case/case.json" ] || { echo "no case '$case' in evals/tasks/: CASES takes case folder names, e.g. CASES=\"cv-title-card cv-second-format\""; exit 1; }

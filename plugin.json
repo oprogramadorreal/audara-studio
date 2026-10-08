@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "audara-studio",
-  "version": "0.4.1",
-  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data.",
+  "version": "0.5.0",
+  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data, and a video-ideas skill that helps choose what to make and writes the starting prompt.",
   "author": {
     "name": "oprogramadorreal",
     "url": "https://github.com/oprogramadorreal"
@@ -16,7 +16,7 @@
       "interface": {
         "displayName": "Audara Studio",
         "shortDescription": "Videos from code, directed in a live preview",
-        "longDescription": "Direct a video made from code: GLSL, three.js and Canvas2D scenes driven by time, a live browser preview you give notes on by time, and a deterministic headless-Chrome to ffmpeg render. The soundtrack skill turns a song or a script into audio files plus beat and word timings.",
+        "longDescription": "Direct a video made from code: GLSL, three.js and Canvas2D scenes driven by time, a live browser preview you give notes on by time, and a deterministic headless-Chrome to ffmpeg render. The soundtrack skill turns a song or a script into audio files plus beat and word timings, and video-ideas helps decide what to make before building it.",
         "developerName": "oprogramadorreal",
         "category": "Creativity",
         "capabilities": ["Read", "Write"],
@@ -24,7 +24,7 @@
         "defaultPrompt": [
           "Make a 30-second video for song.mp3, dark and engraved",
           "Turn this script into a narrated 20-second explainer",
-          "Render the video and show me the contact sheet"
+          "Give me three ideas for a short video about my bakery"
         ]
       }
     }

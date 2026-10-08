@@ -1,6 +1,6 @@
 ---
 name: code-video
-description: "Makes videos from code: music videos, lyric videos, motion graphics, animated explainers, title cards, loops and social clips, drawn with WebGL/GLSL, three.js and Canvas2D, directed in a live browser preview and rendered to MP4. Use it whenever the user wants a video or an animation made, cut to a song or a voiceover, changed, previewed or rendered, even if they don't say \"motion graphics\" or \"code\", and in any project that has videos/*/video.json. Not for editing camera footage or for generating clips with AI video models."
+description: "Makes videos from code: music videos, lyric videos, motion graphics, animated explainers, title cards, loops and social clips, drawn with WebGL/GLSL, three.js and Canvas2D, directed in a live browser preview and rendered to MP4. Use it whenever the user wants a video or an animation made, cut to a song or a voiceover, changed, previewed or rendered, even if they don't say \"motion graphics\" or \"code\", and in any project that has videos/*/video.json. Not for editing camera footage, generating clips with AI video models, or ideas or prompts alone (video-ideas)."
 ---
 
 # code-video
@@ -56,7 +56,7 @@ Run in the project folder (`<skill>`: this skill's folder); all options: the hea
 - references/backends.md: when the engine doesn't suit the video.
 
 ## Defaults and the room around them
-The engine is the default: GLSL, three.js, Canvas2D and GPU lines in one frame, a live preview, a deterministic render with motion blur and 4K. Anything that ends up in the frame is fair, engine changes included (keep `docs/ENGINE.md` in step). If another approach serves the video better, use it and say why. AI video clips only when the director asks.
+The engine is the default: GLSL, three.js, Canvas2D and GPU lines in one frame, a live preview, a deterministic render, motion blur, 4K. Anything that ends up in the frame is fair, engine changes included (keep `docs/ENGINE.md` in step). If another approach serves the video better, use it and say why. AI video clips only when the director asks.
 
 ## Gotchas
 - Time and values come from data: cuts on the beat grid (`ctx.audio`), words by their text (`ctx.words.get('...')`), an explainer's results from its inputs; never typed.

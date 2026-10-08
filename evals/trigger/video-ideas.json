@@ -1,0 +1,27 @@
+{
+  "skill": "video-ideas",
+  "queries": [
+    { "id": "vi-01", "should_trigger": true, "files": [], "query": "give me some ideas for a short video about my bakery's sourdough, I don't know what to make yet" },
+    { "id": "vi-02", "should_trigger": true, "files": ["song.mp3", "lyrics.txt"], "query": "help me write a good prompt for a lyric video of song.mp3 (lyrics in lyrics.txt), I'll run it in another session later" },
+    { "id": "vi-03", "should_trigger": true, "files": [], "query": "I have a vague idea for a music video about leaving my hometown. can you help me explore it before we build anything?" },
+    { "id": "vi-04", "should_trigger": true, "files": [], "query": "improve this video prompt before I use it: \"make a cool video about AI\"" },
+    { "id": "vi-05", "should_trigger": true, "files": ["tally-home.png", "tally-scan.png"], "query": "what kind of video could I make for our app launch with these screens? just ideas for now" },
+    { "id": "vi-06", "should_trigger": true, "files": [], "query": "I found this prompt on X, rewrite it so it works here: \"Adopt the role of an expert motion designer. In Remotion at 1920x1080 60fps make a 30s launch film for Lumen, a desk lamp that follows the sun. Spring animations, award-winning, ultra premium.\"" },
+    { "id": "vi-07", "should_trigger": true, "files": [], "query": "brainstorm three different directions for a 15-second teaser for my podcast, Night Signals. don't make anything yet" },
+    { "id": "vi-08", "should_trigger": true, "files": [], "query": "I want an animated explainer about how vaccines train the immune system but I don't know how to ask for it. help me write the prompt" },
+    { "id": "vi-09", "should_trigger": true, "files": [], "query": "any prompt ideas for a 10 second loop I could leave running on my twitch stream?" },
+    { "id": "vi-10", "should_trigger": true, "files": [], "query": "me dá umas ideias de vídeo pra divulgar minha loja de plantas no instagram? ainda não sei o que quero" },
+    { "id": "vi-11", "should_trigger": false, "files": [], "query": "make a 20-second video showing why the sky is blue, with music and sound effects" },
+    { "id": "vi-12", "should_trigger": false, "files": [], "query": "make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are, like it's your showreel for a résumé. go all out. dont ask just make" },
+    { "id": "vi-13", "should_trigger": false, "files": ["song.mp3", "lyrics.txt"], "query": "make a lyric video for the chorus of song.mp3, the lyrics are in lyrics.txt" },
+    { "id": "vi-14", "should_trigger": false, "files": [], "query": "write a Veo prompt for a realistic video of a cat surfing a big wave at sunset" },
+    { "id": "vi-15", "should_trigger": false, "files": [], "query": "write a midjourney prompt for a poster of a lighthouse in a storm" },
+    { "id": "vi-16", "should_trigger": false, "files": [], "query": "give me ideas for my next travel vlog episode, I'm filming in Japan next month" },
+    { "id": "vi-17", "should_trigger": false, "files": [], "query": "write a script for a 60-second TikTok with budgeting tips that I'll film myself talking to the camera" },
+    { "id": "vi-18", "should_trigger": false, "files": [], "query": "improve this system prompt for my customer support chatbot: \"You are a helpful assistant for Acme. Answer questions about orders.\"" },
+    { "id": "vi-19", "should_trigger": false, "files": [], "query": "brainstorm ten names for my new podcast about urban gardening" },
+    { "id": "vi-20", "should_trigger": false, "files": [], "query": "in two sentences, what makes a good prompt for an image generator?" },
+    { "id": "vi-21", "should_trigger": true, "files": [], "query": "Improve this starting prompt and make the video: a 12-second vertical loop for Still Water, with only the words \"Breathe in. Stay a while.\" No music or voice." },
+    { "id": "vi-22", "should_trigger": true, "files": [], "query": "Give me three ideas for a 10-second loop for Blue Hours, pick the strongest and make it." }
+  ]
+}

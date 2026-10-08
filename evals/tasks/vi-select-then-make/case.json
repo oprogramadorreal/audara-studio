@@ -1,0 +1,27 @@
+{
+  "id": "vi-select-then-make",
+  "skill": "video-ideas",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Give me a few ideas for a 15-second title card for my podcast, Night Signals."
+    },
+    {
+      "prompt": "I like the first one."
+    },
+    {
+      "prompt": "Make it here."
+    }
+  ],
+  "assertions": [
+    "Nothing is built before turn 3: no init.ts or render.ts run, no audara project files and no preview in turns 1 and 2 (the transcripts, file times).",
+    "Turn 3 builds with code-video from the prompt turn 2 wrote: the treatment's idea is that prompt's chosen idea, and what the prompt marked as a suggestion is in the treatment's Assumed line or changed with a reason, not recorded in Decisions as the director's.",
+    "Turn 3 shows the treatment and this project's preview link before its first scene file, and ends in the preview with the render offered; no full render (not a --draft) runs.",
+    "The video shows the words Night Signals and no other words unless the treatment lists them as assumed."
+  ]
+}

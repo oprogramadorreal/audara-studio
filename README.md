@@ -5,13 +5,15 @@ a script or nothing at all: what you decide is followed exactly, and what you le
 aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
 ("at 0:23 the title should land on the snare") and renders the MP4.
 
-audara-studio is a plugin for Claude Code and Codex with two skills:
+audara-studio is a plugin for Claude Code and Codex with three skills:
 
 - **code-video**: music videos, lyric videos, motion graphics, explainers, title cards and loops, drawn
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
   render and any moment has a link.
 - **soundtrack**: turns a song or a script into audio and the timing the picture syncs to: beats, sections,
   word timings, narration and music (with ElevenLabs, asking before spending credits), effects and the mix.
+- **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
+  one and writes it up as a prompt, without building anything until you ask.
 
 ## Install
 
@@ -51,6 +53,8 @@ psychedelic piece's colour):
 
 Other ways in:
 
+- **Not sure yet:** "give me some ideas for a short video for my bakery". You get a few directions and, once
+  you pick one, a prompt; say "make it" to build it here, or paste it into another session.
 - **Your script:** "make the video for script.txt, keep every word". The words stay as written; the agent
   makes the voice, music and picture, and says so when something in the script won't work.
 - **Your direction:** a paragraph of it, or notes over days ("slower intro", "less blue in the chorus",

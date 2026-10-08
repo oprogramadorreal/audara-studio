@@ -1,0 +1,19 @@
+{
+  "id": "vi-refine-keeps-constraints",
+  "skill": "video-ideas",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "Improve this prompt, but don't build anything: \"make a 20 second vertical video for our yoga studio, Still Water. the only text is 'Breathe in. Stay a while.' no stock-photo people, no lotus icons, and no music, just room sound.\""
+    }
+  ],
+  "assertions": [
+    "The improved prompt keeps every decision exactly: 20 seconds, vertical, the studio's name, 'Breathe in. Stay a while.' word for word as the only text, no stock-photo people, no lotus icons, no music and room sound only.",
+    "What it adds is an idea in what is seen (what happens on screen and how it changes), not adjectives; what goes beyond the user's words is marked as a suggestion they can replace.",
+    "It asks nothing the prompt already answers, and names no engine, library, hex code, frame rate or beat time.",
+    "Nothing is produced (no audara script runs, no preview, no generation) and the work folder ends as it started (git status)."
+  ]
+}

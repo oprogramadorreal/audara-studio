@@ -1,0 +1,20 @@
+{
+  "id": "vi-ideas-and-make",
+  "skill": "video-ideas",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Give me three ideas for a 10-second loop for my late night jazz stream, Blue Hours, pick the strongest and make it."
+    }
+  ],
+  "assertions": [
+    "A message shows the three directions and the chosen one before the first scene file is written (transcript order), and the turn goes on to build without asking the user to approve the choice.",
+    "The video built is the chosen direction (the treatment's idea matches it), and none of the style template's Avoid-list archetypes unless the treatment argues for it.",
+    "The build ends in the preview with the render offered, and no full render (not a --draft) runs."
+  ]
+}

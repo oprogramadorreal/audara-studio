@@ -1,0 +1,26 @@
+{
+  "id": "vi-product-screens",
+  "skill": "video-ideas",
+  "setup": {
+    "files": [
+      "tally-home.png",
+      "tally-scan.png"
+    ]
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "What could I make for the launch of receipt scanning in our budgeting app, Tally? Our screens are tally-home.png and tally-scan.png. Just ideas for now."
+    },
+    {
+      "prompt": "Go with the first one. Write me the prompt so I can run it in a new session tomorrow."
+    }
+  ],
+  "assertions": [
+    "Turn 1's directions differ in what is seen, and one that needs a screen neither file shows (the budget after a scan, say) says so.",
+    "The prompt names tally-home.png and tally-scan.png, says the real screens are to be shown, and names a screen the story needs that the files lack as missing (or tells that moment without one).",
+    "No figure or claim about Tally appears beyond the prompt's and the screens' own ($1,240 of $2,000, the listed expenses): no speed, accuracy, user count or savings.",
+    "The prompt stands alone for a new session: no \"option 1\", \"as above\" or \"the screens you gave\" without their names.",
+    "Nothing is produced (no audara script runs, no preview, no generation) and the work folder ends as it started (git status)."
+  ]
+}

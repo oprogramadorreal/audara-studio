@@ -1,0 +1,21 @@
+{
+  "id": "vi-improve-and-make",
+  "skill": "video-ideas",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Improve this starting prompt and make the video: a 12-second vertical loop for Still Water, with only the words \"Breathe in. Stay a while.\" No music or voice."
+    }
+  ],
+  "assertions": [
+    "Before the first scene file (transcript order), a message shows the improved prompt, short and provisional, and the turn goes on to build without asking the user to approve it.",
+    "What the user gave survives into the build: 12 seconds, vertical framing, a seamless loop, 'Breathe in. Stay a while.' word for word as the only text, and no music or voice (TREATMENT.md, video.json, stills, and no music or voice in the audio or the mix).",
+    "What the refinement added (an idea, a staging, room sound) is in the treatment's Assumed line or marked as a suggestion, not recorded in Decisions as the director's.",
+    "The build ends in the preview with the render offered, and no full render (not a --draft) runs."
+  ]
+}
