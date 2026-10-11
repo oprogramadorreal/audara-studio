@@ -240,6 +240,23 @@ test('--history keeps a key file name (.p12) when the blob was renamed before de
   has(audit(dir, 1, ['--history']), 'signing.P12 [blob ');
 });
 
+test('--history keeps every credential name: an .npmrc renamed backup.key is both', async () => {
+  const dir = await repo(), token = secret();
+  await write(dir, '.npmrc', '_authToken=' + token + '\n');
+  // A file named after the token: its path is printed, so the npm scan has to learn the token to mask it.
+  await write(dir, token + '.txt', 'ordinary text\n');
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-qm', 'fixture with npm token');
+  git(dir, 'mv', '.npmrc', 'backup.key');
+  git(dir, 'commit', '-qm', 'rename npmrc to a key-file name');
+  git(dir, 'rm', '-q', 'backup.key', token + '.txt');
+  git(dir, 'commit', '-qm', 'remove both');
+  audit(dir, 0);
+  const out = audit(dir, 1, ['--history']);
+  has(out, ':1 — npm authentication token');
+  has(out, '— key/config file: inspect before committing');
+});
+
 test('unquoted .env values end at # with or without a space before it', async () => {
   const dir = await repo(), value = secret(), spaced = secret();
   await write(dir, '.gitignore', '.env*\n');

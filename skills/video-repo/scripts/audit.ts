@@ -31,7 +31,8 @@ const HASH_MIN = 4 * 1024; // Include small logos without reporting every tiny r
 const DETAIL_LIMIT = 100; // Counts stay complete; terminal output stays usable.
 const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE/i;
 type Scope = 'working' | 'index' | 'history';
-type Entry = { name: string; location?: string; size: number; oid?: string; mode?: string; disk?: string; link?: Buffer };
+// (aliases: every credential-file name a historical blob ever had; each one's checks apply to it)
+type Entry = { name: string; location?: string; size: number; oid?: string; mode?: string; disk?: string; link?: Buffer; aliases?: string[] };
 type Finding = { severity: 'blocker' | 'review'; scope: Scope; name: string; line?: number; kind: string; sample?: string };
 type Pattern = { kind: string; re: RegExp };
 const patterns: Pattern[] = [
@@ -124,6 +125,7 @@ function keyFileName(name: string): boolean {
 }
 /** A name some check depends on: a .env* file, an .npmrc, a key file. */
 function credentialName(name: string): boolean { return envFile(name) || npmrcFile(name) || keyFileName(name); }
+function names(entry: Entry): string[] { return [entry.name, ...(entry.aliases ?? [])]; }
 function learnEnv(text: string) {
   // Read values, never run a shell or expand variables. Ordinary settings are not secret literals.
   const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|([^\r\n]*))/g;
@@ -165,7 +167,7 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     credentialSpans.some(([from, to]) => start < to && end > from);
   for (const p of patterns) {
     // _authToken is meaningful in npm config; avoid treating source code describing it as credentials.
-    if (p.kind === 'npm authentication token' && !npmrcFile(entry.name)) continue;
+    if (p.kind === 'npm authentication token' && !names(entry).some(npmrcFile)) continue;
     for (const match of text.matchAll(new RegExp(p.re.source, p.re.flags))) {
       if (p.kind === 'npm authentication token' && /^\$\{[^}]+\}$/.test(match[1] ?? '')) continue;
       // A detected value is masked wherever it shows up in the output, a file name included.
@@ -202,9 +204,11 @@ function textScan(text: string, entry: Entry, scope: Scope) {
   }
 }
 function keyFile(entry: Entry, scope: Scope) {
-  const base = path.posix.basename(entry.name.replace(/\\/g, '/'));
-  if ((envFile(base) && base !== '.env.example') || keyFileName(base))
-    find('blocker', scope, entry.location ?? entry.name, 'key/config file: inspect before committing');
+  const flagged = names(entry).some((n) => {
+    const base = path.posix.basename(n.replace(/\\/g, '/'));
+    return (envFile(base) && base !== '.env.example') || keyFileName(base);
+  });
+  if (flagged) find('blocker', scope, entry.location ?? entry.name, 'key/config file: inspect before committing');
 }
 
 // Shared buffered reader for files and Git's batch stream. Content adds only bounded samples and hashes.
@@ -406,8 +410,8 @@ function historyEntries(): Entry[] {
 }
 
 /** The .env blobs any ref reaches (to learn their values), after giving every blob that was ever a credential
- *  file (credentialName) that name: rev-list names a blob only once, and a later copy named backup.txt must
- *  not hide the name its checks depend on (key files, .npmrc tokens). */
+ *  file (credentialName) each such name: rev-list names a blob only once, and a later copy named backup.txt
+ *  must not hide the names its checks depend on (key files, .npmrc tokens). */
 function historicalCredentialFiles(entries: Entry[]): Entry[] {
   if (!entries.length) return [];
   const byId = new Map(entries.map(e => [e.oid!, e]));
@@ -425,7 +429,9 @@ function historicalCredentialFiles(entries: Entry[]): Entry[] {
       const e = byId.get(oid);
       if (e && mode !== '160000') {
         if (envFile(name)) result.set(oid, { ...e, name });
-        // Prefer a real credential path over an alias; .env.example alone remains a permitted filename.
+        // Every credential name the blob had keeps its checks (an .npmrc renamed backup.key is both), and the
+        // report shows one of them rather than an alias such as backup.txt (.env.example alone is permitted).
+        if (!names(e).includes(name)) (e.aliases ??= []).push(name);
         if (!credentialName(e.name) || path.posix.basename(e.name) === '.env.example') e.name = name;
       }
     }
