@@ -113,13 +113,14 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
 };
 
 if (import.meta.main) {
-  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand, as the harness does:
-  // `before`, then `after`, which follows the harness's setup commit (a plant whose `after` commits needs the
-  // folder to be a git repository)
+  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand. A plant's `before`, or
+  // for one with only an `after` (first-video-baseline), that: a plant with both needs the harness's setup commit
+  // between them (history-secret's key must reach the history before `after` takes it out)
   const [name, work, t = 'eval-token-test'] = process.argv.slice(2);
-  if (!plants[name!]) throw new Error(`plant: no plant named ${name} (${Object.keys(plants).join(', ')})`);
+  const p = plants[name!];
+  if (!p) throw new Error(`plant: no plant named ${name} (${Object.keys(plants).join(', ')})`);
   const setup = { env: { AUDIO_API_TOKEN: t } };
-  plants[name!]!.before?.(path.resolve(work!), setup);
-  plants[name!]!.after?.(path.resolve(work!), setup);
+  if (p.before) p.before(path.resolve(work!), setup);
+  else p.after?.(path.resolve(work!), setup);
   console.log(`planted ${name} in ${path.resolve(work!)}`);
 }

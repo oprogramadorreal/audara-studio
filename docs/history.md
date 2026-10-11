@@ -1361,5 +1361,6 @@ What changed:
   own files", added only if a run fails for that reason. On a scratch project the plant's two runs matched (8
   frames compared, 0 changed). Codex's review of the branch caught that the grader's fallback first rebuilt
   the baseline from the setup commit, which lacks git-ignored inputs, that `plant.ts`'s command line ran only
-  `before` hooks, and these two claims stated as established; each fixed.
+  `before` hooks (and, once fixed, ran both without the commit `history-secret` needs between them), and these
+  two claims stated as established; each fixed.
 - **The manifests,** 0.6.1.
