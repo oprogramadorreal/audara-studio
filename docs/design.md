@@ -22,6 +22,12 @@ timelines and spliced soundtracks to upstream commit `bdbad53`.
   video has its own folder with its treatment, timeline, scenes, audio and timing data, and the preview
   picks it with `?v=<name>`. pdoom-video already worked this way in practice: its pt-BR explainer reuses the
   clip's scenes through `remix`. See "What `init` creates in a project".
+  - **A repository per video and one for a whole channel are the same model:** a project with one video,
+    or with many. Nothing asks which, so whatever the skills say holds for both, and a studio mode was
+    left out (history.md, 0.6.1). What the videos share reaches all of them: an engine change is verified
+    on every video (`references/contract.md`), every video loads every registered font, and what several
+    videos use can live in `videos/_shared/`, which has no `video.json`, so it isn't a video, and the
+    preview hot-swaps and reloads it like a video's own files.
 - **Fonts: pdoom-video's set, and no more by default.** Archivo, IBM Plex Mono, Cormorant Garamond, and the
   EMS and Hershey stroke fonts. Together they cover the four voices a piece needs:
   - a grotesk whose width and weight can animate;
@@ -718,7 +724,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 ### What `init` creates in a project
 
 ```
-<project>/                       # one per brand or client, with several videos
+<project>/                       # one per brand, client or channel, with one video or many
 ├── AGENTS.md, CLAUDE.md         # conventions for later sessions ("Coming back later")
 ├── README.md                    # for the director: the commands to watch and render without an agent
 │                                # (written once, when the project has none; theirs after that)
@@ -739,6 +745,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │   ├── mix.json                 # the mix of voice, music and effects that mix.py builds
 │   ├── assets/                  # images and footage, each with a line in SOURCES.md
 │   └── data/                    # audio.json, and words.json for sung or spoken lines
+├── videos/_shared/              # optional, made when needed: what several videos use (scenes/,
+│                                # assets/ with SOURCES.md); no video.json, so it isn't a video
 ├── .audara-cache/               # caches and scratch work, git-ignored
 ├── out/<name>/                  # renders, sheets and reports, not committed
 └── docs/REPOSITORY.md           # once video-repo puts it in git: what's kept, what's left out and why
