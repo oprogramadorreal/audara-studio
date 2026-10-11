@@ -443,7 +443,7 @@ function agentsSection(): string {
     '<!-- Written by audara init (the code-video skill). Running init again rewrites only this section; anything outside it is kept. -->',
     '## Video project (audara)',
     '',
-    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building.',
+    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building; the video-repo skill puts the project in git so someone else can clone it, work on it and render it again.',
     '',
     '| Video | Title | Treatment | Preview |',
     '|---|---|---|---|',
@@ -455,7 +455,7 @@ function agentsSection(): string {
     ...(lacks.length ? [`- **This project's \`scripts/render.ts\` is older than the code-video skill's:** it lacks ${lacks.join(' and ')}. Running the skill's \`scripts/init.ts\` here again with \`--force\` updates it, and every other file that differs from the template's, the example video's included (\`videos/example/\`: its timeline, scenes, audio and data); it keeps each replaced file beside it as \`<file>.orig\`, and never replaces \`src/engine/\`, \`src/look.ts\`, \`docs/\`, \`README.md\` or any other video. Read what it reports as replaced, and bring back from the \`.orig\` copies what the project had changed on purpose. Until then, don't use what it lacks.`] : []),
     '- **The f(t) rule:** every frame is a pure function of the time `t` (seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes), so any moment can be linked, previewed and rendered alike. It is a rule for the code, never a line for a video.',
     "- **The director's decisions:** each video's `TREATMENT.md` ends with Decisions (what they chose, noted and turned down, in their words); project-wide ones are in `docs/STYLE.md` (Decisions, Avoid). Read them before any change and add each new note there: what they decide is followed exactly, and nothing they turned down comes back.",
-    '- **What you owe the director:** for a request for ideas or a prompt alone, those, with nothing built, started or generated until they ask for the video (the video-ideas skill); for a new video, its treatment shown first (then build on, unless something only they can decide waits); a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); their product as it is in a factual demo (its real screens, as given or captured with their OK, and only the figures they gave), and a concept or mockup when they ask for one, marked as one where it could pass for the product; a question before anything that costs money (a budget they set is the yes within it); a render when they ask for the file (render, export, the MP4), and otherwise a build that ends in the preview with the render offered.',
+    '- **What you owe the director:** for a request for ideas or a prompt alone, those, with nothing built, started or generated until they ask for the video (the video-ideas skill); for a request to put the project in git or get it ready for GitHub, that repository, with the videos left as they are (the video-repo skill); for a new video, its treatment shown first (then build on, unless something only they can decide waits); a one-line status during long work; a `?v=…&t=…` link for every change, with what moved; for a note that reads two ways (too fast: too soon or too quick?), the reading you took and the other on offer; for a change that moves something they set or approved (a length, a hold the treatment promises), the version that keeps it and what else you retimed; the work shown (the paths of the stills and sheets you checked, numbers, critic verdicts); their product as it is in a factual demo (its real screens, as given or captured with their OK, and only the figures they gave), and a concept or mockup when they ask for one, marked as one where it could pass for the product; a question before anything that costs money (a budget they set is the yes within it); a render when they ask for the file (render, export, the MP4), and otherwise a build that ends in the preview with the render offered.',
     '',
     'Keep this file current as videos are added: running init again (`--video <video>` for a new one) rewrites this section from `videos/*/video.json`.',
     END,
@@ -528,13 +528,20 @@ function writeGitignore() {
   try {
     if (!existsSync(file)) { writeFileSync(file, tpl); return log('  .gitignore: written'); }
     const cur = readFileSync(file, 'utf8');
-    // ("out", "/out" and "out/" all keep out/ out of git)
-    const norm = (l: string) => l.trim().replace(/^\//, '').replace(/\/$/, '');
+    // ("out" and "out/" both keep every out/ folder out of git; "/out/" only the top one, so it doesn't count:
+    // a project whose .gitignore said "/out/" committed the reports a script wrote to videos/<video>/intro/out/)
+    const norm = (l: string) => l.trim().replace(/\/$/, '');
     const have = new Set(cur.split(/\r?\n/).map(norm));
     const missing = tpl.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !have.has(norm(l)));
     if (!missing.length) return;
     const eol = cur.includes('\r\n') ? '\r\n' : '\n';
-    writeFileSync(file, `${cur}${cur && !cur.endsWith('\n') ? eol : ''}${cur ? eol : ''}# video project (audara)${eol}${missing.join(eol)}${eol}`);
+    const block = `# video project (audara)${eol}${missing.join(eol)}${eol}`;
+    // before the project's first exception (!pattern), which only works after the rule it overrides: added
+    // at the end, ".env.*" would ignore the ".env.example" a "/.env.*" then "!.env.example" kept
+    const lines = cur.split(/(?<=\n)/), first = lines.findIndex((l) => /^\s*!/.test(l));
+    writeFileSync(file, first >= 0
+      ? `${lines.slice(0, first).join('')}${block}${eol}${lines.slice(first).join('')}`
+      : `${cur}${cur && !cur.endsWith('\n') ? eol : ''}${cur ? eol : ''}${block}`);
     log(`  .gitignore: added ${missing.join(' ')}`);
   } catch (err) {
     problem(`could not write .gitignore: ${(err as Error).message}`);

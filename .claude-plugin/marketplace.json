@@ -9,7 +9,7 @@
     {
       "name": "audara-studio",
       "source": "./",
-      "description": "Make videos from code (WebGL/GLSL, three.js, Canvas2D) with a live preview and an MP4 render, plus song- or script-to-soundtrack timing, and help choosing what to make.",
+      "description": "Make videos from code (WebGL/GLSL, three.js, Canvas2D) with a live preview and an MP4 render, plus song- or script-to-soundtrack timing, help choosing what to make, and a git repository others can clone and render.",
       "category": "Creativity"
     }
   ]

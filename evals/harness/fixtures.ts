@@ -1,6 +1,7 @@
 // Small synthetic fixtures for the evals, generated with ffmpeg so the repo carries no media.
 // They only need to be realistic enough for a model to treat them as the files the user mentions.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 // (run from the repo, so drawtext finds the template's fonts by a relative path: a Windows drive's colon
@@ -28,6 +29,9 @@ const TEXT: Record<string, string> = {
   'vlog.srt': '1\n00:00:00,500 --> 00:00:02,500\nMorning in Lisbon.\n\n2\n00:00:03,000 --> 00:00:05,000\nFirst stop: coffee.\n',
   'words.json': JSON.stringify({ lines: [{ text: 'Every loaf starts here.', start: 0.4, end: 2.1, words: [
     { w: 'Every', start: 0.4, end: 0.7 }, { w: 'loaf', start: 0.7, end: 1.0 }, { w: 'starts', start: 1.05, end: 1.5 }, { w: 'here.', start: 1.55, end: 2.1 }] }] }, null, 1),
+  // A finished audara-studio project's video settings, for trigger requests made inside one (placed with "=>"
+  // in videos/promo/, beside init's AGENTS.md and CLAUDE.md, below); task cases copy a real project instead.
+  'video.json': '{ "title": "Promo", "size": [1920, 1080], "fps": 60, "audio": "audio/song.mp3" }\n',
   'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="70" fill="none" stroke="#222" stroke-width="12"/><path d="M60 130 L100 60 L140 130 Z" fill="#222"/></svg>\n',
 };
 
@@ -78,12 +82,33 @@ const MEDIA: Record<string, string[]> = {
   'brand.png': ['-f', 'lavfi', '-i', 'color=c=0x1d3557:s=600x200,drawbox=x=400:y=0:w=200:h=200:color=0xe63946:t=fill,drawbox=x=200:y=0:w=200:h=200:color=0xf1faee:t=fill', '-frames:v', '1'],
 };
 
-/** Make sure every fixture exists in `dir` (generated once, then reused). */
+/** init's AGENTS.md (audara-agents.md) and CLAUDE.md (audara-claude.md, its importer) for a project whose one
+ *  video is promo: what a session in a finished project reads first, routing included. Written by init itself
+ *  in a scratch folder, and again whenever init.ts changes. */
+function agentsFixture(dir: string) {
+  const file = path.join(dir, 'audara-agents.md'), init = path.join(REPO, 'skills', 'code-video', 'scripts', 'init.ts');
+  if (existsSync(file) && existsSync(path.join(dir, 'audara-claude.md')) && statSync(file).mtimeMs >= statSync(init).mtimeMs) return;
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'audara-fixture-')), proj = path.join(tmp, 'promo');
+  try {
+    const run = (...a: string[]) => {
+      const p = Bun.spawnSync(['bun', init, proj, '--no-install', ...a], { stdout: 'pipe', stderr: 'pipe' });
+      if (p.exitCode !== 0) throw new Error(`init failed for the AGENTS.md fixture:\n${p.stdout}\n${p.stderr}`);
+    };
+    run('--video', 'promo');
+    rmSync(path.join(proj, 'videos', 'example'), { recursive: true, force: true }); // (a removed example stays removed)
+    run();
+    copyFileSync(path.join(proj, 'AGENTS.md'), file);
+    copyFileSync(path.join(proj, 'CLAUDE.md'), path.join(dir, 'audara-claude.md'));
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+}
+
+/** Make sure every fixture exists in `dir` (generated once, then reused; init's AGENTS.md when init changes). */
 export function ensureFixtures(dir: string) {
   dir = path.resolve(dir); // (ffmpeg runs in the repo: a relative folder would land somewhere else for it)
   mkdirSync(dir, { recursive: true });
   for (const [f, body] of Object.entries(TEXT)) if (!existsSync(path.join(dir, f))) writeFileSync(path.join(dir, f), body);
   for (const [f, args] of Object.entries(MEDIA)) if (!existsSync(path.join(dir, f))) ff([...args, path.join(dir, f)]);
+  agentsFixture(dir);
   return dir;
 }
 

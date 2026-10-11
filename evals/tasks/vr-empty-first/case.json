@@ -1,0 +1,28 @@
+{
+  "id": "vr-empty-first",
+  "skill": "video-repo",
+  "setup": {
+    "files": [],
+    "git": false
+  },
+  "timeoutMinutes": 150,
+  "turns": [
+    {
+      "prompt": "I'm going to make a video in this folder with audara-studio. Create a local git repository for it first; I'll add a remote later."
+    },
+    {
+      "prompt": "Make a 10-second animated title card for my podcast, Night Signals. Minimal.",
+      "newSession": true
+    },
+    {
+      "prompt": "Now get the repository ready so someone else can clone it from GitHub and render the video. Commit it as Night Signals <1234567+nightsignals@users.noreply.github.com>, set in this repository only; I'll push it myself.",
+      "newSession": true
+    }
+  ],
+  "assertions": [
+    "After turn 1: work/ is the root of its own repository on main, with no commit; it holds a .gitignore that ignores out/, node_modules/, .env and .audara-cache/, a .gitattributes with eol=lf, an AGENTS.md with a Repository section and a CLAUDE.md that imports it (@AGENTS.md), and nothing else the user didn't ask for: no README.md, no package.json, no video. The reply says nothing will be committed on its own and that the full pass (README, docs, clone check) comes when asked again once there's a video.",
+    "After turn 2: init's README.md is there with its commands to watch and render the video, AGENTS.md holds both the Repository section and init's marked section, the .gitignore holds both turn 1's entries and init's, and turn 2 made no commit.",
+    "After turn 3: main has the project's commit(s), authored and committed as Night Signals <1234567+nightsignals@users.noreply.github.com> from the repository's own config (the global config unchanged), with the README for people built on init's (its watch and render commands kept), a docs/REPOSITORY.md, and no out/, node_modules/, .audara-cache/ or .env in any commit; no remote, nothing pushed.",
+    "In turn 3 the session checked a fresh clone in a temporary folder outside work/ (bun install --frozen-lockfile, bun run check, render.ts verify for the video, a short draft where there's sound) and deleted it afterwards (it no longer exists after the run), and the reply says what ran and what it found."
+  ]
+}

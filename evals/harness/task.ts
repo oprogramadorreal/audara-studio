@@ -10,7 +10,8 @@
 //
 // A case folder holds case.json:
 //   { "id", "skill", "setup": { "files": [fixture name | "<path, $ENV allowed> => <name>"], "project": "init" | null,
-//       "from": "<dir to copy>", "env": {...}, "mock": "elevenlabs", "key": false, "decoy": <port> },
+//       "from": "<dir to copy>", "env": {...}, "mock": "elevenlabs", "key": false, "decoy": <port>, "git": false,
+//       "plant": "<name>" },
 //     "turns": [{ "prompt": "...", "newSession": true? }, ...], "timeoutMinutes": 45, "assertions": ["..."] }
 // The first turn starts a session; each later turn resumes it, as a director replying would, unless it has
 // "newSession": true (a later session in the same folder, which knows only what the project wrote down). "mock":
@@ -21,6 +22,10 @@
 // skills/code-video/scripts/imagegen.py (AUDARA_IMAGES_BASE_URL, and a fake OPENAI_API_KEY in Claude Code
 // runs only, to keep a fake key away from Codex's own sign-in; its built-in image generation can't be mocked). "decoy": <port> keeps an unrelated Vite app answering on 127.0.0.1:<port> for the whole run, so
 // a case can check that the agent links its own project's preview, not whatever answers on the port.
+// "git": false leaves the folder without the harness's repository and setup commit, as a project is before its
+// first repository (the session's environment keeps git from finding this repo above evals/results/, and the
+// skill links out of git); "plant": "<name>" adds what evals/harness/plant.ts plants for a case about putting a
+// project in git.
 //
 // Claude Code turns run with no MCP servers (--strict-mcp-config, and without the claude.ai connectors), so the
 // user's connectors don't ask for authorization in the replies. No run of either tool can reach the user's
@@ -36,6 +41,7 @@ import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSy
 import path from 'node:path';
 import os from 'node:os';
 import { ensureFixtures } from './fixtures';
+import { plants } from './plant';
 import { cleanCodexTrust } from './codex-trust-cleanup';
 import { cleanClaudeProjects } from './claude-projects-cleanup';
 
@@ -48,7 +54,7 @@ const CASE_DIR = path.resolve(opt('case')!);
 type Mock = 'elevenlabs' | 'openai-images';
 const CASE = JSON.parse(readFileSync(path.join(CASE_DIR, 'case.json'), 'utf8')) as {
   id: string; skill: string; setup?: { files?: string[]; project?: 'init' | null; from?: string; env?: Record<string, string>;
-    mock?: Mock | Mock[]; key?: false; decoy?: number };
+    mock?: Mock | Mock[]; key?: false; decoy?: number; git?: false; plant?: string };
   turns: { prompt: string; newSession?: boolean }[]; timeoutMinutes?: number; assertions: string[];
 };
 const TOOL = opt('tool', 'claude') as 'claude' | 'codex';
@@ -90,9 +96,25 @@ if (CASE.setup?.project === 'init') {
 if (CASE.setup?.from || CASE.setup?.project === 'init') {
   if (existsSync(path.join(WORK, 'package.json')) && !existsSync(path.join(WORK, 'node_modules'))) Bun.spawnSync(['bun', 'install'], { cwd: WORK });
 }
-Bun.spawnSync(['git', 'init', '-q'], { cwd: WORK });
-Bun.spawnSync(['git', 'add', '-A'], { cwd: WORK });
-Bun.spawnSync(['git', '-c', 'user.name=eval', '-c', 'user.email=eval@local', 'commit', '-qm', 'eval setup', '--allow-empty'], { cwd: WORK });
+const PLANT = CASE.setup?.plant ? plants[CASE.setup.plant] : undefined;
+if (CASE.setup?.plant && !PLANT) throw new Error(`no plant named ${CASE.setup.plant} (evals/harness/plant.ts)`);
+PLANT?.before?.(WORK, CASE.setup!);
+// (without a repository of its own the folder is inside this repo's, below evals/results/: git stops at RUN,
+// and the skill links below stay out of git through a core.excludesFile beside the folder)
+const NO_GIT = CASE.setup?.git === false;
+const GIT_ENV: Record<string, string> = NO_GIT ? {
+  GIT_CEILING_DIRECTORIES: RUN.replaceAll('\\', '/'),
+  GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: path.join(RUN, 'git-exclude').replaceAll('\\', '/'),
+} : {};
+if (NO_GIT) writeFileSync(path.join(RUN, 'git-exclude'), '.claude/skills/\n.agents/skills/\n');
+else {
+  // (on main whatever the machine's init.defaultBranch, since cases name the branch)
+  for (const args of [['init', '-q', '-b', 'main'], ['add', '-A'], ['-c', 'user.name=eval', '-c', 'user.email=eval@local', 'commit', '-qm', 'eval setup', '--allow-empty']]) {
+    const p = Bun.spawnSync(['git', ...args], { cwd: WORK, stdout: 'pipe', stderr: 'pipe' });
+    if (p.exitCode !== 0) throw new Error(`setup: git ${args.join(' ')} failed:\n${p.stderr}`);
+  }
+  PLANT?.after?.(WORK, CASE.setup!);
+}
 if (ARM === 'with') {
   const link = TOOL === 'claude' ? path.join(WORK, '.claude', 'skills') : path.join(WORK, '.agents', 'skills');
   mkdirSync(link, { recursive: true });
@@ -100,7 +122,7 @@ if (ARM === 'with') {
     if (existsSync(path.join(REPO, 'skills', s, 'SKILL.md'))) symlinkSync(path.join(REPO, 'skills', s), path.join(link, s), 'junction');
   }
   // the links are the harness's, not the work's: keep them out of git status
-  writeFileSync(path.join(WORK, '.git', 'info', 'exclude'), '.claude/skills/\n.agents/skills/\n');
+  if (!NO_GIT) writeFileSync(path.join(WORK, '.git', 'info', 'exclude'), '.claude/skills/\n.agents/skills/\n');
 }
 
 // ---------------------------------------------------------------- previews
@@ -244,7 +266,7 @@ function codexSessionFile(file: string) {
 }
 
 // ---------------------------------------------------------------- turns
-const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}) };
+const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}), ...GIT_ENV };
 delete env.ELEVENLABS_API_KEY; // a case decides whether there is a key; never the real one
 delete env.OPENAI_API_KEY;
 // (and no claude.ai connectors, which Claude Code fetches itself: --strict-mcp-config is documented for
@@ -413,7 +435,7 @@ function tree(dir: string, base = dir, out: { path: string; bytes: number }[] = 
   return out;
 }
 await lookForPreviews('end');
-const status = Bun.spawnSync(['git', 'status', '--porcelain', '--untracked-files=all'], { cwd: WORK }).stdout.toString();
+const status = Bun.spawnSync(['git', 'status', '--porcelain', '--untracked-files=all'], { cwd: WORK, env: { ...process.env, ...GIT_ENV } }).stdout.toString();
 
 // Codex's own record of the session: `codex exec --json` leaves some tool calls out of the transcripts
 // (spawn_agent, view_image) and doesn't name the model, and each sub-agent keeps a session of its own. Every
