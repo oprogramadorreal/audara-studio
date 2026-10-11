@@ -7,7 +7,7 @@
 // the case has one); `after`, once it's made. The token is the case's own (setup.env.AUDIO_API_TOKEN), so the
 // repo holds no key-shaped text. One more, for a case about a second video, plants nothing: it measures the first
 // video before the session, for the grader.
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -86,10 +86,11 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
     },
   },
   // Nothing planted: the first video's verify report, taken before the session for the grader to compare its
-  // frames with at the end, in baseline/ beside work/, where the session doesn't look. Frame hashes change with
-  // the browser or the GPU driver (history.md, 0.6.1), so it is taken on the run's own machine and day, twice,
-  // the second --since the first: baseline.json says whether the comparison repeats. The project keeps no out/,
-  // as a later session finds it.
+  // frames with at the end, in baseline/ beside work/, where the session doesn't look. Reports from another day
+  // couldn't be compared (history.md, 0.6.1), so it is taken on the run's own machine and day, twice, the second
+  // --since the first: baseline.json says whether the comparison repeats. baseline/project/ is the project as
+  // it was, git-ignored inputs included (without its dependencies, renders and history): what the grader
+  // verifies again when the end's comparison differs. The project keeps no out/, as a later session finds it.
   'first-video-baseline': {
     after(work) {
       const v = video(work), dir = path.join(path.dirname(work), 'baseline');
@@ -105,14 +106,20 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
       const repeatable = c?.compared > 0 && c.changed === 0 && !c.duration && !c.timeline?.length;
       writeFileSync(path.join(dir, 'baseline.json'), JSON.stringify({ video: v, repeatable, compared: c?.compared ?? 0, changed: c?.changed ?? null }, null, 2) + '\n');
       rmSync(path.join(work, 'out'), { recursive: true, force: true });
+      const skip = new Set(['node_modules', 'out', '.git']);
+      cpSync(work, path.join(dir, 'project'), { recursive: true, filter: (s) => !skip.has(path.basename(s)) });
     },
   },
 };
 
 if (import.meta.main) {
-  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand
+  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand, as the harness does:
+  // `before`, then `after`, which follows the harness's setup commit (a plant whose `after` commits needs the
+  // folder to be a git repository)
   const [name, work, t = 'eval-token-test'] = process.argv.slice(2);
   if (!plants[name!]) throw new Error(`plant: no plant named ${name} (${Object.keys(plants).join(', ')})`);
-  plants[name!]!.before?.(path.resolve(work!), { env: { AUDIO_API_TOKEN: t } });
+  const setup = { env: { AUDIO_API_TOKEN: t } };
+  plants[name!]!.before?.(path.resolve(work!), setup);
+  plants[name!]!.after?.(path.resolve(work!), setup);
   console.log(`planted ${name} in ${path.resolve(work!)}`);
 }

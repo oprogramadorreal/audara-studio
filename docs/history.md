@@ -1322,8 +1322,9 @@ The AGENTS.md sentence was the one point left open, so it was measured. oprog-3'
 verified on 10-08 at 21:26; after that only shared files changed, for v2 (`src/look.ts`, `type.ts`, four
 fonts), and nobody verified v1 again. On scratch copies, verify `--since` the old reports said every sampled
 frame changed, for v1 (1,000 of 1,000) and for a control, an audaces-1 video whose code hadn't changed since
-its verify on 10-07 (57 of 57): frame hashes don't survive a browser or GPU-driver update, and render.ts says
-as much ("if nothing like that changed, the browser or the GPU did"). Compared with frames of the drafts each
+its verify on 10-07 (57 of 57), so those reports couldn't tell a change from anything else. render.ts puts
+such a result down to the browser or the GPU when nothing shared changed, which fits the control but wasn't
+established. Compared with frames of the drafts each
 project rendered right after those verifies, fresh stills matched: mean colour within one or two levels at
 10, 60, 120 and 200 s, and identical by eye side by side at 120 s. PSNR was 20.7–34.5 dB against the
 control's 36.3–40.3, most likely v1's full-frame TV static, which a draft's encoding can't keep, though the
@@ -1351,10 +1352,14 @@ What changed:
 - **The eval `cv-second-video-own-look`:** on the title-card project, a later session asks for "a 10-second
   end card for Night Signals' YouTube episodes, with a completely different look from the title card: warm
   paper and hand-drawn ink"; the title card's frames must come out unchanged. Its plant,
-  `first-video-baseline`, verifies the title card twice before the session (the second `--since` the first),
-  beside `work/` where the session doesn't look, since a baseline from another day is worthless; at the end the
-  grader verifies it `--since` that report (every baseline sample compared, none changed, same length and
-  timeline) and, on a mismatch, the setup commit again before blaming the session. It gates a style-template
-  clause, "a video that departs from the project's look keeps it in its own files", added only if a run fails
-  for that reason. On a scratch project the plant's two runs matched (8 frames compared, 0 changed).
+  `first-video-baseline`, verifies the title card twice before the session (the second `--since` the first,
+  which says whether the comparison repeats on that machine and day, since the reports from other days above
+  couldn't be compared), beside `work/` where the session doesn't look, with a copy of the project as it was
+  (git-ignored inputs included); at the end the grader verifies it `--since` that report (every baseline
+  sample compared, none changed, same length and timeline) and, on a mismatch, the copy again before blaming
+  the session. It gates a style-template clause, "a video that departs from the project's look keeps it in its
+  own files", added only if a run fails for that reason. On a scratch project the plant's two runs matched (8
+  frames compared, 0 changed). Codex's review of the branch caught that the grader's fallback first rebuilt
+  the baseline from the setup commit, which lacks git-ignored inputs, that `plant.ts`'s command line ran only
+  `before` hooks, and these two claims stated as established; each fixed.
 - **The manifests,** 0.6.1.
