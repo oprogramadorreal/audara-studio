@@ -1257,3 +1257,12 @@ name per blob, so an `.npmrc` renamed `backup.key` lost its npm scan and could p
 historical blob now keeps every credential name it had. The audit has 22 checks and
 `evals/tests/test_init_gitignore.ts` three, each new one failing on the script before its fix; the session
 agreed with the result.
+
+A third pass found two more, both reproduced: `.env` values were read one way, while Bun, Node's dotenv and
+python-dotenv each read quotes and escapes their own way (Bun strips backticks, for one), so a copy of the
+value as a tool loaded it went unseen; and `--staged` from a subfolder read the whole index but learned
+`.env` values only under that subfolder. Each value is now learned in every reading (the raw text, Bun's,
+Node dotenv's, python-dotenv's: a copy is found as a substring, so an extra reading costs nothing), from
+`.env` files anywhere in the repository; a value built from `${OTHER}` references is not expanded, a limit
+the audit states. The review of that fix caught one more regression (Node dotenv's sequential reading of
+`"\n"` lost), fixed with its test. The audit has 25 checks; the session agreed.

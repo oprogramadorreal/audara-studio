@@ -565,6 +565,7 @@ async function main() {
   say('\nCoverage');
   say('Text: first 2 MiB/file, skipping NUL in first 8 KiB. No binary/UTF-16 secrets, archives, image text or arbitrary key formats.');
   say('Location metadata in photos and clips is not checked. Inspect it with a tool at hand, or report it unchecked.');
+  say('.env values are read as written, in each quoting reading: a value built from ${OTHER} references is not expanded.');
   if (history) say('History checks text, key filenames and sizes, not commit messages/author identities.');
   say('Working scans use current disk bytes; concurrent changes and Git filters can change staged bytes. Run --staged after staging.');
   for (const [kind, count] of limits) say('  ' + kind + ': ' + count);
