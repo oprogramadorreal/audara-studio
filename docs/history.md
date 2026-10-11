@@ -1364,3 +1364,22 @@ What changed:
   `before` hooks (and, once fixed, ran both without the commit `history-secret` needs between them), and these
   two claims stated as established; each fixed.
 - **The manifests,** 0.6.1.
+
+The eval ran once per tool on the plugin as this branch has it (no style clause), from a `cv-title-card` run
+of the branch (Claude Code, Opus 5.5: a dark sea at night with one red beacon, no paper or ink), with Claude
+Code (Opus 5.5) and Codex (GPT-6 Astra, xhigh). Both pass every graded assertion:
+
+- The baseline repeated: the plant's second verify matched its first (32 of 32 frames) in both runs.
+- The title card is unchanged: verified `--since` the baseline at the end, 32 of 32 frames compared, none
+  changed, the same length and timeline, in both.
+- Each end card is a video of its own (Claude Code's `ns-end-card`, in 50 minutes; Codex's
+  `night-signals-end-card`, in 14), passes verify at 10.00 s, and is warm paper and drawn ink on its stills.
+- Each reply links its own preview (`?v=<end card>`, on the port serving its work folder), and only drafts
+  were rendered.
+
+Neither touched `src/look.ts`. Claude Code kept the end card's palette in its scenes (`_ink.ts`); Codex
+gave the video a `look.ts` and a `STYLE.md` of its own, with its post on the timeline's entries. Both scoped
+`docs/STYLE.md` to the title card and recorded the departure in the director's words, and both verified the
+title card themselves without being asked. So the style-template clause isn't added, and the AGENTS.md
+sentence stays out: on this evidence a model keeps a second video's look local and checks the first video
+on its own. One run per tool, so this is a first measurement, not a rate.
