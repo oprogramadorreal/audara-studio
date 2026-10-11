@@ -1,0 +1,26 @@
+{
+  "skill": "video-repo",
+  "queries": [
+    { "id": "vr-01", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "Create a local git repository for this (I'll create a remote later). Keep versioned every file needed for someone else to clone this repo and work on this project, no output files, and make sure no api key or personal information goes in." },
+    { "id": "vr-02", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "put this video project in git so I can push it to GitHub later" },
+    { "id": "vr-03", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "make a repo of this so my editor can clone it and render the video on their machine" },
+    { "id": "vr-04", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "I want to back this project up on GitHub. Set up the repository but don't push anything yet" },
+    { "id": "vr-05", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "get this ready to open-source: decide what gets versioned and what doesn't, and write a proper README" },
+    { "id": "vr-06", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "cria um repositório git pra esse projeto de vídeo, sem os renders e sem chaves de api" },
+    { "id": "vr-07", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "this video project is already in git but I never set it up properly. clean it up so someone can clone it and reproduce the video" },
+    { "id": "vr-08", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "make this reproducible: someone should be able to clone it and get the same video out" },
+    { "id": "vr-09", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "inicializa o git aqui e documenta o que ficou de fora por ser grande demais pro github" },
+    { "id": "vr-10", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "set up version control for my music video project, the big footage files might not fit on github" },
+    { "id": "vr-11", "should_trigger": true, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "before I share this project with a colleague, check nothing secret or personal is in it and put it in a git repo" },
+    { "id": "vr-12", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "commit my changes to the intro scene with a good message" },
+    { "id": "vr-13", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "create a branch called vertical-cut and switch to it" },
+    { "id": "vr-14", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "open a pull request for this branch with a summary of what changed" },
+    { "id": "vr-15", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "render the video and give me the MP4" },
+    { "id": "vr-16", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md"], "query": "give me some ideas for a second video for this channel, don't build anything" },
+    { "id": "vr-17", "should_trigger": false, "files": [], "query": "initialize a git repo for my Next.js app and add a gitignore" },
+    { "id": "vr-18", "should_trigger": false, "files": [], "query": "how do I undo my last git commit but keep the changes?" },
+    { "id": "vr-19", "should_trigger": false, "files": [], "query": "git push says a file is over GitHub's 100 MB limit, how do I fix it?" },
+    { "id": "vr-20", "should_trigger": false, "files": [], "query": "write a .gitignore for a Python data science project" },
+    { "id": "vr-21", "should_trigger": false, "files": ["vlog.mp4"], "query": "back up vlog.mp4 to my google drive" }
+  ]
+}

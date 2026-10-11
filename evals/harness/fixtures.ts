@@ -28,6 +28,10 @@ const TEXT: Record<string, string> = {
   'vlog.srt': '1\n00:00:00,500 --> 00:00:02,500\nMorning in Lisbon.\n\n2\n00:00:03,000 --> 00:00:05,000\nFirst stop: coffee.\n',
   'words.json': JSON.stringify({ lines: [{ text: 'Every loaf starts here.', start: 0.4, end: 2.1, words: [
     { w: 'Every', start: 0.4, end: 0.7 }, { w: 'loaf', start: 0.7, end: 1.0 }, { w: 'starts', start: 1.05, end: 1.5 }, { w: 'here.', start: 1.55, end: 2.1 }] }] }, null, 1),
+  // The outline of a finished audara project, for trigger requests made inside one (placed with "=>": the
+  // video's settings in videos/promo/, init's AGENTS.md at the root); task cases copy a real project instead.
+  'video.json': '{ "title": "Promo", "size": [1920, 1080], "fps": 60, "audio": "audio/song.mp3" }\n',
+  'audara-agents.md': '# promo\n\n<!-- audara:begin -->\n## Video project (audara)\n\nVideos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4.\n\n| Video | Title | Treatment | Preview |\n|---|---|---|---|\n| `promo` | Promo | `videos/promo/TREATMENT.md` | `bun scripts/render.ts link --video promo` |\n<!-- audara:end -->\n',
   'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="70" fill="none" stroke="#222" stroke-width="12"/><path d="M60 130 L100 60 L140 130 Z" fill="#222"/></svg>\n',
 };
 

@@ -443,7 +443,7 @@ function agentsSection(): string {
     '<!-- Written by audara init (the code-video skill). Running init again rewrites only this section; anything outside it is kept. -->',
     '## Video project (audara)',
     '',
-    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building.',
+    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building; the video-repo skill puts the project in git so someone else can clone it, work on it and render it again.',
     '',
     '| Video | Title | Treatment | Preview |',
     '|---|---|---|---|',
@@ -528,8 +528,9 @@ function writeGitignore() {
   try {
     if (!existsSync(file)) { writeFileSync(file, tpl); return log('  .gitignore: written'); }
     const cur = readFileSync(file, 'utf8');
-    // ("out", "/out" and "out/" all keep out/ out of git)
-    const norm = (l: string) => l.trim().replace(/^\//, '').replace(/\/$/, '');
+    // ("out" and "out/" both keep every out/ folder out of git; "/out/" only the top one, so it doesn't count:
+    // a project whose .gitignore said "/out/" committed the reports a script wrote to videos/<video>/intro/out/)
+    const norm = (l: string) => l.trim().replace(/\/$/, '');
     const have = new Set(cur.split(/\r?\n/).map(norm));
     const missing = tpl.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !have.has(norm(l)));
     if (!missing.length) return;

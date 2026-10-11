@@ -70,7 +70,12 @@ function prepare(dir: string, files: string[]) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   Bun.spawnSync(['git', 'init', '-q'], { cwd: dir });
-  for (const f of files) copyFileSync(path.join(fixtures, f), path.join(dir, f));
+  // ("<fixture> => <path>" places a fixture elsewhere, e.g. inside videos/<video>/ for a request made in a project)
+  for (const f of files) {
+    const [src, as] = f.includes('=>') ? f.split('=>').map((x) => x.trim()) as [string, string] : [f, f];
+    mkdirSync(path.dirname(path.join(dir, as)), { recursive: true });
+    copyFileSync(path.join(fixtures, src), path.join(dir, as));
+  }
   if (flag('plugin')) return;
   const link = TOOL === 'claude' ? path.join(dir, '.claude', 'skills') : path.join(dir, '.agents', 'skills');
   mkdirSync(link, { recursive: true });
