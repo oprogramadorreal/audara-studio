@@ -535,7 +535,13 @@ function writeGitignore() {
     const missing = tpl.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !have.has(norm(l)));
     if (!missing.length) return;
     const eol = cur.includes('\r\n') ? '\r\n' : '\n';
-    writeFileSync(file, `${cur}${cur && !cur.endsWith('\n') ? eol : ''}${cur ? eol : ''}# video project (audara)${eol}${missing.join(eol)}${eol}`);
+    const block = `# video project (audara)${eol}${missing.join(eol)}${eol}`;
+    // before the project's first exception (!pattern), which only works after the rule it overrides: added
+    // at the end, ".env.*" would ignore the ".env.example" a "/.env.*" then "!.env.example" kept
+    const lines = cur.split(/(?<=\n)/), first = lines.findIndex((l) => /^\s*!/.test(l));
+    writeFileSync(file, first >= 0
+      ? `${lines.slice(0, first).join('')}${block}${eol}${lines.slice(first).join('')}`
+      : `${cur}${cur && !cur.endsWith('\n') ? eol : ''}${cur ? eol : ''}${block}`);
     log(`  .gitignore: added ${missing.join(' ')}`);
   } catch (err) {
     problem(`could not write .gitignore: ${(err as Error).message}`);

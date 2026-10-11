@@ -170,10 +170,13 @@ itself).
 
 `test_audit.ts` checks secret detection and masking, file limits, duplicates, Git scopes and actionable
 failures in temporary repositories.
+`test_init_gitignore.ts` checks how init merges its entries into a project's own `.gitignore` (a rooted
+`/out/`, an exception such as `!.env.example` that has to stay last).
 
 ```sh
 uv run evals/tests/test_imagegen.py
 bun evals/tests/test_audit.ts
+bun evals/tests/test_init_gitignore.ts
 ```
 
 ## Spec checks

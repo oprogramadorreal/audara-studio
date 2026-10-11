@@ -219,6 +219,27 @@ test('--history keeps an .npmrc name when the blob was renamed before deletion',
   has(audit(dir, 1, ['--history']), ':1 — npm authentication token');
 });
 
+test('quoted .npmrc credentials block and stay masked', async () => {
+  const dir = await repo(), token = secret(), password = secret();
+  await write(dir, '.npmrc', '//registry.example/:_authToken="' + token + '"\n//registry.example/:_password=\'' + password + '\'\n');
+  const out = audit(dir, 1);
+  has(out, '[working] .npmrc:1 — npm authentication token');
+  has(out, '[working] .npmrc:2 — npm authentication token');
+});
+
+test('--history keeps a key file name (.p12) when the blob was renamed before deletion', async () => {
+  const dir = await repo();
+  await write(dir, 'signing.P12', Buffer.from([0x30, 0x82, 0x01, 0x00, 0, 1, 2, 3]));
+  git(dir, 'add', 'signing.P12');
+  git(dir, 'commit', '-qm', 'fixture with a key file');
+  git(dir, 'mv', 'signing.P12', 'backup.bin');
+  git(dir, 'commit', '-qm', 'rename key file');
+  git(dir, 'rm', '-q', 'backup.bin');
+  git(dir, 'commit', '-qm', 'remove key file');
+  audit(dir, 0);
+  has(audit(dir, 1, ['--history']), 'signing.P12 [blob ');
+});
+
 test('unquoted .env values end at # with or without a space before it', async () => {
   const dir = await repo(), value = secret(), spaced = secret();
   await write(dir, '.gitignore', '.env*\n');

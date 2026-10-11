@@ -46,7 +46,8 @@ const patterns: Pattern[] = [
   { kind: 'Stripe live secret', re: /\bsk_live_[A-Za-z0-9]{16,}\b/g },
   { kind: 'PEM private key', re: /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----/g },
   { kind: 'URL credentials', re: /\b[a-z][a-z0-9+.-]*:\/\/[^\s\/:@"'<>]+:([^\s\/@"'<>]+)@/gi },
-  { kind: 'npm authentication token', re: /(?:_authToken|_auth)\s*=\s*([^\s"'#;]+)/gi },
+  // (npm reads a value quoted or not)
+  { kind: 'npm authentication token', re: /(?:_authToken|_auth|_password)\s*=\s*["']?([^\s"'#;]+)/gi },
 ];
 const literals = new Set<string>();
 // URL passwords are redacted everywhere, without counting as environment/.env inputs.
@@ -116,6 +117,13 @@ function inside(root: string, candidate: string): boolean {
 }
 function envFile(name: string): boolean { return path.posix.basename(name.replace(/\\/g, '/')).startsWith('.env'); }
 function npmrcFile(name: string): boolean { return path.posix.basename(name.replace(/\\/g, '/')) === '.npmrc'; }
+const KEY_FILES = ['*.pem', '*.key', '*.p12', '*.pfx', 'id_rsa*', 'id_dsa*', 'id_ecdsa*', 'id_ed25519*'];
+function keyFileName(name: string): boolean {
+  const base = path.posix.basename(name.replace(/\\/g, '/'));
+  return /\.(?:pem|key|p12|pfx)$/i.test(base) || /^id_(?:rsa|dsa|ecdsa|ed25519)/i.test(base);
+}
+/** A name some check depends on: a .env* file, an .npmrc, a key file. */
+function credentialName(name: string): boolean { return envFile(name) || npmrcFile(name) || keyFileName(name); }
 function learnEnv(text: string) {
   // Read values, never run a shell or expand variables. Ordinary settings are not secret literals.
   const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|([^\r\n]*))/g;
@@ -195,8 +203,7 @@ function textScan(text: string, entry: Entry, scope: Scope) {
 }
 function keyFile(entry: Entry, scope: Scope) {
   const base = path.posix.basename(entry.name.replace(/\\/g, '/'));
-  if ((base.startsWith('.env') && base !== '.env.example') ||
-      /\.(?:pem|key|p12|pfx)$/i.test(base) || /^id_(?:rsa|dsa|ecdsa|ed25519)/i.test(base))
+  if ((envFile(base) && base !== '.env.example') || keyFileName(base))
     find('blocker', scope, entry.location ?? entry.name, 'key/config file: inspect before committing');
 }
 
@@ -398,26 +405,28 @@ function historyEntries(): Entry[] {
   return result;
 }
 
-/** The .env blobs any ref reaches (to learn their values), after giving every blob that was ever a .env or an
- *  .npmrc that name: rev-list names a blob only once, and a later copy named backup.txt must not hide the
- *  name its checks depend on (key files, .npmrc tokens). */
+/** The .env blobs any ref reaches (to learn their values), after giving every blob that was ever a credential
+ *  file (credentialName) that name: rev-list names a blob only once, and a later copy named backup.txt must
+ *  not hide the name its checks depend on (key files, .npmrc tokens). */
 function historicalCredentialFiles(entries: Entry[]): Entry[] {
   if (!entries.length) return [];
   const byId = new Map(entries.map(e => [e.oid!, e]));
   const result = new Map<string, Entry>();
+  const specs = [':(glob)**/.env*', ':(glob).env*', ':(glob)**/.npmrc', ':(glob).npmrc',
+    ...KEY_FILES.flatMap((p) => [':(glob,icase)**/' + p, ':(glob,icase)' + p])];
   const records = nul(git(['log', '--all', '--full-history', '--root', '-m', '--raw', '-z', '--no-renames',
-    '--no-abbrev', '--format=', '--', ':(glob)**/.env*', ':(glob).env*', ':(glob)**/.npmrc', ':(glob).npmrc']));
+    '--no-abbrev', '--format=', '--', ...specs]));
   for (let i = 0; i < records.length; i++) {
     const m = /^:([0-7]+) ([0-7]+) ([a-f0-9]+) ([a-f0-9]+) [A-Z]\d*$/.exec(records[i].trimStart());
-    if (!m) throw new AuditError("Cannot parse historical .env/.npmrc paths. Check git log --all --raw and retry with current Git.");
+    if (!m) throw new AuditError("Cannot parse historical credential-file paths. Check git log --all --raw and retry with current Git.");
     const name = records[++i];
-    if (!name || !(envFile(name) || npmrcFile(name))) throw new AuditError("Cannot identify a historical .env/.npmrc path. Check git log --all --raw and repair missing objects.");
+    if (!name || !credentialName(name)) throw new AuditError("Cannot identify a historical credential-file path. Check git log --all --raw and repair missing objects.");
     for (const [mode, oid] of [[m[1], m[3]], [m[2], m[4]]]) {
       const e = byId.get(oid);
       if (e && mode !== '160000') {
         if (envFile(name)) result.set(oid, { ...e, name });
         // Prefer a real credential path over an alias; .env.example alone remains a permitted filename.
-        if (!(envFile(e.name) || npmrcFile(e.name)) || path.posix.basename(e.name) === '.env.example') e.name = name;
+        if (!credentialName(e.name) || path.posix.basename(e.name) === '.env.example') e.name = name;
       }
     }
   }
