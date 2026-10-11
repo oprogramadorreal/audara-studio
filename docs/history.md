@@ -1266,3 +1266,8 @@ Node dotenv's, python-dotenv's: a copy is found as a substring, so an extra read
 `.env` files anywhere in the repository; a value built from `${OTHER}` references is not expanded, a limit
 the audit states. The review of that fix caught one more regression (Node dotenv's sequential reading of
 `"\n"` lost), fixed with its test. The audit has 25 checks; the session agreed.
+
+A fourth pass found that npm reads a double-quoted `.npmrc` value as JSON (`\u0066` is `f`), while the audit
+masked only the text as written, so the decoded token, when it also named a file, was printed in full
+(reproduced with npm's own `ini` parser). Its JSON reading is masked too now, and an empty value never
+enters the masking. The audit has 26 checks; the session agreed.
