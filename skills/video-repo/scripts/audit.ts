@@ -115,6 +115,7 @@ function inside(root: string, candidate: string): boolean {
   return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith('..' + path.sep));
 }
 function envFile(name: string): boolean { return path.posix.basename(name.replace(/\\/g, '/')).startsWith('.env'); }
+function npmrcFile(name: string): boolean { return path.posix.basename(name.replace(/\\/g, '/')) === '.npmrc'; }
 function learnEnv(text: string) {
   // Read values, never run a shell or expand variables. Ordinary settings are not secret literals.
   const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|([^\r\n]*))/g;
@@ -122,7 +123,8 @@ function learnEnv(text: string) {
     if (!SECRET_NAME.test(match[1])) continue;
     const value = match[2] !== undefined
       ? match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
-      : match[3] !== undefined ? match[3] : (match[4] ?? '').replace(/[ \t]+#.*$/, '').trim();
+      // (unquoted, a # starts a comment with or without a space before it, as dotenv and Bun read it)
+      : match[3] !== undefined ? match[3] : (match[4] ?? '').replace(/#.*$/, '').trim();
     if (value.length >= 8) literals.add(value);
   }
 }
@@ -155,19 +157,20 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     credentialSpans.some(([from, to]) => start < to && end > from);
   for (const p of patterns) {
     // _authToken is meaningful in npm config; avoid treating source code describing it as credentials.
-    if (p.kind === 'npm authentication token' && path.posix.basename(entry.name) !== '.npmrc') continue;
+    if (p.kind === 'npm authentication token' && !npmrcFile(entry.name)) continue;
     for (const match of text.matchAll(new RegExp(p.re.source, p.re.flags))) {
       if (p.kind === 'npm authentication token' && /^\$\{[^}]+\}$/.test(match[1] ?? '')) continue;
-      if (p.kind === 'URL credentials') {
-        maskedLiterals.add(match[1]);
-        credentialSpans.push([match.index!, match.index! + match[0].length]);
-      }
+      // A detected value is masked wherever it shows up in the output, a file name included.
+      maskedLiterals.add(match[1] ?? match[0]);
+      if (p.kind === 'URL credentials') credentialSpans.push([match.index!, match.index! + match[0].length]);
       find('blocker', scope, name, p.kind, lineAt(text, match.index!), match[1] ?? match[0]);
     }
   }
   const assignment = /\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|passwd)\b["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{12,})/gi;
-  for (const m of text.matchAll(assignment))
+  for (const m of text.matchAll(assignment)) {
+    maskedLiterals.add(m[1]);
     find('review', scope, name, 'generic secret assignment', lineAt(text, m.index!), m[1]);
+  }
   const home = os.homedir().replace(/\\/g, '/').replace(/\/$/, '');
   const homeForms = [...new Set([home, home.replace(/\//g, '\\'), home.replace(/\//g, '\\\\')])];
   for (const value of homeForms) {
@@ -395,24 +398,26 @@ function historyEntries(): Entry[] {
   return result;
 }
 
-function historicalEnvEntries(entries: Entry[]): Entry[] {
+/** The .env blobs any ref reaches (to learn their values), after giving every blob that was ever a .env or an
+ *  .npmrc that name: rev-list names a blob only once, and a later copy named backup.txt must not hide the
+ *  name its checks depend on (key files, .npmrc tokens). */
+function historicalCredentialFiles(entries: Entry[]): Entry[] {
   if (!entries.length) return [];
-  // rev-list names a blob only once. A later copy named backup.txt must not hide its earlier .env role.
   const byId = new Map(entries.map(e => [e.oid!, e]));
   const result = new Map<string, Entry>();
   const records = nul(git(['log', '--all', '--full-history', '--root', '-m', '--raw', '-z', '--no-renames',
-    '--no-abbrev', '--format=', '--', ':(glob)**/.env*', ':(glob).env*']));
+    '--no-abbrev', '--format=', '--', ':(glob)**/.env*', ':(glob).env*', ':(glob)**/.npmrc', ':(glob).npmrc']));
   for (let i = 0; i < records.length; i++) {
     const m = /^:([0-7]+) ([0-7]+) ([a-f0-9]+) ([a-f0-9]+) [A-Z]\d*$/.exec(records[i].trimStart());
-    if (!m) throw new AuditError("Cannot parse historical .env paths. Check git log --all --raw and retry with current Git.");
+    if (!m) throw new AuditError("Cannot parse historical .env/.npmrc paths. Check git log --all --raw and retry with current Git.");
     const name = records[++i];
-    if (!name || !envFile(name)) throw new AuditError("Cannot identify a historical .env path. Check git log --all --raw and repair missing objects.");
+    if (!name || !(envFile(name) || npmrcFile(name))) throw new AuditError("Cannot identify a historical .env/.npmrc path. Check git log --all --raw and repair missing objects.");
     for (const [mode, oid] of [[m[1], m[3]], [m[2], m[4]]]) {
       const e = byId.get(oid);
       if (e && mode !== '160000') {
-        result.set(oid, { ...e, name });
-        // Prefer a real .env path over an alias; .env.example alone remains a permitted filename.
-        if (!envFile(e.name) || path.posix.basename(e.name) === '.env.example') e.name = name;
+        if (envFile(name)) result.set(oid, { ...e, name });
+        // Prefer a real credential path over an alias; .env.example alone remains a permitted filename.
+        if (!(envFile(e.name) || npmrcFile(e.name)) || path.posix.basename(e.name) === '.env.example') e.name = name;
       }
     }
   }
@@ -467,7 +472,7 @@ async function main() {
   }
   for (const entry of index.filter(e => envFile(e.name))) await learnEntry(entry);
   const past = history ? historyEntries() : [];
-  for (const entry of historicalEnvEntries(past)) await learnEntry(entry);
+  for (const entry of historicalCredentialFiles(past)) await learnEntry(entry);
   say('audara-studio Git audit (read-only)');
   say('Scanning contents...');
   const selected = staged ? index : working;

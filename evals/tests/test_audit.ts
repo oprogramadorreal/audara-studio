@@ -194,6 +194,43 @@ test('masking covers filenames and JSON-escaped copies', async () => {
   has(out, '… [length ');
 });
 
+test('detected npm tokens and generic assignment values stay masked in filenames', async () => {
+  const dir = await repo(), token = secret(), assigned = secret('Gen' + randomUUID().replace(/-/g, ''));
+  await write(dir, '.npmrc', '_authToken=' + token + '\n');
+  await write(dir, 'settings.txt', 'api_key = ' + assigned + '\n');
+  // The values also name files: the file listings print paths after the scan found them.
+  await write(dir, token + '.txt', 'ordinary text\n');
+  await write(dir, assigned + '.txt', 'ordinary text\n');
+  const out = audit(dir, 1);
+  has(out, '[working] .npmrc:1 — npm authentication token');
+  has(out, '[working] settings.txt:1 — generic secret assignment');
+});
+
+test('--history keeps an .npmrc name when the blob was renamed before deletion', async () => {
+  const dir = await repo(), token = secret();
+  await write(dir, '.npmrc', '_authToken=' + token + '\n');
+  git(dir, 'add', '.npmrc');
+  git(dir, 'commit', '-qm', 'fixture with npm token');
+  git(dir, 'mv', '.npmrc', 'backup.txt');
+  git(dir, 'commit', '-qm', 'rename npmrc');
+  git(dir, 'rm', '-q', 'backup.txt');
+  git(dir, 'commit', '-qm', 'remove npmrc');
+  audit(dir, 0);
+  has(audit(dir, 1, ['--history']), ':1 — npm authentication token');
+});
+
+test('unquoted .env values end at # with or without a space before it', async () => {
+  const dir = await repo(), value = secret(), spaced = secret();
+  await write(dir, '.gitignore', '.env*\n');
+  // Nested, so Bun doesn't load it into the environment: the audit has to read it itself.
+  await write(dir, 'config/.env', 'PRIVATE_TOKEN=' + value + '#note\nOTHER_SECRET=' + spaced + ' # note\n');
+  await write(dir, 'capture.txt', value + '\n' + spaced + '\n');
+  const out = audit(dir, 1);
+  has(out, 'Learned literal values: 2;');
+  has(out, '[working] capture.txt:1 — known environment/.env value');
+  has(out, '[working] capture.txt:2 — known environment/.env value');
+});
+
 test('100 MiB boundary: exact size warns, one byte over blocks', async () => {
   const dir = await repo(), file = await fs.open(path.join(dir, 'large.bin'), 'w');
   try {
