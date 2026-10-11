@@ -329,6 +329,6 @@ the live preview and true for everything render.ts draws:
 
 The project owns its copy of the engine (`src/`): change it when the video needs it (a post option, a new
 pass, a fix), as freely as a scene. Keep `docs/ENGINE.md` in step, since it is what scene authors read; run
-verify on the whole video rather than `--only`, since every scene runs on the engine; and while scene authors
-work in parallel, engine changes go through the lead. The engine is held to the rule too, and verify's
-determinism and cut checks are its regression test.
+verify on every video in the project rather than `--only`, since every scene of every video runs on the
+engine; and while scene authors work in parallel, engine changes go through the lead. The engine is held to
+the rule too, and verify's determinism and cut checks are its regression test.

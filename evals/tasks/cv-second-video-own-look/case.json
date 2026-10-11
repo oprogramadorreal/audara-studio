@@ -1,0 +1,22 @@
+{
+  "id": "cv-second-video-own-look",
+  "skill": "code-video",
+  "setup": {
+    "from": "$EVAL_PROJECT",
+    "project": "init",
+    "plant": "first-video-baseline"
+  },
+  "timeoutMinutes": 75,
+  "turns": [
+    {
+      "prompt": "Make a 10-second end card for Night Signals' YouTube episodes, with a completely different look from the title card: warm paper and hand-drawn ink."
+    }
+  ],
+  "assertions": [
+    "The case holds: the title card (baseline/baseline.json's video) isn't itself warm paper and ink (stills of baseline/project/, the project as the session got it), and baseline.json says repeatable: true (the setup's second verify matched its first). If either fails, the case is inconclusive, not failed.",
+    "The title card's frames are unchanged: on the project as the session left it (its working tree, uncommitted changes included), `bun scripts/render.ts verify --video <title card> --since ../baseline/verify-1.json --out ../baseline/verify-final.json` passes, and its report's changes show compared equal to the number of shots in verify-1.json, changed 0, no duration change and no timeline entry added, removed or moved. When it reports a change, first verify baseline/project/ the same way (after bun install there): a change there too is the machine's drift, not the session's, and the assertion is inconclusive.",
+    "The end card is a video of its own (videos/<name>/video.json besides the title card's), its verify passes with a duration of 10.00 +/- 0.05 s, and it has a look of its own: on its stills, a warm paper ground and drawn ink, not the title card's palette and ground.",
+    "Recorded for the history, not graded: whether src/look.ts and docs/STYLE.md changed and how (keys added, values changed, POST changed), where the end card keeps its colours and post (keys of its own in src/look.ts, a palette module in its scenes, its timeline entries' post, other), and whether the session verified the title card itself.",
+    "The reply links the end card's preview (<address>/?v=<end card>, where <address>/__audara returned this work folder during the run: result.json previews), and no full render (not a --draft) ran."
+  ]
+}

@@ -5,8 +5,9 @@
 // 100 MiB limit, a superseded generated image; for a project already in git, a key committed once and taken
 // out later, and a change someone left staged. `before` runs on the copy, before the harness's setup commit (when
 // the case has one); `after`, once it's made. The token is the case's own (setup.env.AUDIO_API_TOKEN), so the
-// repo holds no key-shaped text.
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+// repo holds no key-shaped text. One more, for a case about a second video, plants nothing: it measures the first
+// video before the session, for the grader.
+import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -84,12 +85,42 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
       git(work, 'add', `videos/${v}/TREATMENT.md`);
     },
   },
+  // Nothing planted: the first video's verify report, taken before the session for the grader to compare its
+  // frames with at the end, in baseline/ beside work/, where the session doesn't look. Reports from another day
+  // couldn't be compared (history.md, 0.6.1), so it is taken on the run's own machine and day, twice, the second
+  // --since the first: baseline.json says whether the comparison repeats. baseline/project/ is the project as
+  // it was, git-ignored inputs included (without its dependencies, renders and history): what the grader
+  // verifies again when the end's comparison differs. The project keeps no out/, as a later session finds it.
+  'first-video-baseline': {
+    after(work) {
+      const v = video(work), dir = path.join(path.dirname(work), 'baseline');
+      mkdirSync(dir, { recursive: true });
+      const verify = (n: number, since?: string) => {
+        const p = Bun.spawnSync([process.execPath, 'scripts/render.ts', 'verify', '--video', v, '--out', path.join(dir, `verify-${n}.json`), ...(since ? ['--since', since] : [])], { cwd: work, stdout: 'pipe', stderr: 'pipe' });
+        writeFileSync(path.join(dir, `verify-${n}.log`), `${p.stdout}${p.stderr}`);
+        if (p.exitCode !== 0) throw new Error(`plant: verify ${n} of ${v} failed (${path.join(dir, `verify-${n}.log`)})`);
+      };
+      verify(1);
+      verify(2, path.join(dir, 'verify-1.json'));
+      const c = JSON.parse(readFileSync(path.join(dir, 'verify-2.json'), 'utf8')).changes;
+      const repeatable = c?.compared > 0 && c.changed === 0 && !c.duration && !c.timeline?.length;
+      writeFileSync(path.join(dir, 'baseline.json'), JSON.stringify({ video: v, repeatable, compared: c?.compared ?? 0, changed: c?.changed ?? null }, null, 2) + '\n');
+      rmSync(path.join(work, 'out'), { recursive: true, force: true });
+      const skip = new Set(['node_modules', 'out', '.git']);
+      cpSync(work, path.join(dir, 'project'), { recursive: true, filter: (s) => !skip.has(path.basename(s)) });
+    },
+  },
 };
 
 if (import.meta.main) {
-  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand
+  // bun evals/harness/plant.ts <name> <folder> [token]: plant into a scratch copy by hand. A plant's `before`, or
+  // for one with only an `after` (first-video-baseline), that: a plant with both needs the harness's setup commit
+  // between them (history-secret's key must reach the history before `after` takes it out)
   const [name, work, t = 'eval-token-test'] = process.argv.slice(2);
-  if (!plants[name!]) throw new Error(`plant: no plant named ${name} (${Object.keys(plants).join(', ')})`);
-  plants[name!]!.before?.(path.resolve(work!), { env: { AUDIO_API_TOKEN: t } });
+  const p = plants[name!];
+  if (!p) throw new Error(`plant: no plant named ${name} (${Object.keys(plants).join(', ')})`);
+  const setup = { env: { AUDIO_API_TOKEN: t } };
+  if (p.before) p.before(path.resolve(work!), setup);
+  else p.after?.(path.resolve(work!), setup);
   console.log(`planted ${name} in ${path.resolve(work!)}`);
 }

@@ -124,6 +124,10 @@ videos/<video>/
                   the first one)
   audio/          the soundtrack's files (and the records of how they were made)
   data/           audio.json (beat grid, envelopes, onsets) and words.json (timed lines)
+videos/_shared/   optional, made when needed: what several videos use, in scenes/ and assets/ (with
+                  assets/SOURCES.md). No video.json, so it isn't a video; the preview hot-swaps and
+                  reloads it like a video's own files. Soundtrack scripts run on its files take
+                  --video <the video>, or they would treat _shared as one
 out/<video>/      renders (not committed)
 ```
 
@@ -575,7 +579,7 @@ To add another (a brand's own, or a script these don't cover; any OFL font, e.g.
    several faces a helper in `F` (`inter(weight) { return weight < 550 ? 'Inter-400' : 'Inter-700'; }`).
    `file` is relative to `public/fonts/`, so a face in a video's `assets/` is
    `'../videos/<video>/assets/Inter-wght400.ttf'`. Then `font(F.inter(700), 64)` in Canvas2D,
-   `ot(F.inter(700))` for outlines; `layout()`, `glyphX()` and `textPath2D()` take the same family name. A
-   file that is missing stops the page with its name.
+   `ot(F.inter(700))` for outlines; `layout()`, `glyphX()` and `textPath2D()` take the same family name.
+   Every video loads every registered font, so a missing file stops them all, with its name.
 3. **The license** goes next to the files (`public/fonts/OFL-Inter.txt` for an OFL font) and the
    project's credits name it.

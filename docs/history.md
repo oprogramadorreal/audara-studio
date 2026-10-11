@@ -1271,3 +1271,115 @@ A fourth pass found that npm reads a double-quoted `.npmrc` value as JSON (`\u00
 masked only the text as written, so the decoded token, when it also named a file, was printed in full
 (reproduced with npm's own `ini` parser). Its JSON reading is masked too now, and an empty value never
 enters the masking. The audit has 26 checks; the session agreed.
+
+## One video or many in a project (0.6.1, 2026-10-11)
+
+The user had made five projects, one per video or close to it (`videos/audaces-1`, `oprog-1` to `oprog-4`, the
+last four for their YouTube channel), and asked whether audara-studio would work as a studio: one git
+repository for a channel, with a shared core (the engine, some assets) and what's specific to each video. Then
+a constraint: separate repositories and one big one must both work, and if the big one complicated the plugin
+too much, they would rather drop it, since the skills must stay light while models change fast. A Claude Code
+session (Opus 5.5) and a Codex session (GPT-6 Astra) each analyzed the plugin and the five projects, then
+argued it out over three rounds through Herdr; the user gave Claude the last call.
+
+What already worked: several videos per project was a decision from the start. init's `--video` adds one, the
+preview finds them and offers a picker, `?v=` and `--video` pick one, each renders into `out/<video>/`, and
+AGENTS.md lists them. A separate repository is a project with one video (and the example), on the same code.
+
+What the five projects showed:
+
+- **Their engines were the template's,** byte for byte outside `src/look.ts` once line endings are set aside
+  (audaces-1 and oprog-2 exactly), but for features a project added: oprog-1 a replay (`TimelineEntry.shift`
+  and `window`) and shadow maps; oprog-3 a `clock.ts`, LaTeX fonts in `type.ts` and `render.ts --param`;
+  oprog-4 scanlines and a glitch in the post, a timeline's `postAt`, and shadow maps, the same code oprog-1
+  wrote.
+- **Projects copied from each other:** oprog-4 took oprog-1's CRT scene, its plastic texture and
+  `tileable.py`; audaces-1's vertical cut of video 3 is a copy (11 of its 15 scene files identical), so the
+  director's note "include Audaces name together with the logo" was made twice.
+- **Two projects gave a second video a look of its own, and both kept the first intact:** oprog-3 added v2's
+  keys beside v1's in `src/look.ts` and set `V2_POST` on every v2 entry; audaces-1 kept video 2's palette in
+  its scenes (`_story.ts`, "so the first video's `src/look.ts` is untouched").
+- **A font one video registers loads for all of them** (`type.ts` registers `'../videos/<video>/assets/...'`
+  and `loadFonts` loads every face at boot), so deleting it stops every video.
+- **Disk:** `out/` reached 34 GB in oprog-3 (one draft of 516 MB in oprog-4); a channel repository's media
+  would pass GitHub's recommended 10 GB for `.git` within a few dozen episodes (oprog-1's pack is 233 MiB).
+
+Proposed, and left out on the evidence: a look per video in the engine (`videos/<video>/look.ts` merged over
+`src/look.ts`: both projects that needed one managed without it, and engine code never reaches an existing
+project, so skill text would grow "if your engine has it" branches, as `warm()` did in 0.4.1); `verify --all`
+and a baseline system (an agent can run verify per video); loading a video's fonts only for that video (it
+breaks a video that plays another's scene, which the engine guide documents); an engine upgrade path with a
+recorded template version (a separate long-lived repository has the same need: a feature of its own);
+channel-wide sound defaults and separate checklists for a first video, a new one and a revision (decisions
+already go to `docs/STYLE.md`, and SKILL.md has no room); publication tags (the user's git habit); video-repo
+leaving out a duplicate another video loads (the clone check catches it); and a sentence in init's AGENTS.md
+to verify every video a shared change reaches (below). Codex's own first list had the look layer,
+`verify --all` with baselines, `assets/` and `src/shared/` with a change to the preview, the upgrade path and
+the sound defaults; its second round agreed none rested on a failure that had happened, and found the font
+dependency, the boundary below and the soundtrack catch.
+
+The AGENTS.md sentence was the one point left open, so it was measured. oprog-3's first video was last
+verified on 10-08 at 21:26; after that only shared files changed, for v2 (`src/look.ts`, `type.ts`, four
+fonts), and nobody verified v1 again. On scratch copies, verify `--since` the old reports said every sampled
+frame changed, for v1 (1,000 of 1,000) and for a control, an audaces-1 video whose code hadn't changed since
+its verify on 10-07 (57 of 57), so those reports couldn't tell a change from anything else. render.ts puts
+such a result down to the browser or the GPU when nothing shared changed, which fits the control but wasn't
+established. Compared with frames of the drafts each
+project rendered right after those verifies, fresh stills matched: mean colour within one or two levels at
+10, 60, 120 and 200 s, and identical by eye side by side at 120 s. PSNR was 20.7–34.5 dB against the
+control's 36.3–40.3, most likely v1's full-frame TV static, which a draft's encoding can't keep, though the
+comparison doesn't isolate that cause. So no regression attributable to the shared edits at the sampled
+times: the sentence waits for an eval or a real regression. Codex added that "outside the video's folder"
+was the wrong boundary for it, since oprog-1's thumbnail video imports helpers from inside the main video's.
+
+What changed:
+
+- **`references/contract.md`, "Changing the engine":** verify runs on every video in the project, not "the
+  whole video": every scene of every video runs on the engine. In a separate repository that adds the example
+  after an engine change, a few seconds.
+- **`references/engine-guide-template.md`** (each project's `docs/ENGINE.md`, so new projects only): the
+  layout gains `videos/_shared/`, optional, made when needed, for what several videos use (`scenes/`,
+  `assets/` with `SOURCES.md`), with no `video.json`, so it isn't a video; soundtrack scripts given its files
+  take `--video`, since they infer the video from an input's path (Codex's catch: `video_of()`, copied in five
+  scripts). And "Every video loads every registered font, so a missing file stops them all" replaces "A file
+  that is missing stops the page". Neither needs code. On a scratch project made by init, a scene in
+  `videos/_shared/scenes/` played through `E('card', '../../_shared/scenes/fspass', ...)`: `bun run check` and
+  verify passed, saving it hot-swapped the entry in a running preview ("reloaded card", the page not
+  reloaded), saving a file in `videos/_shared/assets/` reloaded the page, and init's AGENTS.md table listed
+  only the videos.
+- **design.md:** a repository per video and one per channel are the same model; `videos/_shared/` in the
+  layout.
+- **The eval `cv-second-video-own-look`:** on the title-card project, a later session asks for "a 10-second
+  end card for Night Signals' YouTube episodes, with a completely different look from the title card: warm
+  paper and hand-drawn ink"; the title card's frames must come out unchanged. Its plant,
+  `first-video-baseline`, verifies the title card twice before the session (the second `--since` the first,
+  which says whether the comparison repeats on that machine and day, since the reports from other days above
+  couldn't be compared), beside `work/` where the session doesn't look, with a copy of the project as it was
+  (git-ignored inputs included); at the end the grader verifies it `--since` that report (every baseline
+  sample compared, none changed, same length and timeline) and, on a mismatch, the copy again before blaming
+  the session. It gates a style-template clause, "a video that departs from the project's look keeps it in its
+  own files", added only if a run fails for that reason. On a scratch project the plant's two runs matched (8
+  frames compared, 0 changed). Codex's review of the branch caught that the grader's fallback first rebuilt
+  the baseline from the setup commit, which lacks git-ignored inputs, that `plant.ts`'s command line ran only
+  `before` hooks (and, once fixed, ran both without the commit `history-secret` needs between them), and these
+  two claims stated as established; each fixed.
+- **The manifests,** 0.6.1.
+
+The eval ran once per tool on the plugin as this branch has it (no style clause), from a `cv-title-card` run
+of the branch (Claude Code, Opus 5.5: a dark sea at night with one red beacon, no paper or ink), with Claude
+Code (Opus 5.5) and Codex (GPT-6 Astra, xhigh). Both pass every graded assertion:
+
+- The baseline repeated: the plant's second verify matched its first (32 of 32 frames) in both runs.
+- The title card is unchanged: verified `--since` the baseline at the end, 32 of 32 frames compared, none
+  changed, the same length and timeline, in both.
+- Each end card is a video of its own (Claude Code's `ns-end-card`, in 50 minutes; Codex's
+  `night-signals-end-card`, in 14), passes verify at 10.00 s, and is warm paper and drawn ink on its stills.
+- Each reply links its own preview (`?v=<end card>`, on the port serving its work folder), and only drafts
+  were rendered.
+
+Neither touched `src/look.ts`. Claude Code kept the end card's palette in its scenes (`_ink.ts`); Codex
+gave the video a `look.ts` and a `STYLE.md` of its own, with its post on the timeline's entries. Both scoped
+`docs/STYLE.md` to the title card and recorded the departure in the director's words, and both verified the
+title card themselves without being asked. So the style-template clause isn't added, and the AGENTS.md
+sentence stays out: on this evidence a model keeps a second video's look local and checks the first video
+on its own. One run per tool, so this is a first measurement, not a rate.
