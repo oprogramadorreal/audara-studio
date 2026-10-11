@@ -18,6 +18,7 @@ Contents
 - The showreel experiment: a named form keeps what defines it (0.4.0, 2026-10-06)
 - 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
 - A place to choose the idea: video-ideas (0.5.0, 2026-10-08)
+- Handing a project on: video-repo (0.6.0, 2026-10-11)
 
 ## Definition of done
 
@@ -1084,3 +1085,116 @@ sets and the `vi-` cases. The skill was built before the baseline the proposal a
 request; that baseline (the model brainstorming alone, code-video asked to plan only, and the skill, on
 casual and explicit requests) is still what decides whether it earns its place. If it can't beat the
 plan-first route without more friction or routing mistakes, the documented route replaces it.
+
+## Handing a project on: video-repo (0.6.0, 2026-10-11)
+
+The user ends many projects with the same request, typed by hand each time: create a local git repository
+(the remote comes later) with every file someone else needs to clone the project and work on it; required
+images, music, sounds and videos versioned unless a file is over GitHub's limit, in which case it stays out
+and a versioned doc says it's missing; no output files, which go in `.gitignore`; no API key, secret or other
+personal information, checked before anything is added; and a README expanded for people, with docs for
+agents in `docs/`. They asked whether that should be a skill, what else it should hold, and whether it
+should load on its own like the other three or only when called (`disable-model-invocation` in Claude Code;
+they weren't sure Codex had an equivalent). A Claude Code session (Opus 5.5) and a Codex session (GPT-6
+Astra), talking through Herdr, argued it out over four rounds; the user gave Claude the last call.
+
+What the evidence said:
+
+- **The request had been made once already,** by a Codex session on `videos/oprog-1` (2026-10-10, now
+  published as ai-video-proxima-palavra). It did much well: media ignored by default with an exception for
+  each input the render needs, generated and paid assets kept as files, a `docs/ASSETS.md` of what was kept
+  and left out (a root `song.mp3` that was a byte-identical duplicate, intermediate mixes, rejected takes)
+  measured against GitHub's 50 and 100 MiB limits, the scratch scripts that made kept assets archived, a
+  README for people, and a fresh-clone check (frozen install, type check, a full `verify` of 2,687 frames, a
+  half-second draft with audio).
+- **The user still had to ask four times afterwards:** for a key scan of the files and the history
+  ("just make sure there is no api key or key of any sort exposed in the versioned files"), for the
+  published title the README had guessed, for the working folder name `oprog-1` to go from `package.json`,
+  `bun.lock`, AGENTS.md's heading and `docs/STYLE.md` ("rename it to ai-video-proxima-palavra, which is
+  current repo name"), and for the repository's size.
+- **The published repository still leaks the user's Windows account name:** `TREATMENT.md` lines 151–152
+  name plugin-cache paths under `C:\Users\<name>`, and the key scan didn't flag them. Every commit also
+  carries the user's work e-mail. Its ignore rule `/out/` (the top folder only) let the mix-round records a
+  script wrote to `videos/proxima-palavra/intro/out/` into the first commit; init's own `.gitignore` merge
+  counted `/out/` as covering `out/`, so running init again wouldn't have added the broader rule.
+- **Other projects show what a clone lacks:** `oprog-3` has a script that loads image models by absolute
+  paths under the home folder, nested `.venv/` folders, another tool's render output (`tools/manim/media/`)
+  and `.playwright-mcp/` logs.
+- **Invocation:** Claude Code's `disable-model-invocation: true` takes the description out of context, so
+  a plain "put this in git" gets the model's own way; Codex's equivalent is
+  `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. Both `quick_validate.py` scripts reject
+  `disable-model-invocation` in the frontmatter. Anthropic's docs advise manual invocation for side-effect
+  workflows such as `/commit` and `/deploy`, which Codex raised against "only local effects" as an answer.
+
+What changed:
+
+- **`skills/video-repo/`** (SKILL.md, 7,960 bytes; `references/repository-files.md`; `scripts/audit.ts`),
+  model-invoked like the others: the request itself is in words, loading the skill only supplies the method,
+  the request authorizes the changes, and nothing leaves the machine until the user asks. Scoped to audara
+  projects, the only kind seen. Where the repository goes (fresh, this folder, or a folder above, which waits
+  for the user); files sorted by role (a generated file the render loads is an input; outputs ignored by
+  folder or name at any depth, with no blanket media rule; duplicates, intermediates and rejected takes left
+  out and named); a file over 100 MiB left out and documented (path, bytes, SHA-256, purpose, how to get it
+  back, whether a clone renders without it), Git LFS offered, never set up; keys and personal details checked
+  before the first `git add`; a README for people from init's, `docs/REPOSITORY.md` and a Repository section
+  in AGENTS.md outside init's markers; the commit identity checked before the first commit, asked once when
+  the user wants personal details out, with the repository's name in the same message when the folder's is a
+  working name; a fresh clone checked (`bun install --frozen-lockfile`, `bun run check`, `verify` per video, a
+  three-second draft with sound); a hand-off with sizes, what's left out, what's theirs to decide, and how to
+  push, done only when asked.
+- **`scripts/audit.ts`**, written by the Codex session: read-only and dependency-free. It finds copies of
+  secret-named environment and `.env` values (the user's keys live there), known key formats, key files,
+  home paths, e-mail addresses, GPS and QuickTime location data, files over GitHub's limits and duplicates;
+  `--staged` reads the index, `--history` every reachable blob; it masks secrets and lists what it doesn't
+  cover. On `oprog-1 --history` it runs in about 3.5 seconds and flags `TREATMENT.md:151–152`.
+- **init:** its `.gitignore` merge no longer counts `/out/` as `out/`; its AGENTS.md names video-repo and
+  owes "for a request to put the project in git or get it ready for GitHub, that repository, with the
+  videos left as they are".
+- **README, design.md ("Handing it on: a repository", "Format, for both tools"), AGENTS.md, the manifests,**
+  0.6.0.
+- **The evals:** `evals/trigger/video-repo.json` (eleven requests, the user's own among them and two in
+  Portuguese, and ten near-misses: everyday commits, a branch, a pull request, a render, ideas, git outside
+  video projects); cv-23, a git request in code-video's set; trigger fixtures placed in subfolders with
+  `=>`, and an AGENTS.md fixture written by init itself; task.ts's `"git": false` (no setup repository, git
+  kept from finding this one above `evals/results/`) and `"plant"` (`evals/harness/plant.ts`: what the
+  projects above held); `vr-first-repo` (the user's prompt, then a name and a noreply address) and
+  `vr-existing-history` (a key in an earlier commit, a change left staged).
+
+Considered and rejected:
+
+- **Explicit-only invocation:** the user would have to remember `/audara-studio:video-repo` or
+  `$audara-studio:video-repo` for a request they already make in words, and both validators reject the
+  Claude Code key.
+- **A reference inside code-video:** a git request wouldn't find it, and its SKILL.md has 3 bytes to spare.
+  Its description isn't changed either: no run has shown it loading for a git request yet; cv-23 measures
+  that, and init's AGENTS.md routes the request meanwhile. Codex argued for an exclusion in code-video's
+  description now; the evidence rule decided it.
+- **A general "media project into git" skill:** only audara projects have been seen.
+- **A media allowlist by default** (oprog-1's): it hides the next required file from the session that adds
+  it; one a project already has on purpose is kept.
+- **Installing a secret scanner:** gitleaks is suggested when it's already installed.
+- **Stopping to ask at the start:** nothing is published until the user pushes, so the skill goes on with
+  defaults and asks only what changes the commit (its identity, when the user wants personal details out,
+  and then the name with it) or where the repository goes.
+
+Codex's reviews changed the design in these ways, each taken: `git ls-files -o` alone misses tracked and
+staged files, so the audit reads the working set, the index and the history separately; an existing
+repository is a path of its own (branches, remotes, history and LFS kept, a file now ignored untracked with
+`git rm --cached`, a >100 MiB blob in the history named as a push blocker); "output" is defined by role, not
+type; someone's staged work stays staged (`git commit -- <paths>`); the identity is settled before the first
+commit, not after; a clone-check failure is diagnosed rather than taken for a missing file; the branch is
+the current one, not always main; every `.env` value of 8 characters or more was a literal at first, so
+`NODE_ENV=production` would have blocked every file saying "production" (now only secret-named ones); a git
+warning (Codex's sandbox can't read the global ignore file) made every run "incomplete" (now a note).
+
+What was checked: the three validators pass on all four skills, each SKILL.md is under 8,000 bytes
+(video-repo's 7,960) with no byte-order mark, and every changed script and harness file compiles.
+`evals/tests/test_audit.ts` (14 checks, Codex's) passes. On a project made by init and planted with
+`repo-traps`, the audit found the copied token, the hardcoded key, the 110 MiB take, the duplicated logo and
+the home path in half a second; with `history-secret`, the key in the earlier commit. init adds `out/` to a
+`.gitignore` that says `/out/`. Without the new environment, git run in a folder below `evals/results/`
+finds this repo; with it, none, and the skill links stay out of `git status`. A trigger smoke run (Claude
+Code, Opus 5.5, one run each) loaded video-repo for "put this video project in git so I can push it to
+GitHub later" and left "commit my changes to the intro scene with a good message" alone. **Not run:** the
+full trigger sets (cv-23 included) and the two `vr-` cases, an hour or more per case and tool. They, with
+`--without` runs as the bar (the model alone did oprog-1), decide whether the skill earns its place.

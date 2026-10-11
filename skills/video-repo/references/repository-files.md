@@ -28,7 +28,8 @@ one with the commands to watch and render; keep those and build around them, in 
 Write it for a person who has never heard of audara: no agent vocabulary ("the director", "the f(t) rule",
 "treatment" without saying it's the video's plan), no absolute paths, and no claim the checks didn't
 show. "Verified on a fresh clone on 2026-10-11 (bun 1.4.2, Chrome 154, ffmpeg 9.0)" is a fact; "renders
-identically everywhere" is not one: the GPU, browser and encoder can change pixels.
+identically everywhere" is not one: the GPU, browser and encoder can change pixels. The clone check runs on
+the commit, so its line goes in afterwards, in a commit of its own.
 
 ## docs/REPOSITORY.md, for whoever works on it next
 

@@ -37,7 +37,9 @@ session file, since its `--json` stream doesn't), and `modelArg`, what `--model`
 Does a fresh session load the skill for a realistic request, and leave near-misses alone? About twenty
 requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
 they compete as they do once the plugin is installed; code-video's set ends with two requests for ideas
-only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo. A request
+only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
+read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
+`scripts/render.ts`, which video-repo's own work can do). A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
 of a finished one: `videos/promo/video.json`, its song and init's `AGENTS.md`).
 
@@ -163,8 +165,12 @@ and view_image. A grader reads them, checks each assertion with evidence (runnin
 check that a paid image is never lost or paid for twice (a changed format, a failed save, an edit of
 itself).
 
+`test_audit.ts` checks secret detection and masking, file limits, duplicates, Git scopes and actionable
+failures in temporary repositories.
+
 ```sh
 uv run evals/tests/test_imagegen.py
+bun evals/tests/test_audit.ts
 ```
 
 ## Spec checks
