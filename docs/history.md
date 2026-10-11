@@ -1236,3 +1236,13 @@ in an empty folder, and `vr-empty-first`, the repository, then the video, then t
 sessions. Checked: the three validators, SKILL.md at 7,991 bytes, the audit's 16 checks, a planted
 project, and one trigger run of `vr-22` (Claude Code, Opus 5.5: loaded); not run, as above: the full
 trigger sets and the `vr-` cases.
+
+A code review of the whole branch by a third Codex session found three ways the audit could still leak or
+miss a key, each reproduced before fixing: a detected npm token that also named a file was printed in full
+in the file listings (now every detected value, a generic `api_key` value included, is masked wherever it
+shows); an `.npmrc` committed, renamed to `backup.txt` and deleted passed `--history` (a blob keeps its
+`.npmrc` name across renames, as it did for `.env`); and `PRIVATE_TOKEN=value#note` in a nested `.env` was
+learned with its comment, so a copy of the value went unseen (an unquoted value now ends at `#`, as dotenv
+and Bun read it; Bun loads only the top-level `.env` into the environment, which hid the case there). Three
+regression tests, each failing on the previous script, bring the audit's checks to 19; the reviewing session
+agreed with the fixes.
