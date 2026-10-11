@@ -108,9 +108,11 @@ const GIT_ENV: Record<string, string> = NO_GIT ? {
 } : {};
 if (NO_GIT) writeFileSync(path.join(RUN, 'git-exclude'), '.claude/skills/\n.agents/skills/\n');
 else {
-  Bun.spawnSync(['git', 'init', '-q'], { cwd: WORK });
-  Bun.spawnSync(['git', 'add', '-A'], { cwd: WORK });
-  Bun.spawnSync(['git', '-c', 'user.name=eval', '-c', 'user.email=eval@local', 'commit', '-qm', 'eval setup', '--allow-empty'], { cwd: WORK });
+  // (on main whatever the machine's init.defaultBranch, since cases name the branch)
+  for (const args of [['init', '-q', '-b', 'main'], ['add', '-A'], ['-c', 'user.name=eval', '-c', 'user.email=eval@local', 'commit', '-qm', 'eval setup', '--allow-empty']]) {
+    const p = Bun.spawnSync(['git', ...args], { cwd: WORK, stdout: 'pipe', stderr: 'pipe' });
+    if (p.exitCode !== 0) throw new Error(`setup: git ${args.join(' ')} failed:\n${p.stderr}`);
+  }
   PLANT?.after?.(WORK, CASE.setup!);
 }
 if (ARM === 'with') {

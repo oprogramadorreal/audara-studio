@@ -66,7 +66,9 @@ for example:
 
 init's entries stay; extend them with what the sorting found. Rules without a leading slash match at any
 depth (`out/` also ignores `videos/intro/out/`; `/out/` only the top one). Name a file left out by its
-path, so the rule doesn't catch the next one a video needs.
+path, so the rule doesn't catch the next one a video needs. A rule doesn't touch what git already tracks:
+in a repository that committed one before, `git rm --cached <path>` (`-r` for a folder) takes it out of
+the index and leaves it on disk.
 
 ```gitignore
 # renders, caches, dependencies (init's)

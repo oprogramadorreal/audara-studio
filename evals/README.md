@@ -37,13 +37,16 @@ session file, since its `--json` stream doesn't), and `modelArg`, what `--model`
 Does a fresh session load the skill for a realistic request, and leave near-misses alone? About twenty
 requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
 they compete as they do once the plugin is installed; code-video's set ends with two requests for ideas
-only, which belong to video-ideas.
+only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo. A request
+made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
+of a finished one: `videos/promo/video.json`, its song and init's `AGENTS.md`).
 
 ```sh
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/code-video.json
 bun evals/harness/trigger.ts --tool claude --model sonnet --set evals/trigger/soundtrack.json
 bun evals/harness/trigger.ts --tool codex                 --set evals/trigger/code-video.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-ideas.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-repo.json
 ```
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
@@ -70,8 +73,8 @@ bash evals/harness/run-tasks.sh both                                            
 CASES="cv-title-card cv-later-session-small-change" bash evals/harness/run-tasks.sh claude
 ```
 
-`run-tasks.sh` runs the cases a few at a time, then the three cases that start from a finished project (the
-later session, the second format and ideas for another video) on the project of the latest finished
+`run-tasks.sh` runs the cases a few at a time, then the five cases that start from a finished project (the
+later session, the second format, ideas for another video and the two repository cases) on the project of the latest finished
 `cv-title-card` run (Claude Code's if there is one, else Codex's), the same project for both tools; an `EVAL_PROJECT` set beforehand is used instead. `CASES` runs only the cases it names, and extra
 arguments go to `task.ts` (`--without`, `--model sonnet`, `--effort ultra`). `--effort` sets the reasoning effort the
 user's settings would otherwise pick (Claude Code's `--effort`, Codex's `model_reasoning_effort`), so a run can
@@ -101,7 +104,16 @@ an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project
 one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and
 the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
 together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas-and-make`). Most are text
-only and take minutes. The `vi-` cases are graded on the conversation, preservation of constraints,
+only and take minutes. The `vr-` cases stand for someone handing a finished project on: its first
+repository, asked for in the user's own words, then a name and a commit e-mail (`vr-first-repo`), and a
+project already in git with a key in an earlier commit and someone's change left staged
+(`vr-existing-history`). They start from the title-card project too, and `"plant": "<name>"` adds what
+`evals/harness/plant.ts` plants: a home-folder path in a treatment, keys in a script and a debug dump, a
+render outside `out/`, an `out/` below a video, a duplicate, a file over GitHub's 100 MiB limit, a
+superseded generated image. `"git": false` leaves the folder without the harness's repository and setup
+commit, as a project is before its first one; the session's environment stops git at the run's folder
+(`GIT_CEILING_DIRECTORIES`), so it doesn't find this repo's above `evals/results/`, and keeps the skill links
+out of git (a `core.excludesFile` beside the folder). The `vi-` cases are graded on the conversation, preservation of constraints,
 faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
 judging with and `--without` the skills: they are the check that the skills make the picture better than
 the model alone, not just correct.
@@ -169,6 +181,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack` and `skills/video-ideas`. Two checks no
+UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas` and `skills/video-repo`. Two checks no
 validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
 a byte-order mark.

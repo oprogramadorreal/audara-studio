@@ -61,9 +61,10 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
       ff(['-f', 'lavfi', '-i', 'anoisesrc=color=pink:amplitude=0.05:sample_rate=48000:duration=600', '-ac', '2', '-c:a', 'pcm_s16le', path.join(dir, 'assets', 'master-take.wav')]);
       source(work, v, '- `assets/master-take.wav`: the full 10-minute studio take the title\'s sound was cut from; the director\'s own recording, kept for re-editing.');
       // a duplicate at the top, and a superseded generated image with its request record
-      ff(['-f', 'lavfi', '-i', 'color=c=0x1d3557:s=600x200', '-frames:v', '1', path.join(dir, 'assets', 'logo.png')]);
+      ff(['-f', 'lavfi', '-i', 'testsrc2=s=600x200', '-frames:v', '1', path.join(dir, 'assets', 'logo.png')]);
       copyFileSync(path.join(dir, 'assets', 'logo.png'), path.join(work, 'logo (1).png'));
       source(work, v, '- `assets/logo.png`: the podcast\'s logo, for an end card; the director\'s.');
+      mkdirSync(path.join(dir, 'assets', 'older'), { recursive: true });
       ff(['-f', 'lavfi', '-i', 'gradients=s=1280x720:d=1', '-frames:v', '1', path.join(dir, 'assets', 'older', 'backdrop.png')]);
       put(path.join(dir, 'assets', 'older', 'backdrop.request.json'), JSON.stringify({ model: 'gpt-image-2', prompt: 'a night sky over a radio tower, painted', size: '1536x1024', cost: '$0.19', replacedBy: 'none: the title went back to a drawn sky' }, null, 2) + '\n');
     },

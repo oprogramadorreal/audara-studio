@@ -193,6 +193,54 @@ A later session in that folder then knows the conventions even when a request ("
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
 itself, which is exactly why the project carries its own conventions.
 
+### Handing it on: a repository
+
+A finished project often goes into git next, so someone else can clone it on another machine, work on it
+and render it again. The user asked for that in the same words project after project, and the first one
+made by hand (`oprog-1`, 2026-10-10) came out well but needed three follow-ups and kept a leak (history.md,
+0.6.0). `video-repo` holds the method:
+
+- **Where the repository goes first.** None yet: `git init -b main` in the project. The project already is
+  one: its branches, remotes, history, LFS setup and anyone's staged work are kept, and its history is
+  searched too. A folder above is one (a home folder, a monorepo): the user decides, before anything moves.
+- **Files sorted by their role, not their type.** A generated or derived file the render loads (the final
+  mix, extracted frames) is an input and stays, as do the sources someone needs to change the video (the
+  mix's stems, the chosen takes, request records, the scripts that made a kept file). Generated and paid
+  media stay as files, since the same request doesn't give the same bytes again. Outputs and caches are
+  ignored by folder or name at any depth; no blanket `*.mp4` rule, which would hide the next clip a video
+  needs from the session that adds it. Duplicates, rebuildable intermediates and rejected takes are left
+  out and named to the user.
+- **GitHub's limits, and what's left out written down.** GitHub warns over 50 MiB and refuses a file over
+  100 MiB, so one over 100 MiB stays out and `docs/REPOSITORY.md` records its path, bytes, SHA-256, purpose,
+  how to get it back, and whether a clone renders without it. Git LFS is offered, never set up by default:
+  the user asked to leave such files out, and its free quota (10 GiB of storage and of bandwidth on GitHub
+  Free) counts every clone's download.
+- **Keys and personal details, checked before the first `git add`.** `scripts/audit.ts` (bun, read-only)
+  looks for the values of secret-named variables in the environment and in `.env` files wherever they were
+  copied, known key formats, key files, home-folder paths, e-mail addresses and location data in photos and
+  clips, files over GitHub's limits and duplicates; with `--staged` it reads exactly what the commit holds,
+  with `--history` every blob any ref reaches. It never prints a secret and says what it doesn't cover. A
+  key already in the history is revoked first; rewriting history waits for the user's yes.
+- **A README for people, notes for whoever comes next.** The README says what the videos are, how they were
+  made, how to run and render them and what isn't in git, from init's README, whose commands stay. A
+  published title or link nobody gave is left out, not guessed. `docs/REPOSITORY.md` and a short section in
+  AGENTS.md (outside init's markers) tell a later session what's kept and how to add media.
+- **A fresh clone is the test.** The skill clones the repository into a temporary folder and runs what a
+  newcomer would: `bun install --frozen-lockfile`, `bun run check`, `verify` for each video (every scene and
+  the files it reads) and a three-second draft with sound. It says what ran, without promising identical
+  pixels on another machine.
+- **Defaults, then the hand-off.** Nothing is published until the user pushes, and every choice can still
+  change, so it goes on rather than waiting and ends with what's theirs to decide: the repository's name
+  when the folder's is a working name (it goes into `package.json`, AGENTS.md's heading and the README's
+  title, not into video ids or titles), facts the README can't know, rights to third-party media if the
+  repository may go public, and the e-mail every commit carries. It creates a remote or pushes only when
+  asked, after asking private or public.
+
+Considered and left out: a general "media project into git" skill (only audara projects have been seen so
+far), a reference inside code-video (its SKILL.md is full, and a git request wouldn't find it), explicit-only
+invocation (see "Format, for both tools"), and installing a secret scanner (gitleaks is suggested when it's
+already there).
+
 ## The decision
 
 Build audara-studio as **one repo of Agent Skills around one engine: the pdoom-video engine as a starter
@@ -208,11 +256,12 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has three skills: **`code-video`** for the picture, **`soundtrack`** for the sound and **`video-ideas`**
-for deciding what to make. `soundtrack` turns a song or a script into audio files plus the timing data the
-engine reads. When the user provides an ElevenLabs API key, it can also generate narration, music and sound
-effects (see "Sound and ElevenLabs"). `video-ideas` is text only and ends with a starting prompt (see
-"Before the brief").
+It has four skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
+for deciding what to make and **`video-repo`** for handing a finished project on. `soundtrack` turns a song
+or a script into audio files plus the timing data the engine reads. When the user provides an ElevenLabs API
+key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs"). `video-ideas` is
+text only and ends with a starting prompt (see "Before the brief"). `video-repo` puts the project in git so
+someone else can clone it and render it again (see "Handing it on: a repository").
 
 ### Room for the model
 
@@ -479,7 +528,7 @@ math references came as optional tools, each read only when in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-All three skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All four skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -488,17 +537,25 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - All three stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
-    its default. The vision depends on them loading on their own.
+  - All four stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+    its default. The vision depends on them loading on their own. `video-repo` was the one in question,
+    since Anthropic advises manual invocation for workflows with side effects (`/commit`, `/deploy`). It
+    stays model-invoked because a repository is something the user asks for in words ("put this in git"),
+    and that request should get the method without a command to remember: loading the skill only supplies
+    instructions, the user's request is what authorizes the changes, and nothing leaves the machine until
+    they ask. Explicit-only would also take two mechanisms, `disable-model-invocation` in the frontmatter
+    for Claude Code (a key both `quick_validate.py` scripts reject) and `policy.allow_implicit_invocation:
+    false` in `agents/openai.yaml` for Codex.
 - **`name`:** lowercase letters, digits and hyphens; at most 64 characters; the same as the folder name; no
-  "claude" or "anthropic". `code-video`, `soundtrack` and `video-ideas` pass.
+  "claude" or "anthropic". `code-video`, `soundtrack`, `video-ideas` and `video-repo` pass.
 - **`description`:** at most 1,024 characters, in the third person.
   - **Content:** what the skill does and when to use it, the main use case first, in the words users
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
     "render").
   - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage, for
     generating clips with AI video models, or for ideas and a prompt alone; `video-ideas` is not for making a
-    video, for prompts for other generators, or for ideas for filmed content.
+    video, for prompts for other generators, or for ideas for filmed content; `video-repo` is not for
+    everyday commits, branches or pull requests, or for projects that aren't videos.
   - **A little insistent** (Anthropic), because models tend to under-trigger skills: "use it whenever the
     user wants a video made from code, even if they don't say 'motion graphics'".
   - **First sentence first:** Claude Code cuts each listing at 1,536 characters, and Codex shortens
@@ -605,6 +662,10 @@ audara-studio/
     │                                 # removed
     ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
+    ├── video-repo/                   # handing a project on: a git repository someone else can clone
+    │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
+    │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
+    │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, location data
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
@@ -660,7 +721,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │   ├── assets/                  # images and footage, each with a line in SOURCES.md
 │   └── data/                    # audio.json, and words.json for sung or spoken lines
 ├── .audara-cache/               # caches and scratch work, git-ignored
-└── out/<name>/                  # renders, sheets and reports, not committed
+├── out/<name>/                  # renders, sheets and reports, not committed
+└── docs/REPOSITORY.md           # once video-repo puts it in git: what's kept, what's left out and why
 ```
 
 - **The project folder is Vite's root,** so each video's audio and data are served from inside it, with no
@@ -670,7 +732,10 @@ the formats the engine's `audio.ts` and `words.ts` read.
   find narration words by their text exactly as they find lyrics.
 - **Heavy model downloads** (`align.py`, `beats.py`'s tracker, `standin.py`'s voice) go to a user-level
   cache, not the project.
-- **`.gitignore`:** `out/`, `node_modules/`, `.env` and caches.
+- **`.gitignore`:** `out/` (at any depth), `node_modules/`, `.env` and caches. init adds the entries a
+  project's own `.gitignore` lacks, and doesn't count `/out/` as `out/`: the first covers only the top
+  folder, and a project whose ignore file said `/out/` committed the reports a script wrote to a video's
+  own `out/`. The rest of a repository (what's kept, left out or too big for GitHub) is video-repo's.
 
 ## Sources
 
