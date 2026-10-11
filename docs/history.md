@@ -1246,3 +1246,14 @@ learned with its comment, so a copy of the value went unseen (an unquoted value 
 and Bun read it; Bun loads only the top-level `.env` into the environment, which hid the case there). Three
 regression tests, each failing on the previous script, bring the audit's checks to 19; the reviewing session
 agreed with the fixes.
+
+Its next pass found three more, each reproduced: an `.npmrc` credential in quotes (`_authToken="..."`, as
+npm reads it) went unseen, now also `_password`; a key file (`.p12`, `.pem`, `.key`, `id_rsa`...) committed,
+renamed and deleted passed `--history`, so the history scan now recovers every credential file's name, not
+only `.env` and `.npmrc`; and init's `/out/` change had a side effect: with `/.env.*` then `!.env.example`,
+init appended `.env.*` after the exception and ignored `.env.example`, so init now puts its entries before
+a project's first exception. Its review of those fixes caught a regression in them, kept one recovered name
+per blob, so an `.npmrc` renamed `backup.key` lost its npm scan and could print a token in full; each
+historical blob now keeps every credential name it had. The audit has 22 checks and
+`evals/tests/test_init_gitignore.ts` three, each new one failing on the script before its fix; the session
+agreed with the result.
