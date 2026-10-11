@@ -125,17 +125,24 @@ function keyFileName(name: string): boolean {
 }
 /** A name some check depends on: a .env* file, an .npmrc, a key file. */
 function credentialName(name: string): boolean { return envFile(name) || npmrcFile(name) || keyFileName(name); }
-function names(entry: Entry): string[] { return [entry.name, ...(entry.aliases ?? [])]; }
+function allNames(entry: Entry): string[] { return [entry.name, ...(entry.aliases ?? [])]; }
 function learnEnv(text: string) {
   // Read values, never run a shell or expand variables. Ordinary settings are not secret literals.
-  const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|([^\r\n]*))/g;
+  // Readers differ on quotes and escapes (Bun turns \\ into \ even unquoted and keeps \" and \t; dotenv turns
+  // \" into "), so a value is learned in every reading a copy could take, the raw text included: a copy
+  // is found as a substring, and an extra reading costs nothing.
+  const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|`([^`]*)`|([^\r\n]*))/g;
+  const escapes: Record<string, string> = { n: '\n', r: '\r', '\\': '\\' };
   for (const match of text.replace(/^\uFEFF/, '').matchAll(assignment)) {
     if (!SECRET_NAME.test(match[1])) continue;
-    const value = match[2] !== undefined
-      ? match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
-      // (unquoted, a # starts a comment with or without a space before it, as dotenv and Bun read it)
-      : match[3] !== undefined ? match[3] : (match[4] ?? '').replace(/#.*$/, '').trim();
-    if (value.length >= 8) literals.add(value);
+    // (unquoted, a # starts a comment with or without a space before it, as dotenv and Bun read it)
+    const raw = match[2] ?? match[3] ?? match[4] ?? (match[5] ?? '').replace(/#.*$/, '').trim();
+    const readings = new Set([raw, raw.replace(/\\\\/g, '\\')]);
+    if (match[2] !== undefined) {
+      readings.add(raw.replace(/\\(.)/g, (s, c: string) => escapes[c] ?? s));
+      readings.add(raw.replace(/\\(.)/g, (s, c: string) => c === '"' ? '"' : escapes[c] ?? s));
+    }
+    for (const value of readings) if (value.length >= 8) literals.add(value);
   }
 }
 let lineText = '';
@@ -167,7 +174,7 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     credentialSpans.some(([from, to]) => start < to && end > from);
   for (const p of patterns) {
     // _authToken is meaningful in npm config; avoid treating source code describing it as credentials.
-    if (p.kind === 'npm authentication token' && !names(entry).some(npmrcFile)) continue;
+    if (p.kind === 'npm authentication token' && !allNames(entry).some(npmrcFile)) continue;
     for (const match of text.matchAll(new RegExp(p.re.source, p.re.flags))) {
       if (p.kind === 'npm authentication token' && /^\$\{[^}]+\}$/.test(match[1] ?? '')) continue;
       // A detected value is masked wherever it shows up in the output, a file name included.
@@ -204,7 +211,7 @@ function textScan(text: string, entry: Entry, scope: Scope) {
   }
 }
 function keyFile(entry: Entry, scope: Scope) {
-  const flagged = names(entry).some((n) => {
+  const flagged = allNames(entry).some((n) => {
     const base = path.posix.basename(n.replace(/\\/g, '/'));
     return (envFile(base) && base !== '.env.example') || keyFileName(base);
   });
@@ -431,7 +438,7 @@ function historicalCredentialFiles(entries: Entry[]): Entry[] {
         if (envFile(name)) result.set(oid, { ...e, name });
         // Every credential name the blob had keeps its checks (an .npmrc renamed backup.key is both), and the
         // report shows one of them rather than an alias such as backup.txt (.env.example alone is permitted).
-        if (!names(e).includes(name)) (e.aliases ??= []).push(name);
+        if (!allNames(e).includes(name)) (e.aliases ??= []).push(name);
         if (!credentialName(e.name) || path.posix.basename(e.name) === '.env.example') e.name = name;
       }
     }
@@ -480,8 +487,13 @@ async function main() {
     const entry = await workEntry(name);
     if (entry) working.push(entry);
   }
-  // Collect literals first, so diagnostics and paths are always redacted.
-  for (const name of new Set([...names, ...ignored].filter(envFile))) {
+  // Collect literals first, so diagnostics and paths are always redacted. .env files anywhere in the
+  // repository teach values, not only those under projectDir: --staged reads the whole index, and a copy of
+  // a key kept in ../config/.env is still a copy.
+  const envSpecs = ['--', ':(glob)**/.env*', ':(glob).env*'];
+  const envFiles = [...nul(git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', ...envSpecs])),
+    ...nul(git(['ls-files', '-z', '--others', '--ignored', '--exclude-standard', ...envSpecs]))];
+  for (const name of new Set(envFiles.filter(envFile))) {
     const entry = await workEntry(name);
     if (entry && entry.mode !== '120000') await learnEntry(entry);
   }

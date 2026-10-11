@@ -368,6 +368,35 @@ test('--history learns old .env values even when the blob has a later alias', as
   has(out, '[history] capture.txt [blob ' + copiedOid.slice(0, 12) + ']:1 — known environment/.env value');
 });
 
+test('a subfolder scan learns .env values from the whole repository', async () => {
+  const dir = await repo(), value = secret();
+  await write(dir, '.gitignore', '.env*\n');
+  await write(dir, 'config/.env', 'PRIVATE_TOKEN=' + value + '\n');
+  await write(dir, 'notes.txt', value + '\n');
+  await write(dir, 'video/note.txt', value + '\n');
+  git(dir, 'add', '.');
+  const subdir = path.join(dir, 'video');
+  has(audit(subdir, 1), '[working] video/note.txt:1 — known environment/.env value');
+  has(audit(subdir, 1, ['--staged']), '[index] notes.txt:1 — known environment/.env value');
+});
+
+test('.env values are learned as Bun reads them (backticks, escapes), not only raw', async () => {
+  const dir = await repo(), id = () => randomUUID().replace(/-/g, '');
+  await write(dir, '.gitignore', '.env*\n');
+  // Backticks, an escaped backslash before n, an escaped quote and a backslash in single quotes: Bun and the
+  // raw text disagree on each. Nested, so Bun doesn't load it into the audit's own environment.
+  const file = path.join(dir, 'config/.env');
+  await write(dir, 'config/.env', 'A_TOKEN=`Bt' + id() + '`\nB_TOKEN="Dq' + id() + '\\\\n\\"x"\nC_TOKEN=\'Sq' + id() + '\\\\y\'\nD_TOKEN=Uq' + id() + '\\\\z\n');
+  const parsed = run(process.execPath, ['--env-file=' + file, '-e',
+    'console.log(JSON.stringify(["A","B","C","D"].map((k) => process.env[k + "_TOKEN"])))'], scratch);
+  check(parsed.status === 0, 'bun could not parse the fixture .env');
+  const values: string[] = JSON.parse(parsed.stdout);
+  for (const v of values) secret(v);
+  await write(dir, 'capture.txt', values.join('\n') + '\n');
+  const out = audit(dir, 1);
+  for (const line of [1, 2, 3, 4]) has(out, '[working] capture.txt:' + line + ' — known environment/.env value');
+});
+
 test('ancestor repo is announced; working scope is local and staged scope is whole repo', async () => {
   const dir = await repo(), value = secret(), extraEnv = { AUDIT_TEST_TOKEN: value };
   await write(dir, 'outside.txt', value + '\n');
