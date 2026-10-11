@@ -128,19 +128,23 @@ function credentialName(name: string): boolean { return envFile(name) || npmrcFi
 function allNames(entry: Entry): string[] { return [entry.name, ...(entry.aliases ?? [])]; }
 function learnEnv(text: string) {
   // Read values, never run a shell or expand variables. Ordinary settings are not secret literals.
-  // Readers differ on quotes and escapes (Bun turns \\ into \ even unquoted and keeps \" and \t; dotenv turns
-  // \" into "), so a value is learned in every reading a copy could take, the raw text included: a copy
-  // is found as a substring, and an extra reading costs nothing.
+  // Readers differ on quotes and escapes, so a value is learned in every reading a copy could take, the raw
+  // text included: a copy is found as a substring, and an extra reading costs nothing. Bun strips backticks
+  // and turns \\ into \ even unquoted; in double quotes it reads \n \r \\ in one pass and keeps \" and \t.
+  // Node's dotenv replaces \n, then \r, and nothing else ("\\n" becomes \ and a newline); python-dotenv also
+  // reads \t \" \' \\ in one pass.
   const assignment = /(?:^|\n)[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(?:"((?:\\.|[^"\\])*)"|'([^']*)'|`([^`]*)`|([^\r\n]*))/g;
-  const escapes: Record<string, string> = { n: '\n', r: '\r', '\\': '\\' };
+  const onePass = (s: string, table: Record<string, string>) => s.replace(/\\(.)/g, (all, c: string) => table[c] ?? all);
+  const bun = { n: '\n', r: '\r', '\\': '\\' }, python = { ...bun, t: '\t', '"': '"', "'": "'" };
   for (const match of text.replace(/^\uFEFF/, '').matchAll(assignment)) {
     if (!SECRET_NAME.test(match[1])) continue;
     // (unquoted, a # starts a comment with or without a space before it, as dotenv and Bun read it)
     const raw = match[2] ?? match[3] ?? match[4] ?? (match[5] ?? '').replace(/#.*$/, '').trim();
     const readings = new Set([raw, raw.replace(/\\\\/g, '\\')]);
     if (match[2] !== undefined) {
-      readings.add(raw.replace(/\\(.)/g, (s, c: string) => escapes[c] ?? s));
-      readings.add(raw.replace(/\\(.)/g, (s, c: string) => c === '"' ? '"' : escapes[c] ?? s));
+      readings.add(onePass(raw, bun));
+      readings.add(raw.replace(/\\n/g, '\n').replace(/\\r/g, '\r'));
+      readings.add(onePass(raw, python));
     }
     for (const value of readings) if (value.length >= 8) literals.add(value);
   }

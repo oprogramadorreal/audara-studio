@@ -397,6 +397,17 @@ test('.env values are learned as Bun reads them (backticks, escapes), not only r
   for (const line of [1, 2, 3, 4]) has(out, '[working] capture.txt:' + line + ' — known environment/.env value');
 });
 
+test('.env values are also learned as Node dotenv reads them ("\\\\n": a backslash, then a newline)', async () => {
+  const dir = await repo(), head = 'Nd' + randomUUID().replace(/-/g, ''), tail = 'Tl' + randomUUID().replace(/-/g, '');
+  await write(dir, '.gitignore', '.env*\n');
+  await write(dir, 'config/.env', 'B_TOKEN="' + head + '\\\\n' + tail + '"\n');
+  // dotenv's own steps: \n, then \r, replaced in the text between the double quotes, and nothing else
+  const value = secret((head + '\\\\n' + tail).replace(/\\n/g, '\n').replace(/\\r/g, '\r'));
+  check(value === head + '\\\n' + tail, 'the fixture is not the reading it means to test');
+  await write(dir, 'capture.txt', 'copied: ' + value + '\n');
+  has(audit(dir, 1), '[working] capture.txt:1 — known environment/.env value');
+});
+
 test('ancestor repo is announced; working scope is local and staged scope is whole repo', async () => {
   const dir = await repo(), value = secret(), extraEnv = { AUDIT_TEST_TOKEN: value };
   await write(dir, 'outside.txt', value + '\n');
