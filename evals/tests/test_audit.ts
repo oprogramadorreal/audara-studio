@@ -141,6 +141,41 @@ test('known credential formats block and are masked', async () => {
   for (const [file, , kind] of formats) has(out, '[working] ' + file + ':1 — ' + kind);
 });
 
+test('URL passwords stay masked and credential spans are not email addresses', async () => {
+  const dir = await repo(), password = secret(), shortPassword = secret(['Z', '9', '!'].join(''));
+  const urls = [
+    'https://fixture:' + password + '@private.example/path',
+    'https://fixture:' + shortPassword + '@short.example/path',
+  ];
+  git(dir, 'config', 'user.email', password + '@identity.example');
+  await write(dir, password + '.txt', 'ordinary text\n');
+  // This file sorts before the URLs: its extracted email still needs the password masked at output.
+  await write(dir, 'contacts.txt', password + '@copied.example\n');
+  await write(dir, 'urls.txt', urls.join('\n') + '\nMaintainer: maintainer@example.invalid\n');
+  const verify = (out: string, scope: string, location = 'urls.txt') => {
+    has(out, 'Learned literal values: 0;');
+    has(out, '[' + scope + '] ' + location + ':1 — URL credentials');
+    has(out, '[' + scope + '] ' + location + ':2 — URL credentials');
+    has(out, '[' + scope + '] ' + location + ':3 — email address');
+    for (const line of [1, 2])
+      check(!out.includes(location + ':' + line + ' — email address'), 'URL credentials were treated as an email address');
+    const emails = out.split('Unique email addresses found in scanned text')[1]?.split('Git object storage:')[0] ?? '';
+    has(emails, 'maintainer@example.invalid');
+    has(emails, '@copied.example');
+    check(!emails.includes('@private.example') && !emails.includes('@short.example'),
+      'URL credentials entered the email summary');
+  };
+  verify(audit(dir, 1), 'working');
+  git(dir, 'add', '.');
+  verify(audit(dir, 1, ['--staged']), 'index');
+  git(dir, 'commit', '-qm', 'fixture with URLs');
+  const oid = git(dir, 'rev-parse', 'HEAD:urls.txt');
+  git(dir, 'rm', '-q', 'urls.txt');
+  git(dir, 'commit', '-qm', 'remove URLs');
+  // Only history now reveals the password printed in current filenames and the configured email.
+  verify(audit(dir, 1, ['--history']), 'history', 'urls.txt [blob ' + oid.slice(0, 12) + ']');
+});
+
 test('npm environment placeholder is not a credential', async () => {
   const dir = await repo();
   await write(dir, '.npmrc', '_authToken=' + '$' + '{NPM_TOKEN}\n');

@@ -1128,7 +1128,7 @@ What the evidence said:
 
 What changed:
 
-- **`skills/video-repo/`** (SKILL.md, 7,960 bytes; `references/repository-files.md`; `scripts/audit.ts`),
+- **`skills/video-repo/`** (SKILL.md, 7,992 bytes; `references/repository-files.md`; `scripts/audit.ts`),
   model-invoked like the others: the request itself is in words, loading the skill only supplies the method,
   the request authorizes the changes, and nothing leaves the machine until the user asks. Scoped to audara
   projects, the only kind seen. Where the repository goes (fresh, this folder, or a folder above, which waits
@@ -1181,15 +1181,19 @@ Codex's reviews changed the design in these ways, each taken: `git ls-files -o` 
 staged files, so the audit reads the working set, the index and the history separately; an existing
 repository is a path of its own (branches, remotes, history and LFS kept, a file now ignored untracked with
 `git rm --cached`, a >100 MiB blob in the history named as a push blocker); "output" is defined by role, not
-type; someone's staged work stays staged (`git commit -- <paths>`); the identity is settled before the first
+type; someone's staged work stays staged (`git commit -- <paths>`), and since such a commit adds back a
+file untracked with `git rm --cached`, the skill asks first when it must do both; the identity is settled before the first
 commit, not after; a clone-check failure is diagnosed rather than taken for a missing file; the branch is
 the current one, not always main; every `.env` value of 8 characters or more was a literal at first, so
 `NODE_ENV=production` would have blocked every file saying "production" (now only secret-named ones); a git
-warning (Codex's sandbox can't read the global ignore file) made every run "incomplete" (now a note).
+warning (Codex's sandbox can't read the global ignore file) made every run "incomplete" (now a note); the
+password in a URL like `https://user:<password>@host` came out unmasked in the audit's list of e-mail
+addresses (now left out of it and masked); and an eval exception let a commit go in before the identity
+question the skill asks.
 
 What was checked: the three validators pass on all four skills, each SKILL.md is under 8,000 bytes
-(video-repo's 7,960) with no byte-order mark, and every changed script and harness file compiles.
-`evals/tests/test_audit.ts` (14 checks, Codex's) passes. On a project made by init and planted with
+(video-repo's 7,992) with no byte-order mark, and every changed script and harness file compiles.
+`evals/tests/test_audit.ts` (15 checks, Codex's) passes. On a project made by init and planted with
 `repo-traps`, the audit found the copied token, the hardcoded key, the 110 MiB take, the duplicated logo and
 the home path in half a second; with `history-secret`, the key in the earlier commit. init adds `out/` to a
 `.gitignore` that says `/out/`. Without the new environment, git run in a folder below `evals/results/`

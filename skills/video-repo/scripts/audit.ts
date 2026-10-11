@@ -46,10 +46,12 @@ const patterns: Pattern[] = [
   { kind: 'Hugging Face token', re: /\bhf_[A-Za-z0-9]{20,}\b/g },
   { kind: 'Stripe live secret', re: /\bsk_live_[A-Za-z0-9]{16,}\b/g },
   { kind: 'PEM private key', re: /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----/g },
-  { kind: 'URL credentials', re: /\b[a-z][a-z0-9+.-]*:\/\/[^\s\/:@"'<>]+:[^\s\/@"'<>]+@/gi },
+  { kind: 'URL credentials', re: /\b[a-z][a-z0-9+.-]*:\/\/[^\s\/:@"'<>]+:([^\s\/@"'<>]+)@/gi },
   { kind: 'npm authentication token', re: /(?:_authToken|_auth)\s*=\s*([^\s"'#;]+)/gi },
 ];
 const literals = new Set<string>();
+// URL passwords are redacted everywhere, without counting as environment/.env inputs.
+const maskedLiterals = new Set<string>();
 const findings: Finding[] = [];
 const findingKeys = new Set<string>();
 const limits = new Map<string, number>();
@@ -63,11 +65,12 @@ let batch: BlobBatch | undefined;
 
 function addLimit(kind: string) { limits.set(kind, (limits.get(kind) ?? 0) + 1); }
 function masked(value: string): string {
-  return value.slice(0, 3).replace(/[\x00-\x20\x7f]/g, '?') + '… [length ' + value.length + ']';
+  const prefix = value.length > 3 ? value.slice(0, 3).replace(/[\x00-\x20\x7f]/g, '?') : '';
+  return prefix + '… [length ' + value.length + ']';
 }
 function safe(value: string): string {
   let result = value;
-  for (const literal of [...literals].sort((a, b) => b.length - a.length)) {
+  for (const literal of [...new Set([...literals, ...maskedLiterals])].sort((a, b) => b.length - a.length)) {
     result = result.split(literal).join(masked(literal));
     result = result.split(JSON.stringify(literal).slice(1, -1)).join(masked(literal));
   }
@@ -148,11 +151,18 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     const escapedAt = escaped === value ? -1 : text.indexOf(escaped);
     if (escapedAt >= 0) find('blocker', scope, name, 'known environment/.env value (JSON escaped)', lineAt(text, escapedAt), value);
   }
+  const credentialSpans: [number, number][] = [];
+  const inCredentials = (start: number, end: number) =>
+    credentialSpans.some(([from, to]) => start < to && end > from);
   for (const p of patterns) {
     // _authToken is meaningful in npm config; avoid treating source code describing it as credentials.
     if (p.kind === 'npm authentication token' && path.posix.basename(entry.name) !== '.npmrc') continue;
     for (const match of text.matchAll(new RegExp(p.re.source, p.re.flags))) {
       if (p.kind === 'npm authentication token' && /^\$\{[^}]+\}$/.test(match[1] ?? '')) continue;
+      if (p.kind === 'URL credentials') {
+        maskedLiterals.add(match[1]);
+        credentialSpans.push([match.index!, match.index! + match[0].length]);
+      }
       find('blocker', scope, name, p.kind, lineAt(text, match.index!), match[1] ?? match[0]);
     }
   }
@@ -170,12 +180,15 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     find('review', scope, name, 'personal home path / possible outside dependency', lineAt(text, m.index!));
   const email = /\b[A-Za-z0-9.!#$%&'*+/=?^_{}|~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}\b/g;
   for (const m of text.matchAll(email)) {
+    // user:password@host contains an email-shaped substring, not a contact address.
+    if (inCredentials(m.index!, m.index! + m[0].length)) continue;
     emails.add(m[0]);
     find('review', scope, name, m[0].toLowerCase() === gitEmail.toLowerCase() ? 'configured Git email' : 'email address', lineAt(text, m.index!));
   }
   if (gitEmail) {
     const at = text.indexOf(gitEmail);
-    if (at >= 0) find('review', scope, name, 'configured Git email', lineAt(text, at));
+    if (at >= 0 && !inCredentials(at, at + gitEmail.length))
+      find('review', scope, name, 'configured Git email', lineAt(text, at));
   }
 }
 function keyFile(entry: Entry, scope: Scope) {
@@ -588,21 +601,22 @@ async function main() {
   const past = history ? historyEntries() : [];
   for (const entry of historicalEnvEntries(past)) await learnEntry(entry);
   say('Audara Git audit (read-only)');
+  say('Scanning contents...');
+  const selected = staged ? index : working;
+  for (const entry of selected) await inspect(entry, staged ? 'index' : 'working', true);
+  for (const entry of past) {
+    // Include the immutable object ID in findings; rev-list gives one representative historical path.
+    await inspect({ ...entry, location: entry.name + ' [blob ' + entry.oid!.slice(0, 12) + ']' }, 'history', false);
+  }
+  // Finish all scans before reporting paths or addresses: a later URL can reveal a password to mask.
   say('Git root: ' + gitRoot);
   say('Project: ' + projectDir);
   if (relative) say('ATTENTION: Git root is ABOVE projectDir. Working inventory is project-scoped; --staged and --history cover the WHOLE repository.');
   say('Set: ' + (staged ? 'entire index (exact staged blobs)' : 'working files under projectDir, tracked + non-ignored untracked; deleted files omitted'));
   say('Git author email (configured, not changed): ' + (gitEmail || '(unset)'));
   say('Learned literal values: ' + literals.size + '; only secret-named environment/.env variables with values >=8 characters count.');
-  say('Scanning contents...');
-  const selected = staged ? index : working;
-  for (const entry of selected) await inspect(entry, staged ? 'index' : 'working', true);
   sizes('Selected set', selected);
   if (history) {
-    for (const entry of past) {
-      // Include the immutable object ID in findings; rev-list gives one representative historical path.
-      await inspect({ ...entry, location: entry.name + ' [blob ' + entry.oid!.slice(0, 12) + ']' }, 'history', false);
-    }
     sizes('All-ref history (unique reachable blobs, not cumulative checkout bytes)', past);
     say('History locations use one representative path and blob ID; reflog-only/dangling objects and submodule histories are excluded.');
   }

@@ -197,7 +197,7 @@ itself, which is exactly why the project carries its own conventions.
 
 A finished project often goes into git next, so someone else can clone it on another machine, work on it
 and render it again. The user asked for that in the same words project after project, and the first one
-made by hand (`oprog-1`, 2026-10-10) came out well but needed three follow-ups and kept a leak (history.md,
+made by hand (`oprog-1`, 2026-10-10) came out well but needed four follow-ups and kept a leak (history.md,
 0.6.0). `video-repo` holds the method:
 
 - **Where the repository goes first.** None yet: `git init -b main` in the project. The project already is
@@ -229,12 +229,16 @@ made by hand (`oprog-1`, 2026-10-10) came out well but needed three follow-ups a
   newcomer would: `bun install --frozen-lockfile`, `bun run check`, `verify` for each video (every scene and
   the files it reads) and a three-second draft with sound. It says what ran, without promising identical
   pixels on another machine.
-- **Defaults, then the hand-off.** Nothing is published until the user pushes, and every choice can still
-  change, so it goes on rather than waiting and ends with what's theirs to decide: the repository's name
-  when the folder's is a working name (it goes into `package.json`, AGENTS.md's heading and the README's
-  title, not into video ids or titles), facts the README can't know, rights to third-party media if the
-  repository may go public, and the e-mail every commit carries. It creates a remote or pushes only when
-  asked, after asking private or public.
+- **Defaults, then the hand-off.** Nothing is published until the user pushes, so it goes on rather than
+  waiting, with one exception: the name and e-mail every commit carries are settled before the first
+  commit. Unset, it asks; when the user asked to keep personal details out, it asks once with everything
+  else ready (that address, or their GitHub noreply one), and the repository's name goes in the same
+  message when the folder's is a working name. It ends with what's still theirs to decide: the name, if it
+  wasn't asked (it goes into `package.json`, AGENTS.md's heading and the README's title, not into video ids
+  or titles), facts the README can't know, and rights to third-party media if the repository may go public.
+  Someone's staged work stays staged: only the skill's own paths are committed, and it asks first when it
+  must also untrack a file or a file holds both. It creates a remote or pushes only when asked, after asking
+  private or public.
 
 Considered and left out: a general "media project into git" skill (only audara projects have been seen so
 far), a reference inside code-video (its SKILL.md is full, and a git request wouldn't find it), explicit-only
