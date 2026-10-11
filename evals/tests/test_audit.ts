@@ -227,6 +227,22 @@ test('quoted .npmrc credentials block and stay masked', async () => {
   has(out, '[working] .npmrc:2 — npm authentication token');
 });
 
+test('a double-quoted .npmrc token is also masked as npm decodes it (JSON escapes)', async () => {
+  const dir = await repo(), rest = 'oo' + randomUUID().replace(/-/g, '');
+  // npm reads "f..." as JSON: the token it uses starts with f, and that is what a file name would show
+  const encoded = secret(String.fromCharCode(92) + 'u0066' + rest), decoded = secret('f' + rest);
+  await write(dir, '.npmrc', '//registry.example/:_authToken="' + encoded + '"\n');
+  await write(dir, decoded + '.txt', 'ordinary text\n');
+  has(audit(dir, 1), '[working] .npmrc:1 — npm authentication token');
+  // an empty quoted value is no credential, and must not break the output's masking
+  const empty = await repo();
+  await write(empty, '.npmrc', '_authToken=""\n');
+  await write(empty, 'note.txt', 'ordinary text\n');
+  const out = audit(empty, 0);
+  has(out, 'Blockers: 0');
+  has(out, 'note.txt');
+});
+
 test('--history keeps a key file name (.p12) when the blob was renamed before deletion', async () => {
   const dir = await repo();
   await write(dir, 'signing.P12', Buffer.from([0x30, 0x82, 0x01, 0x00, 0, 1, 2, 3]));

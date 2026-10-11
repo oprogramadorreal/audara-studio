@@ -47,8 +47,8 @@ const patterns: Pattern[] = [
   { kind: 'Stripe live secret', re: /\bsk_live_[A-Za-z0-9]{16,}\b/g },
   { kind: 'PEM private key', re: /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----/g },
   { kind: 'URL credentials', re: /\b[a-z][a-z0-9+.-]*:\/\/[^\s\/:@"'<>]+:([^\s\/@"'<>]+)@/gi },
-  // (npm reads a value quoted or not)
-  { kind: 'npm authentication token', re: /(?:_authToken|_auth|_password)\s*=\s*["']?([^\s"'#;]+)/gi },
+  // (npm reads a value quoted or not: a double-quoted one, group 1, as JSON; any other is group 2)
+  { kind: 'npm authentication token', re: /(?:_authToken|_auth|_password)\s*=\s*(?:"((?:\\.|[^"\\\r\n])*)"|'?([^\s"'#;]+))/gi },
 ];
 const literals = new Set<string>();
 // URL passwords are redacted everywhere, without counting as environment/.env inputs.
@@ -72,6 +72,7 @@ function masked(value: string): string {
 function safe(value: string): string {
   let result = value;
   for (const literal of [...new Set([...literals, ...maskedLiterals])].sort((a, b) => b.length - a.length)) {
+    if (!literal) continue; // (an empty one would split every character)
     result = result.split(literal).join(masked(literal));
     result = result.split(JSON.stringify(literal).slice(1, -1)).join(masked(literal));
   }
@@ -180,11 +181,16 @@ function textScan(text: string, entry: Entry, scope: Scope) {
     // _authToken is meaningful in npm config; avoid treating source code describing it as credentials.
     if (p.kind === 'npm authentication token' && !allNames(entry).some(npmrcFile)) continue;
     for (const match of text.matchAll(new RegExp(p.re.source, p.re.flags))) {
-      if (p.kind === 'npm authentication token' && /^\$\{[^}]+\}$/.test(match[1] ?? '')) continue;
-      // A detected value is masked wherever it shows up in the output, a file name included.
-      maskedLiterals.add(match[1] ?? match[0]);
+      const npm = p.kind === 'npm authentication token';
+      const value = npm ? match[1] ?? match[2] ?? '' : match[1] ?? match[0];
+      if (!value || (npm && /^\$\{[^}]+\}$/.test(value))) continue;
+      // A detected value is masked wherever it shows up in the output, a file name included, and so is
+      // npm's own reading of a double-quoted one (JSON: f is f).
+      maskedLiterals.add(value);
+      if (npm && match[1] !== undefined)
+        try { maskedLiterals.add(JSON.parse('"' + match[1] + '"')); } catch { /* not JSON: npm keeps it as written */ }
       if (p.kind === 'URL credentials') credentialSpans.push([match.index!, match.index! + match[0].length]);
-      find('blocker', scope, name, p.kind, lineAt(text, match.index!), match[1] ?? match[0]);
+      find('blocker', scope, name, p.kind, lineAt(text, match.index!), value);
     }
   }
   const assignment = /\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|passwd)\b["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=:-]{12,})/gi;
