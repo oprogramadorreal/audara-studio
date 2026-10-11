@@ -2,7 +2,7 @@
   "name": "audara-studio",
   "displayName": "Audara Studio",
   "version": "0.6.0",
-  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data, a video-ideas skill that helps choose what to make and writes the starting prompt, and a video-repo skill that puts a finished project in git for someone else to clone and render.",
+  "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data, a video-ideas skill that helps choose what to make and writes the starting prompt, and a video-repo skill that puts a project in git for someone else to clone and render.",
   "author": {
     "name": "oprogramadorreal",
     "url": "https://github.com/oprogramadorreal"

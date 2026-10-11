@@ -41,7 +41,8 @@ only, which belong to video-ideas, and one to put a project in git, which belong
 read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
 `scripts/render.ts`, which video-repo's own work can do). A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
-of a finished one: `videos/promo/video.json`, its song and init's `AGENTS.md`).
+of a finished one: `videos/promo/video.json`, its song, and the `AGENTS.md` and `CLAUDE.md` init writes,
+made by init itself and again whenever `init.ts` changes).
 
 ```sh
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/code-video.json
@@ -109,7 +110,9 @@ together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas
 only and take minutes. The `vr-` cases stand for someone handing a finished project on: its first
 repository, asked for in the user's own words, then a name and a commit e-mail (`vr-first-repo`), and a
 project already in git with a key in an earlier commit and someone's change left staged
-(`vr-existing-history`). They start from the title-card project too, and `"plant": "<name>"` adds what
+(`vr-existing-history`), and the repository asked for in an empty folder before the video, which then
+has to survive init and reach the full pass in later sessions (`vr-empty-first`). The first two start from
+the title-card project too, and `"plant": "<name>"` adds what
 `evals/harness/plant.ts` plants: a home-folder path in a treatment, keys in a script and a debug dump, a
 render outside `out/`, an `out/` below a video, a duplicate, a file over GitHub's 100 MiB limit, a
 superseded generated image. `"git": false` leaves the folder without the harness's repository and setup

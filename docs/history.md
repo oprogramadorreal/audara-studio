@@ -1128,7 +1128,7 @@ What the evidence said:
 
 What changed:
 
-- **`skills/video-repo/`** (SKILL.md, 7,992 bytes; `references/repository-files.md`; `scripts/audit.ts`),
+- **`skills/video-repo/`** (SKILL.md, 7,991 bytes; `references/repository-files.md`; `scripts/audit.ts`),
   model-invoked like the others: the request itself is in words, loading the skill only supplies the method,
   the request authorizes the changes, and nothing leaves the machine until the user asks. Scoped to audara
   projects, the only kind seen. Where the repository goes (fresh, this folder, or a folder above, which waits
@@ -1144,7 +1144,7 @@ What changed:
   push, done only when asked.
 - **`scripts/audit.ts`**, written by the Codex session: read-only and dependency-free. It finds copies of
   secret-named environment and `.env` values (the user's keys live there), known key formats, key files,
-  home paths, e-mail addresses, GPS and QuickTime location data, files over GitHub's limits and duplicates;
+  home paths, e-mail addresses, files over GitHub's limits and duplicates;
   `--staged` reads the index, `--history` every reachable blob; it masks secrets and lists what it doesn't
   cover. On `oprog-1 --history` it runs in about 3.5 seconds and flags `TREATMENT.md:151–152`.
 - **init:** its `.gitignore` merge no longer counts `/out/` as `out/`; its AGENTS.md names video-repo and
@@ -1157,8 +1157,9 @@ What changed:
   video projects); cv-23, a git request in code-video's set; trigger fixtures placed in subfolders with
   `=>`, and an AGENTS.md fixture written by init itself; task.ts's `"git": false` (no setup repository, git
   kept from finding this one above `evals/results/`) and `"plant"` (`evals/harness/plant.ts`: what the
-  projects above held); `vr-first-repo` (the user's prompt, then a name and a noreply address) and
-  `vr-existing-history` (a key in an earlier commit, a change left staged).
+  projects above held); `vr-first-repo` (the user's prompt, then a name and a noreply address),
+  `vr-existing-history` (a key in an earlier commit, a change left staged) and `vr-empty-first` (the
+  repository before the video, then the video, then the full pass).
 
 Considered and rejected:
 
@@ -1169,7 +1170,7 @@ Considered and rejected:
   Its description isn't changed either: no run has shown it loading for a git request yet; cv-23 measures
   that, and init's AGENTS.md routes the request meanwhile. Codex argued for an exclusion in code-video's
   description now; the evidence rule decided it.
-- **A general "media project into git" skill:** only audara projects have been seen.
+- **A general "media project into git" skill:** only audara-studio projects have been seen.
 - **A media allowlist by default** (oprog-1's): it hides the next required file from the session that adds
   it; one a project already has on purpose is kept.
 - **Installing a secret scanner:** gitleaks is suggested when it's already installed.
@@ -1192,8 +1193,8 @@ addresses (now left out of it and masked); and an eval exception let a commit go
 question the skill asks.
 
 What was checked: the three validators pass on all four skills, each SKILL.md is under 8,000 bytes
-(video-repo's 7,992) with no byte-order mark, and every changed script and harness file compiles.
-`evals/tests/test_audit.ts` (15 checks, Codex's) passes. On a project made by init and planted with
+(video-repo's 7,991) with no byte-order mark, and every changed script and harness file compiles.
+`evals/tests/test_audit.ts` (16 checks, Codex's) passes. On a project made by init and planted with
 `repo-traps`, the audit found the copied token, the hardcoded key, the 110 MiB take, the duplicated logo and
 the home path in half a second; with `history-secret`, the key in the earlier commit. init adds `out/` to a
 `.gitignore` that says `/out/`. Without the new environment, git run in a folder below `evals/results/`
@@ -1202,3 +1203,36 @@ Code, Opus 5.5, one run each) loaded video-repo for "put this video project in g
 GitHub later" and left "commit my changes to the intro scene with a good message" alone. **Not run:** the
 full trigger sets (cv-23 included) and the two `vr-` cases, an hour or more per case and tool. They, with
 `--without` runs as the bar (the model alone did oprog-1), decide whether the skill earns its place.
+
+After the pull request opened, the user asked how the skill behaves when it comes first, in an empty
+folder, and whether it then picks up the files the other skills make; asked that the product be called
+audara-studio, not audara; that the skill be as simple as it can be without limiting the model; and that the
+clone it tests be deleted. Both sessions audited the skill with their skill-creator (Anthropic's plugin,
+Codex's built-in) and reviewed the branch for Claude Code and Codex. What they found:
+
+- **A repository set up before init mostly survives it:** init merges its entries into an existing
+  `.gitignore` and appends its section to an existing AGENTS.md, but writes its README, the one with the
+  commands to watch and render, only where there's none. In a test (an empty folder, a repository with a
+  README, then init) the project lost init's README.
+- **Nothing picks up files later on its own:** neither git nor the other skills commit unless asked, so new
+  files sit untracked under the ignore rules until the user commits or asks for the repository again.
+- **Nothing in the skill or the audit is specific to either tool.** Codex's default sandbox allows the
+  system's temporary folder but blocks the network the clone's `bun install` needs. Current Claude Code can
+  read AGENTS.md directly, though init's `CLAUDE.md` importer stays for older versions and other settings;
+  the trigger fixtures lacked it.
+- **The skill carried git recipes a frontier model already knows,** and the audit carried a parser for
+  location data in photos and clips (about 130 lines) that no project had needed.
+
+What changed: a "No video project yet" path (the repository, a `.gitignore` with init's entries so keys are
+covered from the first file, a `.gitattributes`, AGENTS.md with its Repository section and a CLAUDE.md
+importing it; no README and no commit unless asked; the full pass when asked again); the git recipes turned
+into the outcomes they protect (someone's work kept, a file untracked but kept on disk, the identity settled
+first); the clone in a new folder in the system's temporary folder (inside the project, Node would resolve a
+missing package from the project's own `node_modules`), deleted whether it passed or failed and checked
+gone, with no preview, since `verify` and `video` start and stop their own server, and a blocked network or
+folder asked for or reported; the audit at 550 lines, location data left to a tool at hand; audara-studio
+in the skill's prose and the audit's banner; init's `CLAUDE.md` in the trigger fixtures; `vr-22`, a request
+in an empty folder, and `vr-empty-first`, the repository, then the video, then the full pass, in three
+sessions. Checked: the three validators, SKILL.md at 7,991 bytes, the audit's 16 checks, a planted
+project, and one trigger run of `vr-22` (Claude Code, Opus 5.5: loaded); not run, as above: the full
+trigger sets and the `vr-` cases.

@@ -84,11 +84,13 @@ function has(output: string, text: string) {
 }
 function test(name: string, run: () => Promise<void>) { tests.push({ name, run }); }
 
-test('copied secret-named environment value blocks', async () => {
+test('copied secret-named environment value beyond 8 KiB blocks', async () => {
   const dir = await repo(), value = secret();
-  await write(dir, 'capture.txt', 'Captured response:\n' + value + '\n');
-  const out = audit(dir, 1, [], { AUDIT_TEST_TOKEN: value });
-  has(out, '[working] capture.txt:2 — known environment/.env value');
+  await write(dir, 'capture.txt', 'Captured response: ' + 'x'.repeat(8192) + '\n' + value + '\n');
+  const extraEnv = { AUDIT_TEST_TOKEN: value };
+  has(audit(dir, 1, [], extraEnv), '[working] capture.txt:2 — known environment/.env value');
+  git(dir, 'add', 'capture.txt');
+  has(audit(dir, 1, ['--staged'], extraEnv), '[index] capture.txt:2 — known environment/.env value');
 });
 
 test('copied ignored .env value blocks', async () => {
@@ -215,6 +217,31 @@ test('duplicates include exactly 4 KiB and exclude smaller files', async () => {
   has(duplicates, 'logo-a.bin');
   has(duplicates, 'logo-b.bin');
   check(!duplicates.includes('tiny-'), 'sub-4-KiB files reported as duplicates');
+});
+
+test('media hashes include bytes after 8 KiB; location metadata stays unchecked', async () => {
+  const dir = await repo(), clip = Buffer.alloc(12 * 1024);
+  // A location atom is intentionally left to a separate metadata tool.
+  clip.writeUInt32BE(clip.length);
+  clip.write('\xa9xyz', 4, 'latin1');
+  for (const name of ['clip-a.mov', 'clip-b.mov']) await write(dir, name, clip);
+  const different = Buffer.from(clip);
+  different[different.length - 1] = 1;
+  await write(dir, 'different-tail.mov', different);
+  await write(dir, 'photo.jpg', Buffer.alloc(128));
+  git(dir, 'add', '.');
+  for (const flags of [[], ['--staged']]) {
+    const out = audit(dir, 0, flags);
+    has(out, 'audara-studio Git audit (read-only)');
+    has(out, 'Location metadata in photos and clips is not checked. Inspect it with a tool at hand, or report it unchecked.');
+    has(out, 'photo.jpg');
+    has(out, 'To review: 0');
+    const duplicates = out.split('SHA-256 duplicate groups')[1]?.split('Blockers:')[0] ?? '';
+    has(duplicates, '2 identical files, 12288 bytes each:');
+    has(duplicates, 'clip-a.mov');
+    has(duplicates, 'clip-b.mov');
+    check(!duplicates.includes('different-tail.mov'), 'media hash ignored bytes after the binary prefix');
+  }
 });
 
 test('--staged reads index bytes in both directions and leaves them unchanged', async () => {

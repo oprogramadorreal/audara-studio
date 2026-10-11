@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
-// Audit the files proposed for a video repository, without changing files, the index or history.
-// Sizes and duplicate hashes help choose what to keep. Secret and personal-path checks catch common
-// leaks before a commit; photo and clip metadata checks flag location information for review.
+// audara-studio: audit proposed repository files without changing files, the index or history.
+// Sizes and duplicate hashes help choose what to keep. Secret, email and personal-path checks catch
+// common leaks before a commit. Location metadata in photos and clips is not checked.
 // Only secret-named environment/.env variables supply literal values (8+ characters). Output masks
 // secrets, even in filenames. The checks are a net, not proof: their limits are listed under Coverage.
 //
@@ -28,7 +28,6 @@ const MiB = 1024 * 1024;
 const TEXT_LIMIT = 2 * MiB; // Bounded text, even when a file has the wrong extension.
 const HEADER = 8192; // A NUL here identifies binary data; this deliberately excludes UTF-16.
 const HASH_MIN = 4 * 1024; // Include small logos without reporting every tiny repeated snippet.
-const META_LIMIT = 2 * MiB; // Per metadata payload; containers are walked without loading media.
 const DETAIL_LIMIT = 100; // Counts stay complete; terminal output stays usable.
 const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE/i;
 type Scope = 'working' | 'index' | 'history';
@@ -266,14 +265,12 @@ class BlobBatch {
   stop() { this.child.stdin.end(); this.child.kill(); }
 }
 
-// Prefix caching permits header probes, then monotonic metadata reads. Hashing streams all bytes,
-// including skipped media, without retaining the file. Git blob streams and ordinary files share it.
+// Cache only the prefix needed for text checks. Hash all bytes as they stream past, including
+// skipped binary content, without retaining the file. Git blobs and ordinary files share this reader.
 class Content {
   private reader: StreamReader;
   private position = 0;
   private prefix = Buffer.alloc(0);
-  private recent = Buffer.alloc(0);
-  private recentStart = 0;
   private hasher = createHash('sha256');
   private hashEnabled: boolean;
   constructor(readonly size: number, chunks: AsyncIterable<Buffer>, hash = true) {
@@ -289,30 +286,10 @@ class Content {
     }
     return keep ? Buffer.concat(pieces) : Buffer.alloc(0);
   }
-  async at(offset: number, count: number): Promise<Buffer> {
-    if (offset < 0 || count < 0 || offset + count > this.size || count > TEXT_LIMIT)
-      throw new AuditError('Metadata read exceeds its bounds.');
-    let result: Buffer;
-    if (offset < this.position) {
-      const usePrefix = offset < this.prefix.length;
-      const cache = usePrefix ? this.prefix : this.recent;
-      const start = usePrefix ? offset : offset - this.recentStart;
-      const cached = start < 0 ? -1 : Math.min(count, cache.length - start);
-      if (cached < 0 || offset + cached < this.position && cached < count)
-        throw new AuditError('Metadata layout requires an unsupported backwards read.');
-      const head = cache.subarray(start, start + cached);
-      result = cached === count ? head : Buffer.concat([head, await this.consume(count - cached, true)]);
-    } else {
-      await this.consume(offset - this.position, false);
-      result = await this.consume(count, true);
-    }
-    this.recent = result; this.recentStart = offset;
-    return result;
-  }
   async head(length: number): Promise<Buffer> {
     const n = Math.min(length, this.size);
     if (n > this.prefix.length)
-      this.prefix = Buffer.concat([this.prefix, await this.at(this.prefix.length, n - this.prefix.length)]);
+      this.prefix = Buffer.concat([this.prefix, await this.consume(n - this.prefix.length, true)]);
     return this.prefix.subarray(0, n);
   }
   async finish(): Promise<string> {
@@ -320,114 +297,6 @@ class Content {
     if (!await this.reader.ended())
       throw new AuditError('A file changed size during the audit. Finish writes to the project, then run again.');
     return this.hashEnabled ? this.hasher.digest('hex') : '';
-  }
-}
-
-function gpsTiff(data: Buffer): boolean {
-  if (data.length < 8) return false;
-  const little = data.subarray(0, 2).toString('ascii') === 'II';
-  if (!little && data.subarray(0, 2).toString('ascii') !== 'MM') return false;
-  const u16 = (p: number) => little ? data.readUInt16LE(p) : data.readUInt16BE(p);
-  const u32 = (p: number) => little ? data.readUInt32LE(p) : data.readUInt32BE(p);
-  if (u16(2) !== 42) return false;
-  let offset = u32(4);
-  const seen = new Set<number>();
-  for (let depth = 0; offset && depth < 16; depth++) {
-    if (seen.has(offset) || offset < 8 || offset + 2 > data.length) throw new AuditError('Invalid TIFF directory.');
-    seen.add(offset);
-    const count = u16(offset), end = offset + 2 + count * 12;
-    if (end + 4 > data.length) throw new AuditError('Truncated TIFF directory.');
-    for (let p = offset + 2; p < end; p += 12)
-      if (u16(p) === 0x8825 && u16(p + 2) === 4 && u32(p + 4) === 1) return true;
-    offset = u32(end);
-  }
-  if (offset) throw new AuditError('TIFF directory limit reached.');
-  return false;
-}
-async function metadata(content: Content, entry: Entry, scope: Scope) {
-  const ext = path.posix.extname(entry.name).toLowerCase();
-  const gps = () => find('review', scope, entry.name, 'GPS metadata candidate');
-  const location = () => find('review', scope, entry.name, 'QuickTime location metadata candidate');
-  try {
-    if (['.jpg', '.jpeg'].includes(ext)) {
-      const signature = await content.at(0, Math.min(2, content.size));
-      if (signature.length !== 2 || signature.readUInt16BE() !== 0xffd8) throw new AuditError('Invalid JPEG.');
-      let pos = 2, segments = 0;
-      while (pos + 2 <= content.size && ++segments <= 4096) {
-        const h = await content.at(pos, 2); pos += 2;
-        if (h[0] !== 0xff) throw new AuditError('Invalid JPEG marker.');
-        let marker = h[1];
-        while (marker === 0xff && pos < content.size) marker = (await content.at(pos++, 1))[0];
-        if (marker === 0xda || marker === 0xd9) return;
-        if (marker === 0x01 || marker >= 0xd0 && marker <= 0xd7) continue;
-        const len = (await content.at(pos, 2)).readUInt16BE(); pos += 2;
-        if (len < 2 || pos + len - 2 > content.size) throw new AuditError('Invalid JPEG segment.');
-        if (marker === 0xe1) {
-          const b = await content.at(pos, len - 2);
-          if (b.subarray(0, 6).equals(Buffer.from('Exif\0\0')) && gpsTiff(b.subarray(6))) gps();
-        }
-        pos += len - 2;
-      }
-      throw new AuditError('JPEG segment limit or incomplete structure.');
-    } else if (ext === '.png') {
-      const sig = await content.at(0, Math.min(8, content.size));
-      if (!sig.equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new AuditError('Invalid PNG.');
-      let pos = 8, chunks = 0;
-      while (pos + 12 <= content.size && ++chunks <= 10000) {
-        const h = await content.at(pos, 8), size = h.readUInt32BE(), type = h.toString('ascii', 4, 8);
-        if (pos + size + 12 > content.size) throw new AuditError('Invalid PNG chunk.');
-        if (type === 'eXIf') {
-          if (size > META_LIMIT) throw new AuditError('PNG EXIF exceeds metadata limit.');
-          if (gpsTiff(await content.at(pos + 8, size))) gps();
-        }
-        pos += size + 12;
-        if (type === 'IEND') return;
-      }
-      throw new AuditError('PNG chunk limit or incomplete structure.');
-    } else if (['.heic', '.heif', '.hif'].includes(ext)) {
-      find('review', scope, entry.name, 'HEIC/HEIF metadata not checked; inspect its location metadata separately');
-    } else if (['.mp4', '.mov', '.m4v'].includes(ext)) {
-      let boxes = 0, inspected = 0;
-      const walk = async (start: number, end: number, depth: number): Promise<void> => {
-        if (depth > 12) throw new AuditError('QuickTime nesting limit.');
-        let pos = start;
-        while (pos + 8 <= end) {
-          if (++boxes > 20000) throw new AuditError('QuickTime box limit.');
-          const h = await content.at(pos, 8);
-          let size = h.readUInt32BE(), header = 8;
-          const type = h.toString('latin1', 4, 8);
-          if (size === 1) {
-            const big = (await content.at(pos + 8, 8)).readBigUInt64BE();
-            if (big > BigInt(Number.MAX_SAFE_INTEGER)) throw new AuditError('QuickTime box too large.');
-            size = Number(big); header = 16;
-          } else if (size === 0) size = end - pos;
-          if (size < header || pos + size > end) throw new AuditError('Invalid QuickTime box.');
-          if (type === '\xa9xyz') location();
-          const payload = pos + header, stop = pos + size;
-          if (['moov', 'udta', 'trak', 'ilst'].includes(type)) {
-            await walk(payload, stop, depth + 1);
-          } else if (type === 'meta') {
-            // ISO meta is a full box. Legacy QuickTime omits the four version/flags bytes.
-            const probe = await content.at(payload, Math.min(4, stop - payload));
-            const full = probe.length === 4 && probe.readUInt32BE() === 0;
-            await walk(payload + (full ? 4 : 0), stop, depth + 1);
-          } else if (['keys', 'data', '\xa9xyz'].includes(type)) {
-            const n = Math.min(size - header, META_LIMIT - inspected);
-            if (n < size - header) addLimit('QuickTime metadata payloads exceeded 2 MiB budget');
-            if (n > 0) {
-              const data = await content.at(payload, n); inspected += n;
-              if (data.includes(Buffer.from('com.apple.quicktime.location')) || data.includes(Buffer.from([0xa9, 0x78, 0x79, 0x7a]))) location();
-            }
-          }
-          pos = stop;
-        }
-        if (pos !== end) throw new AuditError('Truncated QuickTime box header.');
-      };
-      await walk(0, content.size, 0);
-    }
-  } catch {
-    addLimit('Metadata could not be fully inspected');
-    find('review', scope, entry.name, 'metadata check incomplete; inspect it separately (malformed, unsupported or bounded)');
   }
 }
 
@@ -487,7 +356,6 @@ async function inspect(entry: Entry, scope: Scope, duplicates: boolean) {
     }
   }
   if (entry.mode === '120000') find('review', scope, entry.location ?? entry.name, 'symlink: target bytes checked, dependency not followed');
-  else if (scope !== 'history') await metadata(content, entry, scope);
   const digest = await content.finish();
   if (duplicates && entry.size >= HASH_MIN) {
     const group = duplicateGroups.get(digest) ?? [];
@@ -600,7 +468,7 @@ async function main() {
   for (const entry of index.filter(e => envFile(e.name))) await learnEntry(entry);
   const past = history ? historyEntries() : [];
   for (const entry of historicalEnvEntries(past)) await learnEntry(entry);
-  say('Audara Git audit (read-only)');
+  say('audara-studio Git audit (read-only)');
   say('Scanning contents...');
   const selected = staged ? index : working;
   for (const entry of selected) await inspect(entry, staged ? 'index' : 'working', true);
@@ -660,8 +528,8 @@ async function main() {
   if (Bun.which('gitleaks')) say('gitleaks is available. Optional extra: gitleaks git --redact . (run at Git root; not run by this audit).');
   say('\nCoverage');
   say('Text: first 2 MiB/file, skipping NUL in first 8 KiB. No binary/UTF-16 secrets, archives, image text or arbitrary key formats.');
-  say('Metadata: JPEG/PNG GPS tags and QuickTime location markers, for review. HEIC/HEIF metadata is not checked.');
-  if (history) say('History checks text, key filenames and sizes, not historical media metadata or commit messages/author identities.');
+  say('Location metadata in photos and clips is not checked. Inspect it with a tool at hand, or report it unchecked.');
+  if (history) say('History checks text, key filenames and sizes, not commit messages/author identities.');
   say('Working scans use current disk bytes; concurrent changes and Git filters can change staged bytes. Run --staged after staging.');
   for (const [kind, count] of limits) say('  ' + kind + ': ' + count);
   if (gitWarnings.size)

@@ -11,7 +11,7 @@ cd "$(dirname "$0")/../.."
 TOOLS="${1:-both}"; shift || true
 [ "$TOOLS" = both ] && TOOLS="claude codex"
 MAX=4   # concurrent runs: each may start a browser and render on the GPU
-FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-product-real-screens cv-product-concept-mockup cv-images-offered cv-images-used cv-images-no-key st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending vi-ideas-only vi-product-screens vi-refine-keeps-constraints vi-adapt-found-prompt vi-silent-long vi-improve-and-make vi-select-then-make vi-ideas-and-make"
+FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-product-real-screens cv-product-concept-mockup cv-images-offered cv-images-used cv-images-no-key st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending vi-ideas-only vi-product-screens vi-refine-keeps-constraints vi-adapt-found-prompt vi-silent-long vi-improve-and-make vi-select-then-make vi-ideas-and-make vr-empty-first"
 LATER="cv-later-session-small-change cv-second-format vi-existing-project vr-first-repo vr-existing-history"
 CASES="${CASES:-$FIRST $LATER}"
 for case in $CASES; do

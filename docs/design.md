@@ -203,6 +203,15 @@ made by hand (`oprog-1`, 2026-10-10) came out well but needed four follow-ups an
 - **Where the repository goes first.** None yet: `git init -b main` in the project. The project already is
   one: its branches, remotes, history, LFS setup and anyone's staged work are kept, and its history is
   searched too. A folder above is one (a home folder, a monorepo): the user decides, before anything moves.
+- **Before there's a video, only what init keeps.** A user may ask for the repository in an empty folder,
+  before code-video has made anything. Then the skill sets up the repository, a `.gitignore` with init's
+  entries (so keys are covered before the first file), a `.gitattributes`, AGENTS.md with its Repository
+  section and a CLAUDE.md importing it, and commits nothing unless asked. init then merges its entries into
+  the `.gitignore` and appends its section to AGENTS.md, but writes its README (the commands to watch and
+  render) only where there's none, so the skill writes no README yet: one written first cost a test project
+  init's. Nothing picks up files later on its own (neither git nor the other skills commit unless asked);
+  later sessions read the Repository section before committing, and asking again once a video exists brings
+  the full pass.
 - **Files sorted by their role, not their type.** A generated or derived file the render loads (the final
   mix, extracted frames) is an input and stays, as do the sources someone needs to change the video (the
   mix's stems, the chosen takes, request records, the scripts that made a kept file). Generated and paid
@@ -217,18 +226,24 @@ made by hand (`oprog-1`, 2026-10-10) came out well but needed four follow-ups an
   Free) counts every clone's download.
 - **Keys and personal details, checked before the first `git add`.** `scripts/audit.ts` (bun, read-only)
   looks for the values of secret-named variables in the environment and in `.env` files wherever they were
-  copied, known key formats, key files, home-folder paths, e-mail addresses and location data in photos and
-  clips, files over GitHub's limits and duplicates; with `--staged` it reads exactly what the commit holds,
-  with `--history` every blob any ref reaches. It never prints a secret and says what it doesn't cover. A
-  key already in the history is revoked first; rewriting history waits for the user's yes.
+  copied, known key formats, key files, home-folder paths, e-mail addresses, files over GitHub's limits and
+  duplicates; with `--staged` it reads exactly what the commit holds, with `--history` every blob any ref
+  reaches. It never prints a secret and says what it doesn't cover: location data in camera photos and clips
+  is looked at with a tool at hand, or reported unchecked (a parser for it was cut as more code than any
+  case seen has needed). A key already in the history is revoked first; rewriting history waits for the
+  user's yes.
 - **A README for people, notes for whoever comes next.** The README says what the videos are, how they were
   made, how to run and render them and what isn't in git, from init's README, whose commands stay. A
   published title or link nobody gave is left out, not guessed. `docs/REPOSITORY.md` and a short section in
   AGENTS.md (outside init's markers) tell a later session what's kept and how to add media.
-- **A fresh clone is the test.** The skill clones the repository into a temporary folder and runs what a
-  newcomer would: `bun install --frozen-lockfile`, `bun run check`, `verify` for each video (every scene and
-  the files it reads) and a three-second draft with sound. It says what ran, without promising identical
-  pixels on another machine.
+- **A fresh clone is the test.** The skill clones the repository into a new folder in the system's
+  temporary folder, not inside the project, where Node would resolve a package missing from `package.json`
+  from the project's own `node_modules`. It runs what a newcomer would: `bun install --frozen-lockfile`,
+  `bun run check`, `verify` for each video (every scene and the files it reads) and a three-second draft
+  with sound, which start and stop their own server, so no preview holds the folder. Then, passed or failed,
+  it deletes the clone and checks it's gone, or names its path. A sandbox can block the install's network
+  (Codex's default) or the temporary folder: it asks, or reports the check as not run. It says what ran,
+  without promising identical pixels on another machine.
 - **Defaults, then the hand-off.** Nothing is published until the user pushes, so it goes on rather than
   waiting, with one exception: the name and e-mail every commit carries are settled before the first
   commit. Unset, it asks; when the user asked to keep personal details out, it asks once with everything
@@ -240,8 +255,8 @@ made by hand (`oprog-1`, 2026-10-10) came out well but needed four follow-ups an
   must also untrack a file or a file holds both. It creates a remote or pushes only when asked, after asking
   private or public.
 
-Considered and left out: a general "media project into git" skill (only audara projects have been seen so
-far), a reference inside code-video (its SKILL.md is full, and a git request wouldn't find it), explicit-only
+Considered and left out: a general "media project into git" skill (only audara-studio projects have been
+seen so far), a reference inside code-video (its SKILL.md is full, and a git request wouldn't find it), explicit-only
 invocation (see "Format, for both tools"), and installing a secret scanner (gitleaks is suggested when it's
 already there).
 
@@ -669,7 +684,7 @@ audara-studio/
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
-    │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, location data
+    │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, e-mail addresses
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
