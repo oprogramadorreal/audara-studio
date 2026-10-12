@@ -19,14 +19,14 @@ Three options a stranger would notice in a crowded feed at 168 px wide and read 
 ## A session
 Keep this checklist in your notes. Explore once (about six ideas, three finished, one critic round); fixing what the check or the critic finds is finishing, not a new round.
 - [ ] **The video.** Its treatment (idea, words, Decisions, Never claim), script or lyrics, timeline, `docs/STYLE.md`, and its key moments seen (`render.ts sheet`). One line: what a viewer gets from it, and what its first 30 s show. Write in the video's language.
-- [ ] **The channel.** `docs/CHANNEL.md`: name and link, language, thumbnail style (typeface file, colours, faces, words), title voice, links and credits it repeats, the user's decisions apart from what you inferred. Without it: what the user said, an earlier project they point to, else ask once for its link and go on meanwhile; its recent thumbnails and titles show what its audience knows. Write down what you learn.
-- [ ] **Ideas.** About six rough pictures (quick crops, placeholder type) and 10 to 20 titles, together; then one title (into `youtube/title.txt` at once: the preview reads it) and three pictures that differ in what the viewer sees and why they'd click. Post the rough sheet and the titles you're weighing, and go on. Reasons in `NOTES.md`.
+- [ ] **The channel.** `docs/CHANNEL.md`: name and link, language, thumbnail style (typeface file, colours, faces, words), title voice, links and credits it repeats, the user's decisions apart from what you inferred. Without it: what the user said, an earlier project they point to, else ask once for its link and go on meanwhile; its recent thumbnails and titles show what its audience knows; note it there.
+- [ ] **Ideas.** About six rough pictures (quick crops, placeholder type) and 10 to 20 titles, together; then one title (into `youtube/title.txt` at once: the preview reads it) and three pictures that differ in what the viewer sees and why they'd click. Post the rough sheet (roughs and scratch stay in `out/`) and the titles you're weighing, and go on. Reasons in `NOTES.md`.
 - [ ] **Art.** Each idea gets the means it needs (references/art.md): the video's frames rendered at 2x without its captions, a plate staged in the engine, the user's photos, generated images after a yes, code. Type in the channel's typeface.
 - [ ] **Finish** each as `youtube/thumbnail-N.png`, 1280x720 unless asked otherwise, its source beside it so a word can change later: an HTML page through `shoot`, or any pipeline.
 - [ ] **Look as viewers do.** `preview` (again after any change), and look at every image. Then a critic: a fresh subagent that starts without this conversation, given only the preview images and the title, answers: what does each promise; what reads first at 168 px; what is confusing, illegible, ordinary or misleading; does each give its own reason to click; which one change would help most. No subagent: look again yourself, and say so. A last look at full size.
 - [ ] **Words.** `description.txt` (plain text, short unless asked) and `tags.txt`, only what gets pasted (references/youtube.md). Chapters from timing data checked against the final cut, never guessed.
 - [ ] **Check.** `check --full` for the whole package (plain `check` for a part); fix every FAIL.
-- [ ] **Hand-off**, in the user's language, every part a line or so, even if you usually reply briefly: what's theirs to decide (the pick, a Test & Compare run, the "AI use" disclosure, an opening that doesn't pay off); your pick and why; each option's idea; the title and two runners-up with lengths; the description's first line and chapters; files and preview images; what the check and the critic found; costs. Their decisions go in `NOTES.md` in their words (channel-wide ones in `docs/CHANNEL.md`), not the treatment, which is the video's; read them before any change.
+- [ ] **Hand-off**, in the user's language, every part a line or so, even if you usually reply briefly: what's theirs to decide (the pick, a Test & Compare run, the "AI use" disclosure, an opening that doesn't pay off), also atop `NOTES.md`; your pick and why; each option's idea; the title and two runners-up with lengths; the description's first line and chapters; files and preview images; what the check and the critic found; costs. Their decisions go in `NOTES.md` in their words (channel-wide ones in `docs/CHANNEL.md`), not the treatment, which is the video's; read them before any change.
 
 ## Commands
 From the project folder; `--help` has every option.
@@ -41,10 +41,10 @@ From the project folder; `--help` has every option.
 | Check the package | `bun <skill>/scripts/youtube.ts check --video <video> [--full]` |
 | Generated image | code-video's `scripts/imagegen.py` (references/art.md) |
 
-`shoot` serves the project at `/` (a page loads `/public/fonts/<file>.ttf`) and reports what reads small and what didn't load. `preview` writes to `out/<video>/youtube/`. Outside an audara project, pass the package folder, not `--video`.
+`shoot` serves the project at `/` (a page loads `/public/fonts/<file>.ttf`) and reports what reads small and what didn't load. Outside an audara project, pass the package folder, not `--video`.
 
 ## Read when
-- references/art.md: the pictures (ideas, plates, staging, photos, generated images, finishing, type, the niche, the critic).
+- references/art.md: the pictures (ideas, plates, photos, generated images, finishing, type, the niche, the critic).
 - references/youtube.md: the title, description, chapters and tags, and YouTube's sizes, limits, testing and policy, with sources.
 
 ## Gotchas

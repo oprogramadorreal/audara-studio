@@ -331,7 +331,8 @@ the pages are the model's, so no layout ships.
 
 The files the user uploads live together in `videos/<video>/youtube/` (the three PNGs, `title.txt`,
 `description.txt` and `tags.txt` holding only what gets pasted, `NOTES.md` with the ideas, the runners-up and
-the user's decisions, and the sources that rebuild each thumbnail); previews and scratch go to
+the user's decisions, opening with what is still theirs to decide, and the sources that rebuild each
+thumbnail); previews, roughs and scratch go to
 `out/<video>/youtube/`. The package's decisions stay in its `NOTES.md`, not the treatment's Decisions, which
 are the video's: init's AGENTS.md says so too, since a Codex run once logged the thumbnail notes there. video-repo keeps the folder: the delivered PNG is the record, since a rebuild isn't
 guaranteed to match.
