@@ -18,3 +18,6 @@ skills/code-video/assets/template-webgl/CLAUDE.md
 
 # Eval run outputs
 evals/results/
+
+# A browser tool's scratch (Playwright MCP writes logs and screenshots here)
+.playwright-mcp/
