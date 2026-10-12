@@ -121,9 +121,12 @@ try {
   r = run(['check', 'jpgs', '--full', '--jpg']);
   expect('check --full --jpg: the same JPEGs pass when JPEG was asked for', r.code === 0, r.out);
 
-  // check: the length as the engine reads it (video.json's duration before the audio file)
+  // check: the length as the engine reads it (video.json's duration before a longer soundtrack: the case codex
+  // reproduced, a 30 s video over 60 s of audio)
   mkdirSync(path.join(root, 'proj', 'videos', 'v', 'youtube'), { recursive: true });
-  writeFileSync(path.join(root, 'proj', 'videos', 'v', 'video.json'), JSON.stringify({ title: 'V', size: [1920, 1080], fps: 30, audio: null, duration: 30 }));
+  mkdirSync(path.join(root, 'proj', 'videos', 'v', 'data'), { recursive: true });
+  writeFileSync(path.join(root, 'proj', 'videos', 'v', 'video.json'), JSON.stringify({ title: 'V', size: [1920, 1080], fps: 30, audio: 'song.wav', duration: 30 }));
+  writeFileSync(path.join(root, 'proj', 'videos', 'v', 'data', 'audio.json'), JSON.stringify({ duration: 60 }));
   writeFileSync(path.join(root, 'proj', 'videos', 'v', 'youtube', 'description.txt'), 'x\n0:00 A\n0:10 B\n0:25 C\n');
   const lenRun = Bun.spawnSync(['bun', SCRIPT, 'check', '--video', 'v'], { cwd: path.join(root, 'proj'), stdout: 'pipe', stderr: 'pipe' });
   const lenOut = lenRun.stdout.toString() + lenRun.stderr.toString();

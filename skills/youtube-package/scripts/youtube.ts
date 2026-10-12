@@ -44,7 +44,7 @@
 //            (video.json's duration, its audio segments, data/audio.json, its one audio file).
 // <dir> is the package folder: thumbnail-1.png ... and title.txt, description.txt, tags.txt. In an audara project,
 // --video <video> means videos/<video>/youtube/, previews go to out/<video>/youtube/, and the video's length is
-// read from its render (out/<video>/<video>.mp4), else its audio, else video.json's duration (ffprobe for media).
+// read from its render (out/<video>/<video>.mp4), else as the engine resolves it (ffprobe for media).
 // Chrome: CHROME_PATH, else the usual install places, else Microsoft Edge (also Chromium).
 //
 // The limits and sizes below were checked against YouTube's help pages on 2026-10-12 (references/youtube.md).
@@ -597,8 +597,10 @@ async function shoot() {
   if (outIsFile && sources.length > 1) fail('--out names one file, but there are several pages: give a folder');
   if (outIsFile && /\.jpe?g$/i.test(out!) !== Boolean(jpg)) fail(`--out ${out}: its extension doesn't match the format (${jpg ? 'JPEG with --jpg' : 'PNG without --jpg'})`);
   const dests = sources.map((src) => out ? (outIsFile ? path.resolve(out) : path.join(path.resolve(out), path.basename(src).replace(/\.html?$/i, ext))) : src.replace(/\.html?$/i, ext));
-  // (two pages with one name, into one folder, would overwrite each other: refused before anything is drawn)
-  const clash = dests.filter((d, i) => dests.findIndex((e) => e.toLowerCase() === d.toLowerCase()) !== i);
+  // (two pages with one name, into one folder, would overwrite each other: refused before anything is drawn;
+  // Windows and macOS don't tell A.png from a.png, Linux does)
+  const same = (a: string, b: string) => process.platform === 'linux' ? a === b : a.toLowerCase() === b.toLowerCase();
+  const clash = dests.filter((d, i) => dests.findIndex((e) => same(e, d)) !== i);
   if (clash.length) fail(`two pages would write the same image (${[...new Set(clash)].map((d) => path.relative(ROOT, d)).join(', ')}): rename one, or shoot them into separate folders`);
   // errors: the image isn't what the page asked for (a file missing, a face not drawing); notes: advice
   let errors = 0, notes = 0;
