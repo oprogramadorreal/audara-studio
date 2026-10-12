@@ -5,7 +5,7 @@ description: "Makes a video's YouTube package: three thumbnail options (1280x720
 
 # youtube-package
 
-The user is about to publish a video. Make what decides whether people click and stay: three thumbnail options and one title made as a pair, then the description (with chapters) and the tags, in `videos/<video>/youtube/` (outside an audara project, a `youtube/` folder beside the video). "A thumbnail" or "get it ready for YouTube" gets the whole package; a narrower request gets that part (a title, the description, one option changed). Their words outrank this skill. `<skill>` is this skill's folder; other paths are the project's.
+The user is about to publish a video. Make what decides whether people click and stay: three thumbnail options and one title made as a pair, then the description (with chapters) and the tags, in `videos/<video>/youtube/` (outside an audara project, a `youtube/` folder beside the video). "A thumbnail" or "get it ready for YouTube" gets the whole package, description and tags too, even when only the pictures are named; one other part alone gets that part (a title, the description, one option changed). Their words outrank this skill. `<skill>` is this skill's folder; other paths are the project's.
 
 ## Fixed
 - **The pair promises what the video delivers, early.** The first seconds keep the viewers who clicked, and play in the thumbnail's place on hover and in phone feeds. Metaphor and new art are fine; an invented result, quote or endorsement isn't. When the opening doesn't pay off the best promise, say so and offer the change (code-video makes it); never change the video here.
@@ -26,7 +26,7 @@ Keep this checklist in your notes. Explore once (about six ideas, three finished
 - [ ] **Look as viewers do.** `preview` (again after any change), and look at every image. Then a critic: a fresh subagent that starts without this conversation, given only the preview images and the title, answers: what does each promise; what reads first at 168 px; what is confusing, illegible, ordinary or misleading; does each give its own reason to click; which one change would help most. No subagent: look again yourself, and say so. A last look at full size.
 - [ ] **Words.** `description.txt` (plain text, short unless asked) and `tags.txt`, only what gets pasted (references/youtube.md). Chapters from timing data checked against the final cut, never guessed.
 - [ ] **Check.** `check --full` for the whole package (plain `check` for a part); fix every FAIL.
-- [ ] **Hand-off**, in the user's language: your pick and why, in a line; each option's idea; the title and two runners-up with lengths; the description's first line and chapters; files and preview images; what the check and the critic found; costs; what's theirs to decide (the pick, a Test & Compare run, disclosure, an opening that doesn't pay off). Their decisions go in `NOTES.md` in their words (channel-wide ones in `docs/CHANNEL.md`); read them before any change.
+- [ ] **Hand-off**, in the user's language, every part a line or so: your pick and why; each option's idea; the title and two runners-up with lengths; the description's first line and chapters; files and preview images; what the check and the critic found; costs; what's theirs to decide (the pick, a Test & Compare run, disclosure, an opening that doesn't pay off). Their decisions go in `NOTES.md` in their words (channel-wide ones in `docs/CHANNEL.md`); read them before any change.
 
 ## Commands
 From the project folder; `--help` has every option.
@@ -41,7 +41,7 @@ From the project folder; `--help` has every option.
 | Check the package | `bun <skill>/scripts/youtube.ts check --video <video> [--full]` |
 | Generated image | code-video's `scripts/imagegen.py` (references/art.md) |
 
-`shoot` serves the project at `/` (a page loads `/public/fonts/<file>.ttf`) and reports text sizes at 168 px, the badge's corner, and fonts that didn't load or lack a character. `preview` writes to `out/<video>/youtube/`. Outside an audara project, pass the package folder, not `--video`.
+`shoot` serves the project at `/` (a page loads `/public/fonts/<file>.ttf`) and reports what reads small and what didn't load. `preview` writes to `out/<video>/youtube/`. Outside an audara project, pass the package folder, not `--video`.
 
 ## Read when
 - references/art.md: the pictures (ideas, plates, staging, photos, generated images, finishing, type, the niche, the critic).
@@ -52,4 +52,3 @@ From the project folder; `--help` has every option.
 - `render.ts --size 1280x720` refuses a 16:9 video (same shape): render `--scale 2` and scale down.
 - Image models misspell: every word is set in code.
 - A Bun or Node script (importing `node:` or using Bun) doesn't go in `videos/`: `bun run check` type-checks it for the browser and fails. HTML or Python there; scratch in `out/`.
-- Plates staged in the engine go in a video named `<video>-thumbs`, so it never becomes the default video.

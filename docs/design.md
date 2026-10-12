@@ -306,8 +306,10 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   another showed the user nothing for four hours. The rough sheet and the titles being weighed go to the user
   early, and work goes on.
 - **Their words.** A title or text the user decided is used exactly, a stronger version offered beside it;
-  one given as a start is the skill's to keep or improve, saying what changed. A narrower request (a title, the
-  description, one option changed) gets that part.
+  one given as a start is the skill's to keep or improve, saying what changed. A request for a thumbnail gets the
+  description and tags too, even when it names only the pictures (a Codex run once read the user's own prompt
+  as thumbnails only); a request for one other part (a title, the description, one option changed) gets that
+  part.
 - **Honest packaging.** The pair promises what the video delivers in its first seconds (YouTube's Intro measure,
   viewers still watching at 30 s, helps assess that, and YouTube removes thumbnails that misrepresent). Those
   seconds are packaging too: on a computer, pointing at a thumbnail plays the video in its place, and phone feeds
