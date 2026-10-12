@@ -11,15 +11,16 @@
 //            1280x720 layout) to <page>.png beside it, once its fonts and images have loaded. The folder it runs
 //            in is served at /, so a page loads `/public/fonts/X.ttf` or `plates/frame.png` (relative to itself)
 //            alike. It reports each block of text: its type size, and that size at 168 px wide (the smallest
-//            place YouTube shows a thumbnail); a block whose box enters the duration badge's corner; a typeface
+//            place its words are meant to be read); a block whose box enters the duration badge's corner; a typeface
 //            that isn't drawing (a fallback face took over) and characters the typeface lacks (an Ê, a Ç); a file
 //            that failed to load or decode. Text inside images or canvases isn't measured: look at it.
 //   preview: bun <skill>/scripts/youtube.ts preview [<dir> | <image> ...] [--video <video>] [--title "..."]
 //            [--channel "..."] [--duration m:ss] [--niche <dir>] [--lang en|pt|es] [--out <dir>]
-//            The options as viewers meet them, one PNG each: sizes.png (every option at 360, 246 and 168 px wide
-//            on YouTube's dark and light pages, with the duration badge); feed-dark.png and feed-light.png (each
-//            option in a home row, an up-next column and a phone feed, its title wrapped and cut as there); and
-//            search.png (a search result, with the description's first lines). The other videos come from
+//            The options as viewers meet them, one PNG each: sizes.png (every option at the widths YouTube shows
+//            it, 500 px in search down to 100 in a playlist, on its dark and light pages, with the duration
+//            badge); feed-dark.png and feed-light.png (each option in a home row, an up-next column and a phone
+//            feed, its title wrapped and cut as there); and search.png (a search result, with as much of the
+//            description as search shows). The other videos come from
 //            --niche: images, with their titles and channels in niche.json ([{"file", "title", "channel",
 //            "views", "duration"}]); without it, plain placeholders, and the preview then shows legibility and
 //            the title's fit, not how the options stand out.
@@ -105,12 +106,15 @@ const HASHTAGS_MAX = 60;                      // over this, YouTube ignores ever
 const HASHTAGS_MANY = 15;                     // well under that, a long list already reads as spam
 const CHAPTER_MIN = 10;                       // seconds: the shortest chapter YouTube accepts
 const CHAPTERS_MIN = 3;
-// The duration badge sits in the bottom-right corner at every size; at 168 px wide (the up-next column) it covers
-// about the last quarter of the width and of the height, so text or a face there is hidden where it matters most.
-const BADGE_CORNER = { x: 0.75, y: 0.74 };
-// Where previews show a thumbnail, in CSS pixels: the home grid, search on a laptop, and the up-next column.
-const REVIEW_WIDTHS = [360, 246, 168];
-const SMALLEST = 168;
+// The duration badge sits in the bottom-right corner everywhere. Measured on YouTube (2026-10-12) it covers up to
+// about 17% of the width and 18% of the height in today's layouts, about 20% by 23% in the classic 168 px up-next
+// column, more for a long video: the last 256x166 px of a 1280x720 image, where text or a face gets hidden.
+const BADGE_CORNER = { x: 0.8, y: 0.77 };
+// Where a thumbnail shows, in CSS pixels, measured on YouTube on 2026-10-12 in a laptop's window: search (500),
+// the home grid (three in a row: 344 at 1366 px wide, up to 528 on a big screen), the up-next column (about 215
+// to 325; 168 in the classic layout, still served) and the playlist panel (100), where it is only recognized.
+const REVIEW_WIDTHS = [500, 344, 250, 168, 100];
+const SMALLEST = 168; // the smallest place a thumbnail's words are meant to be read
 // Type under this many pixels at 168 px wide is likely too small to read there (oprog-4's set, which read at
 // that size, had 14 to 19 px).
 const SMALLEST_READABLE = 9;
@@ -649,9 +653,9 @@ const THEMES = {
 } as const;
 type Theme = keyof typeof THEMES;
 const WORDS = {
-  en: { views: '12K views', age: '2 days ago', option: 'Option', home: 'Home', upnext: 'Up next', phone: 'Phone', search: 'Search' },
-  pt: { views: '12 mil visualizações', age: 'há 2 dias', option: 'Opção', home: 'Início', upnext: 'A seguir', phone: 'Celular', search: 'Busca' },
-  es: { views: '12 k visualizaciones', age: 'hace 2 días', option: 'Opción', home: 'Inicio', upnext: 'A continuación', phone: 'Teléfono', search: 'Búsqueda' },
+  en: { views: '12K views', age: '2 days ago', option: 'Option', home: 'Home', upnext: 'Up next', phone: 'Phone', search: 'Search', classic: 'classic', playlist: 'Playlist' },
+  pt: { views: '12 mil visualizações', age: 'há 2 dias', option: 'Opção', home: 'Início', upnext: 'A seguir', phone: 'Celular', search: 'Busca', classic: 'clássico', playlist: 'Playlist' },
+  es: { views: '12 k visualizaciones', age: 'hace 2 días', option: 'Opción', home: 'Inicio', upnext: 'A continuación', phone: 'Teléfono', search: 'Búsqueda', classic: 'clásico', playlist: 'Lista' },
 };
 type Lang = keyof typeof WORDS;
 
@@ -686,13 +690,14 @@ function thumbHtml(src: string | undefined, w: number, duration: string, radius:
   const t = THEMES[theme];
   const img = src ? `<img src="${src}" style="width:${w}px;height:${h}px;object-fit:cover;display:block;border-radius:${radius}px">`
     : `<div style="width:${w}px;height:${h}px;border-radius:${radius}px;background:linear-gradient(135deg,${t.card},${t.bar})"></div>`;
-  // YouTube's badge: 12 px medium white on 80% black, 4 px from the corner, at every size.
-  const badge = duration ? `<span style="position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.8);color:#fff;font:500 12px/18px ${FONT_UI};padding:0 4px;border-radius:4px">${esc(duration)}</span>` : '';
+  // YouTube's badge: 12 px medium white on 80% black, about 8 px from the corner (4 in the smallest places).
+  const inset = w >= 200 ? 8 : 4, lh = w >= 200 ? 20 : 18;
+  const badge = duration ? `<span style="position:absolute;right:${inset}px;bottom:${inset}px;background:rgba(0,0,0,.8);color:#fff;font:500 12px/${lh}px ${FONT_UI};padding:0 4px;border-radius:4px">${esc(duration)}</span>` : '';
   return `<div style="position:relative;width:${w}px;height:${h}px;flex:none">${img}${badge}</div>`;
 }
 
-function titleHtml(title: string | undefined, size: number, line: number, color: string, bar: string, cls: string, weight = 500): string {
-  if (title) return `<div class="${cls}" style="font:${weight} ${size}px/${line}px ${FONT_UI};color:${color};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">${esc(title)}</div>`;
+function titleHtml(title: string | undefined, size: number, line: number, color: string, bar: string, cls: string, weight = 500, lines = 2): string {
+  if (title) return `<div class="${cls}" style="font:${weight} ${size}px/${line}px ${FONT_UI};color:${color};display:-webkit-box;-webkit-line-clamp:${lines};-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">${esc(title)}</div>`;
   return `<div style="height:${line * 2}px;display:flex;flex-direction:column;gap:${line - size}px;padding-top:4px"><div style="height:${size - 4}px;width:95%;background:${bar};border-radius:3px"></div><div style="height:${size - 4}px;width:60%;background:${bar};border-radius:3px"></div></div>`;
 }
 
@@ -735,12 +740,15 @@ async function preview() {
   const other = (): Other => (others.length ? others[pick++ % others.length] : {});
 
   // sizes.png: every option at every review width, on both pages (the finished image, scaled down)
+  const where = [w.search, w.home, w.upnext, `${w.upnext} (${w.classic})`, w.playlist];
   const sizesBody = (['dark', 'light'] as Theme[]).map((theme) => {
     const t = THEMES[theme];
+    const head = `<div class="row" style="margin-bottom:8px"><div style="width:84px;flex:none"></div>
+      ${REVIEW_WIDTHS.map((px, i) => `<div class="meta12" style="width:${px}px;flex:none">${esc(where[i])} · ${px}</div>`).join('')}</div>`;
     const rows = ours.map((src, i) => `<div class="row" style="align-items:flex-end;margin-bottom:16px">
-      <div style="width:84px;font:500 14px ${FONT_UI};color:${t.meta}">${w.option} ${i + 1}</div>
-      ${REVIEW_WIDTHS.map((px) => thumbHtml(src, px, duration, px >= 246 ? 12 : 8, theme)).join('')}</div>`).join('');
-    return `<div style="background:${t.bg};padding:16px 20px 4px;border-radius:12px">${rows}</div>`;
+      <div style="width:84px;flex:none;font:500 14px ${FONT_UI};color:${t.meta}">${w.option} ${i + 1}</div>
+      ${REVIEW_WIDTHS.map((px) => thumbHtml(src, px, duration, px >= 300 ? 12 : 8, theme)).join('')}</div>`).join('');
+    return `<div style="background:${t.bg};padding:16px 20px 4px;border-radius:12px">${head}${rows}</div>`;
   }).join('');
   const sizesWidth = 84 + REVIEW_WIDTHS.reduce((a, b) => a + b + 16, 0) + 2 * 24 + 40;
   pages.set('sizes', pageHtml('dark', sizesWidth, `<div style="display:flex;flex-direction:column;gap:16px">${sizesBody}</div>`));
@@ -750,14 +758,15 @@ async function preview() {
     const t = THEMES[theme];
     pick = 0;
     // (another video shows its own duration when niche.json gives it, else no badge)
-    const homeCard = (o: Other, cls: string) => `<div style="width:360px;flex:none">${thumbHtml(o.src, 360, o.duration ?? '', 12, theme)}
+    const homeCard = (o: Other, cls: string) => `<div style="width:344px;flex:none">${thumbHtml(o.src, 344, o.duration ?? '', 12, theme)}
       <div style="display:flex;gap:12px;margin-top:12px"><div class="avatar">${esc((o.channel ?? '').slice(0, 1).toUpperCase())}</div>
       <div style="flex:1;min-width:0">${titleHtml(o.title, 16, 22, t.text, t.bar, cls)}<div class="meta" style="margin-top:4px">${esc(o.channel ?? '')}</div><div class="meta">${esc(o.views ?? '')}</div></div></div></div>`;
-    const nextItem = (o: Other, cls: string) => `<div style="display:flex;gap:8px;margin-bottom:8px">${thumbHtml(o.src, 168, o.duration ?? '', 8, theme)}
-      <div style="width:202px">${titleHtml(o.title, 14, 20, t.text, t.bar, cls)}<div class="meta12" style="margin-top:4px">${esc(o.channel ?? '')}</div><div class="meta12">${esc(o.views ?? '')}</div></div></div>`;
+    // (today's up-next column: the title beside the picture, three lines at most)
+    const nextItem = (o: Other, cls: string) => `<div style="display:flex;gap:12px;margin-bottom:8px">${thumbHtml(o.src, 250, o.duration ?? '', 8, theme)}
+      <div style="width:160px">${titleHtml(o.title, 14, 20, t.text, t.bar, cls, 500, 3)}<div class="meta12" style="margin-top:4px">${esc(o.channel ?? '')}</div><div class="meta12">${esc(o.views ?? '')}</div></div></div>`;
     const phoneItem = (o: Other, cls: string) => `<div style="width:390px;margin-bottom:14px">${thumbHtml(o.src, 390, o.duration ?? '', 0, theme)}
       <div style="display:flex;gap:12px;padding:10px 12px 0"><div class="avatar">${esc((o.channel ?? '').slice(0, 1).toUpperCase())}</div>
-      <div style="flex:1;min-width:0">${titleHtml(o.title, 15, 21, t.text, t.bar, cls)}<div class="meta12" style="margin-top:2px">${esc([o.channel, o.views].filter(Boolean).join(' · '))}</div></div></div></div>`;
+      <div style="flex:1;min-width:0">${titleHtml(o.title, 14, 20, t.text, t.bar, cls)}<div class="meta12" style="margin-top:2px">${esc([o.channel, o.views].filter(Boolean).join(' · '))}</div></div></div></div>`;
     // (ours shows no view count: an invented one reads as real data; the other videos keep theirs)
     const me: Other = { title, channel, duration };
     const sections = ours.map((src, i) => {
@@ -768,26 +777,29 @@ async function preview() {
       const phone = [mine, other()]; // a phone shows about one and a half videos: the next one is cut off below
       return `<div class="section"><div class="label">${w.option} ${i + 1}</div>
         <div class="row" style="gap:32px">
-          <div><div class="sub">${w.home} · 360 px</div><div class="row">${home.map((o) => homeCard(o, o === mine ? 'mine home' : '')).join('')}</div></div>
-          <div><div class="sub">${w.upnext} · 168 px</div>${next.map((o) => nextItem(o, o === mine ? 'mine upnext' : '')).join('')}</div>
+          <div><div class="sub">${w.home} · 344 px</div><div class="row">${home.map((o) => homeCard(o, o === mine ? 'mine home' : '')).join('')}</div></div>
+          <div><div class="sub">${w.upnext} · 250 px</div>${next.map((o) => nextItem(o, o === mine ? 'mine upnext' : '')).join('')}</div>
           <div><div class="sub">${w.phone} · 390 px</div><div style="height:430px;overflow:hidden">${phone.map((o) => phoneItem(o, o === mine ? 'mine phone' : '')).join('')}</div></div>
         </div></div>`;
     }).join('');
-    return pageHtml(theme, 1112 + 32 + 378 + 32 + 390 + 48, sections);
+    return pageHtml(theme, (3 * 344 + 2 * 16) + 32 + (250 + 12 + 160) + 32 + 390 + 48, sections);
   };
   pages.set('feed-dark', feed('dark'));
   pages.set('feed-light', feed('light'));
 
-  // search.png: a search result shows the title at 18 px and the description's first lines
-  const firstLines = description.split('\n').filter((l) => l.trim()).slice(0, 2).join(' ');
+  // search.png: a search result on a computer shows the title at 18 px and about the description's first 130
+  // characters, cut by YouTube with " ..." (a phone's search shows none of it)
+  const flat = description.split('\n').filter((l) => l.trim()).join(' ');
+  const SNIPPET = 130;
+  const firstLines = chars(flat) > SNIPPET ? [...flat].slice(0, SNIPPET).join('').replace(/\s+\S*$/, '') + ' ...' : flat;
   const t = THEMES.dark;
-  const searchRows = ours.map((src, i) => `<div class="section"><div class="label">${w.option} ${i + 1}<span>${w.search} · 360 px</span></div>
-    <div class="row" style="margin-top:10px">${thumbHtml(src, 360, duration, 12, 'dark')}
+  const searchRows = ours.map((src, i) => `<div class="section"><div class="label">${w.option} ${i + 1}<span>${w.search} · 500 px</span></div>
+    <div class="row" style="margin-top:10px">${thumbHtml(src, 500, duration, 12, 'dark')}
     <div style="width:560px">${titleHtml(title, 18, 26, t.text, t.bar, 'mine search', 400)}
     <div style="height:10px;width:150px;background:${t.bar};border-radius:3px;margin-top:9px"></div>
     <div class="row" style="gap:8px;align-items:center;margin:12px 0"><div class="avatar" style="width:24px;height:24px;font-size:11px">${esc(channel.slice(0, 1).toUpperCase())}</div><span class="meta12">${esc(channel)}</span></div>
     <div class="meta12" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(firstLines || '(no description.txt yet)')}</div></div></div></div>`).join('');
-  pages.set('search', pageHtml('dark', 1000, searchRows));
+  pages.set('search', pageHtml('dark', 24 * 2 + 500 + 16 + 560, searchRows));
 
   const cut = new Map<string, Set<string>>();
   const failures: string[] = [];
@@ -1072,6 +1084,9 @@ async function check() {
     else if (n > DESCRIPTION_MAX) add('FAIL', 'description.txt', `${n} characters: YouTube's limit is ${DESCRIPTION_MAX}`);
     else if (/[<>]/.test(desc)) add('FAIL', 'description.txt', `has < or > (line ${desc.split('\n').findIndex((l) => /[<>]/.test(l)) + 1}), which YouTube refuses`);
     else add('ok', 'description.txt', `${n} characters; it opens "${first.slice(0, 90)}${first.length > 90 ? '...' : ''}"`);
+    // (YouTube's help counts 5,000 characters, its Data API 5,000 bytes: an accent takes two, an emoji four)
+    const bytes = Buffer.byteLength(desc, 'utf8');
+    if (n <= DESCRIPTION_MAX && bytes > DESCRIPTION_MAX) add('warn', 'description.txt', `${bytes} bytes: Studio takes ${DESCRIPTION_MAX} characters, but an upload through YouTube's API (or a tool using it) counts bytes and may refuse it`);
     // (plain lists read fine; these show their marks literally)
     if (/(^|\n)#{1,6} |\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^)\n]+\)/.test(desc))
       add('warn', 'description.txt', 'has Markdown (a "# " heading, **bold** or [text](link)): YouTube shows the marks as typed');
@@ -1099,7 +1114,7 @@ async function check() {
     const tags = new Set((desc.match(/(^|\s)#[\p{L}\p{N}_]+/gu) ?? []).map((h) => h.trim().toLowerCase()));
     if (tags.size > HASHTAGS_MAX) add('FAIL', 'hashtags', `${tags.size}: over ${HASHTAGS_MAX}, YouTube ignores every hashtag in the description`);
     else if (tags.size > HASHTAGS_MANY) add('warn', 'hashtags', `${tags.size}: a list that long reads as spam; two to four about the video do the job`);
-    else if (tags.size) add('ok', 'hashtags', `${tags.size}: ${[...tags].join(' ')} (YouTube may show up to three above the title)`);
+    else if (tags.size) add('ok', 'hashtags', `${tags.size}: ${[...tags].join(' ')} (YouTube shows up to three it finds most engaging by the title)`);
   } else add('note', 'description.txt', 'none');
 
   // tags

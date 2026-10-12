@@ -293,12 +293,13 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   project per video, so a new project starts from what they say, an earlier project they point to, or one
   question; nothing scans sibling folders.
 - **Judged as viewers meet it.** A sheet of sizes alone once passed text that the feed then showed small and too
-  dark. The skill's `preview` puts each option where it is seen (the home row, the up-next column at 168 px, a
-  phone, a search result with the description's opening), on YouTube's dark and light pages, with the title
-  wrapped and cut as there, beside other videos when there are some. Then one fresh critic, given the images and
-  the title before any reasoning, says what each promises, what reads first, what fails and what one change
-  would help; no CTR guesses or averaged scores, since a salience score once pulled a design toward the cliché
-  its brief ruled out.
+  dark. The skill's `preview` puts each option where it is seen, at sizes measured on youtube.com in October 2026
+  (every size from search's 500 px down to a playlist's 100; a home row of three at 344 px, the up-next column at
+  250, a phone, a search result with as much of the description as search shows), on YouTube's dark and light
+  pages, with the title wrapped and cut as there, beside other videos when there are some. Then one fresh critic,
+  given the images and the title before any reasoning, says what each promises, what reads first, what fails and
+  what one change would help; no CTR guesses or averaged scores, since a salience score once pulled a design
+  toward the cliché its brief ruled out.
 - **Stop rules.** Exploration happens once: about six rough ideas, three finished, one critic round; fixing what
   the check or the critic finds is finishing, not a new round; then a last look at full size. One
   session spent nearly ten hours and sixty agent runs on one set, six of those hours on an option that lost;
@@ -308,17 +309,23 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   one given as a start is the skill's to keep or improve, saying what changed. A narrower request (a title, the
   description, one option changed) gets that part.
 - **Honest packaging.** The pair promises what the video delivers in its first seconds (YouTube's Intro measure,
-  viewers still watching at 30 s, helps assess that, and YouTube removes thumbnails that misrepresent). An opening that doesn't pay off the best
-  promise is reported, with the change offered through code-video; the skill never changes the video.
+  viewers still watching at 30 s, helps assess that, and YouTube removes thumbnails that misrepresent). Those
+  seconds are packaging too: on a computer, pointing at a thumbnail plays the video in its place, and phone feeds
+  play it inline. An opening that doesn't pay off the best promise is reported, with the change offered through
+  code-video; the skill never changes the video. YouTube's own Studio has generated thumbnails since July 2026;
+  what this skill adds is art that fits this video and this channel.
 
 Its script, `youtube.ts`, has four modes and no dependencies: Bun serves the project, Chrome renders headless,
 and Bun's WebSocket speaks the DevTools protocol to it, so it runs the same in both tools, with nothing to
-install and no network but `niche`'s. `shoot` renders any HTML page at an exact size and reports each text block's size at 168 px, text
-in the duration badge's corner, a face that didn't load or lacks a character (an Ê); `preview` makes the feed
-sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the description's
-5,000, the chapters' rules, the tags' 500-character count, the hashtags'); `niche` gathers other videos for the
-preview through YouTube's own endpoints (oEmbed for links, the Data API with the user's key), since YouTube's
-terms forbid scraping its pages. A camera, not a compositor: the pages are the model's, so no layout ships.
+install and no network but `niche`'s. `shoot` renders any HTML page at an exact size and reports each text
+block's size at 168 px (the smallest place a thumbnail's words are read), text in the duration badge's corner
+(the last 256x166 px of 1280x720, measured), a face that didn't load or lacks a character (an Ê); `preview` makes
+the feed sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the
+description's 5,000 characters and a warning past 5,000 bytes, the Data API's unit, the chapters' rules, the
+tags' 500-character count, the hashtags'); `niche` gathers other videos for the preview through YouTube's own
+endpoints (oEmbed for links, the Data API with the user's key), since YouTube's terms forbid scraping its pages.
+Words are set in the page, in Chrome, which kerns them; Pillow on Windows doesn't. A camera, not a compositor:
+the pages are the model's, so no layout ships.
 
 The files the user uploads live together in `videos/<video>/youtube/` (the three PNGs, `title.txt`,
 `description.txt` and `tags.txt` holding only what gets pasted, `NOTES.md` with the ideas, the runners-up and
@@ -332,7 +339,10 @@ channel; the camera leaves the page to the model); a scraper of YouTube search, 
 wrote (YouTube's terms, and pages that change); three title packages (the user asked for one title; the
 runners-up go in the notes); a 3840x2160 deliverable by default (YouTube now recommends it, but the user asks
 for 1280x720, the floor for a full-quality test; `shoot --scale 3` makes one from the same page); metrics such
-as salience or CLIP readings as judges; and an SRT from the word timings, offered rather than made.
+as salience or CLIP readings as judges; an SRT from the word timings, offered rather than made; and a second
+image script for Google's Nano Banana 2.1 (a little cheaper per image, better at keeping one face across three
+options, but a new script and key, while `imagegen.py`'s GPT Image 2.5 led Artificial Analysis's rankings for
+generating and editing in October 2026).
 
 ## The decision
 

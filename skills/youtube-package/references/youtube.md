@@ -39,8 +39,9 @@ where they show · Policy and disclosure · Sources
   one).
 - **Length isn't a lever:** a 2026 study of 277 breakout videos (OverseerOS; observational) found no best
   length, the median near 58 characters; what matters is where the meaning lands. YouTube takes up to 100
-  characters; what shows depends on where (two lines in feeds, fewer on a phone). The preview shows where it's
-  cut. One channel's accepted titles ran 31 to 53 characters.
+  characters; what shows depends on where (measured 2026: about 46 on a phone's first line and 85 in its two, about
+  80 in a laptop's home grid, 50 to 80 in the up-next column), so the words that matter go in the first 40 to 45.
+  The preview shows where it's cut. One channel's accepted titles ran 31 to 53 characters.
 - **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no benefit in a
   2026 matched-pairs study), an episode number or the channel's name first, a promise the video doesn't keep, a
   famous name used as bait.
@@ -53,7 +54,8 @@ where they show · Policy and disclosure · Sources
 
 - **Plain text, ready to paste:** YouTube shows Markdown's marks as typed; no line breaks inside a sentence; no
   notes for the user in it (those go in `NOTES.md`).
-- **The opening** (about the first 100 to 150 characters show in search and above "...more"): a whole sentence
+- **The opening** (search on a computer shows about the first 130 characters, cut with " ..."; a phone's search
+  shows none; the watch page about three lines above "...more", a blank line counting as one): a whole sentence
   with the video's promise and the words people search for, echoing the pair without repeating the title.
   YouTube's advice: one or two main words that describe the video, in both the title and the description, and a
   description of its own for every video.
@@ -68,13 +70,15 @@ where they show · Policy and disclosure · Sources
   the user promised to give "in the description" go here. The person's name only as `docs/CHANNEL.md` says.
 - **Links** as the user gave them, without tracking parameters (`?si=`); none invented; say which weren't checked.
 - **No keyword lists:** a block of search terms in the description breaks YouTube's spam policy and reads badly.
-- **Characters, not bytes:** `wc -m` in Git Bash counts bytes (3,169 for a 3,064-character text); `check` counts
-  characters.
+- **Characters, and bytes:** YouTube's help allows 5,000 characters, its Data API 5,000 bytes (an accent takes
+  two, an emoji four), and an upload through the API or a tool using it counts bytes; `check` counts both. `wc -m`
+  in Git Bash counts bytes (3,169 for a 3,064-character text).
 
 ## Chapters
 
-- **YouTube's rules:** the first at 0:00, at least three, in order, each at least 10 seconds long (the last one
-  too). Break one and there are no chapters at all.
+- **YouTube's rules:** the first at 0:00 (Help writes 00:00; both work), at least three, in order, each at least
+  10 seconds long (the last one too). Break one and there are no chapters at all. Adding them is one of Studio's
+  advanced features, and a strike or a mature-audience video turns them off: say so if the channel may lack them.
 - **From the project's data, never from memory:** the timeline's entries (where scenes start), `data/words.json`
   (where a line is spoken or sung) and `data/audio.json` sections (a song's parts), checked against the final
   render's length (`check` reads it): an intro added later moves everything after it.
@@ -92,15 +96,18 @@ where they show · Policy and disclosure · Sources
   as the channel writes them, comma-separated on one line in `tags.txt`. YouTube's 500-character count adds a
   comma between tags and quotes around a tag with a space (`check` counts it so).
 - **No one else's name or brand the video isn't about:** misleading metadata.
-- **Hashtags:** two to four at the end of the description, each about the video; YouTube may show up to three
-  above the title, and ignores them all past 60 (`check` warns well before that: a long list reads as spam).
+- **Hashtags:** two to four at the end of the description, each about the video; YouTube shows up to three it
+  finds most engaging by the title (on a computer, in the description's first line), and ignores them all past 60
+  (`check` warns well before that: a long list reads as spam).
 
 ## Test & Compare
 
 - In YouTube Studio on a computer (advanced features on), a video can test up to three titles, three
   thumbnails, or three pairs (titles since December 2025). The winner is the one with the most watch time, not
   clicks; a test runs up to two weeks and can end "performed the same" or inconclusive, more often when the
-  variants are alike. Every test thumbnail should be at least 1280x720: one smaller downscales the whole test.
+  variants are alike, and then YouTube keeps the first one uploaded: put the pick first. Editing the title or
+  thumbnail stops a test. Not for Shorts, or for made-for-kids, mature-audience or private videos. Every test
+  thumbnail should be at least 1280x720: one smaller downscales the whole test.
 - So three thumbnails sharing one title is a clean test of the pictures: suggest it in the hand-off; the user
   runs it. YouTube announced (September 2026) thumbnails that serve the best of three to different audiences;
   where it exists, the same three fit it.
@@ -112,9 +119,14 @@ where they show · Policy and disclosure · Sources
 - **Size:** 1280x720 by default (a common ask, and the floor for a full-quality test); YouTube now
   recommends 3840x2160 (`shoot --scale 3` renders it from the same page); 16:9; at least 640 wide; JPG or PNG.
   Up to 2 MB uploads from the YouTube app; Studio on a computer takes up to 50 MB.
-- **Where:** the home grid (about 360 px wide on a laptop), search (360, bigger for a top result), the up-next
-  column (168), a phone's feed (the screen's width, about 390), the TV (large). The duration badge sits bottom
-  right everywhere; desktop hover icons top right; a red bar along the bottom marks a video already watched.
+- **Where** (measured on youtube.com on 2026-10-12, logged out): the home grid, three across (344 px wide at a
+  1366 px window, up to 528 on a big screen); search (500); the up-next column (about 215 to 325, beside the
+  title; 168 in the classic layout some still see); the playlist panel (100); a phone's feed (the screen's width,
+  about 390); the TV (large, not measured). The duration badge sits bottom right everywhere (keep about the last
+  256x166 px of 1280x720 clear); corners are rounded (12 px on the home grid, about 45 at 1280 wide); desktop
+  hover icons top right; a red bar along the bottom marks a video already begun.
+- **The video replaces it:** pointing at a thumbnail on a computer plays the video muted with captions from its
+  start, and phone feeds play it inline, often by default. Its first seconds are part of the package.
 
 ## Policy and disclosure
 
@@ -126,15 +138,21 @@ where they show · Policy and disclosure · Sources
   hand-off when it applies; the user sets it. It doesn't limit reach or monetization.
 - **People and marks:** no one's likeness without their consent (OpenAI's image terms say the same); a brand's
   logo or character only as what the video is about, never as an endorsement.
+- **Made for this video:** YouTube's spam policy names AI imagery churned out across many videos with minimal
+  changes, and its Partner Program's "inauthentic content" rule (2025) keeps templated, mass-produced videos from
+  earning. A channel's style repeats; each package says something about its own video.
 
 ## Sources
 
 YouTube Help, checked 2026-10-12: thumbnails (support.google.com/youtube/answer/72431), A/B testing titles and
 thumbnails (answer/16391400), titles and thumbnails (answer/12340300), chapters (answer/9884579), tags
 (answer/146402), hashtags (answer/6390658), descriptions (answer/12948449), thumbnail policy (answer/9229980),
-altered or synthetic content (answer/14328491), content performance (answer/16559650), audience retention and
-the Intro measure (answer/9314415). The tags count: YouTube Data API, videos resource
-(developers.google.com/youtube/v3/docs/videos). Title testing for all creators since December 2025: Search
-Engine Journal, 2025-12-04. Studies (observational): vidIQ's thumbnail study (2026-07-08, 500 breakouts) and
-title study (2026-07-16, 4 million uploads), vidiq.com/research; OverseerOS on title length (2026-08-14) and
-emoji (2026-08-27), overseeros.com/blog.
+altered or synthetic content (answer/14328491), content performance (answer/16559650), audience retention and the
+Intro measure (answer/9314415), title and description limits (answer/57404), advanced features (answer/9890437),
+previews on hover and in feeds (answer/7640367), spam (answer/2801973), the Partner Program's monetization policies
+(answer/1311392). The tags count and the description's bytes: YouTube Data API, videos resource
+(developers.google.com/youtube/v3/docs/videos). Sizes and cut-offs: measured on youtube.com on 2026-10-12 (logged
+out, region BR, windows 1280 to 1920 px wide and a 390 px phone). Title testing for all creators since December
+2025: Search Engine Journal, 2025-12-04. Studies (observational): vidIQ's thumbnail study (2026-07-08, 500
+breakouts) and title study (2026-07-16, 4 million uploads), vidiq.com/research; OverseerOS on title length
+(2026-08-14) and emoji (2026-08-27), overseeros.com/blog.

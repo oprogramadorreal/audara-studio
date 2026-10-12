@@ -10,7 +10,7 @@ viewers do · The critic · What went wrong before
 ## What a thumbnail has to do
 
 A frame is made for motion and for what comes before and after it. A thumbnail stands alone, among strangers,
-168 to 390 px wide, beside its title, and is read in less than a second. So:
+100 to 500 px wide (about 344 in a laptop's home grid), beside its title, and is read in less than a second. So:
 
 - **One idea a stranger gets at once:** a subject big enough to read small, in a situation that makes them want
   the video (a question asked and its answer withheld, a machine looking back, a thing about to break). Hierarchy
@@ -24,6 +24,9 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
   pages, near-black (#0f0f0f) and white. A dark tile melts into the dark page unless light holds its edges.
 - **Its own bet:** each of the three is a different reason to click (another subject, situation or layout, with
   text or without), so a test between them teaches something. Three takes on one layout teach nothing.
+- **Then the video takes its place:** pointing at it on a computer plays the video muted with captions, and
+  phone feeds play it inline, often by default. The first seconds are part of the package; when they don't carry
+  the promise on, say so in the hand-off (the video stays as it is here).
 
 ## Ideas
 
@@ -78,15 +81,21 @@ tool: `uv run <code-video>/scripts/imagegen.py generate <name> --out videos/<vid
 it runs, once the user has said yes (its `--help`, and code-video's references/images.md for prices, `--takes`,
 `pick`, `--transparent` and what a reference adds to the cost). Use it to re-stage the video's real elements
 photographically (a plate or frame as `--ref`), the way one creator made their own candidate, not to invent
-look-alikes. In Codex without a key, its built-in image generation draws on the plan's limits: spending too, and
-its prompt goes word for word into `<name>.prompt.txt` beside the file. Words drawn by an image model come out
+look-alikes. In Codex without a key, its built-in image generation draws on the plan's limits (several times
+faster than text turns): spending too, and its prompt goes word for word into `<name>.prompt.txt` beside the
+file. Its pictures come out about 1672x941, enough for 1280x720 but not for 3840x2160, and it edits a frame once
+the frame is opened in the conversation (`view_image`). Words drawn by an image model come out
 misspelled ("vatio" for "fatio"): set every word in code, and read back any text a generated picture contains.
 A local model the user already runs (ComfyUI, say) is free; installing one isn't part of making a thumbnail.
+For a monetized channel a model's licence matters as much as a font's: non-commercial ones (FLUX.2 dev, RMBG-2.0,
+4x-UltraSharp, InsightFace) stay out.
 
 **Code.** Type, shapes, light, a redacted reply bubble, an interface: whatever the idea needs that no frame has.
 
-**Cut-outs.** Best rendered from the engine with only the subject's entries; else `uv run --with "rembg[cpu]"
-rembg i in.png out.png` (a 176 MB model downloads once) and the edge checked over a flat colour.
+**Cut-outs.** Best rendered from the engine with only the subject's entries; else `uv run --with
+"rembg[cpu,cli]" rembg i -m birefnet-general -dc in.png out.png` (`-dc` cleans colour fringes;
+`birefnet-portrait` for a person; MIT, about 1 GB downloads once; rembg's default model needs a paid licence for
+commercial use) and the edge checked over a flat colour.
 
 **Brands and people.** A brand character the user asks for (a mascot) is modelled or drawn, not lifted from
 someone's photo, and noted in `youtube/SOURCES.md`. Anyone else's face or likeness appears only with their
@@ -103,6 +112,7 @@ likeness, and imitating a film's poster or stills stays out.
   from `/public/fonts/...`, `-webkit-text-stroke` with `paint-order: stroke fill`, layered `text-shadow`,
   `filter`, `mix-blend-mode`, `mask-image`, an SVG `feTurbulence` grain); Python with numpy and Pillow for pixel
   work (compositing in linear light, relighting from a depth map); the engine for anything it already draws.
+  Words go in the page, not Pillow: on Windows it sets them without the face's kerning ("AV", "To" gape).
   Work from plates at 2x, so the finished 1280x720 is downsampled, never upscaled.
 - **Keep what rebuilds it** beside the PNG: `thumbnail-N.html` (or `.py`) and `youtube/assets/`. Not a Bun or
   Node script (one that imports `node:` modules or uses Bun) anywhere in `videos/`: the project's type check
@@ -119,19 +129,22 @@ likeness, and imitating a film's poster or stills stays out.
 - **Few words, big:** the main words at about 12 px or more at 168 px wide (`shoot` reports each block; a set
   that read well small had 14 to 19 px). One or two lines; few colours in the type; a dark margin around
   letters that sit on busy ground.
-- **Details that show small:** line spacing that clears accents (Ê, Ã); kerning a face lacks (a "?" after an
+- **Details that show small:** line spacing that clears accents (Ê, Ã: stacked capitals need a line height of
+  at least the face's accent top, about 1.1 for Anton); kerning a face lacks (a "?" after an
   "A"); word spaces wide enough that "A IA" stays two words at 168 px; every accented letter looked at in the
   image (`shoot` names characters the face lacks).
 - **Text can be a thing in the scene** (a slip of paper, a screen) as well as a caption over it.
-- **Corners:** the duration badge covers the bottom right at every size (about the last quarter of the width and
-  of the height at 168 px); desktop hover icons sit top right. Nothing there that matters.
+- **Corners:** the duration badge covers the bottom right everywhere (keep the last 256x166 px of 1280x720 free;
+  `shoot` names a block that enters it); desktop hover icons sit top right; corners are rounded (about 45 px at
+  1280 wide) and a red bar runs along the bottom for a viewer who began the video. Nothing there that matters.
 
 ## Looking as viewers do
 
-- **`preview`** puts each option where viewers meet it: sizes on both pages, a home row (360 px), the up-next
-  column (168 px) and a phone feed (390 px) with the title wrapped and cut as there, and a search result with the
-  description's first lines. Look at each at its own size; a sheet of sizes alone once passed text that the feed
-  then showed small and too dark.
+- **`preview`** puts each option where viewers meet it (sizes measured on YouTube in 2026): every size from
+  search's 500 px down to a playlist's 100 on both pages; a home row (344 px, three across on a laptop), the
+  up-next column (250 px) and a phone feed (390 px) with the title wrapped and cut as there; and a search result
+  with as much of the description as search shows. Look at each at its own size; a sheet of sizes alone once
+  passed text that the feed then showed small and too dark.
 - **The niche, when the network is allowed** (optional; stop once it has informed a choice): 10 to 30 videos a
   viewer of this one would see beside it (same language, audience and subject). Find them with a web search in
   the video's language (the words people would type), or take the links the user gives, and run `bun

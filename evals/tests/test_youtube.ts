@@ -111,6 +111,7 @@ try {
   const ok5000 = pkg('ok5000', { 'description.txt': 'ã'.repeat(5000) + '\n' });
   r = run(['check', 'ok5000']);
   expect('check: exactly 5,000 accented characters pass (characters, not bytes)', r.code === 0 && /5000 characters/.test(r.out), r.out);
+  expect('check: past 5,000 bytes, a warning that the Data API counts bytes', /10000 bytes: Studio takes 5000 characters/.test(r.out), r.out);
   r = run(['check', 'does-not-exist', '--full', '--duration', '40']);
   expect('check: a mistyped folder fails instead of checking the folder above it', r.code === 2 && /no such folder or file/.test(r.out), r.out);
   const jpgs = pkg('jpgs', { 'title.txt': 'T\n', 'description.txt': 'D\n', 'tags.txt': 'a\n' });
