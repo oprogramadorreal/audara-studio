@@ -19,6 +19,8 @@ Contents
 - 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
 - A place to choose the idea: video-ideas (0.5.0, 2026-10-08)
 - Handing a project on: video-repo (0.6.0, 2026-10-11)
+- One video or many in a project (0.6.1, 2026-10-11)
+- Publishing it: youtube-package (0.7.0, 2026-10-12)
 
 ## Definition of done
 
@@ -1383,3 +1385,90 @@ gave the video a `look.ts` and a `STYLE.md` of its own, with its post on the tim
 title card themselves without being asked. So the style-template clause isn't added, and the AGENTS.md
 sentence stays out: on this evidence a model keeps a second video's look local and checks the first video
 on its own. One run per tool, so this is a first measurement, not a rate.
+
+## Publishing it: youtube-package (0.7.0, 2026-10-12)
+
+The user ends video after video with the same request, typed by hand: "Help me create a youtube thumbnail for
+this video. I want a png. 1280x720 pixels. In the thumbnail, I want the text "…" (for your knowledge, the
+title will be "…"). In the background, use some of the high quality scenes of the actual video, or create
+something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3
+options. And by impressive I also mean effective. That attracts clicks." They asked for a skill that makes
+three thumbnail options with any art at hand ("the skill must go all out"), one title designed with them to
+win the click and keep the viewer, a description that helps search, and tags, as files in the project; words
+they give are a start to keep or improve, and with none given the skill proposes everything. A Claude Code
+session (Opus 5.5) built it and had the last call; a Codex session (GPT-6 Astra) analyzed it with its
+skill-creator over three rounds through Herdr and tested the script in its own sandbox.
+
+What the evidence said, from the user's four channel projects (`oprog-1` to `oprog-4`) and the sessions that
+packaged them, read by nine research agents (the transcripts, the files, YouTube's help pages, data studies):
+
+- **Too little, then too much.** On oprog-4 the first round (10 minutes) skipped the channel: the user had to
+  name their thumbnail font ("I did not like the font... use the same font that I used for this other video of
+  my channel"), then ask to "work harder". The round that followed took 9 h 44 min, 61 agent runs and about
+  1.55M output tokens, six of those hours on an option that lost; it banned generated images "(they cost
+  money)" as the director's rule, though the director had approved them for that film, and painted
+  photographic eyes by hand instead. oprog-3's session showed the user nothing for over four hours, against
+  their standing rule to bring findings and wait, and hit the account's limit twice.
+- **What paid.** A five-minute scan of 65 real thumbnails from nine searches changed a whole set's type size
+  (30% to 40-60% of the height), brightness (the set at 0.19-0.23 against the niche's 0.34) and colour (orange
+  read as "Claude tutorial"); the feed mock with real neighbours showed what a sheet of sizes had passed as
+  readable; one audit after the final polish caught real streaks between letters; three distinct hooks.
+- **The video's own world wins.** oprog-1's first round (generated look-alike plates, rainbow confetti and music
+  notes in a video with neither, stacked template type, a pasted face) was rejected in six minutes ("I'd like a
+  cleaner aspect"); the thumbnail YouTube serves is the video's own computer and a modelled mascot, rendered in
+  its engine in nine minutes. The user's own candidate re-staged the video's real computer with their face, made
+  in ChatGPT: generation is welcome when it re-stages what the video has. Rules that count elements were wrong
+  (the user's own design had a face, a computer, a line of text and ten labels); hierarchy decides.
+- **The idea beats the pipeline.** oprog-3's quick first thumbnail (about 20 s of tool time) already held the
+  idea that won its long round; locking the given words at 20% cap height with wide gutters made all sixteen
+  mockups the same text wall and shrank the subject, so craft scores rose while the pull to click fell.
+- **The pair, as the user writes it.** The thumbnail asks, the title answers, never with the same words
+  ("FOMOS NÓS" became "EM EXTINÇÃO" because the title said "nós"); "Claude" early; spoken Brazilian Portuguese;
+  31 to 53 characters; current, not "outdated"; clickable by the user's gut. They iterate titles over days and
+  once chose the final title after the thumbnail, to point at it ("Claude respondeu essa pergunta com um clipe").
+- **The words.** Descriptions shipped at 1,100-1,700 characters (a 4,570 one was cut by its lyrics); chapters
+  computed from `words.json` and the render's length held, chapters recalled from memory were luck; no session
+  ever wrote the tags to a file (the user typed eight short lowercase ones); three projects kept the description
+  in three places, one under the ignored `out/`.
+- **YouTube now** (its help pages, 2026-10-12): 3840x2160 thumbnails recommended, 1280x720 still the floor of a
+  full-quality Test & Compare, 2 MB from the app and 50 MB from a computer; Test & Compare takes three titles,
+  thumbnails or pairs and picks by watch time; AI help with a thumbnail or title needs no disclosure, but AI
+  music that is a video's focus does; YouTube's terms forbid scraping its pages, which two sessions had done.
+
+What changed:
+
+- **`skills/youtube-package/`**, model-invoked like the others: SKILL.md (Fixed: an honest pair, money waits
+  for a yes, rights, the user's words; the bar; a session of nine steps, each once unless asked again: the
+  video, the channel, about six rough ideas and 10-20 titles shown to the user early, art, finishing, looking as
+  viewers do with one fresh critic and one revision, the words, the check, the hand-off), `references/art.md`
+  and `references/youtube.md`, and `scripts/youtube.ts` (shoot, preview, niche, check; Bun and Chrome over the
+  DevTools protocol, no dependencies). The package goes in `videos/<video>/youtube/`; previews in `out/`.
+- **init's AGENTS.md** names the skill, owes "for a request for a thumbnail, a YouTube title, a description or
+  tags, three thumbnail options made with one title, then the description and tags, in `videos/<video>/youtube/`,
+  with the video left as it is", and scopes "Before calling work done" to a change to a video.
+- **video-repo** keeps a video's `youtube/` package (SKILL.md 7,994 bytes) and reads its `title.txt` as a
+  proposal, not the published title.
+- **README, AGENTS.md, design.md** ("Publishing it: the YouTube package"), the manifests, 0.7.0.
+- **The evals:** `evals/trigger/youtube-package.json` (12 requests, the user's own and three in Portuguese among
+  them, and 11 near-misses: a title card, a poster frame, ideas, git, cover art, chapter titles inside the
+  video, an app's thumbnail grid, a plain image, an upload script, a Shorts cut, a question), cv-24 and vi-23
+  near-misses, trigger.ts's use signal for `youtube.ts`, and four task cases on `EVAL_PACKAGE_PROJECT`:
+  `yp-given-words` (the user's prompt word for word, then the channel's type in a new session),
+  `yp-nothing-given`, `yp-title-only` and `yp-images-budget` (the image mock).
+
+Considered and rejected:
+
+- **A mode inside code-video:** its SKILL.md has 3 bytes left, and its checklist pulls toward building the video.
+- **A compositor or a layout template:** it would set one look for every channel. Codex first argued against
+  any compositor; it agreed in round two that a camera (any page the model writes, rendered at an exact size and
+  measured) institutionalizes no layout, since the preview needs the same browser anyway.
+- **Scraping YouTube's search** (oprog-3 and oprog-4 each wrote one): YouTube's terms forbid it and its pages
+  change. `niche` reads links through oEmbed and searches only through the Data API with the user's key.
+- **A fixed count of drafts, judges and lenses** (oprog-3's sixteen mockups and four weighted lenses): about six
+  rough ideas and one critic, with no CTR guesses or averaged scores; a salience score once pulled a design
+  toward the cliché its brief ruled out.
+- **Exports split from sources** (Codex's first proposal: the PNGs and text copies in `out/`): one folder for
+  what the user uploads, since copies drift and a rebuild isn't guaranteed to match; Codex agreed.
+- **Three titles, a 4K deliverable by default, an SRT, global channel memory:** the user asked for one title (the
+  runners-up go in NOTES.md); 1280x720 is their ask (`shoot --scale 3` makes 4K from the same page); captions
+  are offered, not made; `docs/CHANNEL.md` stays in the project, with no scanning of sibling folders.

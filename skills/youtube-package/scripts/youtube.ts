@@ -421,8 +421,10 @@ function thumbnailsIn(dir: string): string[] {
 /** An image's format and size from its header, without decoding it (what check falls back to without Chrome). */
 function imageHeader(file: string): { kind: string; w?: number; h?: number } {
   const b = readFileSync(file);
-  if (b.length > 24 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return { kind: 'PNG', w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
-  if (b.length > 10 && b.toString('latin1', 0, 3) === 'GIF') return { kind: 'GIF', w: b.readUInt16LE(6), h: b.readUInt16LE(8) };
+  // (the format from its signature, the size only when the header is all there: a cut-off file is still that
+  // format, and fails as one that doesn't decode)
+  if (b.length >= 8 && b[0] === 0x89 && b.toString('latin1', 1, 4) === 'PNG') return b.length > 24 ? { kind: 'PNG', w: b.readUInt32BE(16), h: b.readUInt32BE(20) } : { kind: 'PNG' };
+  if (b.length >= 6 && b.toString('latin1', 0, 3) === 'GIF') return b.length > 10 ? { kind: 'GIF', w: b.readUInt16LE(6), h: b.readUInt16LE(8) } : { kind: 'GIF' };
   if (b.length > 30 && b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') {
     const f = b.toString('latin1', 12, 16);
     if (f === 'VP8X') return { kind: 'WebP', w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };

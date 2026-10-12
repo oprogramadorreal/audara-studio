@@ -1,0 +1,107 @@
+#!/usr/bin/env bun
+// Offline tests of youtube-package's scripts/youtube.ts: check's rules (chapters, title, tags, hashtags,
+// Markdown, images that don't decode or aren't 16:9) and shoot's diagnostics (a font that doesn't load, a
+// character a font lacks, a missing image, the exit codes). No network, no paid call; shoot and check start
+// a local Chrome. Run: bun evals/tests/test_youtube.ts
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const REPO = path.resolve(import.meta.dir, '..', '..');
+const SCRIPT = path.join(REPO, 'skills', 'youtube-package', 'scripts', 'youtube.ts');
+const FONT = path.join(REPO, 'skills', 'code-video', 'assets', 'template-webgl', 'public', 'fonts', 'Archivo-w620-900.ttf');
+const root = mkdtempSync(path.join(os.tmpdir(), 'audara-yt-test-'));
+let passed = 0, failed = 0;
+
+function run(args: string[]): { code: number; out: string } {
+  const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
+  return { code: p.exitCode ?? -1, out: p.stdout.toString() + p.stderr.toString() };
+}
+function expect(name: string, ok: boolean, detail = '') {
+  if (ok) { passed++; console.log(`ok    ${name}`); }
+  else { failed++; console.log(`FAIL  ${name}${detail ? `\n      ${detail.split('\n').join('\n      ')}` : ''}`); }
+}
+/** A package folder with the given files; images are made by Chrome through shoot, so no encoder is needed here. */
+function pkg(name: string, files: Record<string, string>): string {
+  const dir = path.join(root, name);
+  mkdirSync(dir, { recursive: true });
+  for (const [f, body] of Object.entries(files)) writeFileSync(path.join(dir, f), body);
+  return dir;
+}
+
+try {
+  // shoot: a good page, then one with a missing font, a missing image and a character the font lacks
+  mkdirSync(path.join(root, 'fonts'));
+  copyFileSync(FONT, path.join(root, 'fonts', 'Archivo-w620-900.ttf'));
+  const style = `@font-face{font-family:'A';src:url('/fonts/Archivo-w620-900.ttf')}
+    @font-face{font-family:'Gone';src:url('/fonts/missing.ttf')}
+    body{margin:0;width:1280px;height:720px;background:#202830}`;
+  pkg('pages', {
+    'good.html': `<!doctype html><meta charset="utf-8"><style>${style} h1{font:900 120px A;color:#f6f1eb;margin:60px}</style><h1>VOCÊ TEM CONSCIÊNCIA?</h1>`,
+    'bad.html': `<!doctype html><meta charset="utf-8"><style>${style} .a{font:900 120px Gone;color:#fff} .b{font:900 60px A;color:#fff} .c{position:absolute;right:16px;bottom:12px;font:700 40px A;color:#fff}</style><div class="a">X</div><div class="b">Ç ✓ 日</div><div class="c">canto</div><img src="/nope.png">`,
+    'wide.html': `<!doctype html><meta charset="utf-8"><style>body{margin:0;width:1000px;height:1000px;background:#345}</style><p>square</p>`,
+  });
+  let r = run(['shoot', 'pages/good.html']);
+  expect('shoot: a clean page exits 0 and writes its PNG beside it', r.code === 0 && existsSync(path.join(root, 'pages', 'good.png')), r.out);
+  expect('shoot: reports the type at 168 px wide', /120 px type, 15\.8 px at 168 wide/.test(r.out), r.out);
+  r = run(['shoot', 'pages/bad.html']);
+  expect('shoot: a page that loads wrong exits 1', r.code === 1, r.out);
+  expect('shoot: names the face that did not load', /"Gone" isn't drawing it/.test(r.out) && /font "Gone" failed to load/.test(r.out), r.out);
+  expect('shoot: names the characters a face lacks (not the accented ones it has)', /lacks "✓" "日"/.test(r.out) && !/lacks[^\n]*"Ç"/.test(r.out), r.out);
+  expect('shoot: flags text in the duration badge\'s corner', /enters the duration badge's corner/.test(r.out), r.out);
+  expect('shoot: reports the missing image', /404 nope\.png/.test(r.out), r.out);
+  r = run(['shoot', 'pages/good.png']);
+  expect('shoot: refuses anything but an HTML page (it would overwrite a source)', r.code === 2, r.out);
+  run(['shoot', 'pages/wide.html', '--size', '1000x1000', '--out', 'pages/square.png']);
+
+  // check: a valid package
+  const good = pkg('good', {
+    'title.txt': 'A resposta do Claude é assustadora\n',
+    'description.txt': 'Perguntei pra IA se ela era consciente.\n\nCAPÍTULOS\n0:00 Começo\n0:17 Meio\n1:10 Fim\n\n#IA #Claude\n',
+    'tags.txt': 'inteligência artificial, ia, claude, o programador\n',
+  });
+  copyFileSync(path.join(root, 'pages', 'good.png'), path.join(good, 'thumbnail-1.png'));
+  r = run(['check', 'good', '--duration', '4:26']);
+  expect('check: a valid package passes', r.code === 0, r.out);
+  expect('check: counts characters, not bytes (34 for an accented title)', /34 characters/.test(r.out), r.out);
+  expect('check: tags counted as YouTube does (quotes around a tag with a space, commas between)', /4 tags, 51 of 500/.test(r.out), r.out);
+
+  // check: what YouTube refuses or ignores
+  const bad = pkg('bad', {
+    'title.txt': 'x'.repeat(101) + '\n',
+    'description.txt': '**Bold** <b>tags</b>\n0:00 Start\n0:05 Too soon\n0:20 End\n',
+    'tags.txt': Array.from({ length: 60 }, (_, i) => `tag number ${i}`).join(', ') + '\n',
+  });
+  copyFileSync(path.join(root, 'pages', 'square.png'), path.join(bad, 'thumbnail-1.png'));
+  writeFileSync(path.join(bad, 'thumbnail-2.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]));
+  r = run(['check', 'bad', '--duration', '0:25']);
+  expect('check: exits 1 when YouTube would refuse something', r.code === 1, r.out);
+  expect('check: a title over 100 characters fails', /title\.txt\s+101 characters/.test(r.out), r.out);
+  expect('check: angle brackets in the description fail', /has < or >/.test(r.out), r.out);
+  expect('check: a chapter under 10 s fails the list', /lasts 5 s, under 10 s/.test(r.out), r.out);
+  expect('check: the last chapter must last 10 s too', /the last chapter lasts 5\.0 s/.test(r.out), r.out);
+  expect('check: tags over 500 as YouTube counts them fail', /characters as YouTube counts them .*the limit is 500/.test(r.out), r.out);
+  expect('check: a square image fails (not 16:9)', /thumbnail-1\.png\s+1000x1000 PNG.*not 16:9/.test(r.out), r.out);
+  expect('check: a damaged PNG fails', /thumbnail-2\.png\s+PNG that doesn't decode/.test(r.out), r.out);
+
+  // check: chapters YouTube wouldn't make, hashtags past its limits, Markdown
+  const odd = pkg('odd', {
+    'description.txt': 'Intro text.\n1:00 A\n2:00 B\n3:00 C\n\n**bold** and [a link](https://example.com)\n' + Array.from({ length: 20 }, (_, i) => `#tag${i}`).join(' ') + '\n',
+  });
+  r = run(['check', 'odd']);
+  expect('check: timestamps without 0:00 make no chapters (a warning)', /none at 0:00 first/.test(r.out), r.out);
+  expect('check: Markdown marks are flagged', /has Markdown/.test(r.out), r.out);
+  expect('check: more than 15 hashtags warn, without failing below 60', /20: a list that long reads as spam/.test(r.out) && r.code === 0, r.out);
+
+  // niche: what it refuses before any network call
+  r = run(['niche', 'not-a-link']);
+  expect('niche: a bad link stops it before anything is fetched', r.code === 2 && /not a YouTube video link/.test(r.out), r.out);
+  r = Bun.spawnSync(['bun', SCRIPT, 'niche', '--search', 'x'], { cwd: root, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, YOUTUBE_API_KEY: '' } }) as any;
+  const so = r.stdout.toString() + r.stderr.toString();
+  expect('niche: --search without YOUTUBE_API_KEY says what it needs', r.exitCode === 2 && /YOUTUBE_API_KEY/.test(so), so);
+} finally {
+  for (let i = 0; i < 20; i++) { try { rmSync(root, { recursive: true, force: true }); break; } catch { await Bun.sleep(200); } }
+}
+
+console.log(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);

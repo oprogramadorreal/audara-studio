@@ -182,7 +182,8 @@ what a later session needs:
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
 - what the agent owes the director, including that a request for ideas or a prompt alone gets those and
-  nothing built.
+  nothing built, and a request for a thumbnail, a title, a description or tags gets the YouTube package with the
+  video left as it is.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
 The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
@@ -266,6 +267,71 @@ seen so far), a reference inside code-video (its SKILL.md is full, and a git req
 invocation (see "Format, for both tools"), and installing a secret scanner (gitleaks is suggested when it's
 already there).
 
+### Publishing it: the YouTube package
+
+A finished video still has to earn its click. The user ended project after project with the same request,
+typed by hand: three thumbnail options at 1280x720 with given words and a given title, "work hard... effective.
+That attracts clicks", then a description with chapters, and tags nobody wrote down (history.md, 0.7.0).
+`youtube-package` holds the method:
+
+- **A pair, then the words.** Three thumbnails and one title designed together: the picture shows or asks, the
+  title promises or answers, and neither repeats the other. Three because YouTube's Test & Compare tests up to
+  three, judged by watch time, and three different bets (subject, situation, layout, words or none) are what
+  make a test teach something. Then the description (plain text, short by default, its chapters from the
+  project's timing data and checked against the final cut), and the tags, which get minutes, not effort.
+- **The video's own world, staged better.** The pictures start from the video: its frames rendered at 2x without
+  their captions, the plates its scenes load, a plate staged in the engine in a video of its own
+  (`<video>-thumbs`, which sorts after the video and so never becomes the default), the user's photos, and
+  generated images only after a yes, through code-video's `imagegen.py`. Every word is set in code: image models
+  misspell. A frame with words on it is a start, not a finish. The rejected rounds in the user's projects were
+  spectacle the video didn't have (confetti and music notes in a video with neither) and pasted faces; the
+  thumbnail that shipped was the video's own computer, rendered in its engine.
+- **The channel before the video's pixels.** A well-made set came back once for its font alone. The channel's
+  identity (name, link, language, the thumbnail type and colours, the title voice, the links it repeats) lives
+  in the project's `docs/CHANNEL.md`, the user's decisions kept apart from what was inferred. The user makes a
+  project per video, so a new project starts from what they say, an earlier project they point to, or one
+  question; nothing scans sibling folders.
+- **Judged as viewers meet it.** A sheet of sizes alone once passed text that the feed then showed small and too
+  dark. The skill's `preview` puts each option where it is seen (the home row, the up-next column at 168 px, a
+  phone, a search result with the description's opening), on YouTube's dark and light pages, with the title
+  wrapped and cut as there, beside other videos when there are some. Then one fresh critic, given the images and
+  the title before any reasoning, says what each promises, what reads first, what fails and what one change
+  would help; no CTR guesses or averaged scores, since a salience score once pulled a design toward the cliché
+  its brief ruled out.
+- **Stop rules.** About six rough ideas, three finished, one critic round and a revision, a last look. One
+  session spent nearly ten hours and sixty agent runs on one set, six of those hours on an option that lost;
+  another showed the user nothing for four hours. The rough sheet and the titles being weighed go to the user
+  early, and work goes on.
+- **Their words.** A title or text the user decided is used exactly, a stronger version offered beside it;
+  one given as a start is the skill's to keep or improve, saying what changed. A narrower request (a title, the
+  description, one option changed) gets that part.
+- **Honest packaging.** The pair promises what the video delivers in its first seconds (YouTube's Intro measure
+  checks exactly that, and it removes thumbnails that misrepresent). An opening that doesn't pay off the best
+  promise is reported, with the change offered through code-video; the skill never changes the video.
+
+Its script, `youtube.ts`, has four modes and no dependencies: Bun serves the project, Chrome renders headless,
+and Bun's WebSocket speaks the DevTools protocol to it, so it runs the same in both tools and needs no install
+or network. `shoot` renders any HTML page at an exact size and reports each text block's size at 168 px, text
+in the duration badge's corner, a face that didn't load or lacks a character (an Ê); `preview` makes the feed
+sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the description's
+5,000, the chapters' rules, the tags' 500-character count, the hashtags'); `niche` gathers other videos for the
+preview through YouTube's own endpoints (oEmbed for links, the Data API with the user's key), since YouTube's
+terms forbid scraping its pages. A camera, not a compositor: the pages are the model's, so no layout ships.
+
+The files the user uploads live together in `videos/<video>/youtube/` (the three PNGs, `title.txt`,
+`description.txt` and `tags.txt` holding only what gets pasted, `NOTES.md` with the ideas, the runners-up and
+the user's decisions, and the sources that rebuild each thumbnail); previews and scratch go to
+`out/<video>/youtube/`. video-repo keeps the folder: the delivered PNG is the record, since a rebuild isn't
+guaranteed to match.
+
+Considered and left out: a mode inside code-video (its SKILL.md has 3 bytes left, and its checklist pulls
+toward building the video); a universal compositor or a layout template (it would set one look for every
+channel; the camera leaves the page to the model); a scraper of YouTube search, as two of the user's sessions
+wrote (YouTube's terms, and pages that change); three title packages (the user asked for one title; the
+runners-up go in the notes); a 3840x2160 deliverable by default (YouTube now recommends it, but the user asks
+for 1280x720, the floor for a full-quality test; `shoot --scale 3` makes one from the same page); metrics such
+as salience or CLIP readings as judges; and an SRT from the word timings, offered rather than made.
+
 ## The decision
 
 Build audara-studio as **one repo of Agent Skills around one engine: the pdoom-video engine as a starter
@@ -281,12 +347,14 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has four skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
-for deciding what to make and **`video-repo`** for handing a finished project on. `soundtrack` turns a song
+It has five skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
+for deciding what to make, **`video-repo`** for handing a finished project on and **`youtube-package`** for
+publishing a finished video. `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads. When the user provides an ElevenLabs API
 key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs"). `video-ideas` is
 text only and ends with a starting prompt (see "Before the brief"). `video-repo` puts the project in git so
-someone else can clone it and render it again (see "Handing it on: a repository").
+someone else can clone it and render it again (see "Handing it on: a repository"). `youtube-package` makes a
+finished video's thumbnails, title, description and tags (see "Publishing it: the YouTube package").
 
 ### Room for the model
 
@@ -548,12 +616,13 @@ than spelled out; generate the key lines several times and keep the most natural
 Add a tool only when it writes data the engine reads or does a step the model can't do by itself, and keep
 it behind one line in SKILL.md. A cheap candidate: SRT captions from the word timings. Leave out until a
 project needs them: stock footage, voice cloning. (A thumbnail mode came as `render.ts poster`, one frame at
-full quality; image generation joined in round 4, as an option behind the same spending rules; Blender and
-math references came as optional tools, each read only when in play.)
+full quality, and grew into the `youtube-package` skill in 0.7.0; image generation joined in round 4, as an
+option behind the same spending rules; Blender and math references came as optional tools, each read only when
+in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-All four skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All five skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -562,7 +631,7 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - All four stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+  - All five stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own. `video-repo` was the one in question,
     since Anthropic advises manual invocation for workflows with side effects (`/commit`, `/deploy`). It
     stays model-invoked because a repository is something the user asks for in words ("put this in git"),
@@ -572,7 +641,7 @@ they differ, follow the stricter rule. What that means here:
     for Claude Code (a key both `quick_validate.py` scripts reject) and `policy.allow_implicit_invocation:
     false` in `agents/openai.yaml` for Codex.
 - **`name`:** lowercase letters, digits and hyphens; at most 64 characters; the same as the folder name; no
-  "claude" or "anthropic". `code-video`, `soundtrack`, `video-ideas` and `video-repo` pass.
+  "claude" or "anthropic". `code-video`, `soundtrack`, `video-ideas`, `video-repo` and `youtube-package` pass.
 - **`description`:** at most 1,024 characters, in the third person.
   - **Content:** what the skill does and when to use it, the main use case first, in the words users
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
@@ -580,7 +649,9 @@ they differ, follow the stricter rule. What that means here:
   - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage, for
     generating clips with AI video models, or for ideas and a prompt alone; `video-ideas` is not for making a
     video, for prompts for other generators, or for ideas for filmed content; `video-repo` is not for
-    everyday commits, branches or pull requests, or for projects that aren't videos.
+    everyday commits, branches or pull requests, or for projects that aren't videos; `youtube-package` is not
+    for making or changing the video (title cards and text inside it included), for choosing what to make, or
+    for images unrelated to a video.
   - **A little insistent** (Anthropic), because models tend to under-trigger skills: "use it whenever the
     user wants a video made from code, even if they don't say 'motion graphics'".
   - **First sentence first:** Claude Code cuts each listing at 1,536 characters, and Codex shortens
@@ -691,6 +762,11 @@ audara-studio/
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
     │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, e-mail addresses
+    ├── youtube-package/              # publishing: three thumbnails with one title, the description, the tags
+    │   ├── SKILL.md                  # the pair, the bar, the session's steps and its stop rules
+    │   ├── references/art.md         # the pictures: ideas, plates, staging, photos, generation, type, critic
+    │   ├── references/youtube.md     # the words, and YouTube's sizes, limits, testing and policy, dated
+    │   └── scripts/youtube.ts        # (bun, no dependencies) shoot | preview | niche | check, on Chrome
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
@@ -735,7 +811,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # --video <name>, --size <w>x<h> for a second format
 ├── scripts/font-instances.py    # static instances of a variable font, for a typeface a project adds
 ├── public/fonts/                # the shared fonts, with their licenses
-├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look
+├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look;
+│                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package
 ├── videos/<name>/
 │   ├── video.json               # title, size, fps, and its audio (or a duration)
 │   ├── TREATMENT.md             # this video's idea, storyboard, scene briefs and Decisions
@@ -744,7 +821,9 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │   ├── audio/                   # song, narration, music, effects, each with its request record
 │   ├── mix.json                 # the mix of voice, music and effects that mix.py builds
 │   ├── assets/                  # images and footage, each with a line in SOURCES.md
-│   └── data/                    # audio.json, and words.json for sung or spoken lines
+│   ├── data/                    # audio.json, and words.json for sung or spoken lines
+│   └── youtube/                 # once youtube-package runs: the thumbnails, title.txt, description.txt,
+│                                # tags.txt, NOTES.md and what rebuilds the thumbnails (kept in git)
 ├── videos/_shared/              # optional, made when needed: what several videos use (scenes/,
 │                                # assets/ with SOURCES.md); no video.json, so it isn't a video
 ├── .audara-cache/               # caches and scratch work, git-ignored
@@ -765,6 +844,22 @@ the formats the engine's `audio.ts` and `words.ts` read.
   own `out/`. The rest of a repository (what's kept, left out or too big for GitHub) is video-repo's.
 
 ## Sources
+
+YouTube's own pages, for the youtube-package skill (checked 2026-10-12):
+
+- [YouTube Help: Add video thumbnails](https://support.google.com/youtube/answer/72431)
+- [YouTube Help: A/B test titles and thumbnails](https://support.google.com/youtube/answer/16391400)
+- [YouTube Help: Video chapters](https://support.google.com/youtube/answer/9884579)
+- [YouTube Help: Tags](https://support.google.com/youtube/answer/146402)
+- [YouTube Help: Hashtags](https://support.google.com/youtube/answer/6390658)
+- [YouTube Help: Write descriptions](https://support.google.com/youtube/answer/12948449)
+- [YouTube Help: Titles and thumbnails](https://support.google.com/youtube/answer/12340300)
+- [YouTube Help: Thumbnails policy](https://support.google.com/youtube/answer/9229980)
+- [YouTube Help: Disclosing altered or synthetic content](https://support.google.com/youtube/answer/14328491)
+- [YouTube Help: Audience retention (the Intro measure)](https://support.google.com/youtube/answer/9314415)
+- [YouTube Data API: videos resource (the tags count)](https://developers.google.com/youtube/v3/docs/videos)
+
+Everything else:
 
 - [Anthropic: Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Claude Code: Skills](https://code.claude.com/docs/en/skills)
