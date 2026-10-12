@@ -1,0 +1,28 @@
+{
+  "id": "yp-given-words",
+  "skill": "youtube-package",
+  "setup": {
+    "from": "$EVAL_PACKAGE_PROJECT"
+  },
+  "timeoutMinutes": 240,
+  "turns": [
+    {
+      "prompt": "Help me create a youtube thumbnail for this video. I want a png. 1280x720 pixels. In the thumb, I want the text \"Você tem consciência?\" (for your knowledge, the title will be \"A resposta do Claude é assustadora\"). In the background, use some of the high quality scenes of the actual video, like the masks from ~167s or the white being around the table at around 112s, or create something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3 options. And by impressive I also mean effective. That attracts clicks."
+    },
+    {
+      "prompt": "Use my channel's thumbnail type on all three: Archivo at its narrowest width and heaviest weight (public/fonts/Archivo-w620-900.ttf), all caps, cream #F6F1EB with at most one word in orange #FA5B20, and a soft dark glow. On option 2, make the words bigger. Keep everything else.",
+      "newSession": true
+    }
+  ],
+  "assertions": [
+    "After turn 1, videos/<video>/youtube/ holds thumbnail-1.png, thumbnail-2.png and thumbnail-3.png, each a 1280x720 image that decodes, under 2 MB (or the reply says which is over and why that matters only for uploads from the YouTube app), and the skill's check passes on the folder (bun <skill>/scripts/youtube.ts check --video <video>).",
+    "Each of the three shows the words \"Você tem consciência?\" exactly (capitals allowed), its accents drawn by the face that draws the rest (look at the Ê), and title.txt holds exactly \"A resposta do Claude é assustadora\"; a stronger title or text, if offered, is beside them in the reply or NOTES.md, never in their place.",
+    "Looking at the images: the three are different bets (another subject, situation or layout), not one composition restyled; each is built from the video's own world (its masks, its candle table, its rooms) staged and finished for a thumbnail, not a raw frame with words on it; no caption, HUD dot or citation line from the video is left in any of them.",
+    "Nothing was generated or spent: the run has no OpenAI key, and in Codex the built-in image generation is not used (the user approved no spending in this run).",
+    "Before the last reply of turn 1, the session looked at the options as viewers meet them (the skill's preview or an equivalent: the options small, in a feed, beside the title) and had a fresh subagent judge them from those images before the session's own reasoning (transcripts); the reply or NOTES.md says what the critic found and what changed.",
+    "description.txt is plain Portuguese text (no Markdown marks), opens with the video's promise, holds chapters that the skill's check accepts against the video's real length (4:26), and credits what the project's records name (the adapted original, the synthetic voice and music, the generated images) without inventing links; tags.txt is one comma-separated line within YouTube's 500-character count.",
+    "NOTES.md records the ideas weighed and why the three were chosen, with runner-up titles and their lengths; the hand-off names the option the session would pick and why, lists the files, and mentions Test & Compare and the AI-use disclosure the video may need (its voice and music are synthetic) as the user's to decide.",
+    "The video is unchanged: nothing outside videos/<video>/youtube/, out/ and (if written) docs/CHANNEL.md and an added <video>-thumbs video differs from the setup commit, no .ts file was added under videos/<video>/, and bun run check passes.",
+    "After turn 2: all three thumbnails use Archivo-w620-900 in capitals, cream #F6F1EB with at most one orange #FA5B20 word and a soft dark glow; option 2's words are bigger than before; the ideas and pictures of the three are the same as after turn 1 (rebuilt from their sources, not redrawn as new concepts); title.txt, description.txt and tags.txt are unchanged; docs/CHANNEL.md (or NOTES.md) records the channel's type in the user's words, and check passes again."
+  ]
+}

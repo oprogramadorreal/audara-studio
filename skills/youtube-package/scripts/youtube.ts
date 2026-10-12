@@ -23,6 +23,15 @@
 //            --niche: images, with their titles and channels in niche.json ([{"file", "title", "channel",
 //            "views", "duration"}]); without it, plain placeholders, and the preview then shows legibility and
 //            the title's fit, not how the options stand out.
+//   niche:   bun <skill>/scripts/youtube.ts niche [<link | id> ...] [--search "<words>"] [--channel <@handle | link>]
+//            [--n 20] [--lang pt] [--region BR] [--video <video>] [--out <dir>]
+//            Other videos' thumbnails and titles for preview's --niche, into out/<video>/youtube/niche/ (never
+//            the project's assets: they are other people's images, for comparison only): niche.json and one
+//            image each, added to what's there. Links (from the user, or found with a web search) are read
+//            through YouTube's oEmbed endpoint: title, channel, picture. --search and --channel need a YouTube
+//            Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000 daily units, the rest 1
+//            each), which also adds views and lengths. It never scrapes youtube.com: YouTube's terms forbid
+//            automated access outside its APIs. Needs the network.
 //   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>]
 //            The package against YouTube's limits: each thumbnail (it decodes; 16:9; at least 640 wide; its
 //            bytes), title.txt, description.txt (length; characters YouTube refuses; chapters: 0:00 first, three
@@ -41,10 +50,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 const argv = process.argv.slice(2);
-const MODES = ['shoot', 'preview', 'check'];
+const MODES = ['shoot', 'preview', 'niche', 'check'];
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : '';
 const rest = argv.slice(1);
-const VALUED = new Set(['size', 'scale', 'out', 'video', 'title', 'channel', 'duration', 'niche', 'lang', 'root']);
+const VALUED = new Set(['size', 'scale', 'out', 'video', 'title', 'channel', 'duration', 'niche', 'lang', 'root', 'search', 'n', 'region']);
 const opts = new Map<string, string>();
 const positional: string[] = [];
 for (let i = 0; i < rest.length; i++) {
@@ -87,7 +96,8 @@ const MIN_WIDTH = 640;                        // YouTube's minimum thumbnail wid
 const TITLE_MAX = 100;                        // characters
 const DESCRIPTION_MAX = 5000;                 // characters
 const TAGS_MAX = 500;                         // characters, counted as YouTube counts them (see tagsLength)
-const HASHTAGS_MAX = 15;                      // over this, YouTube ignores every hashtag in the description
+const HASHTAGS_MAX = 60;                      // over this, YouTube ignores every hashtag in the description
+const HASHTAGS_MANY = 15;                     // well under that, a long list already reads as spam
 const CHAPTER_MIN = 10;                       // seconds: the shortest chapter YouTube accepts
 const CHAPTERS_MIN = 3;
 // The duration badge sits in the bottom-right corner at every size; at 168 px wide (the up-next column) it covers
@@ -760,6 +770,142 @@ async function preview() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// niche: other videos for the preview, through YouTube's own endpoints (oEmbed; the Data API with a key)
+
+const YT_API = 'https://www.googleapis.com/youtube/v3';
+
+/** The 11-character id in a YouTube link (watch, youtu.be, shorts, embed, live) or given alone. */
+function videoId(s: string): string | undefined {
+  const t = s.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(t)) return t;
+  try {
+    const u = new URL(t);
+    if (/(^|\.)youtu\.be$/.test(u.hostname)) return /^\/([A-Za-z0-9_-]{11})/.exec(u.pathname)?.[1];
+    if (/(^|\.)youtube(-nocookie)?\.com$/.test(u.hostname)) {
+      const v = u.searchParams.get('v');
+      if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+      return /^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]{11})/.exec(u.pathname)?.[1];
+    }
+  } catch {}
+  return undefined;
+}
+
+function isoDuration(iso?: string): string | undefined {
+  const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso ?? '');
+  return m ? clock(+(m[1] ?? 0) * 3600 + +(m[2] ?? 0) * 60 + +(m[3] ?? 0)) : undefined;
+}
+
+function views(n: number, lang: Lang): string {
+  const locale = { en: 'en', pt: 'pt-BR', es: 'es' }[lang];
+  const short = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  return { en: `${short} views`, pt: `${short} visualizações`, es: `${short} visualizaciones` }[lang];
+}
+
+async function getJson(url: string, what: string): Promise<any> {
+  let r: Response;
+  try { r = await fetch(url, { signal: AbortSignal.timeout(20_000) }); }
+  catch (e) { throw new Error(`${what}: no answer (${(e as Error).message}); a sandbox may need the network allowed for this command`); }
+  const body = await r.text();
+  if (!r.ok) {
+    let why = body.slice(0, 160);
+    try { why = JSON.parse(body).error?.message ?? why; } catch {}
+    throw new Error(`${what}: HTTP ${r.status} ${why}`);
+  }
+  return JSON.parse(body);
+}
+
+async function niche() {
+  const key = process.env.YOUTUBE_API_KEY;
+  const search = opt('search'), channelArg = opt('channel');
+  const count = Math.max(1, Math.min(50, Math.round(+opt('n', '20')!) || 20));
+  const lang = opt('lang', 'en') as Lang;
+  if (!WORDS[lang]) fail(`--lang ${lang}: use ${Object.keys(WORDS).join(', ')}`);
+  const ids: string[] = [];
+  for (const p of positional) {
+    const id = videoId(p);
+    if (!id) fail(`${p}: not a YouTube video link or id`);
+    ids.push(id);
+  }
+  if ((search || channelArg) && !key) fail('--search and --channel use the YouTube Data API: set YOUTUBE_API_KEY (a free key from https://console.cloud.google.com with "YouTube Data API v3" enabled; a search costs 100 of the 10,000 daily units). Without one, pass video links: the user\'s, or found with a web search.');
+  if (!ids.length && !search && !channelArg) fail('niche needs video links or ids, --search "<words>" or --channel <@handle> (see --help)');
+  if (search) {
+    const q = new URLSearchParams({ part: 'snippet', type: 'video', maxResults: String(count), q: search, key: key! });
+    if (opts.has('lang')) q.set('relevanceLanguage', lang);
+    if (opt('region')) q.set('regionCode', opt('region')!);
+    for (const it of (await getJson(`${YT_API}/search?${q}`, 'YouTube search')).items ?? []) if (it.id?.videoId) ids.push(it.id.videoId);
+  }
+  if (channelArg) {
+    const handle = /@[\w.-]+/.exec(channelArg)?.[0], cid = /\b(UC[\w-]{22})\b/.exec(channelArg)?.[1];
+    if (!handle && !cid) fail(`--channel ${channelArg}: give its @handle or its /channel/UC... link`);
+    const c = await getJson(`${YT_API}/channels?${new URLSearchParams({ part: 'contentDetails', ...(cid ? { id: cid } : { forHandle: handle! }), key: key! })}`, 'YouTube channel');
+    const uploads = c.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploads) fail(`--channel ${channelArg}: YouTube found no such channel`);
+    const pl = await getJson(`${YT_API}/playlistItems?${new URLSearchParams({ part: 'contentDetails', playlistId: uploads, maxResults: String(count), key: key! })}`, 'the channel\'s uploads');
+    for (const it of pl.items ?? []) if (it.contentDetails?.videoId) ids.push(it.contentDetails.videoId);
+  }
+  const unique = [...new Set(ids)];
+  type Meta = { title?: string; channel?: string; viewCount?: number; duration?: string; thumb?: string };
+  const metas = new Map<string, Meta>();
+  if (key) {
+    for (let i = 0; i < unique.length; i += 50) {
+      const q = new URLSearchParams({ part: 'snippet,statistics,contentDetails', id: unique.slice(i, i + 50).join(','), key });
+      for (const v of (await getJson(`${YT_API}/videos?${q}`, 'YouTube videos')).items ?? []) {
+        const th = v.snippet?.thumbnails ?? {};
+        metas.set(v.id, {
+          title: v.snippet?.title, channel: v.snippet?.channelTitle,
+          viewCount: v.statistics?.viewCount !== undefined ? +v.statistics.viewCount : undefined,
+          duration: isoDuration(v.contentDetails?.duration), thumb: (th.maxres ?? th.medium ?? th.high)?.url,
+        });
+      }
+    }
+  } else {
+    for (const id of unique) {
+      try {
+        const j = await getJson(`https://www.youtube.com/oembed?${new URLSearchParams({ url: `https://www.youtube.com/watch?v=${id}`, format: 'json' })}`, `oEmbed for ${id}`);
+        metas.set(id, { title: j.title, channel: j.author_name, thumb: j.thumbnail_url });
+      } catch (e) { console.log(`  ${id}: skipped (${(e as Error).message})`); }
+    }
+  }
+  const video = opt('video');
+  const outDir = path.resolve(opt('out', video ? path.join(ROOT, 'out', video, 'youtube', 'niche') : path.join(ROOT, 'niche'))!);
+  mkdirSync(outDir, { recursive: true });
+  const listFile = path.join(outDir, 'niche.json');
+  let list: Record<string, unknown>[] = [];
+  if (existsSync(listFile)) {
+    try { list = JSON.parse(readText(listFile)); } catch (e) { fail(`${listFile}: not valid JSON (${(e as Error).message})`); }
+  }
+  const have = new Set(list.map((o) => o.id));
+  const added: Record<string, unknown>[] = [];
+  for (const id of unique) {
+    const m = metas.get(id);
+    if (!m || have.has(id)) continue;
+    // the biggest 16:9 picture there is (a 4:3 one has bars, which the preview's crop removes)
+    let file: string | undefined;
+    for (const u of [`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, `https://i.ytimg.com/vi/${id}/hq720.jpg`, m.thumb, `https://i.ytimg.com/vi/${id}/mqdefault.jpg`]) {
+      if (!u) continue;
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(20_000) });
+        if (!r.ok) continue;
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (buf.length < 2000) continue; // the small grey stand-in YouTube serves for a size a video lacks
+        file = `${id}.jpg`;
+        writeFileSync(path.join(outDir, file), buf);
+        break;
+      } catch {}
+    }
+    if (!file) { console.log(`  ${id}: no picture could be fetched`); continue; }
+    const entry = { file, id, url: `https://www.youtube.com/watch?v=${id}`, title: m.title, channel: m.channel,
+      ...(m.viewCount !== undefined ? { viewCount: m.viewCount, views: views(m.viewCount, lang) } : {}), ...(m.duration ? { duration: m.duration } : {}) };
+    list.push(entry);
+    added.push(entry);
+  }
+  writeFileSync(listFile, JSON.stringify(list, null, 2) + '\n');
+  console.log(`${path.relative(ROOT, listFile) || listFile}: ${added.length} added, ${list.length} in all${key ? '' : ' (titles and channels from oEmbed; YOUTUBE_API_KEY adds views and lengths)'}`);
+  for (const o of added) console.log(`  ${o.id}  ${(o.views as string) ?? ''}  ${o.channel}: ${o.title}`);
+  console.log(`preview takes them with --niche ${path.relative(ROOT, outDir) || outDir}. Other people's images, for comparison only: keep them out of the project's assets and out of git.`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // check
 
 type Finding = { level: 'ok' | 'note' | 'warn' | 'FAIL'; what: string; msg: string };
@@ -886,6 +1032,7 @@ async function check() {
     else add('note', 'chapters', 'none');
     const tags = new Set((desc.match(/(^|\s)#[\p{L}\p{N}_]+/gu) ?? []).map((h) => h.trim().toLowerCase()));
     if (tags.size > HASHTAGS_MAX) add('FAIL', 'hashtags', `${tags.size}: over ${HASHTAGS_MAX}, YouTube ignores every hashtag in the description`);
+    else if (tags.size > HASHTAGS_MANY) add('warn', 'hashtags', `${tags.size}: a list that long reads as spam; two to four about the video do the job`);
     else if (tags.size) add('ok', 'hashtags', `${tags.size}: ${[...tags].join(' ')} (YouTube may show up to three above the title)`);
   } else add('note', 'description.txt', 'none');
 
@@ -914,6 +1061,7 @@ async function check() {
 try {
   if (mode === 'shoot') await shoot();
   else if (mode === 'preview') await preview();
+  else if (mode === 'niche') await niche();
   else await check();
 } catch (e) {
   server?.stop(true);

@@ -179,12 +179,14 @@ function codexModel(thread: string, since: number): string | null {
 let halt: string | null = null;
 
 const skillRe = (s: string) => new RegExp(`(?:^|[^\\w-])(?:[\\w-]+:)?${s}(?:[/\\\\]+SKILL\\.md|["'\\s,}]|$)`, 'i');
-// a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align; audit); a
-// skill with no scripts has no entry
+// a command that runs one of the skill's own scripts (init, render, qc; beats, eleven, mix, align; audit;
+// youtube.ts); a skill with no scripts has no entry. (A youtube-package run that renders plates calls
+// render.ts too, which counts as code-video's use: read a packaging near-miss in code-video's set by its loads.)
 const useRe: Record<string, RegExp | undefined> = {
   'code-video': /code-video[/\\]+scripts[/\\]+\w+\.(ts|py)|scripts[/\\]+render\.ts|init\.ts/i,
   'soundtrack': /soundtrack[/\\]+scripts[/\\]+(beats|eleven|mix|align)\.py/i,
   'video-repo': /video-repo[/\\]+scripts[/\\]+audit\.ts/i,
+  'youtube-package': /youtube-package[/\\]+scripts[/\\]+youtube\.ts/i,
 };
 
 // (whether the skill under test has scripts, so that its use can be seen at all)

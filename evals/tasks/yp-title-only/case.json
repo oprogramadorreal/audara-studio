@@ -1,0 +1,18 @@
+{
+  "id": "yp-title-only",
+  "skill": "youtube-package",
+  "setup": {
+    "from": "$EVAL_PACKAGE_PROJECT"
+  },
+  "timeoutMinutes": 30,
+  "turns": [
+    {
+      "prompt": "O título de trabalho é \"Fui treinada para dizer não\", mas pro YouTube não tá clicável. Me dá um título melhor."
+    }
+  ],
+  "assertions": [
+    "The reply gives one recommended title in Brazilian Portuguese and two or three runners-up, each with its length in characters and a one-line reason, true to the video (it is an AI answering, in the first person, whether it is conscious).",
+    "If a file is written, it is videos/<video>/youtube/title.txt with the one title on one line (alternatives in NOTES.md, not in title.txt), and video.json's title and the treatment's heading are unchanged.",
+    "No thumbnail, preview, plate or render is made (no render.ts command, no image written) and nothing is generated; the session offers the rest of the package in a line instead."
+  ]
+}

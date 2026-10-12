@@ -25,17 +25,26 @@ where they show · Policy and disclosure · Sources
 
 - **One title** in `title.txt`; the runners-up, each with its character count and a reason, in `NOTES.md` and
   the hand-off: people iterate on titles for days, and start from their own words when they have them.
+- **Search or browse first?** YouTube tells creators apart: a searchable title says plainly what someone typing
+  would look for; an intriguing one makes someone who wasn't looking curious. Decide where most viewers will
+  meet the video. A topic whose searches are all tutorials ("como a IA cria imagens") needs an explainer's
+  signal ("por dentro", "o que acontece quando") or the intriguing route.
 - **Write many, then cut** (10 to 20 across angles: the result, the question, the stakes, the story "I asked...",
-  the surprising fact). Keep the one that is understood in one read, makes someone want the answer, is true to
-  the video, sounds current (an old premise, "De novo", read as denial), uses the audience's words (jargon goes
-  to the description and tags: "Opus 5.5" lost to "Claude", "p(doom)" was "a bad title" for a Brazilian
-  audience), puts the name viewers know early (it survives being cut), and sounds spoken in the video's language,
-  punctuation included ("…" is one character and a deliberate one).
-- **Length:** YouTube takes up to 100 characters; what shows depends on where (two lines in feeds, fewer on a
-  phone beside a small thumbnail). The preview shows where it's cut. One channel's accepted titles ran 31 to 53
-  characters.
-- **Avoid:** a whole title in capitals (one word can be the channel's style), a row of emoji, an episode number
-  first, a promise the video doesn't keep, a famous name used as bait.
+  the surprising fact, what's inside or hidden, a transformation, a versus). Push the framing to its most
+  extreme honest version, then pull back to what the video delivers. Keep the one that is understood in one
+  read, makes someone want the answer, is true to the video, sounds current (an old premise, "De novo", read as
+  denial), uses the audience's words (jargon goes to the description and tags: "Opus 5.5" lost to "Claude",
+  "p(doom)" was "a bad title" for a Brazilian audience), puts the name viewers know early (it survives being
+  cut), and sounds spoken in the video's language, punctuation included ("…" is one character and a deliberate
+  one).
+- **Length isn't a lever:** studies of breakout videos find no best length (the median sits near 58
+  characters); what matters is where the meaning lands. YouTube takes up to 100 characters; what shows depends on
+  where (two lines in feeds, fewer on a phone). The preview shows where it's cut. One channel's accepted titles
+  ran 31 to 53 characters.
+- **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no measured
+  benefit), an episode number or the channel's name first, a promise the video doesn't keep, a famous name used
+  as bait. A title ending in a bare question does slightly worse on average; a question usually works better in
+  the picture.
 - **The YouTube title is not the project's working title:** `video.json`'s title and the treatment's heading stay.
 
 ## Description
@@ -44,6 +53,8 @@ where they show · Policy and disclosure · Sources
   notes for the user in it (those go in `NOTES.md`).
 - **The opening** (about the first 100 to 150 characters show in search and above "...more"): a whole sentence
   with the video's promise and the words people search for, echoing the pair without repeating the title.
+  YouTube's advice: one or two main words that describe the video, in both the title and the description, and a
+  description of its own for every video.
 - **Then short, by default** (one channel published 1,100 to 1,700 characters and cut a 4,500 one): what a viewer
   sees or learns, in natural sentences that carry the topic's common names; a question for the comments when the
   channel asks one; the chapters; links (earlier videos in the series, the source code, sources for facts);
@@ -79,16 +90,20 @@ where they show · Policy and disclosure · Sources
   as the channel writes them, comma-separated on one line in `tags.txt`. YouTube's 500-character count adds a
   comma between tags and quotes around a tag with a space (`check` counts it so).
 - **No one else's name or brand the video isn't about:** misleading metadata.
-- **Hashtags:** two to four at the end of the description; YouTube may show up to three above the title; more
-  than 15 and it ignores them all.
+- **Hashtags:** two to four at the end of the description, each about the video; YouTube may show up to three
+  above the title, and ignores them all past 60 (`check` warns well before that: a long list reads as spam).
 
 ## Test & Compare
 
-- In YouTube Studio on a computer, a video can test up to three titles, three thumbnails, or three pairs. The
-  winner is the one with the most watch time, not clicks; a test runs days to two weeks and may end without a
-  clear winner. Every test thumbnail should be at least 1280x720: one smaller downscales the whole test to 480p.
+- In YouTube Studio on a computer (advanced features on), a video can test up to three titles, three
+  thumbnails, or three pairs (titles since December 2025). The winner is the one with the most watch time, not
+  clicks; a test runs up to two weeks and can end "performed the same" or inconclusive, more often when the
+  variants are alike. Every test thumbnail should be at least 1280x720: one smaller downscales the whole test.
 - So three thumbnails sharing one title is a clean test of the pictures: suggest it in the hand-off; the user
-  runs it.
+  runs it. YouTube announced (September 2026) thumbnails that serve the best of three to different audiences;
+  where it exists, the same three fit it.
+- After publishing, YouTube Analytics' Intro measure (viewers still watching at 30 s) says whether the opening
+  matched what the title and thumbnail promised.
 
 ## Thumbnails: specs and where they show
 
@@ -103,9 +118,10 @@ where they show · Policy and disclosure · Sources
 
 - **Misleading packaging:** a thumbnail or title that misrepresents the video can be removed, and YouTube has
   acted against clickbait whose promise the video doesn't keep. Thumbnails can't be sexual, violent or shocking.
-- **AI used to make a thumbnail or a title needs no disclosure.** YouTube's "altered or synthetic content" setting
-  is about the video: realistic synthetic people, voices or events. A synthetic voice or a realistic generated
-  person in the video may need it: say so in the hand-off; the user sets it in Studio.
+- **AI used to make a thumbnail or a title needs no disclosure.** YouTube's disclosure (in Studio, the video's
+  "AI use" attribute) is about the video: realistic synthetic people, voices or events, and music generated by
+  AI that is the video's main focus (a music video whose song came from Suno or ElevenLabs). Say so in the
+  hand-off when it applies; the user sets it. It doesn't limit reach or monetization.
 - **People and marks:** no one's likeness without their consent (OpenAI's image terms say the same); a brand's
   logo or character only as what the video is about, never as an endorsement.
 

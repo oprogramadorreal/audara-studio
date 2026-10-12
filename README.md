@@ -5,7 +5,7 @@ a script or nothing at all: what you decide is followed exactly, and what you le
 aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
 ("at 0:23 the title should land on the snare") and renders the MP4.
 
-audara-studio is a plugin for Claude Code and Codex with four skills:
+audara-studio is a plugin for Claude Code and Codex with five skills:
 
 - **code-video**: music videos, lyric videos, motion graphics, explainers, title cards and loops, drawn
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
@@ -18,6 +18,10 @@ audara-studio is a plugin for Claude Code and Codex with four skills:
   else needs to clone it and render the video again, leaves renders and files too big for GitHub out (and
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is
   pushed until you ask.
+- **youtube-package**: for when a video is ready to publish. Three thumbnail options designed together with
+  one title, then the description with chapters and the tags, written into the project and checked against
+  YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail, and each
+  option is judged small, in a mock of YouTube's feed, beside the title.
 
 ## Install
 
@@ -69,6 +73,9 @@ Other ways in:
   lookalike. Ask for a concept or a mockup and it makes one, marked as a concept.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
+- **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You
+  get them in `videos/<video>/youtube/`, with the one the agent would pick and why; a title or text you give
+  is used as you wrote it.
 
 To force the skill (for example when other video skills are installed), use `/audara-studio:code-video` in
 Claude Code or `$audara-studio:code-video` in Codex.

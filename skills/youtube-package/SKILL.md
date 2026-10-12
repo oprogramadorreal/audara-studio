@@ -36,6 +36,7 @@ From the project folder; `--help` has every option.
 | Find moments | `bun scripts/render.ts sheet --video <video> --n 24` |
 | Plates at 2x | `bun scripts/render.ts stills --video <video> --t 12.5,40 --scale 2 [--only <entries>] --out out/<video>/youtube/frames` |
 | A page to PNG | `bun <skill>/scripts/youtube.ts shoot videos/<video>/youtube/thumbnail-1.html` |
+| Videos beside it | `bun <skill>/scripts/youtube.ts niche <links> --video <video>` (optional) |
 | As viewers see it | `bun <skill>/scripts/youtube.ts preview --video <video> --channel "<name>" [--niche <dir>]` |
 | Check the package | `bun <skill>/scripts/youtube.ts check --video <video>` |
 | Generated image | code-video's `scripts/imagegen.py` (references/art.md) |

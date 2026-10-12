@@ -37,6 +37,9 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
   first thumbnail already held the idea that won the long round after it.
 - **What the user named** (a scene, a shot, an object) gets a properly cropped try before it's dropped: a scene
   dismissed on a weak wide crop once won the final vote.
+- **Words are optional.** No text is the most common single pattern among breakout thumbnails (2026 studies);
+  when the words are yours to choose, let at least one option try few or none. When used, they say what the
+  title doesn't: a question, a number, a sound bite, a label.
 - **Fixed words aren't a fixed layout.** Text the user decided keeps its words; its size and place still serve
   the picture. When rigid type rules (a minimum height, wide gutters) made every option the same wall of text and
   shrank the subject, craft scores went up and the pull to click went down.
@@ -124,14 +127,15 @@ a title as a comparison is words, not a likeness), and so does imitation of a fi
   description's first lines. Look at each at its own size; a sheet of sizes alone once passed text that the feed
   then showed small and too dark.
 - **The niche, when the network is allowed** (optional; stop once it has informed a choice): 10 to 30 videos a
-  viewer of this one would see beside it (same language, audience and subject), with their titles, channels and
-  views in `niche.json`, in `out/<video>/youtube/niche/` (other people's images: never in the project's assets
-  or in git). One way: `uvx yt-dlp --flat-playlist -J "ytsearch15:<words people search>" --extractor-args
-  "youtube:lang=<language>"` lists ids, titles, channels and views (without the language argument, titles may
-  come back translated); each picture is `https://i.ytimg.com/vi/<id>/hq720.jpg`. The channel's own recent videos
-  come the same way from `<channel link>/videos`. Search in the video's language, filter what's off-topic, give
-  them their real titles as yours has, and read views as context, not as proof of what a picture did. Nine
-  searches once took five minutes and changed the type size, the brightness and the colour of a whole set.
+  viewer of this one would see beside it (same language, audience and subject). Find them with a web search in
+  the video's language (the words people would type), or take the links the user gives, and run `bun
+  <skill>/scripts/youtube.ts niche <links...> --video <video> --lang <language>`: their titles, channels and
+  pictures land in `out/<video>/youtube/niche/` for `preview --niche` (other people's images: never in the
+  project's assets or in git). With a YouTube Data API key in `YOUTUBE_API_KEY`, `--search "<words>"` and
+  `--channel <@handle>` (the channel's own recent videos) add views and lengths. Nothing scrapes youtube.com:
+  YouTube's terms forbid automated access outside its APIs. Leave out what's off-topic, give the others their
+  real titles as yours has, and read views as context, not proof of what a picture did. Nine searches once took
+  five minutes and changed the type size, the brightness and the colour of a whole set.
 
 ## The critic
 
