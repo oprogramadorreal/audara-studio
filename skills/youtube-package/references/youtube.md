@@ -44,7 +44,8 @@ where they show · Policy and disclosure · Sources
   The preview shows where it's cut. One channel's accepted titles ran 31 to 53 characters.
 - **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no benefit in a
   2026 matched-pairs study), an episode number or the channel's name first, a promise the video doesn't keep, a
-  famous name used as bait.
+  famous name used as bait: one the video isn't about. A name it is about (its research, its answers, its
+  subject) belongs early, even when the video shows no logo or interface of it.
 - **A question:** titles ending in a bare question averaged 0.82 times the average views of the 4 million 2026
   uploads vidIQ studied. An association, not a rule: a question often sits better in the picture, with the title
   around it. These studies observe, they don't prove; a channel's own results outrank them.
