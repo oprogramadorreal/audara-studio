@@ -38,9 +38,9 @@ where they show · Policy and disclosure · Sources
   cut), and sounds spoken in the video's language, punctuation included ("…" is one character and a deliberate
   one).
 - **Length isn't a lever:** a 2026 study of 277 breakout videos (OverseerOS; observational) found no best
-  length, the median near 58 characters; what matters is where the meaning lands. YouTube takes up to 100 characters; what shows depends on
-  where (two lines in feeds, fewer on a phone). The preview shows where it's cut. One channel's accepted titles
-  ran 31 to 53 characters.
+  length, the median near 58 characters; what matters is where the meaning lands. YouTube takes up to 100
+  characters; what shows depends on where (two lines in feeds, fewer on a phone). The preview shows where it's
+  cut. One channel's accepted titles ran 31 to 53 characters.
 - **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no benefit in a
   2026 matched-pairs study), an episode number or the channel's name first, a promise the video doesn't keep, a
   famous name used as bait. Titles ending in a bare question averaged 0.82 times their channel's views in vidIQ's
@@ -108,7 +108,7 @@ where they show · Policy and disclosure · Sources
 
 ## Thumbnails: specs and where they show
 
-- **Size:** 1280x720 by default (the user's usual ask and the floor for a full-quality test); YouTube now
+- **Size:** 1280x720 by default (a common ask, and the floor for a full-quality test); YouTube now
   recommends 3840x2160 (`shoot --scale 3` renders it from the same page); 16:9; at least 640 wide; JPG or PNG.
   Up to 2 MB uploads from the YouTube app; Studio on a computer takes up to 50 MB.
 - **Where:** the home grid (about 360 px wide on a laptop), search (360, bigger for a top result), the up-next
@@ -129,7 +129,11 @@ where they show · Policy and disclosure · Sources
 ## Sources
 
 YouTube Help, checked 2026-10-12: thumbnails (support.google.com/youtube/answer/72431), A/B testing titles and
-thumbnails (answer/16391400), chapters (answer/9884579), tags (answer/146402), hashtags (answer/6390658),
-descriptions (answer/12948449), thumbnail policy (answer/9229980), altered or synthetic content
-(answer/14328491), content performance (answer/16559650). The tags count: YouTube Data API, videos resource
-(developers.google.com/youtube/v3/docs/videos).
+thumbnails (answer/16391400), titles and thumbnails (answer/12340300), chapters (answer/9884579), tags
+(answer/146402), hashtags (answer/6390658), descriptions (answer/12948449), thumbnail policy (answer/9229980),
+altered or synthetic content (answer/14328491), content performance (answer/16559650), audience retention and
+the Intro measure (answer/9314415). The tags count: YouTube Data API, videos resource
+(developers.google.com/youtube/v3/docs/videos). Title testing for all creators since December 2025: Search
+Engine Journal, 2025-12-04. Studies (observational): vidIQ's thumbnail study (2026-07-08, 500 breakouts) and
+title study (2026-07-16, 4 million uploads), vidiq.com/research; OverseerOS on title length (2026-08-14) and
+emoji (2026-08-27), overseeros.com/blog.
