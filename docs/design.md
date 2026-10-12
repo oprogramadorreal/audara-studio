@@ -282,7 +282,8 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
 - **The video's own world, staged better.** The pictures start from the video: its frames rendered at 2x without
   their captions, the plates its scenes load, a plate staged in the engine in a video of its own
   (`<video>-thumbs`, which sorts after the video and so never becomes the default), the user's photos, and
-  generated images only after a yes, through code-video's `imagegen.py`. Every word is set in code: image models
+  generated images only after a yes, through code-video's `imagegen.py` (or, in Codex, its built-in image
+  generation, which draws on the plan's limits). Every word is set in code: image models
   misspell. A frame with words on it is a start, not a finish. The rejected rounds in the user's projects were
   spectacle the video didn't have (confetti and music notes in a video with neither) and pasted faces; the
   thumbnail that shipped was the video's own computer, rendered in its engine.
@@ -298,20 +299,21 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   the title before any reasoning, says what each promises, what reads first, what fails and what one change
   would help; no CTR guesses or averaged scores, since a salience score once pulled a design toward the cliché
   its brief ruled out.
-- **Stop rules.** About six rough ideas, three finished, one critic round and a revision, a last look. One
+- **Stop rules.** Exploration happens once: about six rough ideas, three finished, one critic round; fixing what
+  the check or the critic finds is finishing, not a new round; then a last look at full size. One
   session spent nearly ten hours and sixty agent runs on one set, six of those hours on an option that lost;
   another showed the user nothing for four hours. The rough sheet and the titles being weighed go to the user
   early, and work goes on.
 - **Their words.** A title or text the user decided is used exactly, a stronger version offered beside it;
   one given as a start is the skill's to keep or improve, saying what changed. A narrower request (a title, the
   description, one option changed) gets that part.
-- **Honest packaging.** The pair promises what the video delivers in its first seconds (YouTube's Intro measure
-  checks exactly that, and it removes thumbnails that misrepresent). An opening that doesn't pay off the best
+- **Honest packaging.** The pair promises what the video delivers in its first seconds (YouTube's Intro measure,
+  viewers still watching at 30 s, helps assess that, and YouTube removes thumbnails that misrepresent). An opening that doesn't pay off the best
   promise is reported, with the change offered through code-video; the skill never changes the video.
 
 Its script, `youtube.ts`, has four modes and no dependencies: Bun serves the project, Chrome renders headless,
-and Bun's WebSocket speaks the DevTools protocol to it, so it runs the same in both tools and needs no install
-or network. `shoot` renders any HTML page at an exact size and reports each text block's size at 168 px, text
+and Bun's WebSocket speaks the DevTools protocol to it, so it runs the same in both tools, with nothing to
+install and no network but `niche`'s. `shoot` renders any HTML page at an exact size and reports each text block's size at 168 px, text
 in the duration badge's corner, a face that didn't load or lacks a character (an Ê); `preview` makes the feed
 sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the description's
 5,000, the chapters' rules, the tags' 500-character count, the hashtags'); `niche` gathers other videos for the

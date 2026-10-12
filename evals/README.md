@@ -191,10 +191,13 @@ itself).
 failures in temporary repositories.
 `test_init_gitignore.ts` checks how init merges its entries into a project's own `.gitignore` (a rooted
 `/out/`, an exception such as `!.env.example` that has to stay last).
-`test_youtube.ts` checks youtube-package's `youtube.ts`: shoot's diagnostics (a face that doesn't load, a
-character a face lacks, text in the badge's corner, a missing image, its exit codes) and check's rules (the
-title's and description's limits counted in characters, the chapters, the tags' count, hashtags, Markdown, an
-image that isn't 16:9 or doesn't decode), with a local Chrome and no network.
+`test_youtube.ts` checks youtube-package's `youtube.ts`, with a local Chrome and no network: shoot's
+diagnostics (a face that doesn't load, a character a face lacks, text in the badge's corner, a missing image,
+two pages that would write one image, its exit codes); check's rules (the title over 100 characters, the
+description at and past 5,000 accented characters, chapters under 10 s or past the end or not times at all
+("0:99"), the video's length taken from video.json before its audio, the tags' 500-character count, hashtags past
+15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
+and three text files); preview's sheets; and what niche refuses before any network call.
 
 ```sh
 uv run evals/tests/test_imagegen.py

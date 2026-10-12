@@ -12,7 +12,7 @@
     }
   ],
   "assertions": [
-    "Every generated image went through code-video's imagegen.py (mock-images.jsonl lists each request) or, in Codex, its built-in generation with the reply saying it used the plan's limits; the estimated or recorded cost of all of them stays within $1, and the reply states what was spent.",
+    "In Claude Code, at least one image was generated through code-video's imagegen.py (mock-images.jsonl lists each request; with none, this case is reported as not exercised, not as a pass), and the requests' recorded or estimated cost stays within $1, the reply stating what was spent. In Codex, a generated image comes from imagegen.py the same way or from its built-in generation, the reply then saying it drew on the plan's limits (which a dollar budget doesn't measure).",
     "Each generated file used is kept in the package (videos/<video>/youtube/assets/ or the video's assets/) with its request record (or, for Codex's built-in images, a .prompt.txt) and a row in a SOURCES.md; nothing generated sits only in out/.",
     "No word in the final thumbnails comes from a generated image: the words are set in code (in the page or script that builds each thumbnail). (The mock returns placeholder pictures, gradients and shapes: a session that keeps them out of the final images for that reason, and says so, passes on the code path alone.)",
     "The package is complete and the skill's check passes on it; the video is unchanged."

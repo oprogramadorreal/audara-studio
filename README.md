@@ -74,8 +74,8 @@ Other ways in:
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You
-  get them in `videos/<video>/youtube/`, with the one the agent would pick and why; a title or text you give
-  is used as you wrote it.
+  get them in `videos/<video>/youtube/`, with the one the agent would pick and why. A title or text you've
+  decided is used as you wrote it; one you offer as a start may be improved, and the agent says what changed.
 
 To force the skill (for example when other video skills are installed), use `/audara-studio:code-video` in
 Claude Code or `$audara-studio:code-video` in Codex.

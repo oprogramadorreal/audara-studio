@@ -96,9 +96,44 @@ try {
   // check --full: the whole package, three thumbnails at the size asked for
   for (const i of [2, 3]) copyFileSync(path.join(good, 'thumbnail-1.png'), path.join(good, `thumbnail-${i}.png`));
   r = run(['check', 'good', '--duration', '4:26', '--full']);
-  expect('check --full: three 1280x720 thumbnails and the three text files pass', r.code === 0 && /complete: three 1280x720 thumbnails/.test(r.out), r.out);
+  expect('check --full: three 1280x720 thumbnails and the three text files pass', r.code === 0 && /complete: three 1280x720 PNG thumbnails/.test(r.out), r.out);
   r = run(['check', 'odd', '--full']);
   expect('check --full: missing thumbnails and files fail', r.code === 1 && /0 thumbnails: the full package has three/.test(r.out) && /title\.txt is missing/.test(r.out), r.out);
+
+  // check: limits at their edges, and what codex's review reproduced
+  const edges = pkg('edges', {
+    'description.txt': 'é'.repeat(4990) + '\n0:00 A\n0:99 B\n2:00 C\n' + Array.from({ length: 61 }, (_, i) => `#t${i}`).join(' ') + '\n',
+  });
+  r = run(['check', 'edges', '--duration', '200']);
+  expect('check: the description counts characters, so 4,990 accented letters plus the rest pass 5,000 only past it', /description\.txt\s+\d+ characters: YouTube's limit is 5000/.test(r.out), r.out);
+  expect('check: "0:99" is not a time', /"0:99" isn't a time/.test(r.out), r.out);
+  expect('check: more than 60 hashtags fail', /61: over 60, YouTube ignores every hashtag/.test(r.out), r.out);
+  const ok5000 = pkg('ok5000', { 'description.txt': 'ã'.repeat(5000) + '\n' });
+  r = run(['check', 'ok5000']);
+  expect('check: exactly 5,000 accented characters pass (characters, not bytes)', r.code === 0 && /5000 characters/.test(r.out), r.out);
+  r = run(['check', 'does-not-exist', '--full', '--duration', '40']);
+  expect('check: a mistyped folder fails instead of checking the folder above it', r.code === 2 && /no such folder or file/.test(r.out), r.out);
+  const jpgs = pkg('jpgs', { 'title.txt': 'T\n', 'description.txt': 'D\n', 'tags.txt': 'a\n' });
+  run(['shoot', 'pages/good.html', '--jpg', '90', '--out', 'jpgs/thumbnail-1.jpg']);
+  for (const i of [2, 3]) copyFileSync(path.join(jpgs, 'thumbnail-1.jpg'), path.join(jpgs, `thumbnail-${i}.jpg`));
+  r = run(['check', 'jpgs', '--full']);
+  expect('check --full: JPEG thumbnails fail the PNG package', r.code === 1 && /is JPEG, not PNG/.test(r.out), r.out);
+  r = run(['check', 'jpgs', '--full', '--jpg']);
+  expect('check --full --jpg: the same JPEGs pass when JPEG was asked for', r.code === 0, r.out);
+
+  // check: the length as the engine reads it (video.json's duration before the audio file)
+  mkdirSync(path.join(root, 'proj', 'videos', 'v', 'youtube'), { recursive: true });
+  writeFileSync(path.join(root, 'proj', 'videos', 'v', 'video.json'), JSON.stringify({ title: 'V', size: [1920, 1080], fps: 30, audio: null, duration: 30 }));
+  writeFileSync(path.join(root, 'proj', 'videos', 'v', 'youtube', 'description.txt'), 'x\n0:00 A\n0:10 B\n0:25 C\n');
+  const lenRun = Bun.spawnSync(['bun', SCRIPT, 'check', '--video', 'v'], { cwd: path.join(root, 'proj'), stdout: 'pipe', stderr: 'pipe' });
+  const lenOut = lenRun.stdout.toString() + lenRun.stderr.toString();
+  expect('check: video.json\'s duration sets the length (the last chapter, 5 s of a 30 s video, fails)', lenRun.exitCode === 1 && /the last chapter lasts 5\.0 s/.test(lenOut) && /video\.json/.test(lenOut), lenOut);
+
+  // shoot: two pages with one name into one folder would overwrite each other
+  mkdirSync(path.join(root, 'twins', 'a'), { recursive: true }); mkdirSync(path.join(root, 'twins', 'b'), { recursive: true });
+  for (const d of ['a', 'b']) writeFileSync(path.join(root, 'twins', d, 'same.html'), '<!doctype html><body style="margin:0;width:1280px;height:720px;background:#123"></body>');
+  r = run(['shoot', 'twins/a/same.html', 'twins/b/same.html', '--out', 'twins/out']);
+  expect('shoot: refuses two pages that would write the same image', r.code === 2 && /would write the same image/.test(r.out), r.out);
 
   // preview: from the package folder, with other videos from a folder (no network); the same videos beside
   // every option (a regression: a second function named niche once shadowed the folder reader)

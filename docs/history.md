@@ -1397,7 +1397,9 @@ three thumbnail options with any art at hand ("the skill must go all out"), one 
 win the click and keep the viewer, a description that helps search, and tags, as files in the project; words
 they give are a start to keep or improve, and with none given the skill proposes everything. A Claude Code
 session (Opus 5.5) built it and had the last call; a Codex session (GPT-6 Astra) analyzed it with its
-skill-creator over three rounds through Herdr and tested the script in its own sandbox.
+skill-creator over four rounds through Herdr and ran the script in its own environment (through Node's child
+processes: its default shell couldn't start a process on this machine, so the default shell sandbox itself
+wasn't tested).
 
 What the evidence said, from the user's four channel projects (`oprog-1` to `oprog-4`) and the sessions that
 packaged them, read by nine research agents (the transcripts, the files, YouTube's help pages, data studies):
@@ -1438,9 +1440,10 @@ packaged them, read by nine research agents (the transcripts, the files, YouTube
 What changed:
 
 - **`skills/youtube-package/`**, model-invoked like the others: SKILL.md (Fixed: an honest pair, money waits
-  for a yes, rights, the user's words; the bar; a session of nine steps, each once unless asked again: the
+  for a yes, rights, the user's words; the bar; a session of nine steps whose exploration happens once: the
   video, the channel, about six rough ideas and 10-20 titles shown to the user early, art, finishing, looking as
-  viewers do with one fresh critic and one revision, the words, the check, the hand-off), `references/art.md`
+  viewers do with one fresh critic, the words, the check, the hand-off; fixing what the check or the critic
+  finds is finishing, not a new round), `references/art.md`
   and `references/youtube.md`, and `scripts/youtube.ts` (shoot, preview, niche, check; Bun and Chrome over the
   DevTools protocol, no dependencies). The package goes in `videos/<video>/youtube/`; previews in `out/`.
 - **init's AGENTS.md** names the skill, owes "for a request for a thumbnail, a YouTube title, a description or

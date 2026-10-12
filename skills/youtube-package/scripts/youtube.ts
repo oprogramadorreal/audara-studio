@@ -32,14 +32,16 @@
 //            Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000 daily units, the rest 1
 //            each), which also adds views and lengths. It never scrapes youtube.com: YouTube's terms forbid
 //            automated access outside its APIs. Needs the network.
-//   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>] [--full [--size 1280x720]]
+//   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>] [--full [--size 1280x720] [--jpg]]
 //            The package against YouTube's limits: each thumbnail (it decodes; 16:9; at least 640 wide; its
 //            bytes), title.txt, description.txt (length; characters YouTube refuses; chapters: 0:00 first, three
 //            or more, ascending, each at least 10 s, the last too, against the video's length), tags.txt (the
 //            500-character count YouTube applies) and the hashtags. Exit 1 when YouTube would refuse or ignore
 //            something; a warning doesn't fail it. The text files are checked even when Chrome can't start.
-//            --full also holds the package to the whole request: three thumbnails at --size (1280x720 unless
-//            given), title.txt, description.txt and tags.txt; without it, a missing part is only a note.
+//            --full also holds the package to the whole request: three PNG thumbnails at --size (1280x720 unless
+//            given; JPEG with --jpg), title.txt, description.txt and tags.txt; without it, a missing part is
+//            only a note. The video's length: --duration, else its final render, else as the engine reads it
+//            (video.json's duration, its audio segments, data/audio.json, its one audio file).
 // <dir> is the package folder: thumbnail-1.png ... and title.txt, description.txt, tags.txt. In an audara project,
 // --video <video> means videos/<video>/youtube/, previews go to out/<video>/youtube/, and the video's length is
 // read from its render (out/<video>/<video>.mp4), else its audio, else video.json's duration (ffprobe for media).
@@ -419,9 +421,13 @@ function clock(sec: number): string {
   const s = Math.round(sec), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
 }
+/** Seconds from "m:ss", "h:mm:ss" or a plain number; undefined for anything else, "0:99" included. */
 function parseClock(s: string): number | undefined {
   const m = /^(?:(\d+):)?(\d{1,2}):(\d{2})$/.exec(s.trim());
-  if (m) return (m[1] ? +m[1] * 3600 : 0) + +m[2] * 60 + +m[3];
+  if (m) {
+    if (+m[3] > 59 || (m[1] !== undefined && +m[2] > 59)) return undefined;
+    return (m[1] ? +m[1] * 3600 : 0) + +m[2] * 60 + +m[3];
+  }
   return /^\d+(\.\d+)?$/.test(s.trim()) ? +s : undefined;
 }
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
@@ -460,7 +466,9 @@ function imageHeader(file: string): { kind: string; w?: number; h?: number } {
 /** The package folder, the video (in an audara project) and where previews go. */
 function locate(): { dir: string; video?: string; outDir: string } {
   const video = opt('video');
-  const dirArg = positional.find((p) => existsSync(p) && statSync(p).isDirectory());
+  // (a mistyped folder fails here, rather than the check quietly reading the folder above it)
+  for (const p of positional) if (!existsSync(p)) fail(`${p}: no such folder or file`);
+  const dirArg = positional.find((p) => statSync(p).isDirectory());
   if (video) {
     const vdir = path.join(ROOT, 'videos', video);
     if (!existsSync(path.join(vdir, 'video.json'))) fail(`--video ${video}: no videos/${video}/video.json in ${ROOT}`);
@@ -477,7 +485,7 @@ function locate(): { dir: string; video?: string; outDir: string } {
   return { dir, outDir: path.resolve(opt('out', path.join(dir, 'preview'))!) };
 }
 
-/** The video's length in seconds: --duration, else its render, else its audio, else video.json's duration. */
+/** The video's length in seconds: --duration, else its final render, else as the engine resolves it. */
 function videoLength(dir: string, video?: string): { seconds?: number; from: string } {
   const given = opt('duration');
   if (given) {
@@ -494,15 +502,28 @@ function videoLength(dir: string, video?: string): { seconds?: number; from: str
   };
   if (video) {
     const proj = path.resolve(dir, '..', '..', '..');
+    const vdir = path.join(proj, 'videos', video);
+    // the final render first: it is what gets uploaded
     const render = path.join(proj, 'out', video, `${video}.mp4`);
     if (existsSync(render)) { const s = probe(render); if (s) return { seconds: s, from: `out/${video}/${video}.mp4` }; }
+    // then as the engine resolves it (src/engine/soundtrack.ts, resolveDuration): video.json's duration, the end
+    // of a list of audio segments, data/audio.json's duration, the single audio file's own length
+    const later = '(a render, once there, is read instead)';
     try {
-      const vj = JSON.parse(readText(path.join(proj, 'videos', video, 'video.json')));
-      if (typeof vj.audio === 'string') {
-        const a = path.resolve(proj, 'videos', video, vj.audio);
-        if (existsSync(a)) { const s = probe(a); if (s) return { seconds: s, from: `its audio, ${vj.audio} (a render, once there, is read instead)` }; }
+      const vj = JSON.parse(readText(path.join(vdir, 'video.json')));
+      if (typeof vj.duration === 'number' && vj.duration > 0) return { seconds: vj.duration, from: `video.json ${later}` };
+      if (Array.isArray(vj.audio) && vj.audio.length) {
+        const end = Math.max(...vj.audio.map((s: { at?: number; dur?: number }) => (+(s?.at ?? 0) || 0) + (+(s?.dur ?? 0) || 0)));
+        if (end > 0) return { seconds: end, from: `video.json's audio segments ${later}` };
       }
-      if (typeof vj.duration === 'number') return { seconds: vj.duration, from: 'video.json' };
+      const data = path.join(vdir, 'data', 'audio.json');
+      if (existsSync(data)) {
+        try { const d = JSON.parse(readText(data)); if (typeof d.duration === 'number' && d.duration > 0) return { seconds: d.duration, from: `data/audio.json ${later}` }; } catch {}
+      }
+      if (typeof vj.audio === 'string') {
+        const a = path.resolve(vdir, vj.audio);
+        if (existsSync(a)) { const s = probe(a); if (s) return { seconds: s, from: `its audio, ${vj.audio} ${later}` }; }
+      }
     } catch {}
   }
   const media = existsSync(dir) ? readdirSync(dir).find((f) => /\.(mp4|mov|mkv|webm)$/i.test(f)) : undefined;
@@ -575,12 +596,16 @@ async function shoot() {
   const outIsFile = out !== undefined && /\.(png|jpe?g)$/i.test(out);
   if (outIsFile && sources.length > 1) fail('--out names one file, but there are several pages: give a folder');
   if (outIsFile && /\.jpe?g$/i.test(out!) !== Boolean(jpg)) fail(`--out ${out}: its extension doesn't match the format (${jpg ? 'JPEG with --jpg' : 'PNG without --jpg'})`);
+  const dests = sources.map((src) => out ? (outIsFile ? path.resolve(out) : path.join(path.resolve(out), path.basename(src).replace(/\.html?$/i, ext))) : src.replace(/\.html?$/i, ext));
+  // (two pages with one name, into one folder, would overwrite each other: refused before anything is drawn)
+  const clash = dests.filter((d, i) => dests.findIndex((e) => e.toLowerCase() === d.toLowerCase()) !== i);
+  if (clash.length) fail(`two pages would write the same image (${[...new Set(clash)].map((d) => path.relative(ROOT, d)).join(', ')}): rename one, or shoot them into separate folders`);
   // errors: the image isn't what the page asked for (a file missing, a face not drawing); notes: advice
   let errors = 0, notes = 0;
   await withChrome(async (chrome, base) => {
     const page = await chrome.page(W, H, scale);
-    for (const src of sources) {
-      const dest = out ? (outIsFile ? path.resolve(out) : path.join(path.resolve(out), path.basename(src).replace(/\.html?$/i, ext))) : src.replace(/\.html?$/i, ext);
+    for (const [i, src] of sources.entries()) {
+      const dest = dests[i];
       await page.goto(base + fileUrl(src));
       const { failed, blocks } = await page.eval<{ failed: string[]; blocks: TextBlock[] }>(MEASURE_TEXT);
       await page.shot(dest, W, H, jpg ? 'jpeg' : 'png', jpg || 90);
@@ -809,6 +834,18 @@ function videoId(s: string): string | undefined {
   return undefined;
 }
 
+/** A channel's @handle or UC... id, from a link or given alone. Handles can hold any letter (@ciência), and
+ *  a link may carry them percent-encoded, so the path is decoded first, not matched with \w. */
+function channelOf(arg: string): { handle?: string; cid?: string } {
+  const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+  let parts: string[];
+  try { parts = decode(new URL(arg).pathname).split('/').filter(Boolean); }
+  catch { parts = decode(arg.trim()).split(/[/?#]/).filter(Boolean); } // (a link without https://, or a bare handle)
+  const handle = parts.find((p) => p.startsWith('@') && p.length > 1);
+  const cid = parts[0] === 'channel' ? parts[1] : parts.find((p) => /^UC[\w-]{22}$/.test(p));
+  return { handle, cid };
+}
+
 function isoDuration(iso?: string): string | undefined {
   const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso ?? '');
   return m ? clock(+(m[1] ?? 0) * 3600 + +(m[2] ?? 0) * 60 + +(m[3] ?? 0)) : undefined;
@@ -854,7 +891,7 @@ async function niche() {
     for (const it of (await getJson(`${YT_API}/search?${q}`, 'YouTube search')).items ?? []) if (it.id?.videoId) ids.push(it.id.videoId);
   }
   if (channelArg) {
-    const handle = /@[\w.-]+/.exec(channelArg)?.[0], cid = /\b(UC[\w-]{22})\b/.exec(channelArg)?.[1];
+    const { handle, cid } = channelOf(channelArg);
     if (!handle && !cid) fail(`--channel ${channelArg}: give its @handle or its /channel/UC... link`);
     const c = await getJson(`${YT_API}/channels?${new URLSearchParams({ part: 'contentDetails', ...(cid ? { id: cid } : { forHandle: handle! }), key: key! })}`, 'YouTube channel');
     const uploads = c.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
@@ -934,20 +971,23 @@ function tagsLength(tags: string[]): number {
   return tags.reduce((n, t) => n + chars(t) + (/\s/.test(t) ? 2 : 0), 0) + Math.max(0, tags.length - 1);
 }
 
-/** The chapter list YouTube reads: the first run of lines starting with a timestamp, when it starts at 0:00. */
-function chapters(desc: string): { list: { t: number; label: string; line: number }[]; stray: number } {
+/** The chapter list YouTube reads: the first run of lines starting with a timestamp, when it starts at 0:00.
+ *  A timestamp that isn't a time ("0:99") is reported, not read as the time it would add up to. */
+function chapters(desc: string): { list: { t: number; label: string; line: number }[]; stray: number; invalid: string[] } {
   const lines = desc.split('\n');
   const stamp = /^\s*[([]?((?:\d+:)?\d{1,2}:\d{2})[)\]]?\s*[-–—:|]?\s*(.*)$/;
   const list: { t: number; label: string; line: number }[] = [];
+  const invalid: string[] = [];
   let stray = 0;
   for (let i = 0; i < lines.length; i++) {
     const m = stamp.exec(lines[i]);
     if (!m) { if (list.length) break; continue; }
-    const t = parseClock(m[1])!;
+    const t = parseClock(m[1]);
+    if (t === undefined) { invalid.push(`line ${i + 1}: "${m[1]}" isn't a time`); continue; }
     if (!list.length && t !== 0) { stray++; continue; }
     list.push({ t, label: m[2].trim(), line: i + 1 });
   }
-  return { list, stray };
+  return { list, stray, invalid };
 }
 
 async function check() {
@@ -962,9 +1002,9 @@ async function check() {
   const full = opts.has('full');
   const [wantW, wantH] = sizeOpt(opt('size', '1280x720')!);
   let decoded = false;
-  const sizes = new Map<string, [number, number]>();
+  const sizes = new Map<string, [number, number, string]>();
   const judge = (name: string, kind: string, w: number, h: number, bytes: number) => {
-    sizes.set(name, [w, h]);
+    sizes.set(name, [w, h, kind]);
     const desc = `${w}x${h} ${kind}, ${kb(bytes)}`;
     if (Math.abs(w / h - 16 / 9) > 0.01) add('FAIL', name, `${desc}: not 16:9, so YouTube letterboxes or crops it`);
     else if (w < MIN_WIDTH) add('FAIL', name, `${desc}: under YouTube's minimum width of ${MIN_WIDTH}`);
@@ -1033,7 +1073,8 @@ async function check() {
     // (plain lists read fine; these show their marks literally)
     if (/(^|\n)#{1,6} |\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^)\n]+\)/.test(desc))
       add('warn', 'description.txt', 'has Markdown (a "# " heading, **bold** or [text](link)): YouTube shows the marks as typed');
-    const { list, stray } = chapters(desc);
+    const { list, stray, invalid } = chapters(desc);
+    if (invalid.length) add('FAIL', 'chapters', `timestamps that aren't times (seconds and minutes run 0 to 59): ${invalid.join('; ')}`);
     if (list.length) {
       const bad: string[] = [];
       if (list.length < CHAPTERS_MIN) bad.push(`${list.length} chapters: YouTube needs at least ${CHAPTERS_MIN}`);
@@ -1074,12 +1115,17 @@ async function check() {
 
   // the request: the whole package, with --full (a narrower request makes some parts optional)
   const missing = ['title.txt', 'description.txt', 'tags.txt'].filter((f) => !existsSync(path.join(dir, f)));
-  const allSized = [...sizes.values()].every(([w, h]) => w === wantW && h === wantH);
+  // (the package's thumbnails are PNG, as the skill makes them; --jpg when JPEG was asked for)
+  const wantKind = opts.has('jpg') ? 'JPEG' : 'PNG';
+  const allRight = [...sizes.values()].every(([w, h, kind]) => w === wantW && h === wantH && kind === wantKind);
   if (full) {
     if (thumbs.length !== 3) add('FAIL', 'package', `${thumbs.length} thumbnails: the full package has three options`);
-    for (const [name, [w, h]] of sizes) if (w !== wantW || h !== wantH) add('FAIL', 'package', `${name} is ${w}x${h}, not the ${wantW}x${wantH} asked for`);
+    for (const [name, [w, h, kind]] of sizes) {
+      if (w !== wantW || h !== wantH) add('FAIL', 'package', `${name} is ${w}x${h}, not the ${wantW}x${wantH} asked for`);
+      if (kind !== wantKind) add('FAIL', 'package', `${name} is ${kind}, not ${wantKind}${wantKind === 'PNG' ? ' (--jpg if JPEG was asked for)' : ''}`);
+    }
     for (const f of missing) add('FAIL', 'package', `${f} is missing`);
-    if (thumbs.length === 3 && !missing.length && allSized && sizes.size === 3) add('ok', 'package', `complete: three ${wantW}x${wantH} thumbnails, the title, the description and the tags`);
+    if (thumbs.length === 3 && !missing.length && allRight && sizes.size === 3) add('ok', 'package', `complete: three ${wantW}x${wantH} ${wantKind} thumbnails, the title, the description and the tags`);
   } else if (missing.length || thumbs.length !== 3) {
     add('note', 'package', `${thumbs.length} thumbnail(s)${missing.length ? `; no ${missing.join(', ')}` : ''} (fine for a narrower request; --full holds it to the whole package)`);
   }

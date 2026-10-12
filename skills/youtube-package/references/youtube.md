@@ -43,9 +43,10 @@ where they show · Policy and disclosure · Sources
   cut. One channel's accepted titles ran 31 to 53 characters.
 - **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no benefit in a
   2026 matched-pairs study), an episode number or the channel's name first, a promise the video doesn't keep, a
-  famous name used as bait. Titles ending in a bare question averaged 0.82 times their channel's views in vidIQ's
-  2026 study of 4 million uploads; a question often works better in the picture. These studies observe, they
-  don't prove: a channel's own results outrank them.
+  famous name used as bait.
+- **A question:** titles ending in a bare question averaged 0.82 times the average views of the 4 million 2026
+  uploads vidIQ studied. An association, not a rule: a question often sits better in the picture, with the title
+  around it. These studies observe, they don't prove; a channel's own results outrank them.
 - **The YouTube title is not the project's working title:** `video.json`'s title and the treatment's heading stay.
 
 ## Description
@@ -103,8 +104,8 @@ where they show · Policy and disclosure · Sources
 - So three thumbnails sharing one title is a clean test of the pictures: suggest it in the hand-off; the user
   runs it. YouTube announced (September 2026) thumbnails that serve the best of three to different audiences;
   where it exists, the same three fit it.
-- After publishing, YouTube Analytics' Intro measure (viewers still watching at 30 s) says whether the opening
-  matched what the title and thumbnail promised.
+- After publishing, YouTube Analytics' Intro measure (viewers still watching at 30 s) helps tell whether the
+  opening kept what the title and thumbnail promised; it also reflects how much the opening holds on its own.
 
 ## Thumbnails: specs and where they show
 
