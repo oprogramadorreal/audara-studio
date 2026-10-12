@@ -1,0 +1,164 @@
+# The pictures
+
+How the three thumbnails get made: the ideas, where each picture comes from, how it is finished and set in
+type, and how it is judged. Read it before making or changing a thumbnail. `<skill>` is this skill's folder;
+code-video is the skill beside it; other paths are the project's.
+
+Contents: What a thumbnail has to do · Ideas · Where the picture comes from · Finishing · Type · Looking as
+viewers do · The critic · What went wrong before
+
+## What a thumbnail has to do
+
+A frame is made for motion and for what comes before and after it. A thumbnail stands alone, among strangers,
+168 to 390 px wide, beside its title, and is read in less than a second. So:
+
+- **One idea a stranger gets at once:** a subject big enough to read small, in a situation that makes them want
+  the video (a question asked and its answer withheld, a machine looking back, a thing about to break). Hierarchy
+  matters, not a count: a picture with a face, a computer, a line of text and ten small labels works when one
+  thing dominates and the rest stays small at the edges.
+- **The video's own world, staged better:** its real objects, palette and light. Spectacle the video doesn't
+  have (motifs it never shows, a generic "AI" look) promises another video; on one project a round of
+  generated look-alikes with confetti and music notes was rejected in minutes, and the thumbnail that shipped was
+  the video's own computer, rendered in its engine.
+- **Visible in its feed:** brightness, colour and edges set against the videos beside it and against YouTube's
+  pages, near-black (#0f0f0f) and white. A dark tile melts into the dark page unless light holds its edges.
+- **Its own bet:** each of the three is a different reason to click (another subject, situation or layout, with
+  text or without), so a test between them teaches something. Three takes on one layout teach nothing.
+
+## Ideas
+
+- **Start from the promise:** one line for what the video gives a viewer, then the pair: the picture shows or
+  asks, the title promises or answers (references/youtube.md). Write title candidates alongside the pictures.
+- **Rough out about six ideas, visually** (quick crops of plates, placeholder type, a code sketch), not six
+  descriptions: composition problems only show on a picture. Judge them small beside the working title, then
+  finish three. A request that already sets the ideas, or changes one thing (a font, a word), doesn't restart
+  this.
+- **Breadth before polish.** An idea found in twenty seconds can beat a night of finishing: one project's quick
+  first thumbnail already held the idea that won the long round after it.
+- **What the user named** (a scene, a shot, an object) gets a properly cropped try before it's dropped: a scene
+  dismissed on a weak wide crop once won the final vote.
+- **Fixed words aren't a fixed layout.** Text the user decided keeps its words; its size and place still serve
+  the picture. When rigid type rules (a minimum height, wide gutters) made every option the same wall of text and
+  shrank the subject, craft scores went up and the pull to click went down.
+- **Show the user early:** the rough sheet and the titles you're weighing go in a message before the long
+  finishing work, so they can redirect; then go on.
+
+## Where the picture comes from
+
+**The video's own pixels, clean.** Find moments with `bun scripts/render.ts sheet --video <video> --n 24` (or
+`--times`), then render the chosen ones once, as a batch: `bun scripts/render.ts stills --video <video> --t
+<a,b,c> --scale 2 --out out/<video>/youtube/frames` (3840x2160 for a 1080p video, crisp: one sub-frame; `poster`
+adds motion blur). Choose by content and pose: a scene's midpoint can be mid-fade. A frame carries what the video
+draws over it (captions, a HUD dot, citations, lower thirds): render without those entries (`--only`), use the
+plate the scene itself loads from `videos/<video>/assets/` (often the cleanest source, sometimes with a depth
+map), or paint them out. `--size 1280x720` is refused for a 16:9 video: render big and scale down.
+
+**A plate staged for the still, in the engine.** When the frames don't carry the idea (the subject too small, a
+camera move), stage it: a video of its own, `videos/<video>-thumbs/` (silent, one short slot per plate; the name
+sorts after the video's, so it never becomes the project's default), whose scenes import the video's scenes and
+helpers without changing them, rendered with `stills --only <slot> --scale 2`. It is a real video to the preview,
+`verify` and git, so its TREATMENT.md says what it is for. Keep it to the plates that need it, render them one
+at a time (a heavy scene on a laptop with two GPUs wants `CHROME_FLAGS=--force_high_performance_gpu`), and never
+while the video's final render runs.
+
+**The user's photos.** A face lit by the scene, looking at the subject or at the viewer, with an expression the
+video earns. A cut-out pasted with a white outline and a stock shocked stare, reused from an old thumbnail, read
+as a sticker and was turned down. Ask for fresh photos when a face would help. `docs/CHANNEL.md` says whether
+the user's face and name appear at all.
+
+**Generated images, after a yes** (SKILL.md, Fixed). code-video's `scripts/imagegen.py` is the way in either
+tool: `uv run <code-video>/scripts/imagegen.py generate <name> --out videos/<video>/youtube/assets --size 2560x1440
+--ref <plate.png> --prompt "..."` (its `--help`, and code-video's references/images.md for prices, `--takes`,
+`pick`, `--transparent` and what a reference adds to the cost). Use it to re-stage the video's real elements
+photographically (a plate or frame as `--ref`), the way one creator made their own candidate, not to invent
+look-alikes. In Codex without a key, its built-in image generation draws on the plan's limits: spending too, and
+its prompt goes word for word into `<name>.prompt.txt` beside the file. Words drawn by an image model come out
+misspelled ("vatio" for "fatio"): set every word in code, and read back any text a generated picture contains.
+A local model the user already runs (ComfyUI, say) is free; installing one isn't part of making a thumbnail.
+
+**Code.** Type, shapes, light, a redacted reply bubble, an interface: whatever the idea needs that no frame has.
+
+**Cut-outs.** Best rendered from the engine with only the subject's entries; else `uv run --with "rembg[cpu]"
+rembg i in.png out.png` (a 176 MB model downloads once) and the edge checked over a flat colour.
+
+**Brands and people.** A brand character the user asks for (a mascot) is modelled or drawn, not lifted from
+someone's photo, and noted in `youtube/SOURCES.md`. Someone else's face or likeness stays out (a famous name in
+a title as a comparison is words, not a likeness), and so does imitation of a film's poster or stills.
+
+## Finishing
+
+- **Recompose:** crop in until the subject reads at 168 px; paint out clutter; light the subject from the
+  scene's own sources, with a rim to lift it off the ground; grade so it holds on both pages; grain to bind the
+  layers. Each option is a finished picture, not a frame with words on it.
+- **Tools:** whatever does the job. An HTML page through `shoot` is quickest for layout and type (`@font-face`
+  from `/public/fonts/...`, `-webkit-text-stroke` with `paint-order: stroke fill`, layered `text-shadow`,
+  `filter`, `mix-blend-mode`, `mask-image`, an SVG `feTurbulence` grain); Python with numpy and Pillow for pixel
+  work (compositing in linear light, relighting from a depth map); the engine for anything it already draws.
+  Work from plates at 2x, so the finished 1280x720 is downsampled, never upscaled.
+- **Keep what rebuilds it** beside the PNG: `thumbnail-N.html` (or `.py`) and `youtube/assets/`. Not a `.ts`
+  file anywhere in `videos/<video>/`: the project's type check (`bun run check`) reads that folder and fails on
+  one. Work files go in `out/<video>/youtube/`.
+- **On Windows:** another program can hold a PNG open; write to a temporary name and rename. Print accented text
+  with `PYTHONIOENCODING=utf-8`.
+
+## Type
+
+- **The channel's typeface** (`docs/CHANNEL.md`), at the weight and width it uses, not a pick of the moment: on
+  one project a well-made set came back for its font alone. With no channel style yet, a heavy face that reads
+  small, from the project's fonts or an OFL file copied with its licence into `youtube/assets/` (not registered
+  in the engine, which would load it for every video).
+- **Few words, big:** the main words at about 12 px or more at 168 px wide (`shoot` reports each block; a set
+  that read well small had 14 to 19 px). One or two lines; one accent colour at most; a dark margin around
+  letters that sit on busy ground.
+- **Details that show small:** line spacing that clears accents (Ê, Ã); kerning a face lacks (a "?" after an
+  "A"); word spaces wide enough that "A IA" stays two words at 168 px; every accented letter looked at in the
+  image (`shoot` names characters the face lacks).
+- **Text can be a thing in the scene** (a slip of paper, a screen) as well as a caption over it.
+- **Corners:** the duration badge covers the bottom right at every size (about the last quarter of the width and
+  of the height at 168 px); desktop hover icons sit top right. Nothing there that matters.
+
+## Looking as viewers do
+
+- **`preview`** puts each option where viewers meet it: sizes on both pages, a home row (360 px), the up-next
+  column (168 px) and a phone feed (390 px) with the title wrapped and cut as there, and a search result with the
+  description's first lines. Look at each at its own size; a sheet of sizes alone once passed text that the feed
+  then showed small and too dark.
+- **The niche, when the network is allowed** (optional; stop once it has informed a choice): 10 to 30 videos a
+  viewer of this one would see beside it (same language, audience and subject), with their titles, channels and
+  views in `niche.json`, in `out/<video>/youtube/niche/` (other people's images: never in the project's assets
+  or in git). One way: `uvx yt-dlp --flat-playlist -J "ytsearch15:<words people search>" --extractor-args
+  "youtube:lang=<language>"` lists ids, titles, channels and views (without the language argument, titles may
+  come back translated); each picture is `https://i.ytimg.com/vi/<id>/hq720.jpg`. The channel's own recent videos
+  come the same way from `<channel link>/videos`. Search in the video's language, filter what's off-topic, give
+  them their real titles as yours has, and read views as context, not as proof of what a picture did. Nine
+  searches once took five minutes and changed the type size, the brightness and the colour of a whole set.
+
+## The critic
+
+Once the three are finished, a fresh subagent, given the preview images and the title before anything you've
+written, answers:
+
+- What does each option promise; what would you expect the video to be?
+- What reads first at 168 px?
+- What is confusing, illegible, ordinary or misleading?
+- Does each give its own reason to click?
+- Which one change would help most?
+
+Then tell it what the video really shows and ask whether each promise is kept. No CTR guesses, no averaged
+scores: measures are guardrails, not targets (a salience score once pulled a design toward the cliché its brief
+had ruled out). Fix what it finds, look again, and stop when only preferences remain. A last look at full size
+after the final polish catches what small sizes hide (a streak, a halo, banding, a leftover caption, a typo).
+
+## What went wrong before
+
+In the packaging sessions this skill was built from (audara-studio's docs/history.md has the evidence):
+
+- **Too little:** one round, the first idea, text too small, tiles too dark, a font the channel doesn't use, a
+  sheet of sizes taken for a feed test, no title or description.
+- **Too much:** nearly ten hours and sixty agent runs for one set, six of those hours on an option that lost;
+  sixteen polished mockups before anyone looked; byte-reproducible scripts for four finalists before the user
+  had chosen one; four hours with nothing shown to the user.
+- **Off the video:** spectacle and motifs the video doesn't contain; a pasted face; every option the same text
+  block on the left and subject on the right.
+- **Rules nobody gave:** "no generated images" written into briefs when the creator had approved them, and "no
+  mascot" when they had published one. Read the user's earlier words before ruling something out, and ask.
