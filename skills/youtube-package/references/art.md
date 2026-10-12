@@ -39,8 +39,8 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
   dismissed on a weak wide crop once won the final vote.
 - **Words are optional.** No text was the most common single pattern among 500 breakout thumbnails in vidIQ's
   2026 study (observational, like every study of this kind); when the words are yours to choose, let at least
-  one option try few or none. When used, they say what the
-  title doesn't: a question, a number, a sound bite, a label.
+  one option try few or none. When used, they say what the title doesn't: a question, a number, a sound bite,
+  a label.
 - **Fixed words aren't a fixed layout.** Text the user decided keeps its words; its size and place still serve
   the picture. When rigid type rules (a minimum height, wide gutters) made every option the same wall of text and
   shrank the subject, craft scores went up and the pull to click went down.
@@ -89,8 +89,9 @@ A local model the user already runs (ComfyUI, say) is free; installing one isn't
 rembg i in.png out.png` (a 176 MB model downloads once) and the edge checked over a flat colour.
 
 **Brands and people.** A brand character the user asks for (a mascot) is modelled or drawn, not lifted from
-someone's photo, and noted in `youtube/SOURCES.md`. Someone else's face or likeness stays out (a famous name in
-a title as a comparison is words, not a likeness), and so does imitation of a film's poster or stills.
+someone's photo, and noted in `youtube/SOURCES.md`. Anyone else's face or likeness appears only with their
+consent (a guest who agreed, with their photo); a famous name in a title as a comparison is words, not a
+likeness, and imitating a film's poster or stills stays out.
 
 ## Finishing
 
@@ -144,8 +145,8 @@ a title as a comparison is words, not a likeness), and so does imitation of a fi
 
 ## The critic
 
-Once the three are finished, a fresh subagent, given the preview images and the title before anything you've
-written, answers:
+Once the three are finished, a fresh subagent that starts without this conversation (in Codex, one spawned
+without the thread's history), given only the preview images and the title, answers:
 
 - What does each option promise; what would you expect the video to be?
 - What reads first at 168 px?
@@ -153,10 +154,12 @@ written, answers:
 - Does each give its own reason to click?
 - Which one change would help most?
 
-Then tell it what the video really shows and ask whether each promise is kept. No CTR guesses, no averaged
-scores: measures are guardrails, not targets (a salience score once pulled a design toward the cliché its brief
-had ruled out). Fix what it finds, look again, and stop when only preferences remain. A last look at full size
-after the final polish catches what small sizes hide (a streak, a halo, banding, a leftover caption, a typo).
+Then tell it what the video really shows and ask whether each promise is kept. With no subagent at hand, look
+at the preview again yourself as a stranger would, after the rest is done, and say the critic was you. No CTR
+guesses, no averaged scores: measures are guardrails, not targets (a salience score once pulled a design toward
+the cliché its brief had ruled out). Fix what it finds, look again, and stop when only preferences remain. A
+last look at full size after the final polish catches what small sizes hide (a streak, a halo, banding, a
+leftover caption, a typo).
 
 ## What went wrong before
 
