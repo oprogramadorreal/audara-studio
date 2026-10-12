@@ -867,7 +867,7 @@ YouTube's own pages, for the youtube-package skill (checked 2026-10-12):
 - [YouTube Help: Write descriptions](https://support.google.com/youtube/answer/12948449)
 - [YouTube Help: Titles and thumbnails](https://support.google.com/youtube/answer/12340300)
 - [YouTube Help: Thumbnails policy](https://support.google.com/youtube/answer/9229980)
-- [YouTube Help: Disclosing altered or synthetic content](https://support.google.com/youtube/answer/14328491)
+- [YouTube Help: Disclosing use of GenAI content](https://support.google.com/youtube/answer/14328491)
 - [YouTube Help: Audience retention (the Intro measure)](https://support.google.com/youtube/answer/9314415)
 - [YouTube Data API: videos resource (the tags count)](https://developers.google.com/youtube/v3/docs/videos)
 
