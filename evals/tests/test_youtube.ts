@@ -46,8 +46,8 @@ try {
   expect('shoot: reports the type at 168 px wide', /120 px type, 15\.8 px at 168 wide/.test(r.out), r.out);
   r = run(['shoot', 'pages/bad.html']);
   expect('shoot: a page that loads wrong exits 1', r.code === 1, r.out);
-  expect('shoot: names the face that did not load', /"Gone" isn't drawing it/.test(r.out) && /font "Gone" failed to load/.test(r.out), r.out);
-  expect('shoot: names the characters a face lacks (not the accented ones it has)', /lacks "✓" "日"/.test(r.out) && !/lacks[^\n]*"Ç"/.test(r.out), r.out);
+  expect('shoot: names the face that did not load', /looks drawn by a fallback face, not "Gone"/.test(r.out) && /font "Gone" failed to load/.test(r.out), r.out);
+  expect('shoot: names the characters a face lacks (not the accented ones it has)', /seems to lack "✓" "日"/.test(r.out) && !/lack[^\n]*"Ç"/.test(r.out), r.out);
   expect('shoot: flags text in the duration badge\'s corner', /enters the duration badge's corner/.test(r.out), r.out);
   expect('shoot: reports the missing image', /404 nope\.png/.test(r.out), r.out);
   r = run(['shoot', 'pages/good.png']);
@@ -93,12 +93,28 @@ try {
   expect('check: Markdown marks are flagged', /has Markdown/.test(r.out), r.out);
   expect('check: more than 15 hashtags warn, without failing below 60', /20: a list that long reads as spam/.test(r.out) && r.code === 0, r.out);
 
+  // check --full: the whole package, three thumbnails at the size asked for
+  for (const i of [2, 3]) copyFileSync(path.join(good, 'thumbnail-1.png'), path.join(good, `thumbnail-${i}.png`));
+  r = run(['check', 'good', '--duration', '4:26', '--full']);
+  expect('check --full: three 1280x720 thumbnails and the three text files pass', r.code === 0 && /complete: three 1280x720 thumbnails/.test(r.out), r.out);
+  r = run(['check', 'odd', '--full']);
+  expect('check --full: missing thumbnails and files fail', r.code === 1 && /0 thumbnails: the full package has three/.test(r.out) && /title\.txt is missing/.test(r.out), r.out);
+
+  // preview: from the package folder, with other videos from a folder (no network); the same videos beside
+  // every option (a regression: a second function named niche once shadowed the folder reader)
+  mkdirSync(path.join(root, 'others'));
+  copyFileSync(path.join(root, 'pages', 'good.png'), path.join(root, 'others', 'a.png'));
+  writeFileSync(path.join(root, 'others', 'niche.json'), JSON.stringify([{ file: 'a.png', title: 'Another video', channel: 'Someone', views: '1K views', duration: '3:00' }]));
+  r = run(['preview', 'good', '--niche', 'others', '--channel', 'Test', '--duration', '4:26', '--out', 'prev']);
+  expect('preview: writes the size sheet, both feeds and the search row', r.code === 0 && ['sizes', 'feed-dark', 'feed-light', 'search'].every((n) => existsSync(path.join(root, 'prev', `${n}.png`))), r.out);
+  expect('preview: says whether the title was cut', /title \(34 characters\): whole everywhere shown/.test(r.out), r.out);
+
   // niche: what it refuses before any network call
   r = run(['niche', 'not-a-link']);
   expect('niche: a bad link stops it before anything is fetched', r.code === 2 && /not a YouTube video link/.test(r.out), r.out);
-  r = Bun.spawnSync(['bun', SCRIPT, 'niche', '--search', 'x'], { cwd: root, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, YOUTUBE_API_KEY: '' } }) as any;
-  const so = r.stdout.toString() + r.stderr.toString();
-  expect('niche: --search without YOUTUBE_API_KEY says what it needs', r.exitCode === 2 && /YOUTUBE_API_KEY/.test(so), so);
+  const nk = Bun.spawnSync(['bun', SCRIPT, 'niche', '--search', 'x'], { cwd: root, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, YOUTUBE_API_KEY: '' } });
+  const so = nk.stdout.toString() + nk.stderr.toString();
+  expect('niche: --search without YOUTUBE_API_KEY says what it needs', nk.exitCode === 2 && /YOUTUBE_API_KEY/.test(so), so);
 } finally {
   for (let i = 0; i < 20; i++) { try { rmSync(root, { recursive: true, force: true }); break; } catch { await Bun.sleep(200); } }
 }

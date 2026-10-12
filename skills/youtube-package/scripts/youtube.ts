@@ -32,12 +32,14 @@
 //            Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000 daily units, the rest 1
 //            each), which also adds views and lengths. It never scrapes youtube.com: YouTube's terms forbid
 //            automated access outside its APIs. Needs the network.
-//   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>]
+//   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>] [--full [--size 1280x720]]
 //            The package against YouTube's limits: each thumbnail (it decodes; 16:9; at least 640 wide; its
 //            bytes), title.txt, description.txt (length; characters YouTube refuses; chapters: 0:00 first, three
 //            or more, ascending, each at least 10 s, the last too, against the video's length), tags.txt (the
 //            500-character count YouTube applies) and the hashtags. Exit 1 when YouTube would refuse or ignore
 //            something; a warning doesn't fail it. The text files are checked even when Chrome can't start.
+//            --full also holds the package to the whole request: three thumbnails at --size (1280x720 unless
+//            given), title.txt, description.txt and tags.txt; without it, a missing part is only a note.
 // <dir> is the package folder: thumbnail-1.png ... and title.txt, description.txt, tags.txt. In an audara project,
 // --video <video> means videos/<video>/youtube/, previews go to out/<video>/youtube/, and the video's length is
 // read from its render (out/<video>/<video>.mp4), else its audio, else video.json's duration (ffprobe for media).
@@ -64,6 +66,7 @@ for (let i = 0; i < rest.length; i++) {
     const q = rest[i + 1];
     opts.set('jpg', q && /^\d+$/.test(q) ? (i++, q) : '90');
   } else if (k === 'help' || k === 'h') opts.set('help', '1');
+  else if (k === 'full') opts.set('full', '1');
   else if (VALUED.has(k)) {
     const v = rest[i + 1];
     if (v === undefined || v.startsWith('--')) fail(`--${k} needs a value`);
@@ -106,7 +109,7 @@ const BADGE_CORNER = { x: 0.75, y: 0.74 };
 // Where previews show a thumbnail, in CSS pixels: the home grid, search on a laptop, and the up-next column.
 const REVIEW_WIDTHS = [360, 246, 168];
 const SMALLEST = 168;
-// Type under this many pixels at 168 px wide is texture, not words a viewer reads (oprog-4's set, which read at
+// Type under this many pixels at 168 px wide is likely too small to read there (oprog-4's set, which read at
 // that size, had 14 to 19 px).
 const SMALLEST_READABLE = 9;
 
@@ -116,7 +119,7 @@ const SMALLEST_READABLE = 9;
 function findChrome(): { exe: string; name: string } {
   const env = process.env.CHROME_PATH;
   if (env) {
-    if (!existsSync(env)) fail(`CHROME_PATH=${env} doesn't exist`);
+    if (!existsSync(env)) throw new Error(`CHROME_PATH=${env} doesn't exist`);
     return { exe: env, name: 'Chrome (CHROME_PATH)' };
   }
   const chrome: string[] = [], edge: string[] = [];
@@ -139,7 +142,7 @@ function findChrome(): { exe: string; name: string } {
   if (c) return { exe: c, name: 'Chrome' };
   const e = edge.find((p) => existsSync(p));
   if (e) return { exe: e, name: 'Microsoft Edge' };
-  fail('Google Chrome not found. Install it (Windows: winget install Google.Chrome; macOS: brew install --cask google-chrome; Linux: the .deb or .rpm from https://www.google.com/chrome/), or set CHROME_PATH to a Chrome or Chromium executable.');
+  throw new Error('Google Chrome not found. Install it (Windows: winget install Google.Chrome; macOS: brew install --cask google-chrome; Linux: the .deb or .rpm from https://www.google.com/chrome/), or set CHROME_PATH to a Chrome or Chromium executable.');
 }
 
 type Waiter = { method: string; sessionId?: string; resolve: (m: any) => void; reject: (e: Error) => void };
@@ -187,6 +190,8 @@ class Chrome {
     return lines.length ? `; Chrome said: ${lines.join(' | ')}` : '';
   }
 
+  /** Starts Chrome and connects to it. Failures throw (a mode that can go on without a browser, check, does), and
+   *  every failed start ends the browser it began and removes its profile, so nothing is left running. */
   static async launch(): Promise<Chrome> {
     const { exe, name } = findChrome();
     const userDir = mkdtempSync(path.join(os.tmpdir(), 'audara-youtube-'));
@@ -198,36 +203,42 @@ class Chrome {
       '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
       '--disable-breakpad', '--disable-hang-monitor', '--disable-dev-shm-usage', '--password-store=basic', '--use-mock-keychain',
       'about:blank'];
-    const proc = Bun.spawn([exe, ...args], { stdout: 'ignore', stderr: 'pipe' });
+    let proc: ReturnType<typeof Bun.spawn>;
+    try { proc = Bun.spawn([exe, ...args], { stdout: 'ignore', stderr: 'pipe' }); }
+    catch (e) { cleanProfile(userDir); throw new Error(`${name} (${exe}) couldn't start: ${(e as Error).message}`); }
     const stderr: string[] = [];
     (async () => {
       const dec = new TextDecoder();
       for await (const chunk of proc.stderr as ReadableStream<Uint8Array>) { stderr.push(dec.decode(chunk)); if (stderr.length > 200) stderr.splice(0, 100); }
     })().catch(() => {});
     const said = () => { const l = stderr.join('').split(/\r?\n/).map((x) => x.trim()).filter(Boolean).slice(-4); return l.length ? `; it said: ${l.join(' | ')}` : ''; };
-    // Chrome writes the port it took (and the browser's socket path) into DevToolsActivePort once it listens.
+    const giveUp = async (why: string): Promise<never> => {
+      if (proc.exitCode === null) proc.kill();
+      await Promise.race([proc.exited, Bun.sleep(3000)]);
+      await cleanProfileAsync(userDir);
+      throw new Error(`${why}${said()}`);
+    };
+    // Chrome writes the port it took (and the browser's socket path) into DevToolsActivePort once it listens. On
+    // Windows the file can be busy while Chrome writes it: a read that fails is tried again.
     const portFile = path.join(userDir, 'DevToolsActivePort');
     let lines: string[] = [];
-    for (let waited = 0; waited < 30_000; waited += 50) {
-      if (proc.exitCode !== null) {
-        await Bun.sleep(100);
-        cleanProfile(userDir);
-        fail(`${name} (${exe}) exited at start (code ${proc.exitCode})${said()}. A sandbox that blocks starting a browser or opening a local port needs it allowed for this command.`);
-      }
+    for (let waited = 0; waited < 30_000 && !lines[1]; waited += 50) {
+      if (proc.exitCode !== null) return giveUp(`${name} (${exe}) exited at start (code ${proc.exitCode}). A sandbox that blocks starting a browser or opening a local port needs it allowed for this command`);
       if (existsSync(portFile)) {
-        lines = readFileSync(portFile, 'utf8').split(/\r?\n/);
-        if (lines[1]) break;
+        try { lines = readFileSync(portFile, 'utf8').split(/\r?\n/); } catch { lines = []; }
       }
-      await Bun.sleep(50);
+      if (!lines[1]) await Bun.sleep(50);
     }
-    if (!lines[1]) { proc.kill(); cleanProfile(userDir); fail(`${name} (${exe}) didn't open its DevTools port within 30 s${said()}`); }
-    const ws = new WebSocket(`ws://127.0.0.1:${lines[0].trim()}${lines[1].trim()}`);
+    if (!lines[1]) return giveUp(`${name} (${exe}) didn't open its DevTools port within 30 s`);
+    let ws: WebSocket;
+    try { ws = new WebSocket(`ws://127.0.0.1:${lines[0].trim()}${lines[1].trim()}`); }
+    catch (e) { return giveUp(`couldn't connect to ${name}'s DevTools port: ${(e as Error).message}`); }
     const ok = await new Promise<boolean>((resolve) => {
       const t = setTimeout(() => resolve(false), 10_000);
       ws.onopen = () => { clearTimeout(t); resolve(true); };
       ws.onerror = () => { clearTimeout(t); resolve(false); };
     });
-    if (!ok) { proc.kill(); cleanProfile(userDir); fail(`couldn't connect to ${name}'s DevTools port${said()}`); }
+    if (!ok) { try { ws.close(); } catch {} return giveUp(`couldn't connect to ${name}'s DevTools port`); }
     if (name !== 'Chrome' && name !== 'Chrome (CHROME_PATH)') console.log(`(Chrome not found: using ${name})`);
     return new Chrome(proc, ws, userDir, stderr);
   }
@@ -384,9 +395,11 @@ function serve(): string {
 /** Runs a mode's browser work, and always stops Chrome and the server, however it ends. */
 async function withChrome<T>(work: (chrome: Chrome, base: string) => Promise<T>): Promise<T> {
   const base = serve();
-  const chrome = await Chrome.launch();
-  try { return await work(chrome, base); }
-  finally { await chrome.close(); server?.stop(true); }
+  try {
+    const chrome = await Chrome.launch();
+    try { return await work(chrome, base); }
+    finally { await chrome.close(); }
+  } finally { server?.stop(true); server = undefined; } // (a running server would keep the process alive)
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -578,11 +591,11 @@ async function shoot() {
         const small = b.size * k;
         const corner = b.x + b.w > W * BADGE_CORNER.x && b.y + b.h > H * BADGE_CORNER.y;
         const wrong = [
-          b.fellBack ? `"${b.family}" isn't drawing it: a fallback face did` : '',
-          b.missing ? `"${b.family}" lacks ${[...b.missing].map((ch) => `"${ch}"`).join(' ')}: a fallback face drew ${b.missing.length > 1 ? 'them' : 'it'}` : '',
+          b.fellBack ? `looks drawn by a fallback face, not "${b.family}"` : '',
+          b.missing ? `"${b.family}" seems to lack ${[...b.missing].map((ch) => `"${ch}"`).join(' ')} (drawn by a fallback face: look)` : '',
         ].filter(Boolean);
         const advice = [
-          small < SMALLEST_READABLE ? `under ${SMALLEST_READABLE} px at ${SMALLEST} wide: texture, not words` : '',
+          small < SMALLEST_READABLE ? `under ${SMALLEST_READABLE} px at ${SMALLEST} wide: likely too small to read there` : '',
           corner ? 'its box enters the duration badge\'s corner (see the preview)' : '',
         ].filter(Boolean);
         errors += wrong.length; notes += advice.length;
@@ -595,7 +608,7 @@ async function shoot() {
       for (const f of page.failures) { errors++; console.log(`  failed: ${f}`); }
     }
   });
-  if (errors) console.log(`${errors} error(s): the image isn't what the page asks for (it was written anyway). Exit 1.`);
+  if (errors) console.log(`${errors} problem line(s) above: the image isn't what the page asks for (it was written anyway). Exit 1.`);
   else if (notes) console.log(`${notes} note(s) above to look at in the preview.`);
   if (errors) process.exit(1);
 }
@@ -617,7 +630,8 @@ type Lang = keyof typeof WORDS;
 
 type Other = { src?: string; title?: string; channel?: string; views?: string; duration?: string };
 
-function niche(dirOpt?: string): { others: Other[]; note: string } {
+/** The other videos for the feeds, from a folder of images (and its niche.json). */
+function nicheFolder(dirOpt?: string): { others: Other[]; note: string } {
   if (!dirOpt) return { others: [], note: 'no --niche: the other videos are placeholders, so this shows legibility and the title\'s fit, not how the options stand out' };
   const dir = path.resolve(dirOpt);
   if (!existsSync(dir)) fail(`--niche ${dirOpt}: no such folder`);
@@ -688,7 +702,7 @@ async function preview() {
   const w = WORDS[lang];
   const len = videoLength(dir, video);
   const duration = len.seconds ? clock(len.seconds) : '';
-  const { others, note } = niche(opt('niche'));
+  const { others, note } = nicheFolder(opt('niche'));
   const ours = thumbs.map((t) => fileUrl(t));
   let pick = 0;
   const other = (): Other => (others.length ? others[pick++ % others.length] : {});
@@ -717,8 +731,10 @@ async function preview() {
     const phoneItem = (o: Other, cls: string) => `<div style="width:390px;margin-bottom:14px">${thumbHtml(o.src, 390, o.duration ?? '', 0, theme)}
       <div style="display:flex;gap:12px;padding:10px 12px 0"><div class="avatar">${esc((o.channel ?? '').slice(0, 1).toUpperCase())}</div>
       <div style="flex:1;min-width:0">${titleHtml(o.title, 15, 21, t.text, t.bar, cls)}<div class="meta12" style="margin-top:2px">${esc([o.channel, o.views].filter(Boolean).join(' · '))}</div></div></div></div>`;
-    const me: Other = { title, channel, views: `${w.views} · ${w.age}`, duration };
+    // (ours shows no view count: an invented one reads as real data; the other videos keep theirs)
+    const me: Other = { title, channel, duration };
     const sections = ours.map((src, i) => {
+      pick = 0; // every option meets the same videos, in the same places
       const mine = { ...me, src };
       const home = [other(), mine, other()];
       const next = [other(), mine, other(), other()];
@@ -741,7 +757,7 @@ async function preview() {
   const searchRows = ours.map((src, i) => `<div class="section"><div class="label">${w.option} ${i + 1}<span>${w.search} · 360 px</span></div>
     <div class="row" style="margin-top:10px">${thumbHtml(src, 360, duration, 12, 'dark')}
     <div style="width:560px">${titleHtml(title, 18, 26, t.text, t.bar, 'mine search', 400)}
-    <div class="meta12" style="margin-top:4px">${esc(w.views)} · ${esc(w.age)}</div>
+    <div style="height:10px;width:150px;background:${t.bar};border-radius:3px;margin-top:9px"></div>
     <div class="row" style="gap:8px;align-items:center;margin:12px 0"><div class="avatar" style="width:24px;height:24px;font-size:11px">${esc(channel.slice(0, 1).toUpperCase())}</div><span class="meta12">${esc(channel)}</span></div>
     <div class="meta12" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(firstLines || '(no description.txt yet)')}</div></div></div></div>`).join('');
   pages.set('search', pageHtml('dark', 1000, searchRows));
@@ -766,6 +782,7 @@ async function preview() {
     }
   });
   for (const f of failures) console.log(`  failed: ${f}`);
+  if (failures.length) process.exitCode = 1;
   console.log(`title (${chars(title)} characters): ${cut.size ? `cut short in ${[...cut.keys()].join(', ')} (two lines at most there)` : 'whole everywhere shown'}`);
   console.log(`duration badge: ${duration || 'none'} (${len.from}); ${note}`);
   console.log('titles are set in Roboto where it\'s installed, else Arial, so where a long title breaks can differ from YouTube\'s by a word.');
@@ -942,7 +959,12 @@ async function check() {
   // thumbnails: decoded by Chrome when it starts (what it can't decode, YouTube won't either), else read from
   // their headers, so a browser problem never stops the rest of the check
   const thumbs = thumbnailsIn(dir);
+  const full = opts.has('full');
+  const [wantW, wantH] = sizeOpt(opt('size', '1280x720')!);
+  let decoded = false;
+  const sizes = new Map<string, [number, number]>();
   const judge = (name: string, kind: string, w: number, h: number, bytes: number) => {
+    sizes.set(name, [w, h]);
     const desc = `${w}x${h} ${kind}, ${kb(bytes)}`;
     if (Math.abs(w / h - 16 / 9) > 0.01) add('FAIL', name, `${desc}: not 16:9, so YouTube letterboxes or crops it`);
     else if (w < MIN_WIDTH) add('FAIL', name, `${desc}: under YouTube's minimum width of ${MIN_WIDTH}`);
@@ -954,7 +976,6 @@ async function check() {
     const headers = thumbs.map((f) => ({ file: f, name: path.basename(f), bytes: statSync(f).size, ...imageHeader(f) }));
     for (const h of headers) if (!h.kind) add('FAIL', h.name, 'not a PNG, JPEG, GIF or WebP file');
     const readable = headers.filter((h) => h.kind);
-    let decoded = false;
     try {
       await withChrome(async (chrome, base) => {
         const page = await chrome.page(800, 600, 1);
@@ -977,7 +998,7 @@ async function check() {
         decoded = true;
       });
     } catch (e) {
-      console.log(`(thumbnails not decoded, read from their headers: ${(e as Error).message.split('\n')[0]})`);
+      console.log(`(thumbnails not decoded, read from their headers only: ${(e as Error).message.split('\n')[0]})`);
     }
     if (!decoded) for (const h of readable) {
       if (h.w && h.h) judge(h.name, h.kind, h.w, h.h, h.bytes);
@@ -1051,10 +1072,23 @@ async function check() {
     if (dupes.length) add('warn', 'tags.txt', `repeated: ${dupes.join(', ')}`);
   } else add('note', 'tags.txt', 'none');
 
+  // the request: the whole package, with --full (a narrower request makes some parts optional)
+  const missing = ['title.txt', 'description.txt', 'tags.txt'].filter((f) => !existsSync(path.join(dir, f)));
+  const allSized = [...sizes.values()].every(([w, h]) => w === wantW && h === wantH);
+  if (full) {
+    if (thumbs.length !== 3) add('FAIL', 'package', `${thumbs.length} thumbnails: the full package has three options`);
+    for (const [name, [w, h]] of sizes) if (w !== wantW || h !== wantH) add('FAIL', 'package', `${name} is ${w}x${h}, not the ${wantW}x${wantH} asked for`);
+    for (const f of missing) add('FAIL', 'package', `${f} is missing`);
+    if (thumbs.length === 3 && !missing.length && allSized && sizes.size === 3) add('ok', 'package', `complete: three ${wantW}x${wantH} thumbnails, the title, the description and the tags`);
+  } else if (missing.length || thumbs.length !== 3) {
+    add('note', 'package', `${thumbs.length} thumbnail(s)${missing.length ? `; no ${missing.join(', ')}` : ''} (fine for a narrower request; --full holds it to the whole package)`);
+  }
+
   const pad = Math.max(...out.map((f) => f.what.length));
   for (const f of out) console.log(`${f.level.padEnd(4)}  ${f.what.padEnd(pad)}  ${f.msg}`);
   const fails = out.filter((f) => f.level === 'FAIL').length;
-  console.log(fails ? `${fails} problem(s) YouTube would refuse or ignore.` : 'Nothing YouTube would refuse. This checks limits, not whether it is good: look at the preview.');
+  if (fails) console.log(`${fails} problem(s): YouTube would refuse or ignore them${full ? ', or the package is incomplete' : ''}.`);
+  else console.log(`Nothing YouTube would refuse${thumbs.length && !decoded ? ' in what could be read (the thumbnails from their headers only: they weren\'t decoded)' : ''}. This checks limits, not whether it is good: look at the preview.`);
   if (fails) process.exit(1);
 }
 

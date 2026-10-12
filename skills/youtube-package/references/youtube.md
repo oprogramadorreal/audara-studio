@@ -37,14 +37,15 @@ where they show · Policy and disclosure · Sources
   "p(doom)" was "a bad title" for a Brazilian audience), puts the name viewers know early (it survives being
   cut), and sounds spoken in the video's language, punctuation included ("…" is one character and a deliberate
   one).
-- **Length isn't a lever:** studies of breakout videos find no best length (the median sits near 58
-  characters); what matters is where the meaning lands. YouTube takes up to 100 characters; what shows depends on
+- **Length isn't a lever:** a 2026 study of 277 breakout videos (OverseerOS; observational) found no best
+  length, the median near 58 characters; what matters is where the meaning lands. YouTube takes up to 100 characters; what shows depends on
   where (two lines in feeds, fewer on a phone). The preview shows where it's cut. One channel's accepted titles
   ran 31 to 53 characters.
-- **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no measured
-  benefit), an episode number or the channel's name first, a promise the video doesn't keep, a famous name used
-  as bait. A title ending in a bare question does slightly worse on average; a question usually works better in
-  the picture.
+- **Avoid:** a whole title in capitals (one or two words can be the channel's style), emoji (no benefit in a
+  2026 matched-pairs study), an episode number or the channel's name first, a promise the video doesn't keep, a
+  famous name used as bait. Titles ending in a bare question averaged 0.82 times their channel's views in vidIQ's
+  2026 study of 4 million uploads; a question often works better in the picture. These studies observe, they
+  don't prove: a channel's own results outrank them.
 - **The YouTube title is not the project's working title:** `video.json`'s title and the treatment's heading stay.
 
 ## Description

@@ -37,8 +37,9 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
   first thumbnail already held the idea that won the long round after it.
 - **What the user named** (a scene, a shot, an object) gets a properly cropped try before it's dropped: a scene
   dismissed on a weak wide crop once won the final vote.
-- **Words are optional.** No text is the most common single pattern among breakout thumbnails (2026 studies);
-  when the words are yours to choose, let at least one option try few or none. When used, they say what the
+- **Words are optional.** No text was the most common single pattern among 500 breakout thumbnails in vidIQ's
+  2026 study (observational, like every study of this kind); when the words are yours to choose, let at least
+  one option try few or none. When used, they say what the
   title doesn't: a question, a number, a sound bite, a label.
 - **Fixed words aren't a fixed layout.** Text the user decided keeps its words; its size and place still serve
   the picture. When rigid type rules (a minimum height, wide gutters) made every option the same wall of text and
@@ -54,15 +55,17 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
 adds motion blur). Choose by content and pose: a scene's midpoint can be mid-fade. A frame carries what the video
 draws over it (captions, a HUD dot, citations, lower thirds): render without those entries (`--only`), use the
 plate the scene itself loads from `videos/<video>/assets/` (often the cleanest source, sometimes with a depth
-map), or paint them out. `--size 1280x720` is refused for a 16:9 video: render big and scale down.
+map), or paint them out. `--size 1280x720` is refused for a 16:9 video: render big and scale down. A video
+made elsewhere gives its frames through ffmpeg (`ffmpeg -ss <seconds> -i <video> -frames:v 1 frame.png`), at
+its own resolution and compression: crop less, and lean more on finishing.
 
 **A plate staged for the still, in the engine.** When the frames don't carry the idea (the subject too small, a
 camera move), stage it: a video of its own, `videos/<video>-thumbs/` (silent, one short slot per plate; the name
 sorts after the video's, so it never becomes the project's default), whose scenes import the video's scenes and
 helpers without changing them, rendered with `stills --only <slot> --scale 2`. It is a real video to the preview,
 `verify` and git, so its TREATMENT.md says what it is for. Keep it to the plates that need it, render them one
-at a time (a heavy scene on a laptop with two GPUs wants `CHROME_FLAGS=--force_high_performance_gpu`), and never
-while the video's final render runs.
+at a time (on a laptop with two GPUs, a heavy scene wants the environment variable `CHROME_FLAGS` set to
+`--force_high_performance_gpu`), and never while the video's final render runs.
 
 **The user's photos.** A face lit by the scene, looking at the subject or at the viewer, with an expression the
 video earns. A cut-out pasted with a white outline and a stock shocked stare, reused from an old thumbnail, read
@@ -71,7 +74,8 @@ the user's face and name appear at all.
 
 **Generated images, after a yes** (SKILL.md, Fixed). code-video's `scripts/imagegen.py` is the way in either
 tool: `uv run <code-video>/scripts/imagegen.py generate <name> --out videos/<video>/youtube/assets --size 2560x1440
---ref <plate.png> --prompt "..."` (its `--help`, and code-video's references/images.md for prices, `--takes`,
+--ref <plate.png> --prompt "..."` prints what it would make and what that costs, and spends nothing; with `--yes`
+it runs, once the user has said yes (its `--help`, and code-video's references/images.md for prices, `--takes`,
 `pick`, `--transparent` and what a reference adds to the cost). Use it to re-stage the video's real elements
 photographically (a plate or frame as `--ref`), the way one creator made their own candidate, not to invent
 look-alikes. In Codex without a key, its built-in image generation draws on the plan's limits: spending too, and
@@ -90,19 +94,20 @@ a title as a comparison is words, not a likeness), and so does imitation of a fi
 
 ## Finishing
 
-- **Recompose:** crop in until the subject reads at 168 px; paint out clutter; light the subject from the
-  scene's own sources, with a rim to lift it off the ground; grade so it holds on both pages; grain to bind the
-  layers. Each option is a finished picture, not a frame with words on it.
+- **Recompose:** crop in until the subject reads at 168 px; paint out clutter; and where the picture needs it,
+  light the subject from the scene's own sources, lift it off the ground (a rim of light, a darker ground), grade
+  so it holds on both pages, bind the layers (a shared grain or haze). Each option is a finished picture, not a
+  frame with words on it; what finishing it needs comes from looking at it, not from a recipe.
 - **Tools:** whatever does the job. An HTML page through `shoot` is quickest for layout and type (`@font-face`
   from `/public/fonts/...`, `-webkit-text-stroke` with `paint-order: stroke fill`, layered `text-shadow`,
   `filter`, `mix-blend-mode`, `mask-image`, an SVG `feTurbulence` grain); Python with numpy and Pillow for pixel
   work (compositing in linear light, relighting from a depth map); the engine for anything it already draws.
   Work from plates at 2x, so the finished 1280x720 is downsampled, never upscaled.
-- **Keep what rebuilds it** beside the PNG: `thumbnail-N.html` (or `.py`) and `youtube/assets/`. Not a `.ts`
-  file anywhere in `videos/<video>/`: the project's type check (`bun run check`) reads that folder and fails on
-  one. Work files go in `out/<video>/youtube/`.
-- **On Windows:** another program can hold a PNG open; write to a temporary name and rename. Print accented text
-  with `PYTHONIOENCODING=utf-8`.
+- **Keep what rebuilds it** beside the PNG: `thumbnail-N.html` (or `.py`) and `youtube/assets/`. Not a Bun or
+  Node script (one that imports `node:` modules or uses Bun) anywhere in `videos/`: the project's type check
+  (`bun run check`) reads that folder as browser code and fails on one. Work files go in `out/<video>/youtube/`.
+- **On Windows:** another program can hold a PNG open; write to a temporary name and rename. Python prints
+  accented text once the environment variable `PYTHONIOENCODING` is `utf-8`.
 
 ## Type
 
@@ -111,7 +116,7 @@ a title as a comparison is words, not a likeness), and so does imitation of a fi
   small, from the project's fonts or an OFL file copied with its licence into `youtube/assets/` (not registered
   in the engine, which would load it for every video).
 - **Few words, big:** the main words at about 12 px or more at 168 px wide (`shoot` reports each block; a set
-  that read well small had 14 to 19 px). One or two lines; one accent colour at most; a dark margin around
+  that read well small had 14 to 19 px). One or two lines; few colours in the type; a dark margin around
   letters that sit on busy ground.
 - **Details that show small:** line spacing that clears accents (Ê, Ã); kerning a face lacks (a "?" after an
   "A"); word spaces wide enough that "A IA" stays two words at 168 px; every accented letter looked at in the
