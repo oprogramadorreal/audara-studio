@@ -1397,7 +1397,7 @@ three thumbnail options with any art at hand ("the skill must go all out"), one 
 win the click and keep the viewer, a description that helps search, and tags, as files in the project; words
 they give are a start to keep or improve, and with none given the skill proposes everything. A Claude Code
 session (Opus 5.5) built it and had the last call; a Codex session (GPT-6 Astra) analyzed it with its
-skill-creator over four rounds through Herdr and ran the script in its own environment (through Node's child
+skill-creator over five rounds through Herdr and ran the script in its own environment (through Node's child
 processes: its default shell couldn't start a process on this machine, so the default shell sandbox itself
 wasn't tested).
 
@@ -1446,10 +1446,11 @@ What changed:
   finds is finishing, not a new round), `references/art.md`
   and `references/youtube.md`, and `scripts/youtube.ts` (shoot, preview, niche, check; Bun and Chrome over the
   DevTools protocol, no dependencies). The package goes in `videos/<video>/youtube/`; previews in `out/`.
-- **init's AGENTS.md** names the skill, owes "for a request for a thumbnail, a YouTube title, a description or
-  tags, three thumbnail options made with one title, then the description and tags, in `videos/<video>/youtube/`,
-  with the video left as it is", and scopes "Before calling work done" to a change to a video.
-- **video-repo** keeps a video's `youtube/` package (SKILL.md 7,994 bytes) and reads its `title.txt` as a
+- **init's AGENTS.md** names the skill, owes "for a request for a thumbnail or to get a video ready for YouTube,
+  three thumbnail options made with one title, then the description and tags, and for one of those alone (a
+  title, a description, tags), that part, in `videos/<video>/youtube/`, with the video left as it is", and
+  scopes its last check to "Before calling a change to a video done".
+- **video-repo** keeps a video's `youtube/` package (SKILL.md 7,996 bytes) and reads its `title.txt` as a
   proposal, not the published title.
 - **README, AGENTS.md, design.md** ("Publishing it: the YouTube package"), the manifests, 0.7.0.
 - **The evals:** `evals/trigger/youtube-package.json` (12 requests, the user's own and three in Portuguese among
@@ -1475,3 +1476,43 @@ Considered and rejected:
 - **Three titles, a 4K deliverable by default, an SRT, global channel memory:** the user asked for one title (the
   runners-up go in NOTES.md); 1280x720 is their ask (`shoot --scale 3` makes 4K from the same page); captions
   are offered, not made; `docs/CHANNEL.md` stays in the project, with no scanning of sibling folders.
+
+Measured and fixed along the way:
+
+- **YouTube's sizes, measured** on youtube.com (2026-10-12, logged out, windows 1280 to 1920 px wide and a
+  390 px phone): the home grid now shows three across (344 px at 1366, 528 at 1920), search 500, the up-next
+  column about 215 to 325 (168 only in the classic layout), the playlist panel 100; the duration badge covers up
+  to about 20% by 23% of the image. The preview had been written for 360, 246 and 168 px and a guessed quarter
+  corner; it now uses the measured sizes, and the search result cuts the description at about 130 characters as
+  YouTube does. Pointing at a thumbnail plays the video in its place, so the opening is part of the package.
+- **The image tools, tested:** rembg's command printed only an install hint without its `cli` extra, and its
+  default model needs a paid licence for commercial use (now `birefnet-general`, MIT); Pillow on Windows set
+  "AV" and "To" without the font's kerning, which Chrome applies, so words stay in the page.
+- **A purge before any push:** a research agent's browser tool wrote `.playwright-mcp/` logs (signed YouTube
+  links carrying an IP address) into the repo root, and a broad `git add` swept them into a commit; the branch
+  was rewritten without them and the folder is ignored.
+
+What was checked:
+
+- **Triggering.** Claude Code (Opus 5.5), three runs each: 22 of 23 pass, the skill loaded on 94% of the
+  packaging requests and on none of the near-misses; the miss, yp-10 ("render the final video, then make the
+  thumbnail..."), loaded code-video first and ran out of turns once in three. Codex (GPT-6 Astra): 23 of 23,
+  loaded on every packaging request, and once in 33 near-miss runs (yp-15, ideas with a title, beside
+  video-ideas, using none of its scripts). cv-24 and vi-23 (a packaging request as code-video's and
+  video-ideas' near-miss) passed three of three on Claude, so neither description changed.
+- **The task, yp-given-words, on Claude** with the user's own prompt and the project their packaging session
+  started from: with the skill, 25 minutes, then 5 for the channel's type in a new session: three different
+  bets (the mask's lit eyes, the CRT in the sunny room, the two figures at the candle with a speech bubble), the
+  title used exactly, a description with chapters, tags, `docs/CHANNEL.md`, a niche of ten real Brazilian
+  videos through oEmbed, previews and the check passing; the video and engine untouched. Without it, 32 and 14
+  minutes: three strong thumbnails from the same scenes, no description or tags, the files in the ignored
+  `out/`, and the engine's `post.ts` and the project's docs changed to render the type. A blind panel of judges
+  was started on the two sets and stopped unfinished when the session's usage ran out.
+- **Codex's five rounds** found, among others, the length of the video read from the audio before
+  `video.json`'s duration, a mistyped folder checked as the one above it, JPEGs passing a PNG package, "0:99"
+  read as a time, two pages writing one image, a cut unicode handle, and claims in the docs; the fifth confirmed
+  the six fixes and three small notes, fixed. `evals/tests/test_youtube.ts`: 38 offline checks pass;
+  `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,964 bytes.
+
+Not run: the other three task cases (`yp-nothing-given`, `yp-title-only`, `yp-images-budget`), any task on
+Codex, the near-misses on Codex, and anything that spends (image generation waits for the user's yes).
