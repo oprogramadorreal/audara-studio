@@ -1506,13 +1506,27 @@ What was checked:
   title used exactly, a description with chapters, tags, `docs/CHANNEL.md`, a niche of ten real Brazilian
   videos through oEmbed, previews and the check passing; the video and engine untouched. Without it, 32 and 14
   minutes: three strong thumbnails from the same scenes, no description or tags, the files in the ignored
-  `out/`, and the engine's `post.ts` and the project's docs changed to render the type. A blind panel of judges
-  was started on the two sets and stopped unfinished when the session's usage ran out.
+  `out/`, and the engine's `post.ts` and the project's docs changed to render the type. Both met the criteria
+  of the case that apply to pictures; the with-skill run met all nine, the package ones included.
+- **A blind panel on the two sets:** six judges (a viewer from the audience, a packaging strategist, an art
+  director, each in both orders), shown each set's images and the same feed mock with the same ten real videos
+  beside them. Every judge chose whichever set came second, so the vote measured position, not the sets; the
+  scores are counterbalanced (each set came first for three judges). Out of 10, with the skill against without:
+  variety 7.8 against 5.8 (two of the other set's three were the mask, all three dark), honesty 8.0 against 7.1
+  (it gave a faceless figure a red eye and the CRT's mask burning eyes), legibility small 7.3 against 6.6, click
+  pull 6.8 against 7.1, craft 7.0 against 7.2, the fit with the title 8.1 against 8.2, each set's mean rank 3.5.
+  The pictures are on a par; what the skill adds is the package, its variety and honesty, the time, and a video
+  left as it was.
+- **yp-title-only on Claude:** 101 seconds: one title and three runners-up with their lengths and reasons, in
+  `title.txt` and `NOTES.md`, nothing drawn, the video unchanged. It left "Claude" out as bait, reading the
+  treatment's rule against showing a real product's interface as a rule against naming it; youtube.md now says
+  a name the video is about belongs early. The with-skill run of the user's prompt had named the disclosure by
+  its old name ("altered or synthetic content"); youtube.md gives today's, "AI use".
 - **Codex's five rounds** found, among others, the length of the video read from the audio before
   `video.json`'s duration, a mistyped folder checked as the one above it, JPEGs passing a PNG package, "0:99"
   read as a time, two pages writing one image, a cut unicode handle, and claims in the docs; the fifth confirmed
   the six fixes and three small notes, fixed. `evals/tests/test_youtube.ts`: 38 offline checks pass;
   `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,964 bytes.
 
-Not run: the other three task cases (`yp-nothing-given`, `yp-title-only`, `yp-images-budget`), any task on
-Codex, the near-misses on Codex, and anything that spends (image generation waits for the user's yes).
+Not run: `yp-nothing-given` and `yp-images-budget`, the near-misses on Codex, and anything that spends (image
+generation waits for the user's yes).
