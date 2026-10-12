@@ -5,7 +5,10 @@
 // the user's real environment (their other skills compete, as they would in practice).
 //
 //   bun evals/harness/trigger.ts --tool claude|codex --set evals/trigger/code-video.json
-//       [--runs 3] [--model opus] [-j 6] [--only cv-01,cv-04] [--description <file>] [--plugin] [--out <file>]
+//       [--runs 3] [--model opus] [--effort low] [-j 6] [--only cv-01,cv-04] [--description <file>] [--plugin]
+//       [--out <file>]
+// --effort sets the reasoning effort the user's settings would otherwise pick (Claude Code's --effort, Codex's
+// model_reasoning_effort): a check of the decision at low effort costs a fraction of one at the user's own.
 //
 // A run counts as triggered when the session loads the skill (Claude: a Skill call naming it, or a read of
 // its SKILL.md; Codex: a command reading <skill>/SKILL.md). Codex models often open a plausible skill just
@@ -36,6 +39,7 @@ const SET = JSON.parse(readFileSync(path.resolve(opt('set', 'evals/trigger/code-
 };
 const RUNS = +opt('runs', '3')!;
 const MODEL = opt('model');
+const EFFORT = opt('effort');
 const J = +opt('j', TOOL === 'claude' ? '6' : '4')!;
 const ONLY = opt('only')?.split(',');
 // (every skill in the repo: they compete with each other, as they do once the plugin is installed)
@@ -197,9 +201,10 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
   prepare(dir, q.files);
   const cmd = TOOL === 'claude'
     ? ['claude', '-p', q.query, '--output-format', 'stream-json', '--verbose', '--max-turns', String(MAX_TURNS), '--permission-mode', 'auto', '--no-session-persistence',
-       ...OFF, ...(MODEL ? ['--model', MODEL] : []), ...(flag('plugin') ? ['--plugin-dir', REPO] : [])]
+       ...OFF, ...(MODEL ? ['--model', MODEL] : []), ...(EFFORT ? ['--effort', EFFORT] : []), ...(flag('plugin') ? ['--plugin-dir', REPO] : [])]
     // (codex is a .cmd shim on Windows, which can't take arguments with quotes: the prompt goes on stdin)
-    : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', dir, ...(MODEL ? ['-m', MODEL] : []), '-'];
+    : ['codex', 'exec', '--json', '--skip-git-repo-check', '--approve-for-me', ...OFF, '-C', dir, ...(MODEL ? ['-m', MODEL] : []),
+       ...(EFFORT ? ['-c', `model_reasoning_effort=${EFFORT}`] : []), '-'];
   const t0 = performance.now(), since = Date.now();
   // (no keys that spend: a near-miss run acts for up to MAX_TURNS, and a script it runs must not reach a paid API)
   const env = { ...process.env };
@@ -290,7 +295,7 @@ const rows = queries.map((q) => {
 // (the model as the runs' transcripts or session files name it; modelArg is what --model asked for)
 const models = [...new Set([...results.values()].flat().flatMap((r) => r.model ?? []))];
 const summary = {
-  tool: TOOL, model: models.join(', ') || null, modelArg: MODEL ?? null, skill: SET.skill, runs: RUNS, plugin: flag('plugin'), description: opt('description') ?? null,
+  tool: TOOL, model: models.join(', ') || null, modelArg: MODEL ?? null, effortArg: EFFORT ?? null, skill: SET.skill, runs: RUNS, plugin: flag('plugin'), description: opt('description') ?? null,
   nearMissCriterion: NEAR_MISS,
   desktopOff: OFF,
   passed: rows.filter((r) => r.pass).length, total: rows.length,

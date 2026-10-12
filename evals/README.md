@@ -53,6 +53,11 @@ bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/vi
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/youtube-package.json
 ```
 
+`--effort` sets the reasoning effort the user's settings would otherwise pick, as in `task.ts` below. Every run
+otherwise inherits the user's own (Claude Code's `effortLevel`, Codex's `model_reasoning_effort`), so a check of
+a description change can run first at `--effort low --runs 1`, and at the user's effort only when that is worth
+its cost.
+
 youtube-package's set holds the user's own thumbnail prompt and three requests in Portuguese, and its
 near-misses sit beside it in the other sets: cv-24 (the package asked for inside a project, in code-video's
 set) and vi-23 (a better title for a finished video, in video-ideas'). A packaging run that renders plates
