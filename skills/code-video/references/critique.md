@@ -66,9 +66,10 @@ choose:
   yet (a new session on a fresh copy: `out/` isn't committed), run verify before you change anything.
 
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
-costs nothing. Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't
-overwrite them, put their paths in your reply, and don't clear them out at the end: they are the
-director's view of what you checked, and without them a reply is only claims. Scripts and data you write to
+costs little (whole-video drafts and frame folders don't: one project's reached 36 GB; see Delivery).
+Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't overwrite them,
+put their paths in your reply, and don't clear them out at the end: they are the director's view of what
+you checked, and without them a reply is only claims. Scripts and data you write to
 check go in `.audara-cache/`, never `out/`.
 
 - A sheet is scaled down when you look at it whole, and past about 2000 px a side its thumbnails stop
@@ -189,9 +190,10 @@ Check:
 - Has every row its own composition and job? Which rows are filler?
 - What carries across each cut, or is it a cut the piece means (a montage's, on the beat)? Does any row
   start or end on an empty frame, the first and last included?
-- Is every claim, number and diagram true or labelled, is every product screen the product's real one or
-  a concept the director asked for, marked as one (assets/SOURCES.md says which), and is nothing claimed
-  that the treatment rules out?
+- Is every claim, number and diagram true or labelled (once, where a viewer would take it for fact: a
+  diagram that reads as one needs no label, and sources can go in the description), is every product
+  screen the product's real one or a concept the director asked for, marked as one (assets/SOURCES.md says
+  which), and is nothing claimed that the treatment rules out?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
@@ -359,10 +361,11 @@ When the director asks for a render, in their request or later:
 3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
    change, and wait for it before you reply: it takes minutes, often past a tool's time limit for one
    command (then run it in the background and check on it until it ends), the reply needs its result,
-   and a render still running when your turn ends can die with the session. It renders with adaptive
-   motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful` scene on
-   screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives 4K). A
-   `--draft` is never the delivery.
+   and a render still running when your turn ends can die with the session (an idle session's background
+   commands are also stopped when memory runs low: two renders were lost that way, one at 86%). It renders
+   with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful`
+   scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives
+   4K). A `--draft` is never the delivery.
 4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
@@ -385,6 +388,15 @@ left open; and what wasn't checked ("measured, not listened to"; "sampled frames
 Every claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on
 the beat. For a video headed to YouTube, one line offers its package: three thumbnails with a title, the
 description with chapters and the tags (the youtube-package skill); the poster is a frame, not a thumbnail.
+And it offers to free the disk, in groups the director can pick from, each with its size and why
+it's safe: the drafts, frame folders and critic rounds in `out/<video>/`, the scratch in `.audara-cache/`,
+and your session's temporary folder when it's large (one thumbnail session left 14.8 GB there). Never in
+it: each format's delivery, its reports (`verify.json`, `qc.json`, the mix's), the sheets and the poster;
+the only render of a video that has no final; pictures still awaiting a pick; `.audara-cache/preview.log`
+and `.audara-cache/uv/`; and anything the project names as a source: search `videos/`, `src/`, `scripts/`
+and `docs/` for each path first (one project's `mix.json` and textures were made by scripts in
+`.audara-cache/tools/`, named in its files). Delete only after the director's yes, and not while a render,
+the preview or another session is using the project.
 
 ---
 

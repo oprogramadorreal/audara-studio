@@ -1173,12 +1173,12 @@ async function check() {
     const desc = readText(descFile).trim();
     const n = chars(desc);
     const first = desc.split('\n')[0];
+    // (YouTube's help counts 5,000 characters, its Data API 5,000 bytes: an accent takes two, an emoji four)
+    const bytes = Buffer.byteLength(desc, 'utf8');
     if (!desc) add('FAIL', 'description.txt', 'empty');
     else if (n > DESCRIPTION_MAX) add('FAIL', 'description.txt', `${n} characters: YouTube's limit is ${DESCRIPTION_MAX}`);
     else if (/[<>]/.test(desc)) add('FAIL', 'description.txt', `has < or > (line ${desc.split('\n').findIndex((l) => /[<>]/.test(l)) + 1}), which YouTube refuses`);
-    else add('ok', 'description.txt', `${n} characters; it opens "${first.slice(0, 90)}${first.length > 90 ? '...' : ''}"`);
-    // (YouTube's help counts 5,000 characters, its Data API 5,000 bytes: an accent takes two, an emoji four)
-    const bytes = Buffer.byteLength(desc, 'utf8');
+    else add('ok', 'description.txt', `${n} characters${bytes !== n ? `, ${bytes} bytes` : ''}; it opens "${first.slice(0, 90)}${first.length > 90 ? '...' : ''}"`);
     if (n <= DESCRIPTION_MAX && bytes > DESCRIPTION_MAX) add('warn', 'description.txt', `${bytes} bytes: Studio takes ${DESCRIPTION_MAX} characters, but an upload through YouTube's API (or a tool using it) counts bytes and may refuse it`);
     // (plain lists read fine; these show their marks literally)
     if (/(^|\n)#{1,6} |\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^)\n]+\)/.test(desc))

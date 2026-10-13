@@ -9,7 +9,7 @@ Turns what a video has (a song, a script, or nothing yet) into audio plus the ti
 
 ## Fixed
 - **Spending waits for a yes.** Before any generation that costs credits, say what it will make (characters, length, credits, voice, model) and wait; the scripts print that plan and refuse to spend without `--yes`. A budget the director sets in their own words is the yes for what fits it (its running total goes in the video's TREATMENT.md, Decisions). A key in the environment, or a question tool that answers before anyone could, is not a yes. Make one voice block first and check it (pace, loudness, what was said) before the rest.
-- **The key stays in the environment** (`ELEVENLABS_API_KEY`): never in a file, a log or a command line.
+- **The key stays in the environment** (`ELEVENLABS_API_KEY`): never in the project, a log or a command line.
 - **Generated audio is an asset, not a build step.** Generate once, keep the file and the request record beside it; the scripts regenerate only when the request changed, and renders never call the API.
 - **Licenses are respected:** say what a voice, a model or a plan allows before relying on it, and again when handing over audio for a client or a monetized video, naming the account's plan as the scripts print it (free ElevenLabs plans are non-commercial; some alignment models are non-commercial too).
 - **Numbers are measured, not claimed.** Report what the scripts measured.

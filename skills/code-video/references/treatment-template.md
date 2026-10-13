@@ -1,9 +1,9 @@
 # Treatment template
 
 A treatment is one video's plan: `videos/<video>/TREATMENT.md`, written before any scene exists and kept
-current after. Show it to the director in a short message (with `out/<video>/window.png` and the click
-track `out/<video>/clicks.m4a` when there is a song) and build on; scene authors, the critic and later
-sessions all work from it, its Decisions first. The look every video in the project shares is in `docs/STYLE.md`
+current after. Show it to the director in a short message (with the preview's link when it runs, and
+`out/<video>/window.png` and the click track `out/<video>/clicks.m4a` when there is a song) and build on;
+scene authors, the critic and later sessions all work from it, its Decisions first. The look every video in the project shares is in `docs/STYLE.md`
 (`references/style-template.md`), so a treatment says only what this video adds or changes.
 
 Everything here is a default. Drop what the piece doesn't need, add what it does, and when you depart from
@@ -89,7 +89,8 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
   lines, two colours>.
 - **Never claim:** <what would be false or unprovable here, for a product a feature, result or figure it
   doesn't have, shown as its own (a concept the director asked for is marked as one); how illustrative
-  values are labelled>. (When the piece states facts or shows a product.)
+  values are labelled: once, where a viewer would take them for fact; the rest in the description>. (When
+  the piece states facts or shows a product.)
 - **Preset:** commercial. (Only when the director chose it.)
 - **Deliver:** <the standard set, plus what this video needs beyond it>.
 
@@ -201,7 +202,9 @@ critic checks them frame by frame. The sources (more in `docs/ENGINE.md`, "Data"
 ## Words on screen
 
 The words come from the director, the subject and the piece's idea, never from this skill: its rules (the
-f(t) rule, the critic's terms) and its example video's lines are how you work, not what a video says.
+f(t) rule, the critic's terms, its word "director") and its example video's lines are how you work, not
+what a video says. The person goes by the name they use in public (a channel's name, for a channel); a real
+name, family or place found in their files (captions, metadata, file names) is shown only when they say so.
 Words don't replace the picture. Unless the director wants type alone, the frame holds an image of this song
 or this subject, not a background any video could have, and the words live in it: they act on it, or it on
 them. When type is the whole picture, its treatment is the image (it moves, steps, builds, breaks). When
@@ -230,7 +233,9 @@ in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its
 treatment's Decisions,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
-the lead for engine changes.
+the lead for engine changes. Their verify runs write to their own folder
+(`--out out/<video>/wip/<owner>/verify.json`), since `out/<video>/verify.json` is the lead's record of what
+changed and a project's older render.ts writes even `--only` there.
 
 ```markdown
 ### `<id>` · <owner, e.g. B2> · bars <a–b>, <section> (<m:ss–m:ss>)

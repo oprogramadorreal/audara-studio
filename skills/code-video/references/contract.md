@@ -73,7 +73,9 @@ scene's name.
   changes on `frameTime(t)`, so the step falls between two frames instead of splitting one frame's
   sub-frames into a double image. Motion stays on `t`, so it blurs.
 - A cache across frames is fine when its key is everything the result depends on (a layout per line of
-  text, a layer redrawn when its text changes). A cache keyed on "the last frame" is state.
+  text, a layer redrawn when its text changes). A cache keyed on "the last frame" is state. A key rounded to
+  steps (an opacity to hundredths) needs the layer drawn with the rounded value too: drawn with the exact one,
+  the layer keeps whichever frame filled it first, so verify fails, or a faint ghost stays while the key reads 0.
 
 ## Noise and emitters
 
