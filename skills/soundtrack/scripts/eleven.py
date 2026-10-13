@@ -2977,6 +2977,9 @@ def cmd_sfx(a, out: Out) -> None:
         out("Place each by its onset (the event time minus onset_s), not by its file start.")
         return
     if not a.prompt:
+        if a.pick is not None:
+            raise Fail(USAGE, "--pick keeps a candidate of an earlier run: give that run's prompt and settings too "
+                              "(the run printed the whole command)")
         raise Fail(USAGE, "sfx needs a prompt (\"soft short whoosh\") or --screen FILE ...")
     tool("ffmpeg")  # checked before anything is spent: every candidate is screened once it arrives
     w = where(a.video, a.out)
@@ -3005,7 +3008,9 @@ def cmd_sfx(a, out: Out) -> None:
 
     if a.pick is not None:
         if not fresh(a.pick):
-            raise Fail(ERROR, f"candidate {a.pick} of {slug} does not exist for this prompt and settings")
+            raise Fail(ERROR, f"candidate {a.pick} of {slug} does not exist for this prompt and settings (--pick takes "
+                              f"the prompt, --duration, --influence, --loop, --name and --format of the run that made "
+                              f"it: that run printed the whole command)")
         main = sdir / f"{slug}{ext}"
         res = screen(cpath(a.pick), a.prompt)
         keep_or_retire(main, tdir, SFX_SIDES)

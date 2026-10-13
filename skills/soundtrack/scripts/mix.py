@@ -1435,8 +1435,8 @@ or several in a row, in data/words.json, found as the engine's findWords does; "
 "edge": "end" its end), "line" (the first line containing the text, as words.get() finds it), "beat" or
 "downbeat" (index into data/audio.json), plus "offset" seconds. "align": "onset" (default) puts the effect's
 measured onset on that time; "peak" puts its loudest moment there (whooshes into a cut). Its level is solved in
-its own band against the music: "target_db" (default 3.5 dB lift), "peak_cap_db" (default 6), or "gain_db" to
-set it by hand."""
+its own band against the music: "target_db" (the lift over the music, above 0; default 3.5 dB), "peak_cap_db"
+(default 6), or "gain_db" to set it by hand."""
 
 
 def check_keys(obj, allowed: set[str], where: str) -> dict:
@@ -1555,10 +1555,15 @@ def parse_plan(raw, base: Path) -> dict:
             raise usage(f"{where}.nth must be a whole number (0 = the first occurrence), got {json.dumps(nth)}")
         if "gain_db" in e and ("target_db" in e or "peak_cap_db" in e):
             raise usage(f'{where}: "gain_db" sets the level by hand; drop "target_db"/"peak_cap_db" (they steer the solver)')
+        target = num(e, "target_db", where, FX_TARGET_DB, -20, 30)
+        if target <= 0:  # the least gain already lifts the music 0 dB: the solver would stop at -60 dB, a muted effect
+            raise usage(f"{where}.target_db is {target:g}: it is how far the effect lifts the music in its own band, so 0 "
+                        f"or less asks for no lift and would mute it. For a quiet effect give a small lift (0.5 to 2), "
+                        f'or set "gain_db" by hand')
         plan["effects"].append({"file": need_file(e, where, base), "when": when[0], "value": e[when[0]], "nth": nth,
                                 "edge": edge, "offset": num(e, "offset", where, 0.0, -10, 10), "align": align,
                                 "gain_db": num(e, "gain_db", where, None, -80, 40),
-                                "target_db": num(e, "target_db", where, FX_TARGET_DB, -20, 30),
+                                "target_db": target,
                                 "peak_cap_db": num(e, "peak_cap_db", where, FX_PEAK_CAP_DB, -20, 40),
                                 "where": where})
     hits = raw.get("hits") or []
