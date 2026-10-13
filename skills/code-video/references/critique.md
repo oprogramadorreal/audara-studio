@@ -388,9 +388,15 @@ left open; and what wasn't checked ("measured, not listened to"; "sampled frames
 Every claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on
 the beat. For a video headed to YouTube, one line offers its package: three thumbnails with a title, the
 description with chapters and the tags (the youtube-package skill); the poster is a frame, not a thumbnail.
-And one line offers to free the disk: what `out/<video>/` and `.audara-cache/` hold besides the delivery
-(whole-video drafts, frame folders, critic rounds), with their sizes. Delete only after the director's yes,
-and keep the delivery, its reports (`verify.json`, `qc.json`), the sheets and the poster.
+And it offers to free the disk, in groups the director can pick from, each with its size and why
+it's safe: the drafts, frame folders and critic rounds in `out/<video>/`, the scratch in `.audara-cache/`,
+and your session's temporary folder when it's large (one thumbnail session left 14.8 GB there). Never in
+it: each format's delivery, its reports (`verify.json`, `qc.json`, the mix's), the sheets and the poster;
+the only render of a video that has no final; pictures still awaiting a pick; `.audara-cache/preview.log`
+and `.audara-cache/uv/`; and anything the project names as a source: search `videos/`, `src/`, `scripts/`
+and `docs/` for each path first (one project's `mix.json` and textures were made by scripts in
+`.audara-cache/tools/`, named in its files). Delete only after the director's yes, and not while a render,
+the preview or another session is using the project.
 
 ---
 

@@ -108,8 +108,8 @@ The steps follow SKILL.md's session checklist, in its order:
 7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
    asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
    quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
-   and a poster frame, and an offer to delete the drafts and frame folders the work left (one project's
-   reached 36 GB). Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
+   and a poster frame, and an offer to delete, after a yes, the drafts and frame folders the work left (one
+   project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
    itself it sometimes took the integrated one. (Until 0.2.0 the first build ended with the MP4;
    history.md says why it changed.)
 8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the

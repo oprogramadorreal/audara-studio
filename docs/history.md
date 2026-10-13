@@ -1685,7 +1685,16 @@ What the evidence said:
   ran low while the session was idle. The rule was there; its reason didn't name this case.
 - **Disk.** oprog-3's `out/` reached 41 GB (36 GB for v2: 19 kept drafts of about 1 GB, 25 frame folders, the
   critic rounds) beside a 1.7 GB final; the user had to ask a separate session what was safe to delete
-  ("consumed a lot of my disk space with temp stuff"). critique.md said `out/` "costs nothing".
+  ("consumed a lot of my disk space with temp stuff"). critique.md said `out/` "costs nothing". That session
+  did it well: about 120 GB in groups (A to F), each with its size and why it was safe, the user to pick by
+  letter; the finals, the thumbnail options awaiting a pick and the reports `verify` compares with kept; the
+  only render of a video with no final (oprog-3's v1, oprog-2) left to the user; a search showing no code read
+  what it would delete; a wait while another session wrote in the project; 14.8 GB found in a finished
+  thumbnail session's temporary folder, out of any project. It also offered every project's `.audara-cache/`
+  but `preview.log`, after searching only oprog-3's code: oprog-1's `.audara-cache/tools/` holds the scripts
+  that make its `mix.json` (`sfx_collect.ts`, `make_mix2.py`) and textures (`tileable.py`), named as such in
+  the project's files. Copies were in its git repository (`docs/production-tools/`, from video-repo); a
+  project without one would have lost them.
 - **On screen.** oprog-3 showed "Modelo com LoRA do diretor" and the user's real name from their training
   captions until they asked: "I do not want to display my real name ([name]) anywhere... do not mention 'o
   diretor'". About 25 honesty captions piled up round by round ("too overwhelming... remove them all").
@@ -1724,8 +1733,11 @@ What changed:
   read's pace.
 - **critique.md:** the critic's truth question asks for a label once, where a viewer would take a picture for
   fact (sources can go in the description); delivery step 3 names the memory case; delivery's reply offers to
-  delete the drafts, frame folders and critic rounds, with their sizes, after a yes, keeping the delivery, its
-  reports, the sheets and the poster; `out/` "costs little", with the 36 GB case.
+  free the disk as that session did, in groups with sizes and reasons (drafts, frame folders and critic
+  rounds, `.audara-cache/` scratch, a large session temporary folder), never the deliveries, their reports,
+  sheets and poster, the only render of a video with no final, pictures awaiting a pick, `preview.log`,
+  `uv/`, or anything the project names as a source (each path searched for first), and only after a yes,
+  with nothing running in the project; `out/` "costs little", with the 36 GB case.
 - **treatment-template.md:** the treatment's message carries the preview link; "Never claim" labels once;
   on-screen words never include the skill's "director", and a real name, family or place from the user's
   files appears only when they say so; scene authors keep their own verify reports.
