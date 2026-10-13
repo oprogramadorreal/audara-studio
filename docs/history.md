@@ -21,6 +21,7 @@ Contents
 - Handing a project on: video-repo (0.6.0, 2026-10-11)
 - One video or many in a project (0.6.1, 2026-10-11)
 - Publishing it: youtube-package (0.7.0, 2026-10-12)
+- Small fixes from three published videos (0.7.1, 2026-10-13)
 
 ## Definition of done
 
@@ -1636,3 +1637,116 @@ What was checked: `bun evals/tests/test_youtube.ts` 51/51 (three of the four add
 before their fix; the fourth guards the stamps that are times), `tsc --strict` on the script and the test, the three spec validators, SKILL.md 7,996 bytes without a
 byte-order mark. Not run: a task eval with the change, and `niche` against the real Data API (no key on this
 machine; a local stand-in served the same JSON shapes).
+
+## Small fixes from three published videos (0.7.1, 2026-10-13)
+
+The user published two videos made with audara-studio on their channel (oprog-1, "Claude respondeu essa
+pergunta com um clipe"; oprog-4, "A resposta do Claude é assustadora") and finished a third (oprog-3, "Do Ruído
+à Imagem", scheduled). They were happy with all three and asked for a look at whether the plugin behaved as
+expected, and for small improvements only, nothing that risks what works. A Claude Code session (Opus 5.5)
+read the sessions through Herdr: the three main ones (0.5.0, whose code-video, soundtrack and video-ideas
+SKILL.md are byte for byte today's), oprog-3's final render and thumbnail sessions (0.6.1), its description
+and tags (0.7.0, the first youtube-package run on a real project) and a disk audit. Four subagents read the
+transcripts whole, with the tool results, against the current repo.
+
+What worked, to keep: video-ideas stopped at the prompt; treatments came before scenes, style frames were
+picked by looking, Decisions kept the director's words and the budgets' running totals; verify passed at every
+step and `--since` showed what each change touched; critic rounds found real problems (oprog-4's stillness
+went from 65% to 17%); costs were printed before every spend; the plugin's own scripts rarely failed (most
+errors in the transcripts were in code the agents wrote). youtube-package's first real run took 6 minutes and
+cost nothing: description and tags only, as asked, chapters from the timing data checked against the final
+cut, `docs/CHANNEL.md` started, the "AI use" setting flagged.
+
+What the evidence said:
+
+- **Renders on the integrated GPU.** In oprog-3's final-render session the NVIDIA GPU sat at 0% while Chrome
+  drew on the Intel one: 1.1 fps against 3.7, a heavy stretch 0.2 against 2.4. The agent patched the project's
+  render.ts to read `CHROME_FLAGS` and rendered with `--force_high_performance_gpu` (56 min). The same
+  project's ~18 full drafts and 23 verifies had all run on the Intel GPU. youtube-package's art.md already told
+  agents to set `CHROME_FLAGS`, which the template's render.ts never read. Chrome's choice varies: on the same
+  machine on 2026-10-13 it took the NVIDIA GPU unprompted, in a scratch project made with init, where verify of
+  the example passed with 0 mismatches on both GPUs, in 3.9 s on the discrete one and 6.5 s on the integrated.
+- **Effects muted by the mix.** In oprog-1, about 200 of 476 effects came out at -60 dB ("paper-slap 50 of 92,
+  stamp-soft 54 of 79"): a `target_db` of 0 or less asks the solver for no lift, so it stops at its least
+  gain, with no warning and against its own docstring ("never a muted effect"). Reproduced on the example with
+  0.7.0's mix.py. Finding and working around it took most of an afternoon.
+- **Keys pasted in the chat.** The user gave keys in the chat in all three projects ("I want you to use exactly
+  these keys. I'll invalidate them right after"; "ok you already have the api keys here in your context"),
+  where elevenlabs.md said to ask them to set the key in their environment and start the session again, a rule
+  no entry here explains. The sessions improvised three ways: a file in the session's temporary folder, loaded
+  per command and deleted (oprog-1); `SetEnvironmentVariable` for the user, which put both keys on a command
+  line and kept them after the session (oprog-4); the key inline on 7 commands (oprog-3). No key reached a
+  project file (checked in all three projects and in oprog-3's 84 subagent transcripts).
+- **`verify --only` replaced the whole video's report.** oprog-4's scene author ran it and overwrote the lead's
+  `verify.json` ("overwrote my full-video report, but I'd kept a copy"); in oprog-3 authors did the same and
+  the lead added `--out` to every brief. `video` already names a partial render `-only-<ids>`.
+- **Two renders lost to memory.** oprog-1's final render died at 86% (37 minutes in) and an oprog-4 draft did
+  too: each session ended its turn with the render in the background, and Claude Code stopped it when memory
+  ran low while the session was idle. The rule was there; its reason didn't name this case.
+- **Disk.** oprog-3's `out/` reached 41 GB (36 GB for v2: 19 kept drafts of about 1 GB, 25 frame folders, the
+  critic rounds) beside a 1.7 GB final; the user had to ask a separate session what was safe to delete
+  ("consumed a lot of my disk space with temp stuff"). critique.md said `out/` "costs nothing".
+- **On screen.** oprog-3 showed "Modelo com LoRA do diretor" and the user's real name from their training
+  captions until they asked: "I do not want to display my real name ([name]) anywhere... do not mention 'o
+  diretor'". About 25 honesty captions piled up round by round ("too overwhelming... remove them all").
+- **Smaller ones.** The treatment message went out without the preview link (the director asked for it 11
+  minutes after init and got it 34 minutes later). oprog-3's preview showed "no default export" for three scenes
+  whose helpers five authors were saving at once, cured by restarting it; renders and verify, each on a fresh
+  server, never showed it. `bun run check` failed for an audio script importing the timeline
+  (`import.meta.glob`); oprog-4 added `vite/client` to the scripts' types, and its check passes with it. Two
+  cached layers were keyed on a rounded value but drawn with the exact one (a verify failure, then a faint
+  ghost). `eleven.py sfx --pick` was run without its prompt. v4 voice lessons: tags on the say map's spoken
+  side, a take that doesn't come back when asked for again, about 13.8 characters a second for a slow,
+  dramatic Portuguese read (measured on oprog-4's words.json). youtube-package read the channel's titles with
+  yt-dlp and got YouTube's English translations ("Claude's response is terrifying"), while `niche`'s oEmbed
+  returned the Portuguese titles under any language header; `check` gave a description's bytes only past
+  5,000, so the agent measured them by hand; the description took as its model a 4,570-character draft oprog-1
+  cut before upload.
+
+What changed:
+
+- **render.ts (template):** Chrome starts with `--force_high_performance_gpu` (no effect with one GPU;
+  `CHROME_FLAGS=--force_low_power_gpu` takes the integrated one, checked), and `CHROME_FLAGS` adds flags.
+  `verify --only` writes `verify-only-<ids>.json` (`-preview` added with `--as-preview`), so `verify.json`
+  stays the whole video's; checked in a scratch project: the partial reports compare with each other, the
+  whole one with itself. Both reach new projects (and `init --force`); existing ones keep their render.ts.
+- **tsconfig.scripts.json:** `vite/client` beside `bun` in the scripts' types.
+- **mix.py:** a `target_db` of 0 or less stops the build, saying what it means and the fix (a small lift, or
+  `gain_db`); the help says the lift is above 0. Plans that worked are unchanged: every `target_db` in the
+  five projects' current plans is 0.5 or more.
+- **eleven.py:** `sfx --pick` without a prompt, or with other settings, says that it takes the run's prompt and
+  settings, as that run printed them.
+- **youtube.ts check:** the description's ok line gives its bytes beside its characters when they differ.
+- **elevenlabs.md and images.md:** a key pasted in the chat and wanted now lives for the session only, in a
+  file in the session's temporary folder, loaded into each command's environment and deleted at the end, and
+  is never set in the user's system for them; the suggestion to set it in their environment stays, said once.
+  Also the v4 row, tags on the say map's spoken side, keeping the take the director heard, and the dramatic
+  read's pace.
+- **critique.md:** the critic's truth question asks for a label once, where a viewer would take a picture for
+  fact (sources can go in the description); delivery step 3 names the memory case; delivery's reply offers to
+  delete the drafts, frame folders and critic rounds, with their sizes, after a yes, keeping the delivery, its
+  reports, the sheets and the poster; `out/` "costs little", with the 36 GB case.
+- **treatment-template.md:** the treatment's message carries the preview link; "Never claim" labels once;
+  on-screen words never include the skill's "director", and a real name, family or place from the user's
+  files appears only when they say so; scene authors keep their own verify reports.
+- **engine-guide-template.md, contract.md, art.md, youtube.md:** the GPU and `CHROME_FLAGS`, verify's report
+  names, restarting a stale preview; a rounded cache key drawn rounded; art.md's `CHROME_FLAGS` advice dropped
+  (render.ts does it now); a published title from `niche` (oEmbed) or the Data API, never yt-dlp; "SEO" asks
+  for the searched words, not length; earlier descriptions are the published ones.
+- **design.md, 0.7.1.** No SKILL.md changed (they are at 6,709 to 7,997 bytes).
+
+Considered and left out: effects levelled against voice and music together (oprog-1's critic found intro
+effects 22-29 dB under them, but every narrated mix would change level); a report of the closest
+voice-over-music gap (the director heard a swell at 9 s that the mean hid: worth doing, but new code); a
+library search in `eleven.py voices`; `beats.py window --at` for a song after a spoken intro; shadow maps,
+`render.ts --param` and the projects' other engine additions (as in 0.6.1); smaller drafts (it would change
+the grain the critics judge); collapsing Direct3D's repeated shader warnings in render.ts's browser log; more
+sound effects by default (one director's taste).
+
+What was checked: in the scratch project, `bun run check`, `gpu` with and without the flags, and the verify
+runs above; mix.py on the example with `target_db` 0 and -3 (both refused) and 0.5 (gain -0.6 dB), and
+0.7.0's mix.py on 0 (-60 dB); `eleven.py sfx --pick 2`; `youtube.ts check` on oprog-3's package ("3956
+characters, 4128 bytes"); `bun evals/tests/test_youtube.ts` 51/51, `test_audit.ts` 26/26,
+`test_init_gitignore.ts` 3/3, `test_imagegen.py` OK; the three spec validators on code-video, soundtrack and
+youtube-package. Not run: a task eval with the changes, and the GPU flag on a machine with one GPU or in a
+Codex sandbox.

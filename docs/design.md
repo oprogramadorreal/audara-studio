@@ -93,8 +93,8 @@ The steps follow SKILL.md's session checklist, in its order:
    director alone can decide. (Until round 4 the director approved the brief before any scene was built;
    history.md says why it changed.)
 2. **Setup.** It copies the engine into the folder, starts the preview and gives the director the link at
-   once. The preview command asks for that where it prints the link, since the skill's text alone didn't
-   hold: Claude sessions held the link back for 20 to 90 minutes.
+   once, and again with the treatment. The preview command asks for that where it prints the link, since
+   the skill's text alone didn't hold: Claude sessions held the link back for 20 to 90 minutes.
 3. **Look.** When the look is left to it, it renders two or three style frames of the key moment, each a
    different idea, picks one by looking, and writes the shared look down (`docs/STYLE.md`, `src/look.ts`).
 4. **Sound.** For a song, it analyzes the beats, sections and lyrics and cuts the window the video uses.
@@ -108,7 +108,10 @@ The steps follow SKILL.md's session checklist, in its order:
 7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
    asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
    quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
-   and a poster frame. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
+   and a poster frame, and an offer to delete the drafts and frame folders the work left (one project's
+   reached 36 GB). Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
+   itself it sometimes took the integrated one. (Until 0.2.0 the first build ended with the MP4;
+   history.md says why it changed.)
 8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes what the note names and what it forces, checks what `verify` says changed,
    and answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
@@ -630,7 +633,9 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
 3. **Keep the key out of the repo.** Read `ELEVENLABS_API_KEY` from the environment (the name the SDK and
    the official skills use). Never write it to a tracked file, print it or pass it as a command-line
    argument. If it's missing, the scripts say so and the skill goes on with the user's own audio or a silent
-   placeholder track, so the picture work never waits for it.
+   placeholder track, so the picture work never waits for it. A key the user pastes into the chat and wants
+   used now lives for that session only: in a file in the session's temporary folder, outside the project,
+   loaded into each command's environment and deleted at the end; never set in their system for them.
 4. **Keep the spoken text and the displayed text apart.** The narration text is spelled the way it should
    sound (pdoom-video's table in `docs/letra-explicada-pt-br/ROTEIRO.md`, "Grafia para a voz": "pê dum" for
    P(doom), "I-Á" for IA), so the timestamps are in spoken words. Keep a map from spoken to displayed words,
