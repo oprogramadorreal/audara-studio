@@ -109,8 +109,7 @@ video outranks: there, the example's commands name `--video example`, its links 
 says so), whose scenes import the video's scenes and helpers without changing them, rendered with
 `stills --only <slot> --scale 2`. It is a real video to the preview, `verify` and git, so its TREATMENT.md says
 what it is for. Keep it to the plates that need it, render them one
-at a time (on a laptop with two GPUs, a heavy scene wants the environment variable `CHROME_FLAGS` set to
-`--force_high_performance_gpu`), and never while the video's final render runs.
+at a time, and never while the video's final render runs.
 
 **The user's photos.** A face lit by the scene, looking at the subject or at the viewer, with an expression the
 video earns. A cut-out pasted with a white outline and a stock shocked stare, reused from an old thumbnail, read

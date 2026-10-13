@@ -33,7 +33,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),
   `video.json`, `src/` and a new or changed file in the video's `data/`, `audio/` or `assets/` reload the
-  page, at the moment it was showing.
+  page, at the moment it was showing. An error the page keeps showing that `stills` of the same moment
+  don't (each run starts a fresh server) is a stale module in the preview's server, as when several
+  authors save the same helpers at once: `bun scripts/render.ts preview --stop`, then `preview`, and reload.
 - **Stills** (the main way to check your work; then look at the PNGs):
   `bun scripts/render.ts stills --video <video> --t 12.5,13.0,14.2 --only intro` → `out/<video>/stills/`
 - **Contact sheet**, each frame labelled with its time and scene, into `out/<video>/sheets/`:
@@ -66,7 +68,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   timeline, the timing data in `data/` against the soundtrack (a song's window has to be the file that
   plays), and the gaps between scenes; checks determinism (the same frame reached by different seeks
   must give identical pixels); and checks that motion blur never carries a scene across a hard cut.
-  One-line verdict, details in `out/<video>/verify.json`, exit code 1 on failure. Warnings don't fail it,
+  One-line verdict, details in `out/<video>/verify.json` (with `--only`, `verify-only-<ids>.json`: a check of a
+  few entries never replaces the whole video's report), exit code 1 on failure. Warnings don't fail it,
   among them one for every video but `example` while `src/look.ts` still has the template's test-card
   palette, which the preview shows too. Then it says what changed since the verify whose report it
   replaces: the stretches whose frames differ (it hashes the pixels at every half second, cut and word
@@ -81,7 +84,10 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   engine's own share (post-processing, paid by every frame) and the scenes', and what an export pays per
   frame on their full-quality path, with the readback (see `ctx.export` under Rules, performance). A video
   frame costs more: the run also sends each frame to ffmpeg and encodes it, and by default renders it as
-  several sub-frames. `gpu` prints the GPU Chrome renders with.
+  several sub-frames. `gpu` prints the GPU Chrome renders with: on a laptop with two, the discrete one
+  (render.ts starts Chrome with `--force_high_performance_gpu`; left to itself, Chrome on Windows sometimes
+  took the integrated one, where one final render ran at 1.1 frames a second instead of 3.7).
+  `CHROME_FLAGS` adds Chrome flags (`CHROME_FLAGS=--force_low_power_gpu` for the integrated one).
 - `--only a,b` loads only those timeline entries, by their ids in `timeline.ts` (fast, and isolates you
   from other people's broken scenes); the others render black. An id the timeline doesn't have stops the run.
 - `--as-preview`, in any mode, renders the scenes' preview path (`ctx.export` false) instead of their

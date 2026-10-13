@@ -17,9 +17,10 @@
 //            the soundtrack against the timeline, and the timing data against the soundtrack (a song's window, in
 //            the window's time, must be the file that plays); gaps; determinism: the same frame reached by
 //            different seeks must give identical pixels; motion blur must not carry a scene across a hard cut)
-//            -> out/<video>/verify.json, exit code 1 when it fails (warnings, such as a project still on the
-//            template's test-card palette, don't fail it). Its renders are fixed (one sub-frame, and four over the
-//            whole frame time at the cuts): --samples and --shutter don't apply.
+//            -> out/<video>/verify.json (with --only: verify-only-<ids>.json, so a check of a few entries never
+//            replaces the whole video's report), exit code 1 when it fails (warnings, such as a project still
+//            on the template's test-card palette, don't fail it). Its renders are fixed (one sub-frame, and
+//            four over the whole frame time at the cuts): --samples and --shutter don't apply.
 //            It also says what changed since the verify whose report it replaces (or the one --since <report>
 //            names, say a copy kept when a critic round started): the stretches whose frames differ, by the hash
 //            of their pixels at every half second, cut and word start, and at the times the earlier report
@@ -41,7 +42,9 @@
 //   perf:    bun scripts/render.ts perf --from 0 --to 5 [--only ids] [--samples 1]   (ms per frame: what the preview pays,
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
-//   gpu:     bun scripts/render.ts gpu   (the GPU Chrome renders with)
+//   gpu:     bun scripts/render.ts gpu   (the GPU Chrome renders with: on a laptop with two, the discrete one, since
+//            Chrome starts with --force_high_performance_gpu; left to itself it sometimes took the integrated one,
+//            several times slower on a heavy scene)
 //   link:    bun scripts/render.ts link [--video <video>] [--t <seconds>]   (the live preview's link, to give the
 //            director: http://127.0.0.1:<port>/?v=<video>&t=<seconds>, no &t= without --t. <port> is the first of
 //            5173-5199, where the preview serves, whose dev server serves this folder: 5173 is Vite's default, so
@@ -76,6 +79,8 @@
 //   --url <server>  render through a running dev server of this project instead of a private one (a private
 //                   server never reloads: a file saved by anyone mid-run can't break the run)
 //   --headed        show the browser
+// CHROME_PATH (environment): the Chrome to drive. CHROME_FLAGS: extra Chrome flags, space-separated, after the
+//   default ones (CHROME_FLAGS=--force_low_power_gpu: the integrated GPU instead)
 // Output goes under out/<video>/ unless --out says otherwise.
 // (playwright-core itself is loaded by launch(), when a browser is needed: link and preview need none, and
 // start in less than half the time without it)
@@ -456,7 +461,10 @@ async function stopPreview() {
 // ------------------------------------------------------------------ browser
 async function launch(): Promise<Browser> {
   const { chromium } = await import('playwright-core');
-  const args = ['--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'];
+  // (--force_high_performance_gpu: on a laptop with two GPUs, Chrome on Windows sometimes draws on the integrated
+  // one, whatever WebGL asks; one final render ran there at 1.1 fps, against 3.7 on the discrete one)
+  const args = ['--force_high_performance_gpu', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'];
+  if (process.env.CHROME_FLAGS) args.push(...process.env.CHROME_FLAGS.split(/\s+/).filter(Boolean));
   const exe = process.env.CHROME_PATH;
   try {
     return await chromium.launch({ ...(exe ? { executablePath: exe } : { channel: 'chrome' }), headless: !flag('headed'), args });
@@ -1223,8 +1231,10 @@ async function main() {
       if (t < 0 || t >= D) fail(`--${k} ${t}: outside the video, which runs from 0 to ${D} s (its last frame is at ${(lastFrame / fps).toFixed(3)} s)`);
     };
     if (mode === 'verify') {
-      // (the preview path's report gets its own name: qc.py --cuts and the delivery read verify.json)
-      ok = await verify(page, info, logs, path.resolve(opt('out', path.join(OUT, AS_PREVIEW ? 'verify-preview.json' : 'verify.json'))!));
+      // (the preview path's report and one of a few entries get names of their own: qc.py --cuts, the delivery and
+      // the next whole verify read verify.json)
+      const report = ['verify', ...(ONLY.length ? [`only-${ONLY.join('+')}`] : []), ...(AS_PREVIEW ? ['preview'] : [])].join('-') + '.json';
+      ok = await verify(page, info, logs, path.resolve(opt('out', path.join(OUT, report))!));
     } else if (mode === 'gpu') {
       console.log(await page.evaluate(() => {
         const gl = document.createElement('canvas').getContext('webgl2')!;
