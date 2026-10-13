@@ -1772,3 +1772,4 @@ Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only and found two t
 authors' brief told them to use `verify --only`, which only a render.ts from 0.7.1 on keeps out of
 `verify.json`, so authors on an existing project would still overwrite the lead's report (they now always pass
 `--out`); and the SKILL.md rules still said keys go in no file, against the references' session-only file.
+The second round found nothing.
