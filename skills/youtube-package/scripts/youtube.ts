@@ -345,11 +345,12 @@ class Page {
     // (a failure is reported, not hidden), then two frames: what the screenshot takes is what was laid out. Images
     // are <img>, SVG <image> and those CSS draws (a background, a mask, a border, a list marker, generated content,
     // on an element or its ::before and ::after): a broken one there loads fine and then draws nothing. Only what is
-    // drawn counts, so a file CSS names is decoded only when Chrome requested it for this page (decoding waits for a
-    // request still loading): it doesn't request an image-set() candidate it didn't pick, nor an image on an
-    // element without a box or on a ::before or ::after that doesn't exist, and a url(#id) names an element of the
-    // page (an SVG mask), not a file. An inline data: image is never requested: it counts on a visible element with
-    // a box.
+    // drawn counts: an image on a visible element with a box, or on a ::before or ::after that exists (a
+    // display:contents element's too, which has no box of its own). A file there is decoded when Chrome requested
+    // it for this page (decoding waits for a request still loading): it doesn't request an image-set() candidate it
+    // didn't pick, and a url(#id) names an element of the page (an SVG mask), not a file. An inline data: image
+    // isn't requested when broken, so it counts outside an image-set(), of whose candidates Chrome draws one
+    // without saying which.
     await this.eval(`document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`);
     const requested = JSON.stringify([...this.requested]);
     const undecoded = await this.eval<string[]>(`Promise.resolve()
@@ -358,17 +359,22 @@ class Page {
         for (const i of document.querySelectorAll('image')) if (i.href.baseVal) urls.add(new URL(i.href.baseVal, document.baseURI).href);
         const fetched = new Set(${requested});
         fetched.delete(location.href.split('#')[0]); // (the page itself: a url(#id) names one of its elements)
+        const shown = (e) => { for (; e; e = e.parentElement) if (getComputedStyle(e).display === 'none') return false; return true; };
         for (const el of document.querySelectorAll('*')) {
-          if (!el.getClientRects().length) continue;
+          const boxed = el.getClientRects().length > 0;
+          const contents = !boxed && getComputedStyle(el).display === 'contents' && shown(el.parentElement);
           for (const pseudo of [null, '::before', '::after']) {
             const cs = getComputedStyle(el, pseudo);
-            if (cs.visibility !== 'visible' || (pseudo && (cs.display === 'none' || /^(none|normal)$/.test(cs.content)))) continue;
-            for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content'])
-              for (const m of cs.getPropertyValue(prop).matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
+            const drawn = pseudo ? (boxed || contents) && cs.display !== 'none' && !/^(none|normal)$/.test(cs.content) : boxed;
+            if (!drawn || cs.visibility !== 'visible') continue;
+            for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content']) {
+              const v = cs.getPropertyValue(prop);
+              for (const m of v.matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
                 const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI).href;
-                if (u.startsWith('data:')) urls.add(u);
+                if (u.startsWith('data:')) { if (!/image-set\\(/.test(v)) urls.add(u); }
                 else if (fetched.has(u.split('#')[0])) urls.add(u.split('#')[0]);
               }
+            }
           }
         }
         const decode = (i, u) => i.decode().then(() => '', () => u);

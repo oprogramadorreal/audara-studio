@@ -1560,7 +1560,13 @@ What was checked:
   it for the page. The first try read the page's resource timing, which lists a request only once it ends:
   Codex caught a corrupt background set on load and served late passing, so the requests come from the
   DevTools events instead, every URL kept (a redirect's request takes the next URL, and Codex caught one to a
-  corrupt image passing too), and decoding waits for one still loading. `evals/tests/test_youtube.ts`: 45
+  corrupt image passing too), and decoding waits for one still loading. The next review found what the box
+  check still hid: a `display:contents` element has none, yet its `::before` draws, and a broken image there
+  passed. An image now counts where something is drawn, such a `::before` included; a file there also needs
+  Chrome's request (dropping that check for files let a file fetched for a hidden element fail where nothing
+  drew it, which Codex caught), and an inline `data:` image, which Chrome reports only once it loads (never a
+  broken one), counts outside an `image-set()`, of whose candidates Chrome draws one without saying which (a
+  valid inline 1x with a broken 2x had failed a right page). `evals/tests/test_youtube.ts`: 45
   offline checks pass, seven added in these reviews; all but one (whole headers passing without Chrome, a
   guard on the stricter rule) fail on the script before their fix; `tsc --strict` passes; the three spec
   validators pass; SKILL.md is 7,969 bytes.

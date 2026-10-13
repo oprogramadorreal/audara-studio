@@ -53,20 +53,27 @@ try {
   r = run(['shoot', 'pages/good.png']);
   expect('shoot: refuses anything but an HTML page (it would overwrite a source)', r.code === 2, r.out);
   // images CSS draws: a broken one loads fine and then draws nothing (codex's review reproduced it)
-  writeFileSync(path.join(root, 'pages', 'broken.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]));
+  const cutOff = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+  writeFileSync(path.join(root, 'pages', 'broken.png'), cutOff);
+  writeFileSync(path.join(root, 'pages', 'broken-c.png'), cutOff);
   const noise = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23888'/%3E%3C/svg%3E`;
   pkg('pages', {
     'css-ok.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:url(good.png)} div{width:100px;height:100px;background-image:url("${noise}")} .m{background:#fff;mask-image:url(#cut)} .q{background:#fff;mask-image:url(css-ok.html#cut)}</style><svg width="0" height="0"><mask id="cut"><rect width="100" height="50" fill="#fff"/></mask></svg><div></div><div class="m"></div><div class="q"></div>`
       // (images nothing draws: on an element without a box, a hidden one, a ::before without content or not
-      // displayed, the 2x candidate of an image-set at 1x)
+      // displayed, the 2x candidate of an image-set at 1x, a file's or an inline one's; and a file Chrome fetched
+      // for a hidden element, named again where nothing draws it)
       + `<div style="display:none;background:url(nope-none.png)"></div><div style="visibility:hidden;background:url(broken.png)"></div><p class="e"></p><style>.e::before{background:url(nope-before.png)} .e::after{content:'';display:none;background:url(nope-after.png)}</style>`
-      + `<div style="width:100px;height:100px;background-image:image-set(url(good.png) 1x, url(nope-2x.png) 2x)"></div>`,
-    'css-bad.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:#123} div{width:100px;height:100px} div::before{content:'';display:block;width:100px;height:100px;background:url(broken.png)}</style><div></div>`,
+      + `<div style="display:none;background:url(broken.png)"></div><p class="f"></p><style>.f::before{background:url(broken.png)}</style>`
+      + `<div style="width:100px;height:100px;background-image:image-set(url(good.png) 1x, url(nope-2x.png) 2x)"></div>`
+      + `<div style="width:100px;height:100px;background-image:image-set(url(&quot;${noise}&quot;) 1x, url(&quot;data:image/png;base64,iVBORw0KGgoAAAAN&quot;) 2x)"></div>`,
+    // (a broken background on a ::before, and on a display:contents element's ::before, which draws though its
+    // element has no box)
+    'css-bad.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:#123} div{width:100px;height:100px} div::before{content:'';display:block;width:100px;height:100px;background:url(broken.png)} .c{display:contents} .c::before{content:'';display:block;width:50px;height:50px;background:url(broken-c.png)}</style><div></div><span class="c"></span>`,
   });
   r = run(['shoot', 'pages/css-ok.html']);
   expect('shoot: CSS images that decode (a file, an inline SVG), a mask naming an SVG element and images nothing draws pass', r.code === 0, r.out);
   r = run(['shoot', 'pages/css-bad.html']);
-  expect('shoot: a CSS background that doesn\'t decode fails', r.code === 1 && /image didn't decode: pages\/broken\.png/.test(r.out), r.out);
+  expect('shoot: a CSS background that doesn\'t decode fails, a display:contents element\'s ::before\'s too', r.code === 1 && /image didn't decode: pages\/broken\.png/.test(r.out) && /image didn't decode: pages\/broken-c\.png/.test(r.out), r.out);
   // CSS images still loading when the page is measured (set on load, served a second later), or reached through a
   // redirect, are decoded too (codex's review reproduced each passing)
   const slow = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(req) {
