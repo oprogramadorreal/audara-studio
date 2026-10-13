@@ -56,11 +56,13 @@ try {
   writeFileSync(path.join(root, 'pages', 'broken.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]));
   const noise = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23888'/%3E%3C/svg%3E`;
   pkg('pages', {
-    'css-ok.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:url(good.png)} div{width:100px;height:100px;background-image:url("${noise}")} .m{background:#fff;mask-image:url(#cut)} .q{background:#fff;mask-image:url(css-ok.html#cut)}</style><svg width="0" height="0"><mask id="cut"><rect width="100" height="50" fill="#fff"/></mask></svg><div></div><div class="m"></div><div class="q"></div>`,
+    'css-ok.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:url(good.png)} div{width:100px;height:100px;background-image:url("${noise}")} .m{background:#fff;mask-image:url(#cut)} .q{background:#fff;mask-image:url(css-ok.html#cut)}</style><svg width="0" height="0"><mask id="cut"><rect width="100" height="50" fill="#fff"/></mask></svg><div></div><div class="m"></div><div class="q"></div>`
+      // (images nothing draws: on an element without a box, a hidden one, a ::before without content)
+      + `<div style="display:none;background:url(nope-none.png)"></div><div style="visibility:hidden;background:url(broken.png)"></div><p class="e"></p><style>.e::before{background:url(nope-before.png)}</style>`,
     'css-bad.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:#123} div{width:100px;height:100px} div::before{content:'';display:block;width:100px;height:100px;background:url(broken.png)}</style><div></div>`,
   });
   r = run(['shoot', 'pages/css-ok.html']);
-  expect('shoot: CSS images that decode (a file, an inline SVG) and a mask naming an SVG element pass', r.code === 0, r.out);
+  expect('shoot: CSS images that decode (a file, an inline SVG), a mask naming an SVG element and images nothing draws pass', r.code === 0, r.out);
   r = run(['shoot', 'pages/css-bad.html']);
   expect('shoot: a CSS background that doesn\'t decode fails', r.code === 1 && /image didn't decode: pages\/broken\.png/.test(r.out), r.out);
   run(['shoot', 'pages/wide.html', '--size', '1000x1000', '--out', 'pages/square.png']);

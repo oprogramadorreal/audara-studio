@@ -1551,7 +1551,11 @@ What was checked:
   the folder). Since a header without a size now fails, the JPEG reader steps over fill bytes and markers
   without a length, which it had misread. The CSS fix at first failed a valid `mask-image: url(#cut)`, which
   names an SVG mask in the page, not an image file; two more rounds made it skip such references, the page's
-  own name with `#cut` too, and the last found nothing. `evals/tests/test_youtube.ts`: 44 offline checks
+  own name with `#cut` too, and the last found nothing. A review of the pushed branch found two more: the scan
+  read images nothing draws (on an element without a box, or a `::before` without content, which doesn't
+  exist), so a missing one failed a page whose PNG was right, and it now skips them; and `<video>-thumbs`
+  does become the default beside `example`, which any other video outranks, so art.md says to name the
+  example there. `evals/tests/test_youtube.ts`: 44 offline checks
   pass, four of the six new ones failing on the script before the fix (the other two hold good CSS images and
   whole headers passing); `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,969 bytes.
 

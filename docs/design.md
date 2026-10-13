@@ -281,7 +281,8 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   project's timing data and checked against the final cut), and the tags, which get minutes, not effort.
 - **The video's own world, staged better.** The pictures start from the video: its frames rendered at 2x without
   their captions, the plates its scenes load, a plate staged in the engine in a video of its own
-  (`<video>-thumbs`, which sorts after the video and so never becomes the default), the user's photos, and
+  (`<video>-thumbs`, which sorts after the video and so doesn't become the default, except beside `example`,
+  which any other video outranks, so the example's commands then name it), the user's photos, and
   generated images only after a yes, through code-video's `imagegen.py` (or, in Codex, its built-in image
   generation, which draws on the plan's limits). Every word is set in code: image models
   misspell. A frame with words on it is a start, not a finish. The rejected rounds in the user's projects were

@@ -64,9 +64,11 @@ its own resolution and compression: crop less, and lean more on finishing.
 
 **A plate staged for the still, in the engine.** When the frames don't carry the idea (the subject too small, a
 camera move), stage it: a video of its own, `videos/<video>-thumbs/` (silent, one short slot per plate; the name
-sorts after the video's, so it never becomes the project's default), whose scenes import the video's scenes and
-helpers without changing them, rendered with `stills --only <slot> --scale 2`. It is a real video to the preview,
-`verify` and git, so its TREATMENT.md says what it is for. Keep it to the plates that need it, render them one
+sorts after the video's, so it doesn't become the project's default, except beside `example`, which any other
+video outranks: there, the example's commands name `--video example`, its links `?v=example`, and the hand-off
+says so), whose scenes import the video's scenes and helpers without changing them, rendered with
+`stills --only <slot> --scale 2`. It is a real video to the preview, `verify` and git, so its TREATMENT.md says
+what it is for. Keep it to the plates that need it, render them one
 at a time (on a laptop with two GPUs, a heavy scene wants the environment variable `CHROME_FLAGS` set to
 `--force_high_performance_gpu`), and never while the video's final render runs.
 

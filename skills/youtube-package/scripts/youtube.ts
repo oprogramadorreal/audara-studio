@@ -339,19 +339,25 @@ class Page {
     // Fonts, then every image decoded (a failure is reported, not hidden), then two frames: what the screenshot
     // takes is what was laid out. Images are <img>, SVG <image> and those CSS draws (a background, a mask, a
     // border, a list marker, generated content, on an element or its ::before and ::after): a broken one there
-    // loads fine and then draws nothing. A url(#id), or this page's own name with #id, names an element of the page
-    // (an SVG mask), not an image.
+    // loads fine and then draws nothing. Only what is drawn counts: an element with no box (display:none, or inside
+    // one) or a hidden one draws no image, nor a ::before or ::after without content, which doesn't exist (Chrome
+    // doesn't fetch their images either). A url(#id), or this page's own name with #id, names an element of the
+    // page (an SVG mask), not an image.
     const undecoded = await this.eval<string[]>(`document.fonts.ready
       .then(() => {
         const urls = new Set();
         for (const i of document.querySelectorAll('image')) if (i.href.baseVal) urls.add(new URL(i.href.baseVal, document.baseURI).href);
-        for (const el of document.querySelectorAll('*')) for (const pseudo of [null, '::before', '::after']) {
-          const cs = getComputedStyle(el, pseudo);
-          for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content'])
-            for (const m of cs.getPropertyValue(prop).matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
-              const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI);
-              if (!(u.hash && u.href.split('#')[0] === location.href.split('#')[0])) urls.add(u.href);
-            }
+        for (const el of document.querySelectorAll('*')) {
+          if (!el.getClientRects().length) continue;
+          for (const pseudo of [null, '::before', '::after']) {
+            const cs = getComputedStyle(el, pseudo);
+            if (cs.visibility !== 'visible' || (pseudo && /^(none|normal)$/.test(cs.content))) continue;
+            for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content'])
+              for (const m of cs.getPropertyValue(prop).matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
+                const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI);
+                if (!(u.hash && u.href.split('#')[0] === location.href.split('#')[0])) urls.add(u.href);
+              }
+          }
         }
         const decode = (i, u) => i.decode().then(() => '', () => u);
         return Promise.all([
