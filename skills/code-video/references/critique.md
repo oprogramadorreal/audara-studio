@@ -383,7 +383,8 @@ the MP4, the sheets and the poster (their paths); the QC report's numbers in two
 yet reviewed (each a change the director hasn't seen: its `?t=` link and what moved), and the findings
 left open; and what wasn't checked ("measured, not listened to"; "sampled frames, not every frame").
 Every claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on
-the beat.
+the beat. For a video headed to YouTube, one line offers its package: three thumbnails with a title, the
+description with chapters and the tags (the youtube-package skill); the poster is a frame, not a thumbnail.
 
 ---
 

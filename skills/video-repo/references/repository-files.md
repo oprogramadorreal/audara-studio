@@ -11,7 +11,8 @@ order and a length that fit the project:
 
 1. **What it is.** The project's name as a title, then the videos in a sentence or two each: the subject,
    the length and format, where it's published. Only facts the user gave or the project holds: a published
-   title or link nobody gave is left out, not guessed.
+   title or link nobody gave is left out, not guessed. A `youtube/` package's `title.txt` is what was
+   proposed, not proof of what went live.
 2. **How it was made.** Made in code with [audara-studio](https://github.com/oprogramadorreal/audara-studio)
    (scenes in TypeScript with WebGL/GLSL, three.js and Canvas2D), and what isn't code: the song, the voice,
    generated images or footage, each with where it came from, pointing to `assets/SOURCES.md`.
@@ -37,7 +38,9 @@ the commit, so its line goes in afterwards, in a commit of its own.
 What a later session, human or agent, needs before adding, moving or deleting a file:
 
 - **Kept, and why:** a table of paths or patterns and the reason (renderer input, source of the mix,
-  generated asset whose bytes can't be made again, timing data, request records).
+  generated asset whose bytes can't be made again, timing data, request records, a video's `youtube/`
+  package: the thumbnails, title, description and tags meant for YouTube, with what rebuilds them; its
+  previews and scratch stay in `out/`).
 - **Ignored:** outputs and caches, and the command that makes each again.
 - **Left out:** duplicates, intermediates, rejected takes: the path, why, and how to rebuild it when it can
   be rebuilt.

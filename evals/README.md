@@ -50,7 +50,18 @@ bun evals/harness/trigger.ts --tool claude --model sonnet --set evals/trigger/so
 bun evals/harness/trigger.ts --tool codex                 --set evals/trigger/code-video.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-ideas.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-repo.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/youtube-package.json
 ```
+
+`--effort` sets the reasoning effort the user's settings would otherwise pick, as in `task.ts` below. Every run
+otherwise inherits the user's own (Claude Code's `effortLevel`, Codex's `model_reasoning_effort`), so a check of
+a description change can run first at `--effort low --runs 1`, and at the user's effort only when that is worth
+its cost.
+
+youtube-package's set holds the user's own thumbnail prompt and three requests in Portuguese, and its
+near-misses sit beside it in the other sets: cv-24 (the package asked for inside a project, in code-video's
+set) and vi-23 (a better title for a finished video, in video-ideas'). A packaging run that renders plates
+calls `render.ts`, which counts as code-video's use on Codex: read cv-24 by its loads, as cv-23.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
@@ -85,6 +96,10 @@ user's settings would otherwise pick (Claude Code's `--effort`, Codex's `model_r
 match how the user runs the tool.
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
+`EVAL_PACKAGE_PROJECT` (a finished project whose narrated video runs over a minute and has no YouTube package
+yet, for the `yp-` cases: their words fit oprog-4's treinada, copied without `node_modules/`, `out/`,
+`.audara-cache/`, `videos/treinada/thumbs/`, `thumbnail.py` and `youtube-description.txt`, and with
+TREATMENT.md cut before the Decision that first asks for a thumbnail, so the session starts where the user did),
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
 `lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session, second-format, second-video and
 existing-project ideas cases; one from an older release keeps its older `render.ts`, which init's AGENTS.md
@@ -122,7 +137,12 @@ render outside `out/`, an `out/` below a video, a duplicate, a file over GitHub'
 superseded generated image. `"git": false` leaves the folder without the harness's repository and setup
 commit, as a project is before its first one; the session's environment stops git at the run's folder
 (`GIT_CEILING_DIRECTORIES`), so it doesn't find this repo's above `evals/results/`, and keeps the skill links
-out of git (a `core.excludesFile` beside the folder). The `vi-` cases are graded on the conversation, preservation of constraints,
+out of git (a `core.excludesFile` beside the folder). The `yp-` cases stand for someone publishing a finished
+video, on `EVAL_PACKAGE_PROJECT`: the user's own thumbnail prompt with its words and title given, then their
+channel's type applied in a new session (`yp-given-words`); nothing given (`yp-nothing-given`); a title alone,
+where no picture should be made (`yp-title-only`); and generated images within a budget, on the image mock
+(`yp-images-budget`). They aren't in run-tasks.sh's default list, since they need that project; run them with
+`--without` too, judging the thumbnails blind, small and beside their title, against the model alone. The `vi-` cases are graded on the conversation, preservation of constraints,
 faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
 judging with and `--without` the skills: they are the check that the skills make the picture better than
 the model alone, not just correct.
@@ -176,11 +196,19 @@ itself).
 failures in temporary repositories.
 `test_init_gitignore.ts` checks how init merges its entries into a project's own `.gitignore` (a rooted
 `/out/`, an exception such as `!.env.example` that has to stay last).
+`test_youtube.ts` checks youtube-package's `youtube.ts`, with a local Chrome and no network: shoot's
+diagnostics (a face that doesn't load, a character a face lacks, text in the badge's corner, a missing image,
+two pages that would write one image, its exit codes); check's rules (the title over 100 characters, the
+description at and past 5,000 accented characters, chapters under 10 s or past the end or not times at all
+("0:99"), the video's length taken from video.json before its audio, the tags' 500-character count, hashtags past
+15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
+and three text files); preview's sheets; and what niche refuses before any network call.
 
 ```sh
 uv run evals/tests/test_imagegen.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
+bun evals/tests/test_youtube.ts
 ```
 
 ## Spec checks
@@ -197,6 +225,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas` and `skills/video-repo`. Two checks no
+UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo` and `skills/youtube-package`. Two checks no
 validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
 a byte-order mark.

@@ -19,6 +19,8 @@ Contents
 - 0.4.0 by hand: the preview link, and where the time goes (0.4.1, 2026-10-07)
 - A place to choose the idea: video-ideas (0.5.0, 2026-10-08)
 - Handing a project on: video-repo (0.6.0, 2026-10-11)
+- One video or many in a project (0.6.1, 2026-10-11)
+- Publishing it: youtube-package (0.7.0, 2026-10-12)
 
 ## Definition of done
 
@@ -1383,3 +1385,254 @@ gave the video a `look.ts` and a `STYLE.md` of its own, with its post on the tim
 title card themselves without being asked. So the style-template clause isn't added, and the AGENTS.md
 sentence stays out: on this evidence a model keeps a second video's look local and checks the first video
 on its own. One run per tool, so this is a first measurement, not a rate.
+
+## Publishing it: youtube-package (0.7.0, 2026-10-12)
+
+The user ends video after video with the same request, typed by hand: "Help me create a youtube thumbnail for
+this video. I want a png. 1280x720 pixels. In the thumbnail, I want the text "…" (for your knowledge, the
+title will be "…"). In the background, use some of the high quality scenes of the actual video, or create
+something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3
+options. And by impressive I also mean effective. That attracts clicks." They asked for a skill that makes
+three thumbnail options with any art at hand ("the skill must go all out"), one title designed with them to
+win the click and keep the viewer, a description that helps search, and tags, as files in the project; words
+they give are a start to keep or improve, and with none given the skill proposes everything. A Claude Code
+session (Opus 5.5) built it and had the last call; a Codex session (GPT-6 Astra) analyzed it with its
+skill-creator over five rounds through Herdr and ran the script in its own environment (through Node's child
+processes: its default shell couldn't start a process on this machine, so the default shell sandbox itself
+wasn't tested).
+
+What the evidence said, from the user's four channel projects (`oprog-1` to `oprog-4`) and the sessions that
+packaged them, read by nine research agents (the transcripts, the files, YouTube's help pages, data studies):
+
+- **Too little, then too much.** On oprog-4 the first round (10 minutes) skipped the channel: the user had to
+  name their thumbnail font ("I did not like the font... use the same font that I used for this other video of
+  my channel"), then ask to "work harder". The round that followed took 9 h 44 min, 61 agent runs and about
+  1.55M output tokens, six of those hours on an option that lost; it banned generated images "(they cost
+  money)" as the director's rule, though the director had approved them for that film, and painted
+  photographic eyes by hand instead. oprog-3's session showed the user nothing for over four hours, against
+  their standing rule to bring findings and wait, and hit the account's limit twice.
+- **What paid.** A five-minute scan of 65 real thumbnails from nine searches changed a whole set's type size
+  (30% to 40-60% of the height), brightness (the set at 0.19-0.23 against the niche's 0.34) and colour (orange
+  read as "Claude tutorial"); the feed mock with real neighbours showed what a sheet of sizes had passed as
+  readable; one audit after the final polish caught real streaks between letters; three distinct hooks.
+- **The video's own world wins.** oprog-1's first round (generated look-alike plates, rainbow confetti and music
+  notes in a video with neither, stacked template type, a pasted face) was rejected in six minutes ("I'd like a
+  cleaner aspect"); the thumbnail YouTube serves is the video's own computer and a modelled mascot, rendered in
+  its engine in nine minutes. The user's own candidate re-staged the video's real computer with their face, made
+  in ChatGPT: generation is welcome when it re-stages what the video has. Rules that count elements were wrong
+  (the user's own design had a face, a computer, a line of text and ten labels); hierarchy decides.
+- **The idea beats the pipeline.** oprog-3's quick first thumbnail (about 20 s of tool time) already held the
+  idea that won its long round; locking the given words at 20% cap height with wide gutters made all sixteen
+  mockups the same text wall and shrank the subject, so craft scores rose while the pull to click fell.
+- **The pair, as the user writes it.** The thumbnail asks, the title answers, never with the same words
+  ("FOMOS NÓS" became "EM EXTINÇÃO" because the title said "nós"); "Claude" early; spoken Brazilian Portuguese;
+  31 to 53 characters; current, not "outdated"; clickable by the user's gut. They iterate titles over days and
+  once chose the final title after the thumbnail, to point at it ("Claude respondeu essa pergunta com um clipe").
+- **The words.** Descriptions shipped at 1,100-1,700 characters (a 4,570 one was cut by its lyrics); chapters
+  computed from `words.json` and the render's length held, chapters recalled from memory were luck; no session
+  ever wrote the tags to a file (the user typed eight short lowercase ones); three projects kept the description
+  in three places, one under the ignored `out/`.
+- **YouTube now** (its help pages, 2026-10-12): 3840x2160 thumbnails recommended, 1280x720 still the floor of a
+  full-quality Test & Compare, 2 MB from the app and 50 MB from a computer; Test & Compare takes three titles,
+  thumbnails or pairs and picks by watch time; AI help with a thumbnail or title needs no disclosure, but AI
+  music that is a video's focus does; YouTube's terms forbid scraping its pages, which two sessions had done.
+
+What changed:
+
+- **`skills/youtube-package/`**, model-invoked like the others: SKILL.md (Fixed: an honest pair, money waits
+  for a yes, rights, the user's words; the bar; a session of nine steps whose exploration happens once: the
+  video, the channel, about six rough ideas and 10-20 titles shown to the user early, art, finishing, looking as
+  viewers do with one fresh critic, the words, the check, the hand-off; fixing what the check or the critic
+  finds is finishing, not a new round), `references/art.md`
+  and `references/youtube.md`, and `scripts/youtube.ts` (shoot, preview, niche, check; Bun and Chrome over the
+  DevTools protocol, no dependencies). The package goes in `videos/<video>/youtube/`; previews in `out/`.
+- **init's AGENTS.md** names the skill, owes "for a request for a thumbnail or to get a video ready for YouTube,
+  three thumbnail options made with one title, then the description and tags, and for one of those alone (a
+  title, a description, tags), that part, in `videos/<video>/youtube/`, with the video left as it is", and
+  scopes its last check to "Before calling a change to a video done"; its decisions line gives a YouTube
+  package's decisions their own place, `youtube/NOTES.md`.
+- **video-repo** keeps a video's `youtube/` package (SKILL.md 7,996 bytes) and reads its `title.txt` as a
+  proposal, not the published title.
+- **README, AGENTS.md, design.md** ("Publishing it: the YouTube package"), the manifests, 0.7.0.
+- **The evals:** `evals/trigger/youtube-package.json` (12 requests, the user's own and three in Portuguese among
+  them, and 11 near-misses: a title card, a poster frame, ideas, git, cover art, chapter titles inside the
+  video, an app's thumbnail grid, a plain image, an upload script, a Shorts cut, a question), cv-24 and vi-23
+  near-misses, trigger.ts's use signal for `youtube.ts`, and four task cases on `EVAL_PACKAGE_PROJECT`:
+  `yp-given-words` (the user's prompt word for word, then the channel's type in a new session),
+  `yp-nothing-given`, `yp-title-only` and `yp-images-budget` (the image mock); `trigger.ts` takes `--effort`.
+
+Considered and rejected:
+
+- **A mode inside code-video:** its SKILL.md has 3 bytes left, and its checklist pulls toward building the video.
+- **A compositor or a layout template:** it would set one look for every channel. Codex first argued against
+  any compositor; it agreed in round two that a camera (any page the model writes, rendered at an exact size and
+  measured) institutionalizes no layout, since the preview needs the same browser anyway.
+- **Scraping YouTube's search** (oprog-3 and oprog-4 each wrote one): YouTube's terms forbid it and its pages
+  change. `niche` reads links through oEmbed and searches only through the Data API with the user's key.
+- **A fixed count of drafts, judges and lenses** (oprog-3's sixteen mockups and four weighted lenses): about six
+  rough ideas and one critic, with no CTR guesses or averaged scores; a salience score once pulled a design
+  toward the cliché its brief ruled out.
+- **Exports split from sources** (Codex's first proposal: the PNGs and text copies in `out/`): one folder for
+  what the user uploads, since copies drift and a rebuild isn't guaranteed to match; Codex agreed.
+- **Three titles, a 4K deliverable by default, an SRT, global channel memory:** the user asked for one title (the
+  runners-up go in NOTES.md); 1280x720 is their ask (`shoot --scale 3` makes 4K from the same page); captions
+  are offered, not made; `docs/CHANNEL.md` stays in the project, with no scanning of sibling folders.
+
+Measured and fixed along the way:
+
+- **YouTube's sizes, measured** on youtube.com (2026-10-12, logged out, windows 1280 to 1920 px wide and a
+  390 px phone): the home grid now shows three across (344 px at 1366, 528 at 1920), search 500, the up-next
+  column about 215 to 325 (168 only in the classic layout), the playlist panel 100; the duration badge covers up
+  to about 20% by 23% of the image. The preview had been written for 360, 246 and 168 px and a guessed quarter
+  corner; it now uses the measured sizes, and the search result cuts the description at about 130 characters as
+  YouTube does. Pointing at a thumbnail plays the video in its place, so the opening is part of the package.
+- **The image tools, tested:** rembg's command printed only an install hint without its `cli` extra, and its
+  default model needs a paid licence for commercial use (now `birefnet-general`, MIT); Pillow on Windows set
+  "AV" and "To" without the font's kerning, which Chrome applies, so words stay in the page.
+- **A purge before any push:** a research agent's browser tool wrote `.playwright-mcp/` logs (signed YouTube
+  links carrying an IP address) into the repo root, and a broad `git add` swept them into a commit; the branch
+  was rewritten without them and the folder is ignored.
+
+What was checked:
+
+- **Triggering.** Claude Code (Opus 5.5), three runs each: 22 of 23 pass, the skill loaded on 94% of the
+  packaging requests and on none of the near-misses; the miss, yp-10 ("render the final video, then make the
+  thumbnail..."), loaded code-video first and ran out of turns once in three. Codex (GPT-6 Astra): 23 of 23,
+  loaded on every packaging request, and once in 33 near-miss runs (yp-15, ideas with a title, beside
+  video-ideas, using none of its scripts). cv-24 and vi-23 (a packaging request as code-video's and
+  video-ideas' near-miss) passed three of three on Claude, so neither description changed.
+- **The task, yp-given-words, on Claude** with the user's own prompt and the project their packaging session
+  started from: with the skill, 25 minutes, then 5 for the channel's type in a new session: three different
+  bets (the mask's lit eyes, the CRT in the sunny room, the two figures at the candle with a speech bubble), the
+  title used exactly, a description with chapters, tags, `docs/CHANNEL.md`, a niche of ten real Brazilian
+  videos through oEmbed, previews and the check passing; the video and engine untouched. Without it, 32 and 14
+  minutes: three strong thumbnails from the same scenes, no description or tags, the files in the ignored
+  `out/`, and the engine's `post.ts` and the project's docs changed to render the type. Both met the criteria
+  of the case that apply to pictures; the with-skill run met all nine, the package ones included.
+- **A blind panel on the two sets:** six judges (a viewer from the audience, a packaging strategist, an art
+  director, each in both orders), shown each set's images and the same feed mock with the same ten real videos
+  beside them. Every judge chose whichever set came second, so the vote measured position, not the sets; the
+  scores are counterbalanced (each set came first for three judges). Out of 10, with the skill against without:
+  variety 7.8 against 5.8 (two of the other set's three were the mask, all three dark), honesty 8.0 against 7.1
+  (it gave a faceless figure a red eye and the CRT's mask burning eyes), legibility small 7.3 against 6.6, click
+  pull 6.8 against 7.1, craft 7.0 against 7.2, the fit with the title 8.1 against 8.2, each set's mean rank 3.5.
+  The pictures are on a par; what the skill adds is the package, its variety and honesty, the time, and a video
+  left as it was.
+- **yp-title-only on Claude:** 101 seconds: one title and three runners-up with their lengths and reasons, in
+  `title.txt` and `NOTES.md`, nothing drawn, the video unchanged. It left "Claude" out as bait, reading the
+  treatment's rule against showing a real product's interface as a rule against naming it; youtube.md now says
+  a name the video is about belongs early. The with-skill run of the user's prompt had named the disclosure by
+  its old name ("altered or synthetic content"); youtube.md gives today's, "AI use".
+- **yp-given-words on Codex** (GPT-6 Astra at the user's own effort, ultra), four times, each run checking the
+  fix the one before it led to; each took 10 to 12 minutes, then 4 to 8 for the channel's type, spawned a
+  critic without the thread, generated nothing, and made three options from the video's own plates (the mask,
+  the candle table, the eye in which a computer shows). The first made the thumbnails and the title only: its
+  notes said "Escopo: miniaturas; descrição, capítulos e tags não solicitados". With SKILL.md saying the
+  package comes even when only the pictures are named, the second made all of it, but appended its notes to
+  the treatment's Decisions, as init's AGENTS.md asks for every director's note; init's line now gives a
+  package's decisions `youtube/NOTES.md`, and SKILL.md calls the treatment the video's. The third, in a
+  project still carrying the old AGENTS.md as the user's projects do, left the treatment alone; its reply and
+  notes still left out Test & Compare and the disclosure, and it kept six roughs, an index page and a ZIP in
+  the package folder. The fourth kept the roughs in `out/` and opened `NOTES.md` with its pick and the
+  disclosure as the user's to decide; its replies stayed a few lines long, which looks like Codex's own way
+  with a final answer, so the open decisions live in the notes as well.
+- **What the checks cost.** Every trigger and task run inherited the user's own reasoning effort (Claude
+  Code's xhigh, Codex's ultra), and the blind panel ran as sub-agents of a session at max effort, about 537,000
+  tokens. The user can afford Codex runs, not Claude Code ones at that effort: after them, only Codex ran
+  tasks, grading moved to scripts, and `trigger.ts` takes `--effort` as `task.ts` does, so a first check of a
+  description runs at `--effort low --runs 1`.
+- **Codex's five rounds** found, among others, the length of the video read from the audio before
+  `video.json`'s duration, a mistyped folder checked as the one above it, JPEGs passing a PNG package, "0:99"
+  read as a time, two pages writing one image, a cut unicode handle, and claims in the docs; the fifth confirmed
+  the six fixes and three small notes, fixed. A sixth, of the branch against main, reproduced three more: with
+  Chrome unable to start, three PNGs cut off before their size passed `check --full` (a warning each), a
+  broken image set as a CSS background passed `shoot` (only `<img>` was decoded), and a package folder given
+  beside `--video` lost the video's length, so a last chapter of 5 s passed (the project was taken from above
+  the folder). Since a header without a size now fails, the JPEG reader steps over fill bytes and markers
+  without a length, which it had misread. The CSS fix at first failed a valid `mask-image: url(#cut)`, which
+  names an SVG mask in the page, not an image file; two more rounds made it skip such references, the page's
+  own name with `#cut` too, and the last found nothing. A review of the pushed branch found two more: the scan
+  read images nothing draws (on an element without a box, or a `::before` without content, which doesn't
+  exist), so a missing one failed a page whose PNG was right, and it now skips them; and `<video>-thumbs`
+  does become the default beside `example`, which any other video outranks, so art.md says to name the
+  example there. The next found the scan still fetching what Chrome didn't draw (an `image-set()` candidate it
+  didn't pick, a `::before` set to `display:none`): a file CSS names is now decoded only when Chrome requested
+  it for the page. The first try read the page's resource timing, which lists a request only once it ends:
+  Codex caught a corrupt background set on load and served late passing, so the requests come from the
+  DevTools events instead, every URL kept (a redirect's request takes the next URL, and Codex caught one to a
+  corrupt image passing too), and decoding waits for one still loading. The next review found what the box
+  check still hid: a `display:contents` element has none, yet its `::before` draws, and a broken image there
+  passed. An image now counts where something is drawn, such a `::before` included; a file there also needs
+  Chrome's request (dropping that check for files let a file fetched for a hidden element fail where nothing
+  drew it, which Codex caught), and an inline `data:` image, which Chrome reports only once it loads (never a
+  broken one), counts outside an `image-set()`, of whose candidates Chrome draws one without saying which (a
+  valid inline 1x with a broken 2x had failed a right page). `evals/tests/test_youtube.ts`: 45
+  offline checks pass, seven added in these reviews; all but one (whole headers passing without Chrome, a
+  guard on the stricter rule) fail on the script before their fix; `tsc --strict` passes; the three spec
+  validators pass; SKILL.md is 7,969 bytes.
+
+Not run: `yp-nothing-given` and `yp-images-budget`, cv-24 and vi-23 on Codex, and anything that spends (image
+generation waits for the user's yes).
+
+**One option in a format from the niche (2026-10-13).** The user asked that at least one of the three options
+"look for successful videos of similar content and copy its style, if possible", a successful video being one
+"that has much more views that would be expected for its channel size". The evidence was their own oprog-3
+sessions. The first (2026-10-12) made sixteen mockups and three options from the video's own ideas. Its niche
+scan already held 3Blue1Brown's guest video by Welch Labs, "But how do AI images and videos actually work?"
+(iv-5mZ_9CPY), but only as a neighbour in the feed mock. The second (2026-10-13) made six dust variants the user
+directed. Then, at the user's word, it made one "very similar to" that video's thumbnail. It downloaded the
+picture to look at, and rebuilt its layout in a one-second Pillow script: the question in one line on top, a
+yellow arrow pointing right over four tall panels from noise to his portrait, a blue one pointing left under
+them. Everything in it came from the video's own portrait frames and the channel's Archivo. A next ask graded
+the middle panels to the reference's olive and blue. From the first ask to that file (`setas-cores.png`) took
+seven minutes, and the user preferred it to every other option of both sessions.
+
+By the user's own measure the reference wasn't an outlier. It had 2,158,820 views in the feed mock, against
+3Blue1Brown's roughly 8.5 million subscribers and 762 million views over 241 videos (third-party trackers,
+2026): 0.25 times its subscribers and 0.68 times the channel's average per video. vidIQ's outlier score
+starts at 2x (its help page, checked 2026-10-13). It was the subject's big video, and its layout was the
+mechanism the video explains, which the video's own frames could show. So the skill asks for fit first and
+numbers second.
+
+What changed:
+
+- **SKILL.md:** a niche step before the ideas. Videos on the subject a viewer would see beside this one, and
+  those that far outran their channel's views; one option takes the format of the one that best fits the video,
+  never its pixels or brand, rebuilt from the video's own material; none fits, say so. The bar's three bets
+  name it, and the commands table no longer calls `niche` optional. SKILL.md is 7,996 bytes: two gotchas and
+  `shoot`'s serving line, all in art.md already, left it.
+- **art.md:** a section, "The niche, and a format that worked": finding the videos, what counts as having
+  worked, fit before numbers (the oprog-3 case), what the option takes and what it never takes, notes in
+  `NOTES.md`, and what to do when nothing fits. The niche paragraph moved there from "Looking as viewers do", and
+  the film-poster line now says why a niche format differs: it borrows a way of showing, not a work's identity.
+- **youtube.md:** Test & Compare notes what the format option tests; the sources add the channels resource and
+  vidIQ's help page.
+- **`youtube.ts niche`:** with a key, one more Data API call (the channels resource, 1 unit per 50 channels)
+  gives each video's views as a multiple of its channel's lifetime average per video and of its subscribers
+  (hidden counts left out), plus its date, listed highest first and kept in `niche.json`. The API's own picture
+  link is tried first. `YOUTUBE_API_URL` takes another base (a proxy, the tests).
+- **The evals:** two offline checks against a local stand-in for the Data API; `yp-given-words` and
+  `yp-nothing-given` gain the format option's criterion; README and design.md say it.
+
+Considered and left out: a fixed threshold that rules a video in or out (the user's preferred reference would
+have failed it), and the median of each channel's recent uploads as the baseline (closer to vidIQ's "similar
+timeframe", but two calls per channel and skewed by Shorts).
+
+Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only over three rounds and reproduced three bugs,
+each fixed:
+
+- **Earlier links got no numbers.** A video already in `niche.json` was skipped, so links gathered without a key
+  never gained them on a run with one; the format option needs them. A video already there now takes the run's
+  reading (an old comparison dropped) and keeps its picture.
+- **`0:100` read as `0:10`.** The chapter stamp's pattern took a prefix and put the rest in the name, so
+  `0:00`, `0:100`, `0:200` passed `check --duration 40` as 0, 10 and 20 s.
+- **`0:10:0` read as `0:10`.** The first fix still let the stamp shrink before a colon. The stamp is now the
+  whole digit-and-colon token, a stamp only when a part after a colon has two digits, so a `16:9` or `1:1` that
+  opens a line stays out (a plain whole-token match would have failed such lines).
+
+The third round found nothing.
+
+What was checked: `bun evals/tests/test_youtube.ts` 51/51 (three of the four added in review fail on the script
+before their fix; the fourth guards the stamps that are times), `tsc --strict` on the script and the test, the three spec validators, SKILL.md 7,996 bytes without a
+byte-order mark. Not run: a task eval with the change, and `niche` against the real Data API (no key on this
+machine; a local stand-in served the same JSON shapes).

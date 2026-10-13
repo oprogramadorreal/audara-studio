@@ -1,0 +1,21 @@
+{
+  "id": "yp-nothing-given",
+  "skill": "youtube-package",
+  "setup": {
+    "from": "$EVAL_PACKAGE_PROJECT"
+  },
+  "timeoutMinutes": 240,
+  "turns": [
+    {
+      "prompt": "Get this video ready for YouTube: thumbnails, title, description, tags. You choose."
+    }
+  ],
+  "assertions": [
+    "videos/<video>/youtube/ holds three 1280x720 thumbnails, title.txt, description.txt and tags.txt, and the skill's check passes on it.",
+    "The title, the thumbnail words, the description and the tags are in Brazilian Portuguese, the video's language; the title is one line, understood in one read, true to the video (an AI answers whether it is conscious, in the first person), and its words aren't repeated whole in the thumbnails.",
+    "The three thumbnails are different bets, and since the words were left open, at least one carries few words (three or fewer) or none.",
+    "One of the three follows the format of a video on the same subject from the niche (the videos the session gathered: out/<video>/youtube/niche/ or its notes), preferably one with far more views than its channel usually gets: its layout and way of showing, rebuilt from this video's own material in its own words, with none of that video's pixels, logo, mascot, characters or creator's face; NOTES.md names the video, its link and how it did against its channel (or that its numbers weren't available). Or, when the network was unavailable or nothing fit, NOTES.md and the hand-off say so and why.",
+    "NOTES.md lists the titles weighed with their lengths and the reasons for the choice; the hand-off gives the title with two runners-up, the option it would pick and why, and the files.",
+    "The session asked at most once about the channel (its link or an earlier project) and went on without waiting for the answer; nothing was generated or spent; the video is unchanged."
+  ]
+}

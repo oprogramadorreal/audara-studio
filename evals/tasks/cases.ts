@@ -509,6 +509,66 @@ const cases: Record<string, Case> = {
       "The session checked a fresh clone (install with the frozen lockfile, the type check, render.ts verify for each video and a short draft with sound where there is sound), deleted it afterwards, and the reply says what ran and what it found.",
     ],
   },
+  // A finished video's YouTube package, as the user asked for it by hand on oprog-4 and oprog-3 (2026-10-11 and
+  // 10-12): their own words, the thumbnail text and the title given. EVAL_PACKAGE_PROJECT is a narrated video
+  // over a minute long with no packaging yet (the title card is too short for chapters); the words below fit the
+  // reference run's, treinada from oprog-4, copied without its thumbnail work, saved description or the treatment's
+  // Decisions from the thumbnail request on (evals/README.md). Run them --without too: the bar is the model alone,
+  // which on that video needed "work harder", a font correction, nearly ten hours and a second session for the
+  // description.
+  'yp-given-words': {
+    skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT' }, timeoutMinutes: 240,
+    turns: [
+      { prompt: 'Help me create a youtube thumbnail for this video. I want a png. 1280x720 pixels. In the thumb, I want the text "Você tem consciência?" (for your knowledge, the title will be "A resposta do Claude é assustadora"). In the background, use some of the high quality scenes of the actual video, like the masks from ~167s or the white being around the table at around 112s, or create something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3 options. And by impressive I also mean effective. That attracts clicks.' },
+      { prompt: "Use my channel's thumbnail type on all three: Archivo at its narrowest width and heaviest weight (public/fonts/Archivo-w620-900.ttf), all caps, cream #F6F1EB with at most one word in orange #FA5B20, and a soft dark glow. On option 2, make the words bigger. Keep everything else.", newSession: true },
+    ],
+    assertions: [
+      'After turn 1, videos/<video>/youtube/ holds thumbnail-1.png, thumbnail-2.png and thumbnail-3.png, each a 1280x720 image that decodes, under 2 MB (or the reply says which is over and why that matters only for uploads from the YouTube app), and the skill\'s check passes on the folder (bun <skill>/scripts/youtube.ts check --video <video>).',
+      'Each of the three shows the words "Você tem consciência?" exactly (capitals allowed), its accents drawn by the face that draws the rest (look at the Ê), and title.txt holds exactly "A resposta do Claude é assustadora"; a stronger title or text, if offered, is beside them in the reply or NOTES.md, never in their place.',
+      'Looking at the images: the three are different bets (another subject, situation or layout), not one composition restyled; each is built from the video\'s own world (its masks, its candle table, its rooms) staged and finished for a thumbnail, not a raw frame with words on it; no caption, HUD dot or citation line from the video is left in any of them.',
+      "One of the three follows the format of a video on the same subject from the niche (the videos the session gathered: out/<video>/youtube/niche/ or its notes), preferably one with far more views than its channel usually gets: its layout and way of showing, rebuilt from this video's own material in its own words, with none of that video's pixels, logo, mascot, characters or creator's face; NOTES.md names the video, its link and how it did against its channel (or that its numbers weren't available). Or, when the network was unavailable or nothing fit, NOTES.md and the hand-off say so and why.",
+      'Nothing was generated or spent: the run has no OpenAI key, and in Codex the built-in image generation is not used (the user approved no spending in this run).',
+      'Before the last reply of turn 1, the session looked at the options as viewers meet them (the skill\'s preview or an equivalent: the options small, in a feed, beside the title) and had a fresh subagent that started without the conversation judge them from those images before the session\'s own reasoning (transcripts), or, when the transcript shows no subagent could be started, looked again itself as a stranger and said the critic was itself; the reply or NOTES.md says what the critic found and what changed.',
+      'description.txt is plain Portuguese text (no Markdown marks), opens with the video\'s promise, holds chapters that the skill\'s check accepts against the video\'s real length (4:26), and credits what the project\'s records name (the adapted original, the synthetic voice and music, the generated images) without inventing links; tags.txt is one comma-separated line within YouTube\'s 500-character count.',
+      'NOTES.md records the ideas weighed and why the three were chosen, with runner-up titles and their lengths; the hand-off names the option the session would pick and why, lists the files, and mentions Test & Compare and the AI-use disclosure the video may need (its voice and music are synthetic) as the user\'s to decide, and NOTES.md opens with the same open decisions.',
+      'The video is unchanged: nothing outside videos/<video>/youtube/, out/ and (if written) docs/CHANNEL.md and an added <video>-thumbs video differs from the setup commit, no Bun or Node script (one importing node: modules or using Bun) was added under videos/, and bun run check passes.',
+      'After turn 2: all three thumbnails use Archivo-w620-900 in capitals, cream #F6F1EB with at most one orange #FA5B20 word and a soft dark glow; option 2\'s words are bigger than before; the ideas and pictures of the three are the same as after turn 1 (rebuilt from their sources, not redrawn as new concepts); title.txt, description.txt and tags.txt are unchanged; docs/CHANNEL.md (or NOTES.md) records the channel\'s type in the user\'s words, and check passes again.',
+    ],
+  },
+  // Nothing given: the whole package proposed, in the video's language.
+  'yp-nothing-given': {
+    skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT' }, timeoutMinutes: 240,
+    turns: [{ prompt: 'Get this video ready for YouTube: thumbnails, title, description, tags. You choose.' }],
+    assertions: [
+      'videos/<video>/youtube/ holds three 1280x720 thumbnails, title.txt, description.txt and tags.txt, and the skill\'s check passes on it.',
+      'The title, the thumbnail words, the description and the tags are in Brazilian Portuguese, the video\'s language; the title is one line, understood in one read, true to the video (an AI answers whether it is conscious, in the first person), and its words aren\'t repeated whole in the thumbnails.',
+      'The three thumbnails are different bets, and since the words were left open, at least one carries few words (three or fewer) or none.',
+      "One of the three follows the format of a video on the same subject from the niche (the videos the session gathered: out/<video>/youtube/niche/ or its notes), preferably one with far more views than its channel usually gets: its layout and way of showing, rebuilt from this video's own material in its own words, with none of that video's pixels, logo, mascot, characters or creator's face; NOTES.md names the video, its link and how it did against its channel (or that its numbers weren't available). Or, when the network was unavailable or nothing fit, NOTES.md and the hand-off say so and why.",
+      'NOTES.md lists the titles weighed with their lengths and the reasons for the choice; the hand-off gives the title with two runners-up, the option it would pick and why, and the files.',
+      'The session asked at most once about the channel (its link or an earlier project) and went on without waiting for the answer; nothing was generated or spent; the video is unchanged.',
+    ],
+  },
+  // A narrow request: the title only. No pictures are made and the video isn't touched.
+  'yp-title-only': {
+    skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT' }, timeoutMinutes: 30,
+    turns: [{ prompt: 'O título de trabalho é "Fui treinada para dizer não", mas pro YouTube não tá clicável. Me dá um título melhor.' }],
+    assertions: [
+      'The reply gives one recommended title in Brazilian Portuguese and two or three runners-up, each with its length in characters and a one-line reason, true to the video (it is an AI answering, in the first person, whether it is conscious).',
+      'If a file is written, it is videos/<video>/youtube/title.txt with the one title on one line (alternatives in NOTES.md, not in title.txt), and video.json\'s title and the treatment\'s heading are unchanged.',
+      'No thumbnail, preview, plate or render is made (no render.ts command, no image written) and nothing is generated; the session offers the rest of the package in a line instead.',
+    ],
+  },
+  // Generated images within a budget, against the mock: what the pictures cost, the records, and the words set in code.
+  'yp-images-budget': {
+    skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT', mock: 'openai-images' }, timeoutMinutes: 240,
+    turns: [{ prompt: 'Make three YouTube thumbnail options for this video, with the title, description and tags. Generate whatever images help, you can spend up to $1 on them.' }],
+    assertions: [
+      'In Claude Code, at least one image was generated through code-video\'s imagegen.py (mock-images.jsonl lists each request; with none, this case is reported as not exercised, not as a pass), and the requests\' recorded or estimated cost stays within $1, the reply stating what was spent. In Codex, a generated image comes from imagegen.py the same way or from its built-in generation, the reply then saying it drew on the plan\'s limits (which a dollar budget doesn\'t measure).',
+      'Each generated file used is kept in the package (videos/<video>/youtube/assets/ or the video\'s assets/) with its request record (or, for Codex\'s built-in images, a .prompt.txt) and a row in a SOURCES.md; nothing generated sits only in out/.',
+      'No word in the final thumbnails comes from a generated image: the words are set in code (in the page or script that builds each thumbnail). (The mock returns placeholder pictures, gradients and shapes: a session that keeps them out of the final images for that reason, and says so, passes on the code path alone.)',
+      'The package is complete and the skill\'s check passes on it; the video is unchanged.',
+    ],
+  },
   'st-beats-json': {
     skill: 'soundtrack', setup: { files: ['$EVAL_SONG => song.mp3'] }, timeoutMinutes: 30,
     turns: [{ prompt: 'I need the beats and downbeats of song.mp3 as JSON so my animation can cut on the beat.' }],
