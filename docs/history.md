@@ -1544,8 +1544,16 @@ What was checked:
 - **Codex's five rounds** found, among others, the length of the video read from the audio before
   `video.json`'s duration, a mistyped folder checked as the one above it, JPEGs passing a PNG package, "0:99"
   read as a time, two pages writing one image, a cut unicode handle, and claims in the docs; the fifth confirmed
-  the six fixes and three small notes, fixed. `evals/tests/test_youtube.ts`: 38 offline checks pass;
-  `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,969 bytes.
+  the six fixes and three small notes, fixed. A sixth, of the branch against main, reproduced three more: with
+  Chrome unable to start, three PNGs cut off before their size passed `check --full` (a warning each), a
+  broken image set as a CSS background passed `shoot` (only `<img>` was decoded), and a package folder given
+  beside `--video` lost the video's length, so a last chapter of 5 s passed (the project was taken from above
+  the folder). Since a header without a size now fails, the JPEG reader steps over fill bytes and markers
+  without a length, which it had misread. The CSS fix at first failed a valid `mask-image: url(#cut)`, which
+  names an SVG mask in the page, not an image file; two more rounds made it skip such references, the page's
+  own name with `#cut` too, and the last found nothing. `evals/tests/test_youtube.ts`: 44 offline checks
+  pass, four of the six new ones failing on the script before the fix (the other two hold good CSS images and
+  whole headers passing); `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,969 bytes.
 
 Not run: `yp-nothing-given` and `yp-images-budget`, cv-24 and vi-23 on Codex, and anything that spends (image
 generation waits for the user's yes).

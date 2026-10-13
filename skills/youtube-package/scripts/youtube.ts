@@ -337,10 +337,29 @@ class Page {
     if (nav.errorText) throw new Error(`${shortUrl(url)}: ${nav.errorText}`);
     await loaded;
     // Fonts, then every image decoded (a failure is reported, not hidden), then two frames: what the screenshot
-    // takes is what was laid out.
+    // takes is what was laid out. Images are <img>, SVG <image> and those CSS draws (a background, a mask, a
+    // border, a list marker, generated content, on an element or its ::before and ::after): a broken one there
+    // loads fine and then draws nothing. A url(#id), or this page's own name with #id, names an element of the page
+    // (an SVG mask), not an image.
     const undecoded = await this.eval<string[]>(`document.fonts.ready
-      .then(() => Promise.all(Array.from(document.images, (i) => i.decode().then(() => '', () => i.currentSrc || i.src))))
-      .then((bad) => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(bad.filter(Boolean))))))`);
+      .then(() => {
+        const urls = new Set();
+        for (const i of document.querySelectorAll('image')) if (i.href.baseVal) urls.add(new URL(i.href.baseVal, document.baseURI).href);
+        for (const el of document.querySelectorAll('*')) for (const pseudo of [null, '::before', '::after']) {
+          const cs = getComputedStyle(el, pseudo);
+          for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content'])
+            for (const m of cs.getPropertyValue(prop).matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
+              const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI);
+              if (!(u.hash && u.href.split('#')[0] === location.href.split('#')[0])) urls.add(u.href);
+            }
+        }
+        const decode = (i, u) => i.decode().then(() => '', () => u);
+        return Promise.all([
+          ...Array.from(document.images, (i) => decode(i, i.currentSrc || i.src)),
+          ...Array.from(urls, (u) => { const i = new Image(); i.src = u; return decode(i, u); }),
+        ]);
+      })
+      .then((bad) => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r([...new Set(bad.filter(Boolean))])))))`);
     for (const u of undecoded) this.failures.push(`image didn't decode: ${shortUrl(u)}`);
   }
   async eval<T = any>(expression: string): Promise<T> {
@@ -358,6 +377,7 @@ class Page {
 }
 
 function shortUrl(u: string): string {
+  if (u.startsWith('data:')) return u.length > 48 ? u.slice(0, 45) + '...' : u; // (an inline image, maybe megabytes)
   try {
     const x = new URL(u);
     const p = decodeURIComponent(x.pathname);
@@ -459,6 +479,8 @@ function imageHeader(file: string): { kind: string; w?: number; h?: number } {
     for (let i = 2; i + 9 < b.length;) {
       if (b[i] !== 0xff) { i++; continue; }
       const marker = b[i + 1];
+      if (marker === 0xff) { i++; continue; } // a fill byte before the marker
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd9)) { i += 2; continue; } // markers without a length
       if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) return { kind: 'JPEG', h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
       i += 2 + b.readUInt16BE(i + 2);
     }
@@ -467,8 +489,9 @@ function imageHeader(file: string): { kind: string; w?: number; h?: number } {
   return { kind: '' };
 }
 
-/** The package folder, the video (in an audara project) and where previews go. */
-function locate(): { dir: string; video?: string; outDir: string } {
+/** The package folder, the video and its project (in an audara project) and where previews go. The project is
+ *  where the video was found, not above the package folder: that can be anywhere with --video. */
+function locate(): { dir: string; video?: string; proj?: string; outDir: string } {
   const video = opt('video');
   // (a mistyped folder fails here, rather than the check quietly reading the folder above it)
   for (const p of positional) if (!existsSync(p)) fail(`${p}: no such folder or file`);
@@ -476,7 +499,7 @@ function locate(): { dir: string; video?: string; outDir: string } {
   if (video) {
     const vdir = path.join(ROOT, 'videos', video);
     if (!existsSync(path.join(vdir, 'video.json'))) fail(`--video ${video}: no videos/${video}/video.json in ${ROOT}`);
-    return { dir: dirArg ? path.resolve(dirArg) : path.join(vdir, 'youtube'), video, outDir: path.resolve(opt('out', path.join(ROOT, 'out', video, 'youtube'))!) };
+    return { dir: dirArg ? path.resolve(dirArg) : path.join(vdir, 'youtube'), video, proj: ROOT, outDir: path.resolve(opt('out', path.join(ROOT, 'out', video, 'youtube'))!) };
   }
   const first = dirArg ?? positional[0];
   const dir = first ? (existsSync(first) && statSync(first).isDirectory() ? path.resolve(first) : path.dirname(path.resolve(first))) : ROOT;
@@ -484,13 +507,13 @@ function locate(): { dir: string; video?: string; outDir: string } {
   const m = /[\\/]videos[\\/]([^\\/]+)[\\/]youtube$/.exec(dir);
   if (m && existsSync(path.join(dir, '..', 'video.json'))) {
     const proj = path.resolve(dir, '..', '..', '..');
-    return { dir, video: m[1], outDir: path.resolve(opt('out', path.join(proj, 'out', m[1], 'youtube'))!) };
+    return { dir, video: m[1], proj, outDir: path.resolve(opt('out', path.join(proj, 'out', m[1], 'youtube'))!) };
   }
   return { dir, outDir: path.resolve(opt('out', path.join(dir, 'preview'))!) };
 }
 
 /** The video's length in seconds: --duration, else its final render, else as the engine resolves it. */
-function videoLength(dir: string, video?: string): { seconds?: number; from: string } {
+function videoLength(dir: string, video?: string, proj?: string): { seconds?: number; from: string } {
   const given = opt('duration');
   if (given) {
     const s = parseClock(given);
@@ -504,8 +527,7 @@ function videoLength(dir: string, video?: string): { seconds?: number; from: str
       return r.exitCode === 0 && s > 0 ? s : undefined;
     } catch { return undefined; } // no ffprobe
   };
-  if (video) {
-    const proj = path.resolve(dir, '..', '..', '..');
+  if (video && proj) {
     const vdir = path.join(proj, 'videos', video);
     // the final render first: it is what gets uploaded
     const render = path.join(proj, 'out', video, `${video}.mp4`);
@@ -718,7 +740,7 @@ function pageHtml(theme: Theme, width: number, body: string): string {
 }
 
 async function preview() {
-  const { dir, video, outDir } = locate();
+  const { dir, video, proj, outDir } = locate();
   const given = positional.filter((p) => IMAGE.test(p)).map((p) => path.resolve(p));
   const thumbs = given.length ? given : existsSync(dir) ? thumbnailsIn(dir) : [];
   if (!thumbs.length) fail(`no thumbnails: put thumbnail-1.png ... in ${path.relative(ROOT, dir) || dir}, or name the images`);
@@ -732,7 +754,7 @@ async function preview() {
   const lang = opt('lang', /[ãõçáéíóúâêô]/i.test(title + description.slice(0, 300)) ? 'pt' : 'en') as Lang;
   if (!WORDS[lang]) fail(`--lang ${lang}: use ${Object.keys(WORDS).join(', ')}`);
   const w = WORDS[lang];
-  const len = videoLength(dir, video);
+  const len = videoLength(dir, video, proj);
   const duration = len.seconds ? clock(len.seconds) : '';
   const { others, note } = nicheFolder(opt('niche'));
   const ours = thumbs.map((t) => fileUrl(t));
@@ -1005,7 +1027,7 @@ function chapters(desc: string): { list: { t: number; label: string; line: numbe
 }
 
 async function check() {
-  const { dir, video } = locate();
+  const { dir, video, proj } = locate();
   if (!existsSync(dir)) fail(`${dir}: no such folder`);
   const out: Finding[] = [];
   const add = (level: Finding['level'], what: string, msg: string) => out.push({ level, what, msg });
@@ -1054,9 +1076,10 @@ async function check() {
     } catch (e) {
       console.log(`(thumbnails not decoded, read from their headers only: ${(e as Error).message.split('\n')[0]})`);
     }
+    // (every whole PNG, GIF, WebP and JPEG states its size in its header: one that doesn't is cut off or damaged)
     if (!decoded) for (const h of readable) {
       if (h.w && h.h) judge(h.name, h.kind, h.w, h.h, h.bytes);
-      else add('warn', h.name, `${h.kind}: its size couldn't be read without decoding it`);
+      else add('FAIL', h.name, `${h.kind} whose header is cut off or damaged (no size in it), so it won't decode`);
     }
   } else add('note', 'thumbnails', 'none (thumbnail-1.png ...)');
 
@@ -1074,7 +1097,7 @@ async function check() {
   } else add('note', 'title.txt', 'none');
 
   // description: length, refused characters, chapters, hashtags
-  const len = videoLength(dir, video);
+  const len = videoLength(dir, video, proj);
   const descFile = path.join(dir, 'description.txt');
   if (existsSync(descFile)) {
     const desc = readText(descFile).trim();

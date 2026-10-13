@@ -52,6 +52,17 @@ try {
   expect('shoot: reports the missing image', /404 nope\.png/.test(r.out), r.out);
   r = run(['shoot', 'pages/good.png']);
   expect('shoot: refuses anything but an HTML page (it would overwrite a source)', r.code === 2, r.out);
+  // images CSS draws: a broken one loads fine and then draws nothing (codex's review reproduced it)
+  writeFileSync(path.join(root, 'pages', 'broken.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]));
+  const noise = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23888'/%3E%3C/svg%3E`;
+  pkg('pages', {
+    'css-ok.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:url(good.png)} div{width:100px;height:100px;background-image:url("${noise}")} .m{background:#fff;mask-image:url(#cut)} .q{background:#fff;mask-image:url(css-ok.html#cut)}</style><svg width="0" height="0"><mask id="cut"><rect width="100" height="50" fill="#fff"/></mask></svg><div></div><div class="m"></div><div class="q"></div>`,
+    'css-bad.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:#123} div{width:100px;height:100px} div::before{content:'';display:block;width:100px;height:100px;background:url(broken.png)}</style><div></div>`,
+  });
+  r = run(['shoot', 'pages/css-ok.html']);
+  expect('shoot: CSS images that decode (a file, an inline SVG) and a mask naming an SVG element pass', r.code === 0, r.out);
+  r = run(['shoot', 'pages/css-bad.html']);
+  expect('shoot: a CSS background that doesn\'t decode fails', r.code === 1 && /image didn't decode: pages\/broken\.png/.test(r.out), r.out);
   run(['shoot', 'pages/wide.html', '--size', '1000x1000', '--out', 'pages/square.png']);
 
   // check: a valid package
@@ -122,6 +133,24 @@ try {
   r = run(['check', 'jpgs', '--full', '--jpg']);
   expect('check --full --jpg: the same JPEGs pass when JPEG was asked for', r.code === 0, r.out);
 
+  // check without Chrome: thumbnails read from their headers, and one cut off before its size fails
+  const noChrome = { ...process.env, CHROME_PATH: path.join(root, 'no-chrome.exe') };
+  const headless = (args: string[]) => {
+    const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: root, stdout: 'pipe', stderr: 'pipe', env: noChrome });
+    return { code: p.exitCode ?? -1, out: p.stdout.toString() + p.stderr.toString() };
+  };
+  r = headless(['check', 'good', '--duration', '4:26', '--full']);
+  expect('check without Chrome: whole thumbnails pass from their headers', r.code === 0 && /read from their headers only/.test(r.out) && /complete: three/.test(r.out), r.out);
+  const cut = pkg('cut', { 'title.txt': 'T\n', 'description.txt': 'D\n', 'tags.txt': 'a\n' });
+  for (const i of [1, 2, 3]) copyFileSync(path.join(root, 'pages', 'broken.png'), path.join(cut, `thumbnail-${i}.png`));
+  r = headless(['check', 'cut', '--full']);
+  expect('check without Chrome: a PNG cut off before its size fails (codex\'s review reproduced it passing)', r.code === 1 && /PNG whose header is cut off/.test(r.out), r.out);
+  const jfill = pkg('jfill', {});
+  // (a JPEG header with a fill byte before a marker, and a restart marker without a length, before its size)
+  writeFileSync(path.join(jfill, 'thumbnail-1.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xd0, 0xff, 0xc0, 0, 11, 8, 2, 0xd0, 5, 0, 1, 1, 0x11, 0, 0, 0, 0]));
+  r = headless(['check', 'jfill']);
+  expect('check without Chrome: a JPEG header read past fill bytes and markers without a length', /thumbnail-1\.jpg\s+1280x720 JPEG/.test(r.out), r.out);
+
   // check: the length as the engine reads it (video.json's duration before a longer soundtrack: the case codex
   // reproduced, a 30 s video over 60 s of audio)
   mkdirSync(path.join(root, 'proj', 'videos', 'v', 'youtube'), { recursive: true });
@@ -132,6 +161,12 @@ try {
   const lenRun = Bun.spawnSync(['bun', SCRIPT, 'check', '--video', 'v'], { cwd: path.join(root, 'proj'), stdout: 'pipe', stderr: 'pipe' });
   const lenOut = lenRun.stdout.toString() + lenRun.stderr.toString();
   expect('check: video.json\'s duration sets the length (the last chapter, 5 s of a 30 s video, fails)', lenRun.exitCode === 1 && /the last chapter lasts 5\.0 s/.test(lenOut) && /video\.json/.test(lenOut), lenOut);
+  // the same video with the package in another folder: the length still comes from the video (codex's review)
+  mkdirSync(path.join(root, 'proj', 'alternate'));
+  writeFileSync(path.join(root, 'proj', 'alternate', 'description.txt'), 'x\n0:00 A\n0:10 B\n0:25 C\n');
+  const altRun = Bun.spawnSync(['bun', SCRIPT, 'check', 'alternate', '--video', 'v'], { cwd: path.join(root, 'proj'), stdout: 'pipe', stderr: 'pipe' });
+  const altOut = altRun.stdout.toString() + altRun.stderr.toString();
+  expect('check: a package folder elsewhere still takes the video\'s length from --video', altRun.exitCode === 1 && /the last chapter lasts 5\.0 s/.test(altOut), altOut);
 
   // shoot: two pages with one name into one folder would overwrite each other
   mkdirSync(path.join(root, 'twins', 'a'), { recursive: true }); mkdirSync(path.join(root, 'twins', 'b'), { recursive: true });

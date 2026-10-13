@@ -321,7 +321,8 @@ Its script, `youtube.ts`, has four modes and no dependencies: Bun serves the pro
 and Bun's WebSocket speaks the DevTools protocol to it, so it runs the same in both tools, with nothing to
 install and no network but `niche`'s. `shoot` renders any HTML page at an exact size and reports each text
 block's size at 168 px (the smallest place a thumbnail's words are read), text in the duration badge's corner
-(the last 256x166 px of 1280x720, measured), a face that didn't load or lacks a character (an Ê); `preview` makes
+(the last 256x166 px of 1280x720, measured), a face that didn't load or lacks a character (an Ê), an image that
+didn't load or decode (those CSS draws too: a broken background loads fine and draws nothing); `preview` makes
 the feed sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the
 description's 5,000 characters and a warning past 5,000 bytes, the Data API's unit, the chapters' rules, the
 tags' 500-character count, the hashtags'); `niche` gathers other videos for the preview through YouTube's own
