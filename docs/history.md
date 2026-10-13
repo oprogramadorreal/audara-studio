@@ -1555,9 +1555,15 @@ What was checked:
   read images nothing draws (on an element without a box, or a `::before` without content, which doesn't
   exist), so a missing one failed a page whose PNG was right, and it now skips them; and `<video>-thumbs`
   does become the default beside `example`, which any other video outranks, so art.md says to name the
-  example there. `evals/tests/test_youtube.ts`: 44 offline checks
-  pass, four of the six new ones failing on the script before the fix (the other two hold good CSS images and
-  whole headers passing); `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,969 bytes.
+  example there. The next found the scan still fetching what Chrome didn't draw (an `image-set()` candidate it
+  didn't pick, a `::before` set to `display:none`): a file CSS names is now decoded only when Chrome requested
+  it for the page. The first try read the page's resource timing, which lists a request only once it ends:
+  Codex caught a corrupt background set on load and served late passing, so the requests come from the
+  DevTools events instead, every URL kept (a redirect's request takes the next URL, and Codex caught one to a
+  corrupt image passing too), and decoding waits for one still loading. `evals/tests/test_youtube.ts`: 45
+  offline checks pass, seven added in these reviews; all but one (whole headers passing without Chrome, a
+  guard on the stricter rule) fail on the script before their fix; `tsc --strict` passes; the three spec
+  validators pass; SKILL.md is 7,969 bytes.
 
 Not run: `yp-nothing-given` and `yp-images-budget`, cv-24 and vi-23 on Codex, and anything that spends (image
 generation waits for the user's yes).

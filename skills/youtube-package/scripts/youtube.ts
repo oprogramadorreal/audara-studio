@@ -315,47 +315,59 @@ async function cleanProfileAsync(dir: string) {
 class Page {
   failures: string[] = [];
   private urls = new Map<string, string>();
+  /** Every URL Chrome requested for the page, a redirect's first one too (its request then takes the next URL). */
+  private requested = new Set<string>();
   constructor(private chrome: Chrome, private sessionId: string) {
     chrome.on((m) => {
       if (m.sessionId !== sessionId) return;
-      if (m.method === 'Network.requestWillBeSent') this.urls.set(m.params.requestId, m.params.request.url);
+      if (m.method === 'Network.requestWillBeSent') { this.urls.set(m.params.requestId, m.params.request.url); this.requested.add(m.params.request.url); }
       else if (m.method === 'Network.responseReceived' && m.params.response.status >= 400)
-        this.failures.push(`${m.params.response.status} ${shortUrl(m.params.response.url)}`);
+        this.failed(`${m.params.response.status} ${shortUrl(m.params.response.url)}`);
       else if (m.method === 'Network.loadingFailed' && !m.params.canceled)
-        this.failures.push(`${m.params.errorText} ${shortUrl(this.urls.get(m.params.requestId) ?? '')}`);
+        this.failed(`${m.params.errorText} ${shortUrl(this.urls.get(m.params.requestId) ?? '')}`);
       else if (m.method === 'Runtime.exceptionThrown')
-        this.failures.push(`script error: ${m.params.exceptionDetails?.exception?.description?.split('\n')[0] ?? m.params.exceptionDetails?.text}`);
+        this.failed(`script error: ${m.params.exceptionDetails?.exception?.description?.split('\n')[0] ?? m.params.exceptionDetails?.text}`);
     });
   }
+  /** A failure, once (decoding a CSS image fetches it again, and a missing one fails again). */
+  private failed(f: string) { if (!this.failures.includes(f)) this.failures.push(f); }
   size(width: number, height: number, scale = 1) {
     return this.chrome.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: false }, this.sessionId);
   }
   async goto(url: string) {
     this.failures = [];
+    this.urls.clear(); this.requested.clear();
     const loaded = this.chrome.once('Page.loadEventFired', this.sessionId, 60_000, shortUrl(url));
     const nav = await this.chrome.send('Page.navigate', { url }, this.sessionId);
     if (nav.errorText) throw new Error(`${shortUrl(url)}: ${nav.errorText}`);
     await loaded;
-    // Fonts, then every image decoded (a failure is reported, not hidden), then two frames: what the screenshot
-    // takes is what was laid out. Images are <img>, SVG <image> and those CSS draws (a background, a mask, a
-    // border, a list marker, generated content, on an element or its ::before and ::after): a broken one there
-    // loads fine and then draws nothing. Only what is drawn counts: an element with no box (display:none, or inside
-    // one) or a hidden one draws no image, nor a ::before or ::after without content, which doesn't exist (Chrome
-    // doesn't fetch their images either). A url(#id), or this page's own name with #id, names an element of the
-    // page (an SVG mask), not an image.
-    const undecoded = await this.eval<string[]>(`document.fonts.ready
+    // Fonts and two frames, so what the page shows is laid out and its images requested; then every image decoded
+    // (a failure is reported, not hidden), then two frames: what the screenshot takes is what was laid out. Images
+    // are <img>, SVG <image> and those CSS draws (a background, a mask, a border, a list marker, generated content,
+    // on an element or its ::before and ::after): a broken one there loads fine and then draws nothing. Only what is
+    // drawn counts, so a file CSS names is decoded only when Chrome requested it for this page (decoding waits for a
+    // request still loading): it doesn't request an image-set() candidate it didn't pick, nor an image on an
+    // element without a box or on a ::before or ::after that doesn't exist, and a url(#id) names an element of the
+    // page (an SVG mask), not a file. An inline data: image is never requested: it counts on a visible element with
+    // a box.
+    await this.eval(`document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`);
+    const requested = JSON.stringify([...this.requested]);
+    const undecoded = await this.eval<string[]>(`Promise.resolve()
       .then(() => {
         const urls = new Set();
         for (const i of document.querySelectorAll('image')) if (i.href.baseVal) urls.add(new URL(i.href.baseVal, document.baseURI).href);
+        const fetched = new Set(${requested});
+        fetched.delete(location.href.split('#')[0]); // (the page itself: a url(#id) names one of its elements)
         for (const el of document.querySelectorAll('*')) {
           if (!el.getClientRects().length) continue;
           for (const pseudo of [null, '::before', '::after']) {
             const cs = getComputedStyle(el, pseudo);
-            if (cs.visibility !== 'visible' || (pseudo && /^(none|normal)$/.test(cs.content))) continue;
+            if (cs.visibility !== 'visible' || (pseudo && (cs.display === 'none' || /^(none|normal)$/.test(cs.content)))) continue;
             for (const prop of ['background-image', 'mask-image', '-webkit-mask-image', 'border-image-source', 'list-style-image', 'content'])
               for (const m of cs.getPropertyValue(prop).matchAll(/url\\("((?:[^"\\\\]|\\\\.)*)"\\)/g)) {
-                const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI);
-                if (!(u.hash && u.href.split('#')[0] === location.href.split('#')[0])) urls.add(u.href);
+                const u = new URL(m[1].replace(/\\\\(.)/g, '$1'), document.baseURI).href;
+                if (u.startsWith('data:')) urls.add(u);
+                else if (fetched.has(u.split('#')[0])) urls.add(u.split('#')[0]);
               }
           }
         }
@@ -366,7 +378,7 @@ class Page {
         ]);
       })
       .then((bad) => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r([...new Set(bad.filter(Boolean))])))))`);
-    for (const u of undecoded) this.failures.push(`image didn't decode: ${shortUrl(u)}`);
+    for (const u of undecoded) this.failed(`image didn't decode: ${shortUrl(u)}`);
   }
   async eval<T = any>(expression: string): Promise<T> {
     const r = await this.chrome.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, this.sessionId);

@@ -3,7 +3,7 @@
 // Markdown, images that don't decode or aren't 16:9) and shoot's diagnostics (a font that doesn't load, a
 // character a font lacks, a missing image, the exit codes). No network, no paid call; shoot and check start
 // a local Chrome. Run: bun evals/tests/test_youtube.ts
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -57,14 +57,29 @@ try {
   const noise = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23888'/%3E%3C/svg%3E`;
   pkg('pages', {
     'css-ok.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:url(good.png)} div{width:100px;height:100px;background-image:url("${noise}")} .m{background:#fff;mask-image:url(#cut)} .q{background:#fff;mask-image:url(css-ok.html#cut)}</style><svg width="0" height="0"><mask id="cut"><rect width="100" height="50" fill="#fff"/></mask></svg><div></div><div class="m"></div><div class="q"></div>`
-      // (images nothing draws: on an element without a box, a hidden one, a ::before without content)
-      + `<div style="display:none;background:url(nope-none.png)"></div><div style="visibility:hidden;background:url(broken.png)"></div><p class="e"></p><style>.e::before{background:url(nope-before.png)}</style>`,
+      // (images nothing draws: on an element without a box, a hidden one, a ::before without content or not
+      // displayed, the 2x candidate of an image-set at 1x)
+      + `<div style="display:none;background:url(nope-none.png)"></div><div style="visibility:hidden;background:url(broken.png)"></div><p class="e"></p><style>.e::before{background:url(nope-before.png)} .e::after{content:'';display:none;background:url(nope-after.png)}</style>`
+      + `<div style="width:100px;height:100px;background-image:image-set(url(good.png) 1x, url(nope-2x.png) 2x)"></div>`,
     'css-bad.html': `<!doctype html><style>body{margin:0;width:1280px;height:720px;background:#123} div{width:100px;height:100px} div::before{content:'';display:block;width:100px;height:100px;background:url(broken.png)}</style><div></div>`,
   });
   r = run(['shoot', 'pages/css-ok.html']);
   expect('shoot: CSS images that decode (a file, an inline SVG), a mask naming an SVG element and images nothing draws pass', r.code === 0, r.out);
   r = run(['shoot', 'pages/css-bad.html']);
   expect('shoot: a CSS background that doesn\'t decode fails', r.code === 1 && /image didn't decode: pages\/broken\.png/.test(r.out), r.out);
+  // CSS images still loading when the page is measured (set on load, served a second later), or reached through a
+  // redirect, are decoded too (codex's review reproduced each passing)
+  const slow = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(req) {
+    if (new URL(req.url).pathname === '/alias.png') return Response.redirect('/target.png', 302);
+    await Bun.sleep(1000);
+    return new Response(readFileSync(path.join(root, 'pages', 'broken.png')));
+  } });
+  const far = `http://127.0.0.1:${slow.port}`;
+  writeFileSync(path.join(root, 'pages', 'late.html'), `<!doctype html><style>body{margin:0;width:1280px;height:720px} div{width:100px;height:100px;background:url(${far}/alias.png)}</style><div></div><script>onload = () => { document.body.style.background = 'url(${far}/late.png)' }</script>`);
+  const lp = Bun.spawn(['bun', SCRIPT, 'shoot', 'pages/late.html'], { cwd: root, stdout: 'pipe', stderr: 'pipe' }); // (async: the server answers from this process)
+  const lateOut = await new Response(lp.stdout).text() + await new Response(lp.stderr).text();
+  await lp.exited; slow.stop(true);
+  expect('shoot: CSS images still loading, or reached through a redirect, are decoded too', lp.exitCode === 1 && /image didn't decode: late\.png/.test(lateOut) && /image didn't decode: alias\.png/.test(lateOut), lateOut);
   run(['shoot', 'pages/wide.html', '--size', '1000x1000', '--out', 'pages/square.png']);
 
   // check: a valid package
