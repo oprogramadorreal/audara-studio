@@ -1449,7 +1449,8 @@ What changed:
 - **init's AGENTS.md** names the skill, owes "for a request for a thumbnail or to get a video ready for YouTube,
   three thumbnail options made with one title, then the description and tags, and for one of those alone (a
   title, a description, tags), that part, in `videos/<video>/youtube/`, with the video left as it is", and
-  scopes its last check to "Before calling a change to a video done".
+  scopes its last check to "Before calling a change to a video done"; its decisions line gives a YouTube
+  package's decisions their own place, `youtube/NOTES.md`.
 - **video-repo** keeps a video's `youtube/` package (SKILL.md 7,996 bytes) and reads its `title.txt` as a
   proposal, not the published title.
 - **README, AGENTS.md, design.md** ("Publishing it: the YouTube package"), the manifests, 0.7.0.
@@ -1458,7 +1459,7 @@ What changed:
   video, an app's thumbnail grid, a plain image, an upload script, a Shorts cut, a question), cv-24 and vi-23
   near-misses, trigger.ts's use signal for `youtube.ts`, and four task cases on `EVAL_PACKAGE_PROJECT`:
   `yp-given-words` (the user's prompt word for word, then the channel's type in a new session),
-  `yp-nothing-given`, `yp-title-only` and `yp-images-budget` (the image mock).
+  `yp-nothing-given`, `yp-title-only` and `yp-images-budget` (the image mock); `trigger.ts` takes `--effort`.
 
 Considered and rejected:
 
@@ -1522,11 +1523,29 @@ What was checked:
   treatment's rule against showing a real product's interface as a rule against naming it; youtube.md now says
   a name the video is about belongs early. The with-skill run of the user's prompt had named the disclosure by
   its old name ("altered or synthetic content"); youtube.md gives today's, "AI use".
+- **yp-given-words on Codex** (GPT-6 Astra at the user's own effort, ultra), four times, each run checking the
+  fix the one before it led to; each took 10 to 12 minutes, then 4 to 8 for the channel's type, spawned a
+  critic without the thread, generated nothing, and made three options from the video's own plates (the mask,
+  the candle table, the eye in which a computer shows). The first made the thumbnails and the title only: its
+  notes said "Escopo: miniaturas; descrição, capítulos e tags não solicitados". With SKILL.md saying the
+  package comes even when only the pictures are named, the second made all of it, but appended its notes to
+  the treatment's Decisions, as init's AGENTS.md asks for every director's note; init's line now gives a
+  package's decisions `youtube/NOTES.md`, and SKILL.md calls the treatment the video's. The third, in a
+  project still carrying the old AGENTS.md as the user's projects do, left the treatment alone; its reply and
+  notes still left out Test & Compare and the disclosure, and it kept six roughs, an index page and a ZIP in
+  the package folder. The fourth kept the roughs in `out/` and opened `NOTES.md` with its pick and the
+  disclosure as the user's to decide; its replies stayed a few lines long, which looks like Codex's own way
+  with a final answer, so the open decisions live in the notes as well.
+- **What the checks cost.** Every trigger and task run inherited the user's own reasoning effort (Claude
+  Code's xhigh, Codex's ultra), and the blind panel ran as sub-agents of a session at max effort, about 537,000
+  tokens. The user can afford Codex runs, not Claude Code ones at that effort: after them, only Codex ran
+  tasks, grading moved to scripts, and `trigger.ts` takes `--effort` as `task.ts` does, so a first check of a
+  description runs at `--effort low --runs 1`.
 - **Codex's five rounds** found, among others, the length of the video read from the audio before
   `video.json`'s duration, a mistyped folder checked as the one above it, JPEGs passing a PNG package, "0:99"
   read as a time, two pages writing one image, a cut unicode handle, and claims in the docs; the fifth confirmed
   the six fixes and three small notes, fixed. `evals/tests/test_youtube.ts`: 38 offline checks pass;
-  `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,964 bytes.
+  `tsc --strict` passes; the three spec validators pass; SKILL.md is 7,969 bytes.
 
-Not run: `yp-nothing-given` and `yp-images-budget`, the near-misses on Codex, and anything that spends (image
+Not run: `yp-nothing-given` and `yp-images-budget`, cv-24 and vi-23 on Codex, and anything that spends (image
 generation waits for the user's yes).
