@@ -64,12 +64,17 @@ where they show · Policy and disclosure · Sources
   sees or learns, in natural sentences that carry the topic's common names; a question for the comments when the
   channel asks one; the chapters; links (earlier videos in the series, the source code, sources for facts);
   credits; a few hashtags at the end. "A full description" asked for can add more (sources, how it was made,
-  lyrics).
+  lyrics). "SEO" asks for the searched words in the opening and the topic's names in the text, not for length.
+  The channel's earlier descriptions are the published ones (the user's, or the Data API's), not drafts left
+  in project folders: the 4,500 one above was such a draft.
 - **Credits and honesty from the project's own records:** `videos/<video>/assets/SOURCES.md`, the soundtrack's
   records (music, voice, effects and their licences or plan), the treatment's Decisions and "Never claim" (an
   adapted work and its author, a dramatized script, a synthetic voice, a graph that only illustrates). Credits
   the user promised to give "in the description" go here. The person's name only as `docs/CHANNEL.md` says.
 - **Links** as the user gave them, without tracking parameters (`?si=`); none invented; say which weren't checked.
+  A video's title as published comes from `niche <links> --video <video>` (oEmbed) or the Data API; yt-dlp or a
+  page read in another language gets YouTube's automatic translation ("Claude's response is terrifying" for "A
+  resposta do Claude é assustadora"), and nothing scrapes youtube.com (references/art.md, the niche).
 - **No keyword lists:** a block of search terms in the description breaks YouTube's spam policy and reads badly.
 - **Characters, and bytes:** YouTube's help allows 5,000 characters, its Data API 5,000 bytes (an accent takes
   two, an emoji four), and an upload through the API or a tool using it counts bytes; `check` counts both. `wc -m`

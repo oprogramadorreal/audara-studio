@@ -93,7 +93,10 @@ curl -s "https://openaccess-api.clevelandart.org/api/artworks/?q=<words>&cc0=1&h
   and renders never call it. About $0.04 for a high-quality 1536×1024 image and $0.10 at 3840×2160 (an
   estimate; the script records the real cost). `--help` has the rest: `--style`, `--ref`, `--transparent`,
   `--takes`, `pick`. In a sandbox without network it can't connect, and says nothing was sent: run it with
-  network access.
+  network access. A key the user pastes into the conversation and wants used now lives for this session
+  only: in a file in your session's temporary folder, outside the project, loaded into each command's
+  environment and deleted when the work is done; never on a command line, never set in their system for
+  them.
 - **In Codex without a key**, its built-in image generation ("$imagegen", gpt-image-2) draws on the
   ChatGPT plan's limits: that is spending too, so the same rules apply, and the reply says so. It picks size and quality itself
   (no 4K, no exact aspect): good for textures and plates you'll scale; style frames stay renders in the

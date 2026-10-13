@@ -21,9 +21,15 @@ to direct the voice, the music and the effects. Paths are relative to the skill'
 ## The key
 
 - The scripts read `ELEVENLABS_API_KEY` from the environment and nothing else. Never write the key
-  into a project file or `.env` the project commits, never pass it on a command line, never print it.
-  If the user pastes a key into the conversation, don't store it anywhere: ask them to set it in
-  their environment (shell profile or system settings) and start the session again.
+  into a project file or `.env` the project commits, never pass it on a command line (`KEY=... uv run`, a
+  curl header), never print it.
+- A key the user pastes into the conversation: say once that setting it in their environment (shell
+  profile or system settings) and starting the session again keeps it out of the chat. When they want it
+  used now, it lives for this session only, in the one file a key may go in: one in your session's
+  temporary folder, outside the project, loaded into each command's environment (in bash,
+  `set -a; . <file>; set +a` before the command), deleted when the work is done, and the hand-off says so.
+  Don't set it in their system or profile for them: `setx` and `SetEnvironmentVariable` put it on a command
+  line and keep it after the session.
 - Without a key every paid command exits 3, spends nothing and prints what it would have cost and
   what a key would add (`eleven.py tts script.txt` needs no `--voice` for that). Run it rather than
   checking the variable yourself, then tell the director in one line that no key is set, what a key
@@ -87,7 +93,8 @@ billed in dollars. The script's estimates use these numbers; the account's own f
 - Music also has monthly minute limits per plan in its terms: Free 11, Starter 17, Creator 62,
   Pro 304, Scale 1,100, Business 4,800. The API page lists other numbers; plan with the lower.
 - Length of a voice before generating it: characters / 16 per second (pdoom-video's Portuguese
-  narration ran 15.8-16.4 characters per second; other languages and voices are unmeasured).
+  narration ran 15.8-16.4 characters per second; a slow, dramatic Portuguese read on v4 ran 13.8 inside
+  its lines, so plan such a read longer; other languages and voices are unmeasured).
 - An effect whose length the model picks is estimated in dollars as 5 s (the length at which the two
   credit rates meet); how the API bills it is not documented.
 - Some library voices carry a credit multiplier (legacy custom rates) and cost more per character
@@ -132,7 +139,7 @@ These ids and limits live only here and in the script's defaults (checked 2026-1
 | `eleven_multilingual_v2` | the default: timestamps documented, 29 languages, steady over long text | 10,000 |
 | `eleven_flash_v2_5` | cheaper and faster, 32 languages | 40,000 |
 | `eleven_v3` | most expressive (audio tags); no speed, similarity or speaker boost | 5,000 |
-| `eleven_v4` | new on 2026-09-28; whether this endpoint returns its timings is unverified: try `--only 1` first | 10,000 |
+| `eleven_v4` | new on 2026-09-28; its timings came back and snapped in one 30-block Portuguese narration (2026-10-11); a take differs from the next even with the same seed | 10,000 |
 
 - Music is always `music_v2_5` (the API still defaults to the deprecated `music_v1`); effects
   `eleven_text_to_sound_v2`; transcription `scribe_v2`. The v1 speech models and Scribe v1 were
@@ -174,7 +181,10 @@ ElevenLabs"), and `tts` is built around them.
   reveal, a joke. `--takes 3 --block N --yes`, listen, then `--pick K --block N`.
 - **Listen to the names before approving a file**: people, products, foreign words.
 - Keep stage directions out of the text: the voice reads them aloud. Audio tags such as
-  `[whispers]` exist only on v3 and v4.
+  `[whispers]` exist only on v3 and v4, and go on the say map's spoken side (`Calma.`, a tab,
+  `[low, calm] Calma.`), so the shown words stay as written. A tag sets the register of all it opens:
+  to stress one word, tag the parts apart or keep the take that says it right. On v4 a request made
+  again doesn't repeat a take: keep the one the director heard (`--takes`, then `--pick`).
 - Pace: pdoom-video's approved narration ran 159-181 words per minute, with the rhythm coming from
   the picture, not from long pauses. Per-block words per minute are in the takes report.
 - **Timings.** The API times every character, but phrase starts tend to come out early: the first
