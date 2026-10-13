@@ -233,9 +233,9 @@ in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its
 treatment's Decisions,
 `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
-the lead for engine changes. Their checks keep their own reports: `verify --only <their ids>` (it writes
-`verify-only-<ids>.json`) or `--out` in their own folder, since `out/<video>/verify.json` is the lead's
-record of what changed.
+the lead for engine changes. Their verify runs write to their own folder
+(`--out out/<video>/wip/<owner>/verify.json`), since `out/<video>/verify.json` is the lead's record of what
+changed and a project's older render.ts writes even `--only` there.
 
 ```markdown
 ### `<id>` · <owner, e.g. B2> · bars <a–b>, <section> (<m:ss–m:ss>)

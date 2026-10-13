@@ -1740,12 +1740,17 @@ What changed:
   with nothing running in the project; `out/` "costs little", with the 36 GB case.
 - **treatment-template.md:** the treatment's message carries the preview link; "Never claim" labels once;
   on-screen words never include the skill's "director", and a real name, family or place from the user's
-  files appears only when they say so; scene authors keep their own verify reports.
+  files appears only when they say so; scene authors' verify runs write to their own folder (`--out`), since a
+  project's older render.ts writes even `--only` to `verify.json`.
 - **engine-guide-template.md, contract.md, art.md, youtube.md:** the GPU and `CHROME_FLAGS`, verify's report
   names, restarting a stale preview; a rounded cache key drawn rounded; art.md's `CHROME_FLAGS` advice dropped
   (render.ts does it now); a published title from `niche` (oEmbed) or the Data API, never yt-dlp; "SEO" asks
   for the searched words, not length; earlier descriptions are the published ones.
-- **design.md, 0.7.1.** No SKILL.md changed (they are at 6,709 to 7,997 bytes).
+- **SKILL.md, two words each:** code-video's keys stay "never in projects, logs or command lines" and
+  soundtrack's "never in the project, a log or a command line", so the session's temporary file the references
+  describe isn't against them; code-video's "a question tool that answers at once" became "answering at once"
+  to stay at 7,997 bytes (soundtrack 7,996).
+- **design.md, 0.7.1.**
 
 Considered and left out: effects levelled against voice and music together (oprog-1's critic found intro
 effects 22-29 dB under them, but every narrated mix would change level); a report of the closest
@@ -1762,3 +1767,8 @@ characters, 4128 bytes"); `bun evals/tests/test_youtube.ts` 51/51, `test_audit.t
 `test_init_gitignore.ts` 3/3, `test_imagegen.py` OK; the three spec validators on code-video, soundtrack and
 youtube-package. Not run: a task eval with the changes, and the GPU flag on a machine with one GPU or in a
 Codex sandbox.
+
+Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only and found two things, both fixed: the scene
+authors' brief told them to use `verify --only`, which only a render.ts from 0.7.1 on keeps out of
+`verify.json`, so authors on an existing project would still overwrite the lead's report (they now always pass
+`--out`); and the SKILL.md rules still said keys go in no file, against the references' session-only file.

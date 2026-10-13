@@ -13,8 +13,8 @@ Aim for a piece people would watch twice. Start from an image that carries the i
 ## Fixed
 The rest is a default: depart from it when the piece gains, and say why.
 - **Every frame is a pure function of time `t`**: the code's rule, never a line in the video. Seeded randomness, `frameIdx(t)` for flicker, state only in `stateful` scenes: the preview matches the render (`render.ts verify` checks it).
-- **Money waits for a yes.** Before anything that costs (voice, music, images, paid tools), say what it makes and costs. Only the director's own words are a yes: a budget they set covers what fits it (its running total in the treatment's Decisions); a key in the environment, or a question tool that answers at once, is not.
-- **API keys stay in the environment**, never in files, logs or command lines.
+- **Money waits for a yes.** Before anything that costs (voice, music, images, paid tools), say what it makes and costs. Only the director's own words are a yes: a budget they set covers what fits it (its running total in the treatment's Decisions); a key in the environment, or a question tool answering at once, is not.
+- **API keys stay in the environment**, never in projects, logs or command lines.
 - **Licenses are respected:** fonts, images, footage and voices keep theirs; every file from outside code gets a line in `videos/<video>/assets/SOURCES.md`.
 - **Every change comes back with a link:** this project's preview with `?v=<video>&t=<seconds>`, written out in full.
 
