@@ -28,14 +28,15 @@
 //            [--n 20] [--lang pt] [--region BR] [--video <video>] [--out <dir>]
 //            Other videos' thumbnails and titles for preview's --niche, into out/<video>/youtube/niche/ (never
 //            the project's assets: they are other people's images, for comparison only): niche.json and one
-//            image each, added to what's there. Links (from the user, or found with a web search) are read
-//            through YouTube's oEmbed endpoint: title, channel, picture. --search and --channel need a YouTube
-//            Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000 daily units, the rest 1
-//            each), which also adds views, lengths, dates and how each video did against its channel: its views
-//            as a multiple of the channel's average per video (lifetime views over uploads) and of its
-//            subscribers, listed highest first, to find the videos whose package outran their channel. It
-//            never scrapes youtube.com: YouTube's terms forbid automated access outside its APIs. Needs the
-//            network.
+//            image each, added to what's there (a video already there takes this run's reading, the numbers
+//            included when a key is set, and keeps its picture). Links (from the user, or found with a web
+//            search) are read through YouTube's oEmbed endpoint: title, channel, picture. --search and
+//            --channel need a YouTube Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000
+//            daily units, the rest 1 each), which also adds views, lengths, dates and how each video did
+//            against its channel: its views as a multiple of the channel's average per video (lifetime views
+//            over uploads) and of its subscribers, listed highest first, to find the videos whose package
+//            outran their channel. It never scrapes youtube.com: YouTube's terms forbid automated access
+//            outside its APIs. Needs the network.
 //   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>] [--full [--size 1280x720] [--jpg]]
 //            The package against YouTube's limits: each thumbnail (it decodes; 16:9; at least 640 wide; its
 //            bytes), title.txt, description.txt (length; characters YouTube refuses; chapters: 0:00 first, three
@@ -1011,11 +1012,26 @@ async function niche() {
   if (existsSync(listFile)) {
     try { list = JSON.parse(readText(listFile)); } catch (e) { fail(`${listFile}: not valid JSON (${(e as Error).message})`); }
   }
-  const have = new Set(list.map((o) => o.id));
-  const added: Record<string, unknown>[] = [];
+  const have = new Map(list.filter((o) => typeof o.id === 'string').map((o) => [o.id as string, o]));
+  const added: Record<string, unknown>[] = [], updated: Record<string, unknown>[] = [];
   for (const id of unique) {
     const m = metas.get(id);
-    if (!m || have.has(id)) continue;
+    if (!m) continue;
+    // how it did against its channel: its views as a multiple of the channel's average per video and of its subscribers
+    const ch = m.channelId ? channels.get(m.channelId) : undefined;
+    const against = m.viewCount === undefined || !ch ? {} : {
+      ...(ch.average ? { channelAverage: Math.round(ch.average), vsChannel: multiple(m.viewCount / ch.average) } : {}),
+      ...(ch.subscribers ? { subscribers: ch.subscribers, vsSubscribers: multiple(m.viewCount / ch.subscribers) } : {}),
+    };
+    const fresh: Record<string, unknown> = Object.fromEntries(Object.entries({
+      url: `https://www.youtube.com/watch?v=${id}`, title: m.title, channel: m.channel, viewCount: m.viewCount,
+      views: m.viewCount !== undefined ? views(m.viewCount, lang) : undefined, duration: m.duration, published: m.published?.slice(0, 10), ...against,
+    }).filter(([, v]) => v !== undefined));
+    // a video already in the folder takes what this run read (a run with a key after one without adds the numbers;
+    // a new reading replaces the old comparison), and keeps its picture when the file is there
+    const old = have.get(id);
+    if (old && m.viewCount !== undefined) for (const k of ['channelAverage', 'vsChannel', 'subscribers', 'vsSubscribers']) delete old[k];
+    if (old && typeof old.file === 'string' && existsSync(path.join(outDir, old.file))) { Object.assign(old, fresh); updated.push(old); continue; }
     // the biggest 16:9 picture there is (a 4:3 one has bars, which the preview's crop removes)
     let file: string | undefined;
     for (const u of new Set([m.big, `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, `https://i.ytimg.com/vi/${id}/hq720.jpg`, m.thumb, `https://i.ytimg.com/vi/${id}/mqdefault.jpg`])) {
@@ -1031,24 +1047,18 @@ async function niche() {
       } catch {}
     }
     if (!file) { console.log(`  ${id}: no picture could be fetched`); continue; }
-    // how it did against its channel: its views as a multiple of the channel's average per video and of its subscribers
-    const ch = m.channelId ? channels.get(m.channelId) : undefined;
-    const against = m.viewCount === undefined || !ch ? {} : {
-      ...(ch.average ? { channelAverage: Math.round(ch.average), vsChannel: multiple(m.viewCount / ch.average) } : {}),
-      ...(ch.subscribers ? { subscribers: ch.subscribers, vsSubscribers: multiple(m.viewCount / ch.subscribers) } : {}),
-    };
-    const entry = { file, id, url: `https://www.youtube.com/watch?v=${id}`, title: m.title, channel: m.channel,
-      ...(m.viewCount !== undefined ? { viewCount: m.viewCount, views: views(m.viewCount, lang) } : {}), ...(m.duration ? { duration: m.duration } : {}),
-      ...(m.published ? { published: m.published.slice(0, 10) } : {}), ...against };
+    if (old) { Object.assign(old, { file }, fresh); updated.push(old); continue; }
+    const entry = { file, id, ...fresh };
     list.push(entry);
     added.push(entry);
   }
   writeFileSync(listFile, JSON.stringify(list, null, 2) + '\n');
-  console.log(`${path.relative(ROOT, listFile) || listFile}: ${added.length} added, ${list.length} in all${key ? '' : ' (titles and channels from oEmbed; YOUTUBE_API_KEY adds views, lengths and how each did against its channel)'}`);
+  console.log(`${path.relative(ROOT, listFile) || listFile}: ${added.length} added, ${updated.length} updated, ${list.length} in all${key ? '' : ' (titles and channels from oEmbed; YOUTUBE_API_KEY adds views, lengths and how each did against its channel)'}`);
+  const shown = [...added, ...updated];
   const score = (o: Record<string, unknown>) => (o.vsChannel as number | undefined) ?? (o.vsSubscribers as number | undefined) ?? -1;
-  const measured = added.some((o) => score(o) >= 0);
+  const measured = shown.some((o) => score(o) >= 0);
   if (measured) console.log(`  highest first, against their channels: views over the channel's average per video (lifetime views over uploads), then over its subscribers; 2x its average or more: it outran its channel`);
-  for (const o of measured ? [...added].sort((a, b) => score(b) - score(a)) : added) {
+  for (const o of measured ? [...shown].sort((a, b) => score(b) - score(a)) : shown) {
     const vs = [o.vsChannel !== undefined ? `${o.vsChannel}x its average` : '', o.vsSubscribers !== undefined ? `${o.vsSubscribers}x its subscribers` : ''].filter(Boolean).join(', ');
     console.log(`  ${o.id}  ${[(o.views as string) ?? '', vs, (o.published as string) ?? ''].filter(Boolean).join('  ')}  ${o.channel}: ${o.title}`);
   }
@@ -1066,16 +1076,18 @@ function tagsLength(tags: string[]): number {
 }
 
 /** The chapter list YouTube reads: the first run of lines starting with a timestamp, when it starts at 0:00.
- *  A timestamp that isn't a time ("0:99") is reported, not read as the time it would add up to. */
+ *  A timestamp that isn't a time ("0:99", "0:100", "0:10:0", "1:22:33:44") is reported, not read as the time it
+ *  would add up to or as a shorter time with the rest in the name: the whole run of digits and colons is the
+ *  stamp, and it is one when a part after a colon has two digits (so "16:9" or "1:1" opening a line is none). */
 function chapters(desc: string): { list: { t: number; label: string; line: number }[]; stray: number; invalid: string[] } {
   const lines = desc.split('\n');
-  const stamp = /^\s*[([]?((?:\d+:)?\d{1,2}:\d{2})[)\]]?\s*[-–—:|]?\s*(.*)$/;
+  const stamp = /^\s*[([]?(\d+(?::\d+)+)(?!\d|:\d)[)\]]?\s*[-–—:|]?\s*(.*)$/;
   const list: { t: number; label: string; line: number }[] = [];
   const invalid: string[] = [];
   let stray = 0;
   for (let i = 0; i < lines.length; i++) {
     const m = stamp.exec(lines[i]);
-    if (!m) { if (list.length) break; continue; }
+    if (!m || !/:\d{2}/.test(m[1])) { if (list.length) break; continue; }
     const t = parseClock(m[1]);
     if (t === undefined) { invalid.push(`line ${i + 1}: "${m[1]}" isn't a time`); continue; }
     if (!list.length && t !== 0) { stray++; continue; }

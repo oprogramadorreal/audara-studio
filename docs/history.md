@@ -1611,13 +1611,28 @@ What changed:
   gives each video's views as a multiple of its channel's lifetime average per video and of its subscribers
   (hidden counts left out), plus its date, listed highest first and kept in `niche.json`. The API's own picture
   link is tried first. `YOUTUBE_API_URL` takes another base (a proxy, the tests).
-- **The evals:** two offline checks against a local stand-in for the Data API (47 in all); `yp-given-words` and
+- **The evals:** two offline checks against a local stand-in for the Data API; `yp-given-words` and
   `yp-nothing-given` gain the format option's criterion; README and design.md say it.
 
 Considered and left out: a fixed threshold that rules a video in or out (the user's preferred reference would
 have failed it), and the median of each channel's recent uploads as the baseline (closer to vidIQ's "similar
 timeframe", but two calls per channel and skewed by Shorts).
 
-What was checked: `bun evals/tests/test_youtube.ts` 47/47, `tsc --strict` on the script and the test, the three
-spec validators, SKILL.md 7,996 bytes without a byte-order mark. Not run: a task eval with the change, and
-`niche` against the real Data API (no key on this machine; a local stand-in served the same JSON shapes).
+Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only over three rounds and reproduced three bugs,
+each fixed:
+
+- **Earlier links got no numbers.** A video already in `niche.json` was skipped, so links gathered without a key
+  never gained them on a run with one; the format option needs them. A video already there now takes the run's
+  reading (an old comparison dropped) and keeps its picture.
+- **`0:100` read as `0:10`.** The chapter stamp's pattern took a prefix and put the rest in the name, so
+  `0:00`, `0:100`, `0:200` passed `check --duration 40` as 0, 10 and 20 s.
+- **`0:10:0` read as `0:10`.** The first fix still let the stamp shrink before a colon. The stamp is now the
+  whole digit-and-colon token, a stamp only when a part after a colon has two digits, so a `16:9` or `1:1` that
+  opens a line stays out (a plain whole-token match would have failed such lines).
+
+The third round found nothing.
+
+What was checked: `bun evals/tests/test_youtube.ts` 51/51 (three of the four added in review fail on the script
+before their fix; the fourth guards the stamps that are times), `tsc --strict` on the script and the test, the three spec validators, SKILL.md 7,996 bytes without a
+byte-order mark. Not run: a task eval with the change, and `niche` against the real Data API (no key on this
+machine; a local stand-in served the same JSON shapes).

@@ -143,6 +143,20 @@ try {
   expect('check: the description counts characters, so 4,990 accented letters plus the rest pass 5,000 only past it', /description\.txt\s+\d+ characters: YouTube's limit is 5000/.test(r.out), r.out);
   expect('check: "0:99" is not a time', /"0:99" isn't a time/.test(r.out), r.out);
   expect('check: more than 60 hashtags fail', /61: over 60, YouTube ignores every hashtag/.test(r.out), r.out);
+  // a stamp with digits past a time ("0:100") is no time either, not 0:10 with a "0" in the name (codex's review)
+  pkg('long-stamps', { 'description.txt': '16:9 and 1:1 crops.\n\nChapters\n0:00 Start\n0:100 Middle\n0:200 End\n0:10:0 Late\n1:22:33:44 Far\n' });
+  r = run(['check', 'long-stamps', '--duration', '40']);
+  expect('check: "0:100" or "0:10:0" is not read as 0:10, nor a ratio opening a line as a timestamp', r.code === 1 && /"0:100" isn't a time/.test(r.out)
+    && /"0:200" isn't a time/.test(r.out) && /"0:10:0" isn't a time/.test(r.out) && /"1:22:33:44" isn't a time/.test(r.out)
+    && !/"16:9" isn't|"1:1" isn't/.test(r.out), r.out);
+  // Codex's reproduction: with a one-digit last part, the stamp used to shrink to 0:10 and pass
+  pkg('short-tail', { 'description.txt': '0:00 Start\n0:10:0 Middle\n0:20:0 End\n' });
+  r = run(['check', 'short-tail', '--duration', '40']);
+  expect('check: "0:10:0" and "0:20:0" fail, not read as 0:10 and 0:20', r.code === 1 && /"0:10:0" isn't a time/.test(r.out) && /"0:20:0" isn't a time/.test(r.out), r.out);
+  // the forms that are times still read: hours, a bracket, a colon or dash after the stamp
+  pkg('stamp-forms', { 'description.txt': 'Capítulos\n(0:00) Começo\n0:15: Meio\n1:05:30 - Fim\n' });
+  r = run(['check', 'stamp-forms', '--duration', '1:10:00']);
+  expect('check: (0:00), "0:15:" and 1:05:30 still read as chapters', r.code === 0 && !/isn't a time/.test(r.out), r.out);
   const ok5000 = pkg('ok5000', { 'description.txt': 'ã'.repeat(5000) + '\n' });
   r = run(['check', 'ok5000']);
   expect('check: exactly 5,000 accented characters pass (characters, not bytes)', r.code === 0 && /5000 characters/.test(r.out), r.out);
@@ -232,6 +246,10 @@ try {
     if (u.pathname === '/channels') return Response.json({ items: u.searchParams.get('id')!.split(',').map((id) => ({ id, statistics: chans[id] })) });
     return new Response('not here', { status: 404 });
   } });
+  // one video already there from a run without a key (oEmbed: no numbers): this run adds them, keeping its picture
+  mkdirSync(path.join(root, 'niche-api'));
+  writeFileSync(path.join(root, 'niche-api', 'aaaaaaaaaaa.jpg'), 'the picture fetched before');
+  writeFileSync(path.join(root, 'niche-api', 'niche.json'), JSON.stringify([{ file: 'aaaaaaaaaaa.jpg', id: 'aaaaaaaaaaa', title: 'Video a', channel: 'UCbig' }]));
   const np = Bun.spawn(['bun', SCRIPT, 'niche', '--search', 'como a ia cria imagens', '--out', 'niche-api', '--lang', 'pt'], { cwd: root, stdout: 'pipe', stderr: 'pipe',
     env: { ...process.env, YOUTUBE_API_KEY: 'test', YOUTUBE_API_URL: `http://127.0.0.1:${api.port}` } });
   const nout = await new Response(np.stdout).text() + await new Response(np.stderr).text();
@@ -241,6 +259,9 @@ try {
   expect('niche: with a key, each video against its channel (average per video, subscribers; hidden ones left out)',
     np.exitCode === 0 && got.aaaaaaaaaaa?.vsChannel === 0.68 && got.aaaaaaaaaaa?.vsSubscribers === 0.25 && got.bbbbbbbbbbb?.vsChannel === 10
     && got.bbbbbbbbbbb?.vsSubscribers === 5.1 && got.ccccccccccc?.vsChannel === 1.9 && !('vsSubscribers' in got.ccccccccccc) && got.aaaaaaaaaaa?.published === '2025-07-25', nout + JSON.stringify(got));
+  expect('niche: a video already in the folder gets the numbers a run with a key reads, and keeps its picture (codex\'s review)',
+    /2 added, 1 updated, 3 in all/.test(nout) && got.aaaaaaaaaaa?.viewCount === 2_158_820 && got.aaaaaaaaaaa?.duration === '15:11'
+    && readFileSync(path.join(root, 'niche-api', 'aaaaaaaaaaa.jpg'), 'utf8') === 'the picture fetched before', nout + JSON.stringify(got));
   const order = ['bbbbbbbbbbb', 'ccccccccccc', 'aaaaaaaaaaa'].map((id) => nout.indexOf(`  ${id}  `));
   expect('niche: lists the videos that outran their channel first', order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])) && /10x its average, 5\.1x its subscribers/.test(nout), nout);
 } finally {
