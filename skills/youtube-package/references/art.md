@@ -4,8 +4,8 @@ How the three thumbnails get made: the ideas, where each picture comes from, how
 type, and how it is judged. Read it before making or changing a thumbnail. `<skill>` is this skill's folder;
 code-video is the skill beside it; other paths are the project's.
 
-Contents: What a thumbnail has to do · Ideas · Where the picture comes from · Finishing · Type · Looking as
-viewers do · The critic · What went wrong before
+Contents: What a thumbnail has to do · The niche, and a format that worked · Ideas · Where the picture comes
+from · Finishing · Type · Looking as viewers do · The critic · What went wrong before
 
 ## What a thumbnail has to do
 
@@ -28,14 +28,54 @@ A frame is made for motion and for what comes before and after it. A thumbnail s
   phone feeds play it inline, often by default. The first seconds are part of the package; when they don't carry
   the promise on, say so in the hand-off (the video stays as it is here).
 
+## The niche, and a format that worked
+
+Before the ideas, when the network is allowed: the videos a viewer of this one would see beside it, and the
+ones among them whose package did best. A few minutes of it pays twice. Nine searches once changed a whole
+set's type size, brightness and colour. And the thumbnail one creator preferred, over more than a dozen made
+from the video's own ideas, took its format from a video on the same subject.
+
+- **Find 10 to 30** on the same subject, for the same audience: a web search in the video's language and in
+  English (the words people would type, the subject's common names), the channel's peers, links the user
+  gives. `bun <skill>/scripts/youtube.ts niche <links...> --video <video> --lang <language>` saves their titles,
+  channels and full-size pictures in `out/<video>/youtube/niche/` (other people's images: never in the
+  project's assets or in git). With a YouTube Data API key in `YOUTUBE_API_KEY` (free), `--search "<words>"
+  --n 50` and `--channel <@handle>` find them too, and each video gets its views as a multiple of its channel's
+  average per video and of its subscribers, highest first. Nothing scrapes youtube.com: YouTube's terms forbid
+  automated access outside its APIs. Without a key, the views a web search shows, beside a tracker's figures
+  for the channel (Social Blade, vidIQ), give the same multiples roughly; the hand-off can say a free key would
+  make them exact.
+- **What worked:** far more views than the channel usually gets. vidIQ's outlier score starts at 2x the
+  channel's average and tops out above 10x; more views than the channel has subscribers says the same, and a
+  recent video says it more than one that had years. Its package (subject, title and picture together) brought
+  viewers the channel alone didn't: evidence about a package, observational, not proof of what its picture did.
+- **Fit before numbers.** Learn from a video whose picture shows something this one has too: its mechanism, its
+  moment, its question. A format that would make this video promise another (a shocked face where it has none,
+  a result it doesn't show) belongs to another video. With no outlier that fits, the subject's most-viewed video
+  that does is next best; say which it was. The preferred thumbnail above followed 3Blue1Brown's guest video by
+  Welch Labs on how AI makes images: four panels from noise to picture between two arrows. With 2.2 million
+  views against that channel's average of about 3 million, it was the subject's big video, not an outlier. Its
+  layout was the mechanism the video explains, and the video's own frames could show it.
+- **One of the three takes that format:** what it shows and how (the layout, the panels and their order, the
+  arrows, how much text and where, its colours), rebuilt from this video's own material, in the channel's type,
+  with this video's words. Not its pixels, its logo, mascot or characters, its creator's face, or its words: a
+  format is shared on YouTube, a picture is someone's work, and this one should read as the channel's own take,
+  not pass for that video, which may sit beside it in the up-next column. Match it side by side (the same
+  region cropped from each), and note in `NOTES.md` which video it follows, its link and its numbers. The other
+  two stay the video's own bets, so a test of the three asks whether the niche's format wins on this channel.
+- **When nothing fits** (no network, a subject no one has covered, formats that would mislead), that option is
+  another of the video's own bets, and the hand-off says why.
+- **Stop once it has informed the set:** those nine searches took five minutes. The same folder serves the
+  preview.
+
 ## Ideas
 
 - **Start from the promise:** one line for what the video gives a viewer, then the pair: the picture shows or
   asks, the title promises or answers (references/youtube.md). Write title candidates alongside the pictures.
-- **Rough out about six ideas, visually** (quick crops of plates, placeholder type, a code sketch), not six
-  descriptions: composition problems only show on a picture. Judge them small beside the working title, then
-  finish three. A request that already sets the ideas, or changes one thing (a font, a word), doesn't restart
-  this.
+- **Rough out about six ideas, visually** (quick crops of plates, placeholder type, a code sketch; one of them
+  the niche's format), not six descriptions: composition problems only show on a picture. Judge them small
+  beside the working title, then finish three. A request that already sets the ideas, or changes one thing (a
+  font, a word), doesn't restart this.
 - **Breadth before polish.** An idea found in twenty seconds can beat a night of finishing: one project's quick
   first thumbnail already held the idea that won the long round after it.
 - **What the user named** (a scene, a shot, an object) gets a properly cropped try before it's dropped: a scene
@@ -102,7 +142,8 @@ commercial use) and the edge checked over a flat colour.
 **Brands and people.** A brand character the user asks for (a mascot) is modelled or drawn, not lifted from
 someone's photo, and noted in `youtube/SOURCES.md`. Anyone else's face or likeness appears only with their
 consent (a guest who agreed, with their photo); a famous name in a title as a comparison is words, not a
-likeness, and imitating a film's poster or stills stays out.
+likeness, and imitating a film's poster or stills stays out: that borrows the film's identity, where a format
+from the niche, rebuilt from the video's own material, borrows a way of showing.
 
 ## Finishing
 
@@ -147,16 +188,9 @@ likeness, and imitating a film's poster or stills stays out.
   up-next column (250 px) and a phone feed (390 px) with the title wrapped and cut as there; and a search result
   with as much of the description as search shows. Look at each at its own size; a sheet of sizes alone once
   passed text that the feed then showed small and too dark.
-- **The niche, when the network is allowed** (optional; stop once it has informed a choice): 10 to 30 videos a
-  viewer of this one would see beside it (same language, audience and subject). Find them with a web search in
-  the video's language (the words people would type), or take the links the user gives, and run `bun
-  <skill>/scripts/youtube.ts niche <links...> --video <video> --lang <language>`: their titles, channels and
-  pictures land in `out/<video>/youtube/niche/` for `preview --niche` (other people's images: never in the
-  project's assets or in git). With a YouTube Data API key in `YOUTUBE_API_KEY`, `--search "<words>"` and
-  `--channel <@handle>` (the channel's own recent videos) add views and lengths. Nothing scrapes youtube.com:
-  YouTube's terms forbid automated access outside its APIs. Leave out what's off-topic, give the others their
-  real titles as yours has, and read views as context, not proof of what a picture did. Nine searches once took
-  five minutes and changed the type size, the brightness and the colour of a whole set.
+- **Beside the niche:** `preview --niche out/<video>/youtube/niche` puts the niche's videos around each option.
+  Leave out what's off-topic and give the others their real titles, as yours has. The option that follows a
+  niche video's format is seen beside that video too, where it should read as this channel's.
 
 ## The critic
 

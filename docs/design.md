@@ -288,6 +288,16 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   misspell. A frame with words on it is a start, not a finish. The rejected rounds in the user's projects were
   spectacle the video didn't have (confetti and music notes in a video with neither) and pasted faces; the
   thumbnail that shipped was the video's own computer, rendered in its engine.
+- **One format that worked elsewhere.** Before the ideas comes the niche: 10 to 30 videos on the subject that a
+  viewer would see beside this one. It informs the whole set's type, brightness and colour. And one of the three
+  takes the format of the niche video that best fits this one: what it shows and how, rebuilt from the video's
+  own material in the channel's type, never that video's pixels, characters or brand. A format is shared on
+  YouTube; a picture is someone's work. The niche video is preferably an outlier, with far more views than its
+  channel usually gets (vidIQ's score starts at 2x a channel's average). Fit comes before numbers: on oprog-3
+  the user preferred, over more than a dozen of the video's own ideas, the option that followed the subject's
+  big video, 3Blue1Brown's guest video by Welch Labs. It had 2.2 million views, under that channel's average, and
+  its layout (four panels from noise to picture) was the mechanism the video explains. The other two options
+  stay the video's own bets, so a test of the three asks whether the niche's format wins on this channel.
 - **The channel before the video's pixels.** A well-made set came back once for its font alone. The channel's
   identity (name, link, language, the thumbnail type and colours, the title voice, the links it repeats) lives
   in the project's `docs/CHANNEL.md`, the user's decisions kept apart from what was inferred. The user makes a
@@ -326,8 +336,9 @@ block's size at 168 px (the smallest place a thumbnail's words are read), text i
 didn't load or decode (those CSS draws too: a broken background loads fine and draws nothing); `preview` makes
 the feed sheets; `check` holds the package to YouTube's limits (sizes, the title's 100 characters, the
 description's 5,000 characters and a warning past 5,000 bytes, the Data API's unit, the chapters' rules, the
-tags' 500-character count, the hashtags'); `niche` gathers other videos for the preview through YouTube's own
-endpoints (oEmbed for links, the Data API with the user's key), since YouTube's terms forbid scraping its pages.
+tags' 500-character count, the hashtags'); `niche` gathers the niche's videos through YouTube's own endpoints
+(oEmbed for links; the Data API with the user's key, which adds each video's views as a multiple of its
+channel's average per video and of its subscribers), since YouTube's terms forbid scraping its pages.
 Words are set in the page, in Chrome, which kerns them; Pillow on Windows doesn't. A camera, not a compositor:
 the pages are the model's, so no layout ships.
 
@@ -345,10 +356,13 @@ channel; the camera leaves the page to the model); a scraper of YouTube search, 
 wrote (YouTube's terms, and pages that change); three title packages (the user asked for one title; the
 runners-up go in the notes); a 3840x2160 deliverable by default (YouTube now recommends it, but the user asks
 for 1280x720, the floor for a full-quality test; `shoot --scale 3` makes one from the same page); metrics such
-as salience or CLIP readings as judges; an SRT from the word timings, offered rather than made; and a second
-image script for Google's Nano Banana 2.1 (a little cheaper per image, better at keeping one face across three
-options, but a new script and key, while `imagegen.py`'s GPT Image 2.5 led Artificial Analysis's rankings for
-generating and editing in October 2026).
+as salience or CLIP readings as judges; a fixed outlier threshold that rules a niche video in or out (the
+user's preferred reference wasn't an outlier; the multiples are read, not obeyed); the median of each channel's
+recent uploads as the baseline, closer to vidIQ's "similar timeframe" but two more calls per channel and skewed
+by Shorts, where the lifetime average per video comes with the channel's statistics in one call; an SRT from the
+word timings, offered rather than made; and a second image script for Google's Nano Banana 2.1 (a little
+cheaper per image, better at keeping one face across three options, but a new script and key, while
+`imagegen.py`'s GPT Image 2.5 led Artificial Analysis's rankings for generating and editing in October 2026).
 
 ## The decision
 

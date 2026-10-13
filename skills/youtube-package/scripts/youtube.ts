@@ -31,8 +31,11 @@
 //            image each, added to what's there. Links (from the user, or found with a web search) are read
 //            through YouTube's oEmbed endpoint: title, channel, picture. --search and --channel need a YouTube
 //            Data API key in YOUTUBE_API_KEY (free; a search costs 100 of the 10,000 daily units, the rest 1
-//            each), which also adds views and lengths. It never scrapes youtube.com: YouTube's terms forbid
-//            automated access outside its APIs. Needs the network.
+//            each), which also adds views, lengths, dates and how each video did against its channel: its views
+//            as a multiple of the channel's average per video (lifetime views over uploads) and of its
+//            subscribers, listed highest first, to find the videos whose package outran their channel. It
+//            never scrapes youtube.com: YouTube's terms forbid automated access outside its APIs. Needs the
+//            network.
 //   check:   bun <skill>/scripts/youtube.ts check [<dir>] [--video <video>] [--duration <s | m:ss>] [--full [--size 1280x720] [--jpg]]
 //            The package against YouTube's limits: each thumbnail (it decodes; 16:9; at least 640 wide; its
 //            bytes), title.txt, description.txt (length; characters YouTube refuses; chapters: 0:00 first, three
@@ -876,7 +879,7 @@ async function preview() {
 // ---------------------------------------------------------------------------------------------------------------
 // niche: other videos for the preview, through YouTube's own endpoints (oEmbed; the Data API with a key)
 
-const YT_API = 'https://www.googleapis.com/youtube/v3';
+const YT_API = process.env.YOUTUBE_API_URL || 'https://www.googleapis.com/youtube/v3'; // (another base: a proxy, or the tests' mock)
 
 /** The 11-character id in a YouTube link (watch, youtu.be, shorts, embed, live) or given alone. */
 function videoId(s: string): string | undefined {
@@ -909,6 +912,11 @@ function channelOf(arg: string): { handle?: string; cid?: string } {
 function isoDuration(iso?: string): string | undefined {
   const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso ?? '');
   return m ? clock(+(m[1] ?? 0) * 3600 + +(m[2] ?? 0) * 60 + +(m[3] ?? 0)) : undefined;
+}
+
+/** A ratio as it reads: 12x, 3.4x, 0.25x. */
+function multiple(r: number): number {
+  return r >= 10 ? Math.round(r) : r >= 1 ? Math.round(r * 10) / 10 : Math.round(r * 100) / 100;
 }
 
 function views(n: number, lang: Lang): string {
@@ -960,18 +968,31 @@ async function niche() {
     for (const it of pl.items ?? []) if (it.contentDetails?.videoId) ids.push(it.contentDetails.videoId);
   }
   const unique = [...new Set(ids)];
-  type Meta = { title?: string; channel?: string; viewCount?: number; duration?: string; thumb?: string };
+  type Meta = { title?: string; channel?: string; channelId?: string; viewCount?: number; duration?: string; thumb?: string; big?: string; published?: string };
   const metas = new Map<string, Meta>();
+  // a channel's size: subscribers (undefined when hidden) and its average views per video over its life
+  const channels = new Map<string, { subscribers?: number; average?: number }>();
   if (key) {
     for (let i = 0; i < unique.length; i += 50) {
       const q = new URLSearchParams({ part: 'snippet,statistics,contentDetails', id: unique.slice(i, i + 50).join(','), key });
       for (const v of (await getJson(`${YT_API}/videos?${q}`, 'YouTube videos')).items ?? []) {
         const th = v.snippet?.thumbnails ?? {};
         metas.set(v.id, {
-          title: v.snippet?.title, channel: v.snippet?.channelTitle,
+          title: v.snippet?.title, channel: v.snippet?.channelTitle, channelId: v.snippet?.channelId,
           viewCount: v.statistics?.viewCount !== undefined ? +v.statistics.viewCount : undefined,
           duration: isoDuration(v.contentDetails?.duration), thumb: (th.maxres ?? th.medium ?? th.high)?.url,
+          big: th.maxres?.url, published: v.snippet?.publishedAt,
         });
+      }
+    }
+    const cids = [...new Set([...metas.values()].map((m) => m.channelId).filter((c): c is string => !!c))];
+    for (let i = 0; i < cids.length; i += 50) {
+      const q = new URLSearchParams({ part: 'statistics', id: cids.slice(i, i + 50).join(','), key });
+      for (const c of (await getJson(`${YT_API}/channels?${q}`, 'YouTube channels')).items ?? []) {
+        const s = c.statistics ?? {};
+        const subs = !s.hiddenSubscriberCount && s.subscriberCount !== undefined ? +s.subscriberCount : undefined;
+        const average = +s.videoCount > 0 && s.viewCount !== undefined ? +s.viewCount / +s.videoCount : undefined;
+        channels.set(c.id, { subscribers: subs || undefined, average: average || undefined });
       }
     }
   } else {
@@ -997,7 +1018,7 @@ async function niche() {
     if (!m || have.has(id)) continue;
     // the biggest 16:9 picture there is (a 4:3 one has bars, which the preview's crop removes)
     let file: string | undefined;
-    for (const u of [`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, `https://i.ytimg.com/vi/${id}/hq720.jpg`, m.thumb, `https://i.ytimg.com/vi/${id}/mqdefault.jpg`]) {
+    for (const u of new Set([m.big, `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`, `https://i.ytimg.com/vi/${id}/hq720.jpg`, m.thumb, `https://i.ytimg.com/vi/${id}/mqdefault.jpg`])) {
       if (!u) continue;
       try {
         const r = await fetch(u, { signal: AbortSignal.timeout(20_000) });
@@ -1010,14 +1031,27 @@ async function niche() {
       } catch {}
     }
     if (!file) { console.log(`  ${id}: no picture could be fetched`); continue; }
+    // how it did against its channel: its views as a multiple of the channel's average per video and of its subscribers
+    const ch = m.channelId ? channels.get(m.channelId) : undefined;
+    const against = m.viewCount === undefined || !ch ? {} : {
+      ...(ch.average ? { channelAverage: Math.round(ch.average), vsChannel: multiple(m.viewCount / ch.average) } : {}),
+      ...(ch.subscribers ? { subscribers: ch.subscribers, vsSubscribers: multiple(m.viewCount / ch.subscribers) } : {}),
+    };
     const entry = { file, id, url: `https://www.youtube.com/watch?v=${id}`, title: m.title, channel: m.channel,
-      ...(m.viewCount !== undefined ? { viewCount: m.viewCount, views: views(m.viewCount, lang) } : {}), ...(m.duration ? { duration: m.duration } : {}) };
+      ...(m.viewCount !== undefined ? { viewCount: m.viewCount, views: views(m.viewCount, lang) } : {}), ...(m.duration ? { duration: m.duration } : {}),
+      ...(m.published ? { published: m.published.slice(0, 10) } : {}), ...against };
     list.push(entry);
     added.push(entry);
   }
   writeFileSync(listFile, JSON.stringify(list, null, 2) + '\n');
-  console.log(`${path.relative(ROOT, listFile) || listFile}: ${added.length} added, ${list.length} in all${key ? '' : ' (titles and channels from oEmbed; YOUTUBE_API_KEY adds views and lengths)'}`);
-  for (const o of added) console.log(`  ${o.id}  ${(o.views as string) ?? ''}  ${o.channel}: ${o.title}`);
+  console.log(`${path.relative(ROOT, listFile) || listFile}: ${added.length} added, ${list.length} in all${key ? '' : ' (titles and channels from oEmbed; YOUTUBE_API_KEY adds views, lengths and how each did against its channel)'}`);
+  const score = (o: Record<string, unknown>) => (o.vsChannel as number | undefined) ?? (o.vsSubscribers as number | undefined) ?? -1;
+  const measured = added.some((o) => score(o) >= 0);
+  if (measured) console.log(`  highest first, against their channels: views over the channel's average per video (lifetime views over uploads), then over its subscribers; 2x its average or more: it outran its channel`);
+  for (const o of measured ? [...added].sort((a, b) => score(b) - score(a)) : added) {
+    const vs = [o.vsChannel !== undefined ? `${o.vsChannel}x its average` : '', o.vsSubscribers !== undefined ? `${o.vsSubscribers}x its subscribers` : ''].filter(Boolean).join(', ');
+    console.log(`  ${o.id}  ${[(o.views as string) ?? '', vs, (o.published as string) ?? ''].filter(Boolean).join('  ')}  ${o.channel}: ${o.title}`);
+  }
   console.log(`preview takes them with --niche ${path.relative(ROOT, outDir) || outDir}. Other people's images, for comparison only: keep them out of the project's assets and out of git.`);
 }
 

@@ -20,8 +20,9 @@ audara-studio is a plugin for Claude Code and Codex with five skills:
   pushed until you ask.
 - **youtube-package**: for when a video is ready to publish. Three thumbnail options designed together with
   one title, then the description with chapters and the tags, written into the project and checked against
-  YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail, and each
-  option is judged small, in a mock of YouTube's feed, beside the title.
+  YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail; one option
+  borrows the layout of a video on the same subject that did unusually well. Each option is judged small, in a
+  mock of YouTube's feed, beside the title.
 
 ## Install
 

@@ -110,8 +110,9 @@ where they show · Policy and disclosure · Sources
   thumbnail stops a test. Not for Shorts, or for made-for-kids, mature-audience or private videos. Every test
   thumbnail should be at least 1280x720: one smaller downscales the whole test.
 - So three thumbnails sharing one title is a clean test of the pictures: suggest it in the hand-off; the user
-  runs it. YouTube announced (September 2026) thumbnails that serve the best of three to different audiences;
-  where it exists, the same three fit it.
+  runs it. With one of them in a format from the niche (references/art.md), the test also says whether a format
+  that worked elsewhere works on this channel. YouTube announced (September 2026) thumbnails that serve the best
+  of three to different audiences; where it exists, the same three fit it.
 - After publishing, YouTube Analytics' Intro measure (viewers still watching at 30 s) helps tell whether the
   opening kept what the title and thumbnail promised; it also reflects how much the opening holds on its own.
 
@@ -153,7 +154,10 @@ altered or synthetic content (answer/14328491), content performance (answer/1655
 Intro measure (answer/9314415), title and description limits (answer/57404), advanced features (answer/9890437),
 previews on hover and in feeds (answer/7640367), spam (answer/2801973), the Partner Program's monetization policies
 (answer/1311392). The tags count and the description's bytes: YouTube Data API, videos resource
-(developers.google.com/youtube/v3/docs/videos). Sizes and cut-offs: measured on youtube.com on 2026-10-12 (logged
+(developers.google.com/youtube/v3/docs/videos); a channel's subscribers, views and uploads for `niche`: its channels
+resource (developers.google.com/youtube/v3/docs/channels). vidIQ's outlier score (a video's views against its
+channel's average; brackets at 2x, 5x and 10x): its help page "Outliers" (support.vidiq.com/en/articles/9660010),
+checked 2026-10-13. Sizes and cut-offs: measured on youtube.com on 2026-10-12 (logged
 out, region BR, windows 1280 to 1920 px wide and a 390 px phone). Title testing for all creators since December
 2025: Search Engine Journal, 2025-12-04. Studies (observational): vidIQ's thumbnail study (2026-07-08, 500
 breakouts) and title study (2026-07-16, 4 million uploads), vidiq.com/research; OverseerOS on title length

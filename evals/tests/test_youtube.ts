@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // Offline tests of youtube-package's scripts/youtube.ts: check's rules (chapters, title, tags, hashtags,
 // Markdown, images that don't decode or aren't 16:9) and shoot's diagnostics (a font that doesn't load, a
-// character a font lacks, a missing image, the exit codes). No network, no paid call; shoot and check start
-// a local Chrome. Run: bun evals/tests/test_youtube.ts
+// character a font lacks, a missing image, the exit codes), and niche's numbers against a local stand-in for the
+// Data API. No network, no paid call; shoot and check start a local Chrome. Run: bun evals/tests/test_youtube.ts
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -213,6 +213,36 @@ try {
   const nk = Bun.spawnSync(['bun', SCRIPT, 'niche', '--search', 'x'], { cwd: root, stdout: 'pipe', stderr: 'pipe', env: { ...process.env, YOUTUBE_API_KEY: '' } });
   const so = nk.stdout.toString() + nk.stderr.toString();
   expect('niche: --search without YOUTUBE_API_KEY says what it needs', nk.exitCode === 2 && /YOUTUBE_API_KEY/.test(so), so);
+  // niche with a key, against a local stand-in for the Data API: each video's views against its channel's
+  // average per video and its subscribers (hidden ones left out), highest first; pictures from the API's own links
+  const pic = readFileSync(path.join(root, 'pages', 'good.png'));
+  const vids: Record<string, [number, string]> = { aaaaaaaaaaa: [2_158_820, 'UCbig'], bbbbbbbbbbb: [102_897, 'UCsmall'], ccccccccccc: [939, 'UChidden'] };
+  const chans: Record<string, object> = {
+    UCbig: { subscriberCount: '8520000', viewCount: '762194974', videoCount: '241', hiddenSubscriberCount: false },
+    UCsmall: { subscriberCount: '20000', viewCount: '400000', videoCount: '40', hiddenSubscriberCount: false },
+    UChidden: { subscriberCount: '0', viewCount: '3000', videoCount: '6', hiddenSubscriberCount: true },
+  };
+  const api = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch(req, server): Response {
+    const u = new URL(req.url), base = `http://127.0.0.1:${server.port}`;
+    if (u.pathname.startsWith('/img/')) return new Response(pic);
+    if (u.pathname === '/search') return Response.json({ items: Object.keys(vids).map((videoId) => ({ id: { videoId } })) });
+    if (u.pathname === '/videos') return Response.json({ items: u.searchParams.get('id')!.split(',').map((id) => ({ id,
+      snippet: { title: `Video ${id[0]}`, channelTitle: vids[id][1], channelId: vids[id][1], publishedAt: '2025-07-25T13:00:00Z', thumbnails: { maxres: { url: `${base}/img/${id}.jpg` } } },
+      statistics: { viewCount: String(vids[id][0]) }, contentDetails: { duration: 'PT15M11S' } })) });
+    if (u.pathname === '/channels') return Response.json({ items: u.searchParams.get('id')!.split(',').map((id) => ({ id, statistics: chans[id] })) });
+    return new Response('not here', { status: 404 });
+  } });
+  const np = Bun.spawn(['bun', SCRIPT, 'niche', '--search', 'como a ia cria imagens', '--out', 'niche-api', '--lang', 'pt'], { cwd: root, stdout: 'pipe', stderr: 'pipe',
+    env: { ...process.env, YOUTUBE_API_KEY: 'test', YOUTUBE_API_URL: `http://127.0.0.1:${api.port}` } });
+  const nout = await new Response(np.stdout).text() + await new Response(np.stderr).text();
+  await np.exited; api.stop(true);
+  let got: Record<string, any> = {};
+  try { got = Object.fromEntries(JSON.parse(readFileSync(path.join(root, 'niche-api', 'niche.json'), 'utf8')).map((o: any) => [o.id, o])); } catch {}
+  expect('niche: with a key, each video against its channel (average per video, subscribers; hidden ones left out)',
+    np.exitCode === 0 && got.aaaaaaaaaaa?.vsChannel === 0.68 && got.aaaaaaaaaaa?.vsSubscribers === 0.25 && got.bbbbbbbbbbb?.vsChannel === 10
+    && got.bbbbbbbbbbb?.vsSubscribers === 5.1 && got.ccccccccccc?.vsChannel === 1.9 && !('vsSubscribers' in got.ccccccccccc) && got.aaaaaaaaaaa?.published === '2025-07-25', nout + JSON.stringify(got));
+  const order = ['bbbbbbbbbbb', 'ccccccccccc', 'aaaaaaaaaaa'].map((id) => nout.indexOf(`  ${id}  `));
+  expect('niche: lists the videos that outran their channel first', order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])) && /10x its average, 5\.1x its subscribers/.test(nout), nout);
 } finally {
   for (let i = 0; i < 20; i++) { try { rmSync(root, { recursive: true, force: true }); break; } catch { await Bun.sleep(200); } }
 }

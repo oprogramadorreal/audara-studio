@@ -14,14 +14,15 @@ The user is about to publish a video. Make what decides whether people click and
 - **Their words.** A title or thumbnail text they decided ("the title will be", "I want the text") is used exactly; a stronger version goes beside it with why, never in its place. One offered as a start ("something like", "a suggestion") is yours to keep or improve, saying what changed.
 
 ## The bar
-Three options a stranger would notice in a crowded feed at 168 px wide and read in a second: three different bets (subject, situation, layout, words or none), not one design restyled, all with the same title (YouTube's Test & Compare tests up to three). The title says what the picture doesn't; together they open one question the video answers. Each picture is the video's own world, staged better: a frame with words on it is a start; crop, simplify, relight and grade until it reads small. "Go all out" means more ideas, finished art and honest looking, not more paid calls or more rounds.
+Three options a stranger would notice in a crowded feed at 168 px wide and read in a second: three different bets (subject, situation, layout, words or none; one a format that worked in the niche), not one design restyled, all with the same title (YouTube's Test & Compare tests up to three). The title says what the picture doesn't; together they open one question the video answers. Each picture is the video's own world, staged better: a frame with words on it is a start; crop, simplify, relight and grade until it reads small. "Go all out" means more ideas, finished art and honest looking, not more paid calls or more rounds.
 
 ## A session
 Keep this checklist in your notes. Explore once (about six ideas, three finished, one critic round); fixing what the check or the critic finds is finishing, not a new round.
 - [ ] **The video.** Its treatment (idea, words, Decisions, Never claim), script or lyrics, timeline, `docs/STYLE.md`, and its key moments seen (`render.ts sheet`). One line: what a viewer gets from it, and what its first 30 s show. Write in the video's language.
 - [ ] **The channel.** `docs/CHANNEL.md`: name and link, language, thumbnail style (typeface file, colours, faces, words), title voice, links and credits it repeats, the user's decisions apart from what you inferred. Without it: what the user said, an earlier project they point to, else ask once for its link and go on meanwhile; its recent thumbnails and titles show what its audience knows; note it there.
+- [ ] **The niche** (network allowed; references/art.md): videos on this subject a viewer would see beside it, and those that far outran their channel's views. One option takes the format of the one that best fits this video (never its pixels or brand), rebuilt from the video's own material; none fits: say so.
 - [ ] **Ideas.** About six rough pictures (quick crops, placeholder type) and 10 to 20 titles, together; then one title (into `youtube/title.txt` at once: the preview reads it) and three pictures that differ in what the viewer sees and why they'd click. Post the rough sheet (roughs and scratch stay in `out/`) and the titles you're weighing, and go on. Reasons in `NOTES.md`.
-- [ ] **Art.** Each idea gets the means it needs (references/art.md): the video's frames rendered at 2x without its captions, a plate staged in the engine, the user's photos, generated images after a yes, code. Type in the channel's typeface.
+- [ ] **Art.** Each idea gets the means it needs (references/art.md): the video's own frames and plates, a plate staged in the engine, the user's photos, generated images after a yes, code. Type in the channel's typeface.
 - [ ] **Finish** each as `youtube/thumbnail-N.png`, 1280x720 unless asked otherwise, its source beside it so a word can change later: an HTML page through `shoot`, or any pipeline.
 - [ ] **Look as viewers do.** `preview` (again after any change), and look at every image. Then a critic: a fresh subagent that starts without this conversation, given only the preview images and the title, answers: what does each promise; what reads first at 168 px; what is confusing, illegible, ordinary or misleading; does each give its own reason to click; which one change would help most. No subagent: look again yourself, and say so. A last look at full size.
 - [ ] **Words.** `description.txt` (plain text, short unless asked) and `tags.txt`, only what gets pasted (references/youtube.md). Chapters from timing data checked against the final cut, never guessed.
@@ -36,12 +37,12 @@ From the project folder; `--help` has every option.
 | Find moments | `bun scripts/render.ts sheet --video <video> --n 24` |
 | Plates at 2x | `bun scripts/render.ts stills --video <video> --t 12.5,40 --scale 2 [--only <entries>] --out out/<video>/youtube/frames` |
 | A page to PNG | `bun <skill>/scripts/youtube.ts shoot videos/<video>/youtube/thumbnail-1.html` |
-| Videos beside it | `bun <skill>/scripts/youtube.ts niche <links> --video <video>` (optional) |
+| The niche | `bun <skill>/scripts/youtube.ts niche <links> --video <video>` |
 | As viewers see it | `bun <skill>/scripts/youtube.ts preview --video <video> --channel "<name>" [--niche <dir>]` |
 | Check the package | `bun <skill>/scripts/youtube.ts check --video <video> [--full]` |
 | Generated image | code-video's `scripts/imagegen.py` (references/art.md) |
 
-`shoot` serves the project at `/` (a page loads `/public/fonts/<file>.ttf`) and reports what reads small and what didn't load. Outside an audara project, pass the package folder, not `--video`.
+Outside an audara project, pass the package folder, not `--video`.
 
 ## Read when
 - references/art.md: the pictures (ideas, plates, photos, generated images, finishing, type, the niche, the critic).
@@ -49,6 +50,4 @@ From the project folder; `--help` has every option.
 
 ## Gotchas
 - A frame carries the video's captions and HUD: render the plate without those entries (`--only`), or use the asset the scene loads.
-- `render.ts --size 1280x720` refuses a 16:9 video (same shape): render `--scale 2` and scale down.
-- Image models misspell: every word is set in code.
-- A Bun or Node script (importing `node:` or using Bun) doesn't go in `videos/`: `bun run check` type-checks it for the browser and fails. HTML or Python there; scratch in `out/`.
+- A Bun or Node script (importing `node:` or using Bun) doesn't go in `videos/`: `bun run check` reads it as browser code and fails. HTML or Python there; scratch in `out/`.

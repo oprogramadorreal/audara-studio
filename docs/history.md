@@ -1573,3 +1573,51 @@ What was checked:
 
 Not run: `yp-nothing-given` and `yp-images-budget`, cv-24 and vi-23 on Codex, and anything that spends (image
 generation waits for the user's yes).
+
+**One option in a format from the niche (2026-10-13).** The user asked that at least one of the three options
+"look for successful videos of similar content and copy its style, if possible", a successful video being one
+"that has much more views that would be expected for its channel size". The evidence was their own oprog-3
+sessions. The first (2026-10-12) made sixteen mockups and three options from the video's own ideas. Its niche
+scan already held 3Blue1Brown's guest video by Welch Labs, "But how do AI images and videos actually work?"
+(iv-5mZ_9CPY), but only as a neighbour in the feed mock. The second (2026-10-13) made six dust variants the user
+directed. Then, at the user's word, it made one "very similar to" that video's thumbnail. It downloaded the
+picture to look at, and rebuilt its layout in a one-second Pillow script: the question in one line on top, a
+yellow arrow pointing right over four tall panels from noise to his portrait, a blue one pointing left under
+them. Everything in it came from the video's own portrait frames and the channel's Archivo. A next ask graded
+the middle panels to the reference's olive and blue. From the first ask to that file (`setas-cores.png`) took
+seven minutes, and the user preferred it to every other option of both sessions.
+
+By the user's own measure the reference wasn't an outlier. It had 2,158,820 views in the feed mock, against
+3Blue1Brown's roughly 8.5 million subscribers and 762 million views over 241 videos (third-party trackers,
+2026): 0.25 times its subscribers and 0.68 times the channel's average per video. vidIQ's outlier score
+starts at 2x (its help page, checked 2026-10-13). It was the subject's big video, and its layout was the
+mechanism the video explains, which the video's own frames could show. So the skill asks for fit first and
+numbers second.
+
+What changed:
+
+- **SKILL.md:** a niche step before the ideas. Videos on the subject a viewer would see beside this one, and
+  those that far outran their channel's views; one option takes the format of the one that best fits the video,
+  never its pixels or brand, rebuilt from the video's own material; none fits, say so. The bar's three bets
+  name it, and the commands table no longer calls `niche` optional. SKILL.md is 7,996 bytes: two gotchas and
+  `shoot`'s serving line, all in art.md already, left it.
+- **art.md:** a section, "The niche, and a format that worked": finding the videos, what counts as having
+  worked, fit before numbers (the oprog-3 case), what the option takes and what it never takes, notes in
+  `NOTES.md`, and what to do when nothing fits. The niche paragraph moved there from "Looking as viewers do", and
+  the film-poster line now says why a niche format differs: it borrows a way of showing, not a work's identity.
+- **youtube.md:** Test & Compare notes what the format option tests; the sources add the channels resource and
+  vidIQ's help page.
+- **`youtube.ts niche`:** with a key, one more Data API call (the channels resource, 1 unit per 50 channels)
+  gives each video's views as a multiple of its channel's lifetime average per video and of its subscribers
+  (hidden counts left out), plus its date, listed highest first and kept in `niche.json`. The API's own picture
+  link is tried first. `YOUTUBE_API_URL` takes another base (a proxy, the tests).
+- **The evals:** two offline checks against a local stand-in for the Data API (47 in all); `yp-given-words` and
+  `yp-nothing-given` gain the format option's criterion; README and design.md say it.
+
+Considered and left out: a fixed threshold that rules a video in or out (the user's preferred reference would
+have failed it), and the median of each channel's recent uploads as the baseline (closer to vidIQ's "similar
+timeframe", but two calls per channel and skewed by Shorts).
+
+What was checked: `bun evals/tests/test_youtube.ts` 47/47, `tsc --strict` on the script and the test, the three
+spec validators, SKILL.md 7,996 bytes without a byte-order mark. Not run: a task eval with the change, and
+`niche` against the real Data API (no key on this machine; a local stand-in served the same JSON shapes).
