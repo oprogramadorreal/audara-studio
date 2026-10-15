@@ -562,8 +562,12 @@ other video as it was (history.md, 0.8.0):
 
 - **`references/realism.md`**, reached from SKILL.md's "Read when" and from `contract.md`'s three.js section
   and `blender.md`: when a photographic shot earns its place (built and natural things, not people), what
-  makes it read as real in order, the rules that keep it stable in motion, the cost, the method (one plan,
-  the world laid out for the camera, one author per hero, references, motion before detail) and prompting.
+  makes it read as real in order, the rules that keep it stable in motion, the cost, the method and
+  prompting. The method is the author's own, as he described it on X: a board of about ten reference images
+  (golden-temple's were generated), a short prompt that names the bars (light and shadows first, more detail
+  than seems enough, zero flicker) and iteration against the references, compared side by side, for as
+  long as the director's time allows. The kit saves finding the techniques; the loop is still the work.
+  Generated references go through `references/images.md` and its yes, and never into the frame.
 - **A kit copied on demand**, `skills/code-video/assets/realism/` → a project's `src/realism/`: the port,
   scoped so that it touches nothing it doesn't own. Materials are patched per material (golden-temple edits
   three's shared shader chunks, which would reach every scene of a video); shadows are on only inside

@@ -1877,12 +1877,12 @@ Claude Code (Opus 5.5 orchestrating parallel agents), rendered offline into a 70
 headless Chrome. No models, textures or HDRIs; 24.4 million triangles; 8 averaged sub-frames per frame, about
 3.3 s a frame and 4 hours for the film on a laptop iGPU (AMD Radeon 780M). They asked what audara could learn
 from it to reach that quality as an option, without making every piece realistic and without risking the
-skills' current behavior, and whether its prompts were known. They weren't: the repository was created that
-day, has no issues, its release notes describe the film, and web searches found nothing. What is known is its
-README's "How it was made" and the code: one site plan and one time of day every module reads, one agent per
-world module owning its hero shot, GPU stills compared with reference images (not published), the world laid
-out for the cameras (the hero lotus at the first key's focus point), and camera motion and flicker measured
-before the final render. A Claude Code session (Opus 5.5) read both repositories and Codex (GPT-6 Astra,
+skills' current behavior, and whether its prompts were known. At first they weren't: the repository was
+created that day, has no issues, its release notes describe the film, and web searches found nothing, so the
+first reading went by its README's "How it was made" and the code: one site plan and one time of day every
+module reads, one agent per world module owning its hero shot, GPU stills compared with reference images (not
+published), the world laid out for the cameras (the hero lotus at the first key's focus point), and camera
+motion and flicker measured before the final render. The prompt turned up later (below). A Claude Code session (Opus 5.5) read both repositories and Codex (GPT-6 Astra,
 through Herdr) read them independently first, then they argued it out over two rounds; the user gave Claude
 the last call and asked for the change.
 
@@ -1957,6 +1957,28 @@ What changed:
 - **Evals:** task case `cv-photoreal-shot` (a stone lantern at dusk, macro to reveal, rendered; judged blind
   with `--without`), a control in `cv-title-card` (no `src/realism/` for a minimal title card), and trigger
   case cv-26.
+
+**The prompt, found afterwards.** With the branch open, the user found the author's post on X
+(<https://x.com/LexnLin/status/2110657641831956870>, 2026-10-15) and, in his replies, "How I made this"
+(<https://x.com/LexnLin/status/2110657793376039323>; read logged out in headless Chrome, its full text
+through the fxtwitter API, and the same as the user pasted). The build was inspired by a Gemini scene
+("argon") the author found full of mistakes. He generated about ten images of Japanese temples as references
+(the board is attached to the reply: pagoda, arched bridge, lotus pond, lanterns, the gilt sanctum, a night
+and a rain variant, which the film's shots follow closely) and gave Opus a short prompt of five parts: ten
+7-second shots, each starting close up and pulling back; golden hour, as real as possible, light and shadows
+first, matching the references "until you reach 99.9%"; everything in code but a free music track found
+online; detail "2x more than you think is enough", the ground good from above too, light and shadows clean
+with "zero flickering"; and verify and iterate, not stopping until it matched, "even if it takes days". What
+that changed here: the macro-then-reveal grammar was the prompt's, not something the model found; the
+engineering the kit ports (the sampling rule, the flicker tools, the patching) is what the model built to
+meet "zero flickering" and "as real as possible", which is why it is worth shipping; and the quality came
+from a visual target and an open-ended loop against it, which realism.md had treated as optional. So
+realism.md's method now starts with a reference board (the director's photos, public-domain ones, or
+generated ones, about $0.04 each through `imagegen.py`, offered in the brief and waiting for a yes, kept out
+of the frame), a side-by-side compare (one ffmpeg command, tested), the bars in plain words and the time as
+the budget; its Prompting follows the five parts. `images.md` names references as a use (a target, never
+material), `cv-photoreal-shot` checks that the brief offers a board and spends nothing, and design.md and the
+README follow. Nothing in the kit or the engine changed with it.
 
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows
