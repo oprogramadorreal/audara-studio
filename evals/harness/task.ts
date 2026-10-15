@@ -178,6 +178,9 @@ async function lookForPreviews(turn: number | 'end') {
 // and servers, from its init event, before the model acts; and a Codex call to such a server stops the run.
 // (trigger.ts holds the same section: keep the two alike.)
 const DESKTOP = /computer[-_ ]?use|browser|chrome|chromium|playwright|puppeteer|selenium|webdriver|\bcua|_cua|node_repl/i;
+// An installed audara-studio is turned off too: a run links this repo's skills, and the installed copy of
+// each, with that version's description, would compete with the one under test.
+const AUDARA = /^audara-studio(@|$)/;
 
 /** Codex flags that turn computer use and browser automation off, built from what this Codex reports (an
  *  override for a feature or a server it doesn't have is an error), then checked with the flags applied. */
@@ -195,6 +198,8 @@ function codexOff(cwd: string): string[] {
   const plugins = () => (JSON.parse(codex('plugin', 'list', '--json', ...flags)).installed as Plugin[])
     .filter((p) => p.enabled && DESKTOP.test(p.name));
   for (const p of plugins()) flags.push('-c', `plugins.${p.pluginId}.enabled=false`);
+  const audara = (JSON.parse(codex('plugin', 'list', '--json', ...flags)).installed as Plugin[]).filter((p) => p.enabled && AUDARA.test(p.name));
+  for (const p of audara) flags.push('-c', `plugins.${p.pluginId}.enabled=false`);
   type Server = { name: string; enabled: boolean; transport?: { command?: string; args?: string[]; env?: Record<string, string> | null } };
   const servers = () => (JSON.parse(codex('mcp', 'list', '--json', ...flags)) as Server[]).filter((s) => s.enabled
     && DESKTOP.test([s.name, s.transport?.command, ...(s.transport?.args ?? []), ...Object.keys(s.transport?.env ?? {})].join(' ')));
@@ -205,16 +210,16 @@ function codexOff(cwd: string): string[] {
 }
 
 /** Claude Code flags: no Claude in Chrome, the plugins the user's settings enable that are named for a
- *  browser turned off for the run (their other plugins stay on), and this repo's own CLAUDE.md and
- *  AGENTS.md left out: Claude Code reads them from every folder above the run's, and evals/results/ is
- *  inside the repo (Codex stops at the run's own git root). */
+ *  browser or an installed audara-studio turned off for the run (their other plugins stay on), and this
+ *  repo's own CLAUDE.md and AGENTS.md left out: Claude Code reads them from every folder above the run's,
+ *  and evals/results/ is inside the repo (Codex stops at the run's own git root). */
 function claudeOff(): string[] {
   let on: Record<string, unknown> = {};
   try {
     const dir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
     on = JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8')).enabledPlugins ?? {};
   } catch { /* no settings */ }
-  const off = Object.keys(on).filter((p) => on[p] && DESKTOP.test(p));
+  const off = Object.keys(on).filter((p) => on[p] && (DESKTOP.test(p) || AUDARA.test(p)));
   const settings = {
     claudeMdExcludes: [path.join(REPO, 'CLAUDE.md'), path.join(REPO, 'AGENTS.md')],
     ...(off.length ? { enabledPlugins: Object.fromEntries(off.map((p) => [p, false])) } : {}),
@@ -269,6 +274,7 @@ function codexSessionFile(file: string) {
 const env: Record<string, string | undefined> = { ...process.env, ...(CASE.setup?.env ?? {}), ...GIT_ENV };
 delete env.ELEVENLABS_API_KEY; // a case decides whether there is a key; never the real one
 delete env.OPENAI_API_KEY;
+for (const k of Object.keys(env)) if (/^HIGGSFIELD/i.test(k)) delete env[k]; // (no AI-video provider either)
 // (and no claude.ai connectors, which Claude Code fetches itself: --strict-mcp-config is documented for
 // configured servers only)
 if (TOOL === 'claude') env.ENABLE_CLAUDEAI_MCP_SERVERS = 'false';

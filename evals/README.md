@@ -36,8 +36,9 @@ session file, since its `--json` stream doesn't), and `modelArg`, what `--model`
 
 Does a fresh session load the skill for a realistic request, and leave near-misses alone? About twenty
 requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
-they compete as they do once the plugin is installed; code-video's set ends with two requests for ideas
-only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
+they compete as they do once the plugin is installed (an installed audara-studio is turned off for the run,
+in both tools, so each skill is there once, with the description under test); code-video's set ends with
+two requests for ideas only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
 read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
 `scripts/render.ts`, which video-repo's own work can do). A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
@@ -169,7 +170,8 @@ encoder delay, which ffmpeg and browsers drop). The no-key cases run the mock to
 `AUDARA_IMAGES_BASE_URL`, with a fake `OPENAI_API_KEY` in Claude Code runs only, to keep a fake key away
 from Codex's own sign-in. Codex's built-in image generation can't be mocked: in a Codex run it would
 draw on the ChatGPT plan's limits, which the image cases check it only does when asked. The harness never
-passes a real `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` to a session, in task or trigger runs. The
+passes a real `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` to a session, in task or trigger runs, nor any
+`HIGGSFIELD_*` variable (st-25 names a Higgsfield key and a budget). The
 later-session case has a decoy (`"decoy": 5173` in its setup): for the whole run an unrelated Vite app
 answers on 127.0.0.1:5173, as one left running on a developer's machine does, with its page for every path
 and no JSON at `/__audara`, so a grader can see whether the agent checked that the preview it links is its
