@@ -28,8 +28,9 @@ Rules that keep the shared engine safe and the frames stable:
   `maxSamples` only bounds the cost).
 - Supported: fresh MeshStandard/Physical materials on Mesh and InstancedMesh, static geometry, metres.
 - Dispose what you create: the environment target, the `Sky`, the `Sun`, the `Lens`, geometries, materials.
-- The preview draws one sample a frame (no jitter, soft shadows or motion blur): judge the finish in
-  `stills --samples 12` and short `video --samples 12` clips. A cheaper preview path (`ctx.export` false)
+- Set `refine = true` on each scene built on the kit: paused there, the preview renders the frame again
+  with 12 sub-frames (the render's finish; "full quality" on the info line). Playing, it draws one sample
+  a frame: judge flicker in short `video --samples 12` clips. A cheaper preview path (`ctx.export` false)
   changes cost, never content: `dofStep` about 1.2, a smaller shadow map, fewer occlusion taps.
 
 Without `SUBFRAME` (an engine older than audara 0.8.0) the kit works with no jitter. To add it: in

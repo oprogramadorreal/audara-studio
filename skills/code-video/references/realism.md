@@ -119,11 +119,15 @@ and what it can show.
   at golden-temple's scale (23 million triangles, in its own preview with no depth of field) played at 21-44
   fps on the RTX and 2-3 fps on the integrated GPU, after 2-3 minutes of building and compiling before the
   first frame. So a detailed world can be a slideshow on the director's machine even when it renders well.
-- **What it shows.** One sample a frame: no sub-pixel jitter, no soft shadows from the sun's disc, occlusion
-  with its raw noise, no motion blur. The preview is where light, framing, timing and the move are judged;
-  the finish (edges, penumbrae, flicker, which the bar of "zero flickering" is about) is judged in renders:
-  `stills --t <times> --samples 12` and a short clip, `video --from <a> --to <b> --samples 12` (not
-  `--draft`, which takes one sample). Say so to the director with the preview link, and show both.
+- **What it shows.** Playing, one sample a frame: no sub-pixel jitter, no soft shadows from the sun's disc,
+  occlusion with its raw noise, no motion blur. Paused on a scene that sets `refine = true` (the kit's
+  example does; set it in every scene built on the kit), the frame is rendered again as the render renders
+  it, 12 sub-frames, 0.3 s after the playhead stops, and the info line says "full quality": the director
+  sees the finish of any moment by pausing there. The page waits meanwhile, 12 frames' cost (about 0.05 s
+  for the example on the RTX, 0.3 s on the integrated GPU; seconds for a heavy world). Motion is the one
+  thing it can't show: flicker and crawling are judged in a short clip, `video --from <a> --to <b>
+  --samples 12` (not `--draft`, which takes one sample). Say so to the director with the preview link. A
+  project whose `src/main.ts` predates 0.8.0 doesn't refine (init `--force` updates it).
 - **A cheaper preview path** (`ctx.export` false: cost, never content), cheapest first where it pays: the
   depth of field's tap spacing (`dofStep` about 1.2 halves its taps; the depth of field was 70% of the
   example's cost on the integrated GPU before the taps stopped at the largest blur nearby), the internal

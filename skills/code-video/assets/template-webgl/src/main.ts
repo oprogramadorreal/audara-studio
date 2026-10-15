@@ -306,6 +306,11 @@ function setupPlayer() {
   }
 
   let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false;
+  // A paused frame of a scene that asks for it (`refine = true` on the scene: the realism kit's) is rendered
+  // once more as the render renders it, 12 sub-frames, when the playhead has rested 0.3 s, then held until
+  // something changes (the playhead, a reload). Every other frame is drawn as it always was.
+  let rest = { t: NaN, since: 0, version: -1 }, refined = false;
+  const wantsRefine = (t: number) => TL.some((x) => t >= x.start && t < x.end && (engine.loaded.get(x.id)?.scene as { refine?: unknown } | null | undefined)?.refine === true);
   const tick = () => {
     // (the loop first: a loop that ends with the video must wrap before the player stops at the end)
     if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
@@ -313,7 +318,15 @@ function setupPlayer() {
     const t = track.now();
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;
-    engine.render(Math.min(t, D - 0.001), 1 / fps);
+    const tc = Math.min(t, D - 0.001);
+    if (track.playing || tc !== rest.t || engine.errorsVersion !== rest.version) {
+      rest = { t: tc, since: performance.now(), version: engine.errorsVersion };
+      refined = false;
+    } else if (!refined && performance.now() - rest.since > 300 && wantsRefine(tc)) {
+      engine.render(tc, 1 / fps, true, 12);
+      refined = true;
+    }
+    if (!refined) engine.render(tc, 1 / fps);
     scrub.value = String(t);
     frames++;
     const now = performance.now();
@@ -321,7 +334,7 @@ function setupPlayer() {
     const e = entryAt(t);
     markEls.forEach((m, i) => m.classList.toggle('on', TL[i] === e));
     const l = engine.words.lineAt(t);
-    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}`;
+    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}${refined ? '   full quality' : ''}`;
     if (engine.errorsVersion !== shownErrors) { shownErrors = engine.errorsVersion; showErrors(); }
     requestAnimationFrame(tick);
   };

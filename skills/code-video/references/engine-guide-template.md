@@ -25,7 +25,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   only one, else the first that isn't `example`); `?t=` starts at that time. Keys: space play/pause,
   ←/→ ±1 s (shift ±5 s), `,`/`.` ±1 frame, `[`/`]` previous/next timeline entry, `l` loop the current
   entry, `h` hide the UI, `c` copy a link to this moment. While paused or seeking, the address bar's `?t=`
-  follows the playhead, so it is always a link to what is on screen. A project with several videos shows
+  follows the playhead, so it is always a link to what is on screen. Paused on a scene that sets
+  `refine = true` (below), the frame is rendered again with the render's 12 sub-frames once the playhead
+  rests, and the info line says "full quality". A project with several videos shows
   a picker. While the page loads it draws every timeline entry once off screen, so each scene's shaders
   are compiled before anything plays (a few seconds for heavy scenes, counted on the info line): without
   it, a heavy scene froze the first play where it entered.
@@ -312,6 +314,12 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
 - Transitions: entries that touch make a hard cut (the default); overlapping ones crossfade. For a custom
   transition set `handlesTransition = true` and composite `f.under` (the previous scene's frame) yourself
   using `f.tin` (0→1 over the overlap).
+- `refine = true` on a scene (a plain property: the realism kit's scenes set it): when the preview is
+  paused on it and the playhead has rested 0.3 s, the player renders that frame once more as the render
+  does, 12 sub-frames with their jitter and motion blur, holds it until the playhead moves or a scene
+  reloads, and says "full quality" on the info line. The page waits while it renders (12 frames' cost),
+  and a stateful scene steps through the 12 sub-frames as in the render. For scenes whose finish only
+  sub-frames show; every other scene's preview is drawn as before.
 - Post overrides a scene can return per frame (`src/engine/post.ts`): `exposure, bloom, bloomThreshold,
   bloomKnee, bloomRadius, halation, ca, grain, vignette, hud` (HUD opacity), `frame` (crop marks, 0..1),
   `paper` (marks in `bg` on a light frame), `fade, flash, shake: [x, y], zoom, invert, hudDraw` (a Canvas2D

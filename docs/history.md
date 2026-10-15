@@ -2000,8 +2000,19 @@ frame shows no jitter, soft shadows or motion blur, so the finish and its flicke
 in a helper module so a scene's edits hot-swap in seconds: checked in the live preview, three edits of a
 scene hot-swapped it while its world, built in `_world.ts`, was built once), and the kit's README and
 design.md follow.
-Left for later: refining the paused frame in the browser, sub-frame by sub-frame, to the render's look,
-which would touch the player for every video.
+The paused frame came next, at the user's word, with no change to any other scene's preview. Asked
+whether it overcomplicated things: refining it progressively, sub-frame by sub-frame across display
+frames, would have needed new accumulation in the engine, so it is done the simple way, with the sampling
+the engine has. In `src/main.ts`, when the preview is paused, the playhead has rested 0.3 s and a scene on
+screen sets `refine = true` (a plain property, read by duck typing, so a kit scene still builds on an older
+engine), the player renders that frame once with 12 sub-frames and holds it until the playhead moves or a
+scene reloads ("full quality" on the info line); otherwise its loop draws exactly as before. The kit's
+example sets it. Checked in the live preview (Playwright, the player's `engine.render` calls counted): the
+example video paused, and a GLSL scene paused inside a video that also has a kit scene, drew one sample a
+frame on every tick and never refined; the kit scene paused drew one-sample frames for about 0.3 s, then one
+12-sub-frame render, then nothing until a seek (refined again) or play (one sample a frame), and saving the
+scene while paused reloaded it and refined it again; the refined frame differed from the one-sample frame in
+24% of its pixels (edges and highlights).
 
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows

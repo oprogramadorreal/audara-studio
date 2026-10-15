@@ -61,6 +61,8 @@ export default class Garden extends Scene {
   // (fewer occlusion taps and a sparser blur in the preview: its cost, never its content)
   private lens = new Lens(this.ctx.W, this.ctx.H, { aoSamples: this.ctx.export ? 16 : 10, dofStep: this.ctx.export ? 0.55 : 1.2 });
   private keys: LensKey[] = [];
+  /** The preview renders a paused frame of this scene again as the render does (12 sub-frames: src/main.ts). */
+  refine = true;
 
   override init() {
     const { renderer: r, start, end } = this.ctx, S = this.scene, env = this.env;
