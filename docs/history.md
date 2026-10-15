@@ -2013,3 +2013,8 @@ the recipe for adding `SUBFRAME` to an older engine left out its import; the sta
 fixed sample count (now said wherever it is made, and `maxSamples` described as a cost bound only); and two
 lines here (golden-temple's ambient volumes are on in its film; the engine's sub-frames already cycled four
 supersampling taps).
+The second round found two more, fixed: the cache key still collided for a material subclass that overrides
+the key on its prototype, and for an override that delegates to three's default (the patch now calls the
+material's earlier key, whatever gives it, with the original callback put back for the call: seven checks
+on CPU-only materials pass, and the example's frames are unchanged); and the eval's renderer assertion
+counted binding `out`, which every scene does.
