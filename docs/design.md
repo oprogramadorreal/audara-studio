@@ -612,10 +612,10 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
 - **Not in `code-video`.** The picture method has to work with any audio, or none. Its SKILL.md only points
   to `soundtrack` for narration, music and timing data.
 - **With any picture.** The reverse holds too: a video made outside the engine (filmed, AI video clips,
-  another editor) gets its sound here, since every script takes `--out <dir>` in place of `--video` and the
-  files and timings work in any edit. Both descriptions say so, because a session making a commercial from
-  AI video clips set `soundtrack` aside along with `code-video` and wrote its own narration, effects and mix
-  (history.md, 0.7.2).
+  another editor) gets its sound here, since the production scripts take `--out <dir>` in place of `--video`
+  and the files and timings work in any edit. Both descriptions say so: a session making a commercial from
+  AI video clips loaded neither skill, ran `eleven.py` for its music and wrote its own narration, effects
+  and mix tools (history.md, 0.7.2).
 - **Not through the ElevenLabs MCP server.** The official server exists, but here each generation has to
   become timing JSON in the engine's format, with a record of the request, and be cached. A script does that
   in one step and runs the same way in Claude Code and Codex.

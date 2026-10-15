@@ -8,7 +8,7 @@ decisions (an alpha export from the engine, a skill for such films). Nothing her
 
 ## The request
 
-The user's prompt, in short (its API keys left out; all were revoked after the session): make the first of
+The user's prompt, in short (its API keys left out; the user has revoked them since): make the first of
 three scripts in a PDF, a 60-second ad for Neolevel, a program for young entrepreneurs in Florianópolis;
 read the brand's site and Instagram; "AAA production level, with a cinematic style"; "The choice of tools is
 up to you. Go all out. You can use motion graphics, AI video generation, 3D graphics, or whatever else";
@@ -50,8 +50,9 @@ logo forming in the sunset sky and a brand card. Every line of the script is in 
 
 - **Repairs:** both clocks re-drawn and tracked (the model had doubled the hands), a car that drove through
   the bedroom window trimmed out, an extra in the queue who looked like the hero cropped out, the first pen
-  stroke composited, the stand-up at the turn re-made with Seedance 2.5. Left at handoff: the notebook's
-  "handwriting" is scribble up close, and the room changes a little between the night and dawn angles.
+  stroke composited, the stand-up at the turn replaced with the earlier Seedance 2.5 take. Left at
+  handoff: the notebook's "handwriting" is scribble up close, and the room changes a little between the
+  night and dawn angles.
 - **Thrown away:** 7 of the 22 jobs, about $5 by the estimates: a Kling take replaced by Seedance, a
   reference-to-video test, and five Wan clips of him speaking his lines to camera. The user's one note
   during the session: "remove all scenes that you make our character look to the camera and talk... never
@@ -60,18 +61,20 @@ logo forming in the sunset sky and a brand card. Every line of the script is in 
 
 ## What it wrote, and what audara had
 
-About 3,900 lines of its own code, backups left out. Picture: a Higgsfield client and batch runner (633 lines), an OpenAI
-images helper (387), the compositor and edit (460), the clock and ink repairs (210), the motion graphics
-(1,531). Sound: a voice generator, an effects helper, a stem tool, a mixer and its library (621 lines).
+About 3,900 lines of its own code, backups left out. Picture: a Higgsfield client and batch runner (633
+lines), an OpenAI images helper (387), the compositor and edit (460), the clock and ink repairs (210), the
+motion graphics (1,531). Sound: a voice generator, an effects helper, a stem tool, a mixer and its library
+(621 lines).
 
 - **soundtrack** covered the sound: its description named narration, music, effects and the mix of a
-  video, and every script takes `--out <dir>` outside an audara project. The session read `eleven.py`,
-  `mix.py` and `elevenlabs.md` from the plugin's folder and ran `eleven.py` for the music, but wrote the
-  voice, effects and mix tools itself, without the skill's rules on spending, licences and measurement. The
-  music licence (the account's Pro plan for a company's ad) was raised at handoff, after the score was in
-  the cut. Where its needs went past the scripts: one film used four voices (`eleven.py tts` keeps one
-  per narration), two music cues (`mix.py` takes one music file, so they'd be joined first) and a phone
-  treatment for some lines.
+  video, and its production scripts (beats, align, eleven, mix, standin) take `--out <dir>` outside an
+  audara project. The session read `eleven.py`, `mix.py` and `elevenlabs.md` from the plugin's folder and
+  ran `eleven.py` for the music, but wrote the voice, effects and mix tools itself, without loading the
+  skill. Those tools kept their requests, reported credits and measured loudness and peaks; what the skill
+  would have changed is the music licence (the account's Pro plan for a company's ad), raised at handoff
+  after the score was in the cut, where the skill says before relying on it. Where its needs went past the
+  scripts: one film used four voices (`eleven.py tts` keeps one per narration), two music cues (`mix.py`
+  takes one music file, so they'd be joined first) and a phone treatment for some lines.
 - **code-video** didn't fit the picture: its description excluded AI video clips and camera footage; code
   doesn't draw a photoreal person; its footage path decodes every frame into GPU memory, for seconds of
   footage (59 s at 1080p would be about 11.7 GB); and it renders opaque H.264 only, while the captions and
@@ -84,7 +87,7 @@ images helper (387), the compositor and edit (460), the clock and ink repairs (2
 
 - **An alpha export** (ProRes 4444 or PNG frames) would let code-video make the titles, captions and logo
   of a film edited elsewhere. The engine drops alpha in three places (the renderer, the post pass, the
-  H.264 encode), so it is real work. One project asked for it.
+  H.264 encode), so it is real work. This project used alpha overlays; nobody has asked audara for them.
 - **A skill for films made of AI clips** would hold what this session worked out: a character sheet and
   keyframes before any clip, a ledger of jobs with their estimates, a cheap model tested against an
   expensive one on the same shot, the repairs, no lip-sync unless the director wants it. It would need
