@@ -132,16 +132,17 @@ matched. The kit saves the hours of finding the techniques; the loop is still th
   the director's yes like any image; offer it in the brief with its cost, and build meanwhile. References
   are a target, never material: they stay out of the frame, and each gets a `SOURCES.md` row whose Used
   column says "reference only".
-- **Side by side.** Compare a still with its reference at the same moment of the shot, in one image:
-  `ffmpeg -i out/<video>/stills/f_0004.50.png -i videos/<video>/assets/ref-03.png -filter_complex
-  "[0]scale=-2:720[a];[1]scale=-2:720[b];[a][b]hstack" out/<video>/refs/compare-03.png`. Name the largest
+- **Side by side** (audara's way of doing golden-temple's "verify against the references"). Compare a still
+  with its reference at the same moment of the shot, in one image, written beside the still (a folder that
+  exists): `ffmpeg -i out/<video>/stills/f_0004.50.png -i videos/<video>/assets/ref-03.png -filter_complex
+  "[0]scale=-2:720[a];[1]scale=-2:720[b];[a][b]hstack" out/<video>/stills/compare-03.png`. Name the largest
   difference first (light direction and colour, contrast, haze with distance, density of detail, wear,
   scale), fix it, render again; keep the pairs as the evidence of each round.
 - **Bars in plain words.** The ones golden-temple's prompt set are the ones that matter: light and shadows
   first; detail past what seems enough, the ground included, seen from above too; clean light and shadows
   with zero flickering, checked in motion. "Stable in motion" above is what the last one took.
 - **Iteration is the budget.** Its prompt asked the model to keep going until the match was close, even if
-  it took days, and the film took a long session of parallel agents. Agree the time with the director (a
+  it took days, and the film took a long session of parallel agents. Here, agree the time with the director (a
   realistic piece of a minute is hours, not one turn), say where it stands in each status line, and stop
   when the critic's list of what reads as CG first is down to the cosmetic, or the budget is spent.
 - **One plan first.** Units (metres), where everything stands, the time of day (one `Env`), the shared
@@ -175,8 +176,9 @@ same way (each part optional; the treatment's defaults fill the rest):
 The subject and its hero object, the time of day and weather, the lens per moment, the references and the
 time budget are the levers; a brief asks for those only when the piece rests on them (references and time
 do, for a photographic piece: offer generated references with their cost when none are given). For the
-critic, the director's "photoreal" is the bar: give it the references and the side-by-side pairs, and ask
-what reads as CG first.
+critic, the director's "photoreal" is the bar: give it the references with the rest of what it gets
+(`references/critique.md`), let it choose its own frames and make its own pairs, and ask what reads as CG
+first. Your own pairs stay your stills loop's evidence, not the critic's.
 
 ## Limits
 

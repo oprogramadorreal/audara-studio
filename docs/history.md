@@ -1976,7 +1976,8 @@ from a visual target and an open-ended loop against it, which realism.md had tre
 realism.md's method now starts with a reference board (the director's photos, public-domain ones, or
 generated ones, about $0.04 each through `imagegen.py`, offered in the brief and waiting for a yes, kept out
 of the frame), a side-by-side compare (one ffmpeg command, tested), the bars in plain words and the time as
-the budget; its Prompting follows the five parts. `images.md` names references as a use (a target, never
+the budget (the side-by-side compare and the agreed budget are audara's, not the author's); its Prompting
+follows the five parts. `images.md` names references as a use (a target, never
 material), `cv-photoreal-shot` checks that the brief offers a board and spends nothing, and design.md and the
 README follow. Nothing in the kit or the engine changed with it.
 
@@ -2040,3 +2041,7 @@ the key on its prototype, and for an override that delegates to three's default 
 material's earlier key, whatever gives it, with the original callback put back for the call: seven checks
 on CPU-only materials pass, and the example's frames are unchanged); and the eval's renderer assertion
 counted binding `out`, which every scene does. The third round found nothing.
+A fourth round, on the prompt's update, found three things, fixed: the compare command wrote into a
+folder nothing creates (it now writes beside the still); handing the critic the builder's side-by-side pairs
+broke its independence (it gets the references and makes its own); and design.md credited the author with
+audara's side-by-side compare and time budget.
