@@ -2018,7 +2018,9 @@ a stateful scene would have been sampled a little before the time already drawn,
 scenes don't refine); a lost and restored GL context would have kept a held frame (both events let it go);
 and "full quality" overstated a frame still on the preview path's settings (the info line says "refined
 (12 sub-frames)", and the docs say what stays cheaper). Re-checked live: a crossfade between the kit scene
-and a GLSL scene, paused, drew one sample a frame and never refined; the rest as before.
+and a GLSL scene, paused, drew one sample a frame and never refined; the rest as before. A second round found
+one more, fixed: paused at the video's very end, the shutter reached past it, where nothing draws, and
+would have darkened the held frame (the end's frame isn't refined: checked live).
 
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows

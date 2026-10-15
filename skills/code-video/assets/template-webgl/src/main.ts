@@ -313,6 +313,7 @@ function setupPlayer() {
   let rest = { t: NaN, since: 0, version: -1 }, refined = false;
   const half = (0.2 / fps) / 2; // (the render's default shutter, 0.2 of a frame, either side of t)
   const wantsRefine = (t: number) => {
+    if (t + half >= D) return false; // (past the video's end nothing draws: the end's frame stays as it is)
     const on = TL.filter((x) => t + half >= x.start && t - half < x.end);
     return on.length > 0 && on.every((x) => {
       const s = engine.loaded.get(x.id)?.scene as { refine?: unknown; stateful?: unknown } | null | undefined;
