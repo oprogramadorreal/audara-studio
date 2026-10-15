@@ -1773,3 +1773,84 @@ authors' brief told them to use `verify --only`, which only a render.ts from 0.7
 `verify.json`, so authors on an existing project would still overwrite the lead's report (they now always pass
 `--out`); and the SKILL.md rules still said keys go in no file, against the references' session-only file.
 The second round found nothing.
+
+## Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
+
+The user ran a long prompt for a 60-second commercial (Neolevel, a program for young entrepreneurs in
+Florianópolis) in a fresh folder with 0.7.1 installed. It left the tools open ("The choice of tools is up to
+you. Go all out. You can use motion graphics, AI video generation, 3D graphics, or whatever else"), gave keys
+for OpenAI images, ElevenLabs and Higgsfield's video models, and didn't name audara. They half expected
+code-video to load; no audara skill did, and they asked whether that was the right call or whether the skills
+should stretch to cases like it. A Claude Code session (Opus 5.5) read the project and the session's
+transcript through Herdr, and Codex (GPT-6 Astra) went over the same evidence before seeing its conclusions;
+they agreed. What the film took is in `docs/research/ai-video-commercial-neolevel.md`.
+
+What the evidence said:
+
+- **code-video: rightly left out of the picture.** The film is a photoreal young man in real places, from
+  OpenAI keyframes and 22 Higgsfield image-to-video jobs (15 clips in the cut, $14.32 of a $20 budget),
+  composited in Python and ffmpeg. The description excludes AI video clips and camera footage; code doesn't
+  draw a photoreal person; the footage path holds every frame in GPU memory, for seconds of footage (59 s at
+  1080p would be about 11.7 GB); and the engine renders opaque H.264 only, while the captions and logo had to
+  go over the clips (the session drew them with skia-python as ProRes 4444, asking its subagent for
+  code-video's own rules: every frame a function of `t`, seeded randomness, sub-frame motion blur). It read
+  only the first 6,000 bytes of code-video's SKILL.md, which stop before the body's "AI video clips only when
+  the director asks". The director had asked, so the body allowed what the description excluded.
+- **soundtrack: a miss.** Narration in the user's cloned voice, two music cues, effects and the mix are what
+  its description names, and its production scripts take `--out <dir>` outside an audara project. The
+  session found the plugin's folder, read `eleven.py`, `mix.py` and `elevenlabs.md`, ran `eleven.py music
+  plan` and `music compose` for the score, and wrote its own voice, effects and mix tools (621 lines) without
+  loading the skill. They kept their requests and measured loudness; the music plan's terms for a company's
+  ad came up only at handoff, after the score was in the cut, where the skill says before relying on it.
+- **Why, unknown.** The thinking was redacted. A reading the descriptions invite: ruling out code-video
+  ruled out the plugin, and soundtrack's own text read as code-video's companion ("the timing data the
+  picture syncs to", "as the code-video engine reads them"), with "Not for ... voice cloning" beside a
+  request that named a cloned voice. But fresh sessions don't behave like that one. The same prompt, its
+  keys, links and brand swapped out (st-25), on Opus 5.5 at the user's xhigh in `claude -p`, loaded
+  code-video in 12 of 13 runs on 0.7.1's descriptions, the user's first expectation. The original session had
+  Ultracode on, with its workflow reference loaded before the prompt, and launched a research workflow
+  first; the trigger harness reproduces none of that.
+
+What changed:
+
+- **soundtrack's description:** "Use it whenever a video or animation, made with code, filmed or
+  AI-generated, needs ..."; "Not for ... making a voice clone" (narrating in one the user has is in scope).
+  Its opening says audio and timing data, "or with `--out <dir>` for a video made elsewhere", in place of "as
+  the code-video engine reads them" (7,989 bytes).
+- **code-video's description:** "Not for editing camera footage or generating AI video clips (soundtrack does
+  their sound), or ideas or prompts alone (video-ideas)", so ruling out the picture points to what still
+  applies. The body's line is now "AI clips only as footage the director asks for." Paid back with "A video's
+  parts: idea,", "and style-template.md", "doesn't suit it" and "a video or animation" (7,996 bytes).
+- **Trigger cases:** st-21 (an ad shot with AI video, a cloned voice, music and the mix, tools left open),
+  st-22 (a voice clone the user already has, beside st-16), st-23 (the picture made in another tool; also
+  cv-25, a code-video near-miss), st-24 (the AI shots alone, a near-miss), st-25 (the original prompt).
+- **design.md** ("With any picture", the near-misses, the overview), **README**, **evals/README.md**, and the
+  snapshot in `docs/research/`.
+
+Considered and left out:
+
+- **code-video stretched to such films:** its engine holds seconds of footage, renders no alpha and draws no
+  photoreal people; a film of AI clips is a compositor's job, and generated clips stay out unless asked
+  (round 4).
+- **An alpha export** (ProRes 4444 or PNG frames), so code-video could make a film's titles and logo: the
+  engine drops alpha in the renderer, the post pass and the encode, and this one project used overlays.
+- **A skill for films made of AI clips:** one project's evidence, paid evals, providers that change month to
+  month. The snapshot keeps what it would start from.
+- **soundtrack's scripts fitted to this film** (four voices, two music cues in one mix, a phone treatment):
+  one project.
+
+What was checked: trigger runs on Opus 5.5 (the user's xhigh), this branch against `main` in a worktree with
+the same cases. st-16 and st-21 to st-24 passed on both, 3 of 3 (the short requests load soundtrack with
+either wording), as did cv-12 and cv-25 (0 of 3). st-25 loaded soundtrack in 3 of 13 runs on `main`, the rest
+code-video, and in 7 of 13 on the branch, 6 of them code-video first or alone; the harness stops a run when
+the skill under test loads, so code-video's count on the branch is a floor. Thirteen runs suggest a shift,
+not a measured one. The three spec validators passed on code-video and soundtrack, with no byte-order mark.
+Not run: a task eval (the miss came an hour into a long production, which a six-turn trigger run can't
+reach), Codex's trigger runs, Sonnet.
+
+Codex reviewed the branch read-only and found six things, all fixed: st-24 asked for 5-second clips that
+didn't add up to 30 s; the snapshot and design.md said the custom audio tools lacked the skill's rules,
+where they kept requests and measured loudness and only the licence came late; "every script" takes
+`--out` (the production scripts do, their model helpers don't); the stand-up was an earlier Seedance take,
+not a new one; alpha overlays were used, not asked for; and the snapshot said the keys were revoked with no
+source (the user said so in this session).
