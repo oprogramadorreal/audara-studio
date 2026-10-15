@@ -39,17 +39,27 @@ export class Lens {
   private aoA: THREE.WebGLRenderTarget;
   private aoB: THREE.WebGLRenderTarget;
   private cocRT: THREE.WebGLRenderTarget;
+  private tileRT: THREE.WebGLRenderTarget;
   private passes: FSPass[];
-  private ao: FSPass; private blur: FSPass; private coc: FSPass; private dof: FSPass;
+  private ao: FSPass; private blur: FSPass; private coc: FSPass; private tile: FSPass; private dof: FSPass;
+  private dofStep: number;
 
-  /** `W`, `H`: the logical frame (ctx.W, ctx.H). `aoSamples`: 16 for the render; fewer is a fair preview path. */
-  constructor(private W: number, private H: number, o: { aoSamples?: number } = {}) {
+  /**
+   * `W`, `H`: the logical frame (ctx.W, ctx.H). The rest is cost, for a cheaper preview path (`ctx.export`
+   * false): `aoSamples` (16 for the render), `dofStep` (the spacing of the depth of field's spiral of taps,
+   * 0.55 for the render; about 1.2 takes half the taps for a slightly grainier blur of the same size).
+   */
+  constructor(private W: number, private H: number, o: { aoSamples?: number; dofStep?: number } = {}) {
     const n = Math.max(4, Math.round(o.aoSamples ?? 16));
+    this.dofStep = Math.max(0.3, o.dofStep ?? 0.55);
     this.rt = makeRT(W, H, { samples: 4 });
     this.rt.depthTexture = new THREE.DepthTexture(this.rt.width, this.rt.height, THREE.FloatType);
     this.aoA = makeRT(W / 2, H / 2, { depthBuffer: false });
     this.aoB = makeRT(W / 2, H / 2, { depthBuffer: false });
     this.cocRT = makeRT(W, H, { depthBuffer: false });
+    // the largest blur in each 16x16-logical-px tile: the gather stops where no blur nearby reaches further
+    const TILE = 16, PS = Math.max(1, Math.round(this.cocRT.width / W));
+    this.tileRT = makeRT(Math.ceil(W / TILE), Math.ceil(H / TILE), { depthBuffer: false, pxScale: 1, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     const depthU = () => ({ tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, cameraNear: { value: 0.1 }, cameraFar: { value: 1000 } });
     this.ao = new FSPass(/* glsl */ `${DEPTH}
       uniform vec2 uRes; uniform float uRadius, uIntensity, uRot; uniform mat4 uProj;
@@ -92,24 +102,39 @@ export class Lens {
         float coc = A * f * (z - uFocus) / (z * (uFocus - f));
         fragColor = uDof > 0.5 ? vec4(c, clamp(coc / 0.036 * uWidth, -uMaxCoc, uMaxCoc)) : vec4(c, 1.0);
       }`, { ...depthU(), tColor: { value: null }, tAO: { value: null }, uAO: { value: 0.75 }, uFocus: { value: 10 }, uFocal: { value: 35 }, uFstop: { value: 4 }, uWidth: { value: W }, uMaxCoc: { value: 22 }, uDof: { value: 1 } });
-    // gather along a golden-angle spiral; a sample counts where its own blur reaches this far, so sharp
-    // things in front keep their edges and blurred ones don't pull them in
-    this.dof = new FSPass(/* glsl */ `
-      uniform sampler2D tCoc; uniform vec2 uRes; uniform float uMaxCoc;
+    this.tile = new FSPass(/* glsl */ `
+      uniform sampler2D tCoc;
       void main(){
+        ivec2 size = textureSize(tCoc, 0), p0 = ivec2(gl_FragCoord.xy) * ${TILE * PS};
+        float m = 0.0;
+        for (int y = 0; y < ${TILE * PS}; y++) for (int x = 0; x < ${TILE * PS}; x++)
+          m = max(m, abs(texelFetch(tCoc, min(p0 + ivec2(x, y), size - 1), 0).a));
+        fragColor = vec4(m, 0.0, 0.0, 1.0);
+      }`, { tCoc: { value: null } });
+    // gather along a golden-angle spiral; a sample counts where its own blur reaches this far, so sharp
+    // things in front keep their edges and blurred ones don't pull them in. The spiral stops at the largest
+    // blur within two tiles (32 logical px, past the largest blur allowed): further taps would add nothing.
+    this.dof = new FSPass(/* glsl */ `
+      uniform sampler2D tCoc; uniform sampler2D tTile; uniform vec2 uRes; uniform float uMaxCoc, uStep;
+      void main(){
+        ivec2 ts = textureSize(tTile, 0), tc = ivec2(floor(vUv * uRes / ${TILE}.0));
+        float near = 0.0;
+        for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++)
+          near = max(near, texelFetch(tTile, clamp(tc + ivec2(x, y), ivec2(0), ts - 1), 0).r);
+        float reach = min(uMaxCoc, near + 1.0);
         vec4 c0 = texture(tCoc, vUv); float centre = abs(c0.a);
-        vec3 col = c0.rgb; float tot = 1.0, radius = 0.55, ang = 0.0;
+        vec3 col = c0.rgb; float tot = 1.0, radius = uStep, ang = 0.0;
         for (int i = 0; i < 600; i++){
-          if (radius >= uMaxCoc) break;
+          if (radius >= reach) break;
           ang += 2.39996323;
           vec4 s = texture(tCoc, vUv + vec2(cos(ang), sin(ang)) * radius / uRes);
           float size = abs(s.a); if (s.a > c0.a) size = clamp(size, 0.0, centre * 2.0);
           col += mix(col / tot, s.rgb, smoothstep(radius - 0.5, radius + 0.5, size)); tot += 1.0;
-          radius += 0.55 / radius;
+          radius += uStep / radius;
         }
         fragColor = vec4(col / tot, 1.0);
-      }`, { tCoc: { value: null }, uRes: { value: new THREE.Vector2(W, H) }, uMaxCoc: { value: 22 } });
-    this.passes = [this.ao, this.blur, this.coc, this.dof];
+      }`, { tCoc: { value: null }, tTile: { value: null }, uRes: { value: new THREE.Vector2(W, H) }, uMaxCoc: { value: 22 }, uStep: { value: 0.55 } });
+    this.passes = [this.ao, this.blur, this.coc, this.tile, this.dof];
   }
 
   /**
@@ -141,16 +166,20 @@ export class Lens {
     c.uWidth!.value = this.W; c.uMaxCoc!.value = maxCoc; c.uDof!.value = dofOn ? 1 : 0;
     this.coc.render(renderer, dofOn ? this.cocRT : out);
     if (!dofOn) return;
+    this.tile.u.tCoc!.value = this.cocRT.texture;
+    this.tile.render(renderer, this.tileRT);
     this.dof.u.tCoc!.value = this.cocRT.texture;
+    this.dof.u.tTile!.value = this.tileRT.texture;
     (this.dof.u.uRes!.value as THREE.Vector2).set(this.W, this.H);
     this.dof.u.uMaxCoc!.value = maxCoc;
+    this.dof.u.uStep!.value = this.dofStep;
     this.dof.render(renderer, out);
   }
 
   /** Release the targets, the depth texture and the passes' materials (the engine's shared quad stays). */
   dispose() {
     this.rt.depthTexture?.dispose();
-    for (const t of [this.rt, this.aoA, this.aoB, this.cocRT]) t.dispose();
+    for (const t of [this.rt, this.aoA, this.aoB, this.cocRT, this.tileRT]) t.dispose();
     for (const p of this.passes) p.mat.dispose();
   }
 }

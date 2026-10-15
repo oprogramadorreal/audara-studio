@@ -1981,6 +1981,28 @@ follows the five parts. `images.md` names references as a use (a target, never
 material), `cv-photoreal-shot` checks that the brief offers a board and spends nothing, and design.md and the
 README follow. Nothing in the kit or the engine changed with it.
 
+**The preview.** The user then asked how such scenes play in the browser preview. The player draws each
+frame at the soundtrack's clock, so a slow scene drops frames and stays in sync, and while paused it redraws
+the same one-sample frame. Measured at 1080p (`render.ts perf`, Chrome on the laptop's RTX 5070 and on its
+integrated Intel GPU with `CHROME_FLAGS=--force_low_power_gpu`): the kit's example cost 8.4 ms a frame on
+the RTX and 53 ms on the Intel GPU (19 fps); with the depth of field, sky, shadows and both switched off in
+turn, the depth of field was 37 of the 53 ms, since its spiral sampled out to the largest blur allowed at
+every pixel, in focus or not, while the sky and the shadows were cheap. So `lens.ts` now finds the largest
+blur in each 16x16-px tile and stops the spiral at the largest within two tiles (render frames unchanged
+to 1 level in 0.1% of pixels), and `dofStep` spaces the taps for a preview path (the example uses 1.2 when
+`ctx.export` is false): 3.8 ms on the RTX, 26 ms on the Intel GPU (38 fps); the render's cost stayed where it
+was on the Intel GPU (the macro, blurred everywhere, dominates). The example adds 1-3 s to opening the
+preview. golden-temple itself, in its own preview (one sample, no depth of field, a 2048 shadow map, 23.2
+million triangles), took 161 s on the RTX and 137 s on the Intel GPU to build and compile before the first
+frame, then played at 21-44 fps on the RTX and 2.4-3 fps on the Intel GPU. What no speed fixes: one sample a
+frame shows no jitter, soft shadows or motion blur, so the finish and its flicker are judged in renders.
+`realism.md` has a section on it (what each shows, the preview path's levers in order, a long build kept
+in a helper module so a scene's edits hot-swap in seconds: checked in the live preview, three edits of a
+scene hot-swapped it while its world, built in `_world.ts`, was built once), and the kit's README and
+design.md follow.
+Left for later: refining the paused frame in the browser, sub-frame by sub-frame, to the render's look,
+which would touch the player for every video.
+
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows
 on around their own draws; one type, PCF, project-wide); golden-temple's global shader-chunk patches (they

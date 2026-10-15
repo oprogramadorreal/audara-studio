@@ -20,8 +20,8 @@ light and shadows with zero flickering) and the loop (verify and iterate until i
 without stopping early). Almost everything below is what the model built to meet those demands; the
 references and the loop are "The method".
 
-Contents: When it earns its place · What makes it read as real · The kit · Stable in motion · Sampling and
-cost · The method · Prompting · Limits
+Contents: When it earns its place · What makes it read as real · The kit · Stable in motion · The preview ·
+Sampling and cost · The method · Prompting · Limits
 
 ## When it earns its place
 
@@ -76,7 +76,7 @@ Leave the engine's post as it is; grain, vignette or exposure go in `src/look.ts
 | `materials.ts` | `patch(material, hooks, env)`: GLSL into MeshStandard/Physical, with the haze and a stable shadow filter; `PROC`: lacquer, gold, bronze, granite, wood, plaster; `n_aa`, `n_specAA`, `n_bumpView` for your own |
 | `sky.ts` | `createSky(env)`, `captureSkyEnv()`, `captureEnv()`: the sky dome and environment light (the caller disposes the returned target) |
 | `light.ts` | `Sun`: shadowed, its frustum fitted to the shot, jittered in its disc; `withRenderer()`: renderer settings for a draw, restored however it ends |
-| `lens.ts` | `Lens`: the scene's 4x multisampled target with depth, then occlusion and depth of field into `out`; `focalToFov()` |
+| `lens.ts` | `Lens`: the scene's 4x multisampled target with depth, then occlusion and depth of field into `out` (the blur's taps stop at the largest blur nearby; `dofStep` spaces them for a preview path); `focalToFov()` |
 | `sampling.ts` | `jitter()`, `jitterCamera()`: this sub-frame's samples from the engine's `SUBFRAME` |
 | `camera.ts` | `lensAt(t, keys)`, `applyLens()`, `reveal`: lens keys at times; direction, look and focus distances interpolated the way a camera moves |
 | `example.ts` | a scene using all of it (a gilt finial pulling back to a gate); play it with `E('garden', '../../../src/realism/example', a, b)`, then copy it into `scenes/` to make it yours |
@@ -108,11 +108,36 @@ measured each on footage, not stills):
   changes. No `scene.fog` with patched materials: the haze replaces it.
 - A post override returned by a scene applies to the whole frame, the other scene of a crossfade included.
 
+## The preview
+
+A photographic scene plays in the live preview like any other, but two things change: how fast it plays,
+and what it can show.
+
+- **How fast.** The player draws each frame at the soundtrack's time, so a slow scene drops frames and
+  stutters rather than drifting out of sync (its fps is on the info line). Measured at 1080p: the kit's
+  example takes 3.8 ms a frame on a laptop RTX 5070 and 26 ms on its integrated Intel GPU (38 fps). A world
+  at golden-temple's scale (23 million triangles, in its own preview with no depth of field) played at 21-44
+  fps on the RTX and 2-3 fps on the integrated GPU, after 2-3 minutes of building and compiling before the
+  first frame. So a detailed world can be a slideshow on the director's machine even when it renders well.
+- **What it shows.** One sample a frame: no sub-pixel jitter, no soft shadows from the sun's disc, occlusion
+  with its raw noise, no motion blur. The preview is where light, framing, timing and the move are judged;
+  the finish (edges, penumbrae, flicker, which the bar of "zero flickering" is about) is judged in renders:
+  `stills --t <times> --samples 12` and a short clip, `video --from <a> --to <b> --samples 12` (not
+  `--draft`, which takes one sample). Say so to the director with the preview link, and show both.
+- **A cheaper preview path** (`ctx.export` false: cost, never content), cheapest first where it pays: the
+  depth of field's tap spacing (`dofStep` about 1.2 halves its taps; the depth of field was 70% of the
+  example's cost on the integrated GPU before the taps stopped at the largest blur nearby), the internal
+  resolution (draw into `makeRT(W / 2, H / 2)` for a fill-bound scene), the shadow map's size, the
+  occlusion taps, and fewer instances of what repeats far away. Turning the depth of field or the haze off
+  changes what the director sees: keep them.
+- **Load time.** Every entry builds in `init()` when the page opens and again when its file is saved. A
+  world that takes long to build belongs in a helper module beside the scenes (`scenes/_world.ts`) that
+  builds once into a module-level value and hands it to the scenes that show it, which don't dispose it:
+  saving a scene's camera or timing then hot-swaps in seconds, and only saving the world rebuilds it. Move
+  shader compiles off the first frame with `await renderer.compileAsync(scene, camera)` in `init()`.
+
 ## Sampling and cost
 
-- The preview plays the example scene in real time (8-10 ms a frame at 1080p on a laptop GPU): one sample, no
-  jitter. A heavier scene gets a cheaper preview path (`ctx.export` false): a smaller shadow map, fewer
-  occlusion taps, never other content.
 - Jittered sub-frames never converge to the adaptive sampler's threshold quickly: a near-still frame went to
   108 sub-frames, where it stops at 12 without jitter, and frames it stops at different counts average
   different samples. Render a photographic stretch with a fixed count (`video --samples 12` measured 0.12 s

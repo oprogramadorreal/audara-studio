@@ -11,7 +11,7 @@ Tested with three 0.186.
 | `materials.ts` | `patch()`: procedural GLSL inside MeshStandard/Physical materials, with the haze; `PROC` surfaces |
 | `sky.ts` | the physical sky, and the environment light captured from it and from the scene |
 | `light.ts` | the shadowed sun (`Sun`); `withRenderer()` for renderer settings around a draw |
-| `lens.ts` | the scene's target with depth, then occlusion and a depth of field from the lens |
+| `lens.ts` | the scene's target with depth, then occlusion and a depth of field from the lens (`dofStep` for a preview path) |
 | `sampling.ts` | per-sub-frame camera, sun and kernel jitter, from `src/engine/gl.ts` `SUBFRAME` |
 | `camera.ts` | lens keys at times: direction, look and focus distances interpolated like a camera |
 | `example.ts` | a scene that uses all of it: `E('garden', '../../../src/realism/example', a, b)` in a timeline |
@@ -28,6 +28,9 @@ Rules that keep the shared engine safe and the frames stable:
   `maxSamples` only bounds the cost).
 - Supported: fresh MeshStandard/Physical materials on Mesh and InstancedMesh, static geometry, metres.
 - Dispose what you create: the environment target, the `Sky`, the `Sun`, the `Lens`, geometries, materials.
+- The preview draws one sample a frame (no jitter, soft shadows or motion blur): judge the finish in
+  `stills --samples 12` and short `video --samples 12` clips. A cheaper preview path (`ctx.export` false)
+  changes cost, never content: `dofStep` about 1.2, a smaller shadow map, fewer occlusion taps.
 
 Without `SUBFRAME` (an engine older than audara 0.8.0) the kit works with no jitter. To add it: in
 `src/engine/gl.ts`, `export const SUBFRAME = { k: -1 };`; in `src/engine/engine.ts`, add `SUBFRAME` to its

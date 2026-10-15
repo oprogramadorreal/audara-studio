@@ -583,6 +583,13 @@ other video as it was (history.md, 0.8.0):
   video renders bit-identically with it. Time can't stand in for it: with a zero shutter every sub-frame
   has the same time, and cut clamping repeats times. An older project's engine works with the kit without
   it (no jitter); `realism.md` gives the few lines that add it.
+- **The preview plays it, with less finish.** The player keeps time by dropping frames, so a slow scene
+  stutters rather than drifts; the kit's example plays at 3.8 ms a frame on a laptop RTX and 26 ms on an
+  integrated GPU (after the depth of field's taps learned to stop at the largest blur nearby: it was 70% of
+  the cost), while a golden-temple-scale world plays at 2-3 fps on an integrated GPU after minutes of
+  building. One sample a frame shows light, framing and motion; the finish (edges, soft shadows, flicker)
+  is judged in full-sample stills and clips. `realism.md` says so, with the preview path's levers and how
+  to keep a long build out of the hot-swap loop.
 - **Fixed samples for a photographic stretch.** Jittered sub-frames never agree, so the adaptive sampler
   climbs to its cap (108 on a near-still frame where it stops at 12); frames that stop at different counts
   average different samples. A fixed `--samples` is the recipe; an entry's `maxSamples` only bounds the cost.

@@ -58,7 +58,8 @@ export default class Garden extends Scene {
   private sun = new Sun(this.env, { mapSize: this.ctx.export ? 4096 : 2048 }); // (a smaller map: the preview's cost, not its content)
   private sky!: Sky;
   private envTarget: THREE.WebGLRenderTarget | null = null;
-  private lens = new Lens(this.ctx.W, this.ctx.H, { aoSamples: this.ctx.export ? 16 : 10 });
+  // (fewer occlusion taps and a sparser blur in the preview: its cost, never its content)
+  private lens = new Lens(this.ctx.W, this.ctx.H, { aoSamples: this.ctx.export ? 16 : 10, dofStep: this.ctx.export ? 0.55 : 1.2 });
   private keys: LensKey[] = [];
 
   override init() {
