@@ -306,11 +306,22 @@ function setupPlayer() {
   }
 
   let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false;
-  // A paused frame of a scene that asks for it (`refine = true` on the scene: the realism kit's) is rendered
-  // once more as the render renders it, 12 sub-frames, when the playhead has rested 0.3 s, then held until
-  // something changes (the playhead, a reload). Every other frame is drawn as it always was.
+  // A paused frame whose scenes all ask for it (`refine = true` on the scene: the realism kit's; none of them
+  // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
+  // playhead has rested 0.3 s, then held until something changes (the playhead, a reload, the GL context).
+  // Every other frame, a crossfade with any other scene included, is drawn as it always was.
   let rest = { t: NaN, since: 0, version: -1 }, refined = false;
-  const wantsRefine = (t: number) => TL.some((x) => t >= x.start && t < x.end && (engine.loaded.get(x.id)?.scene as { refine?: unknown } | null | undefined)?.refine === true);
+  const half = (0.2 / fps) / 2; // (the render's default shutter, 0.2 of a frame, either side of t)
+  const wantsRefine = (t: number) => {
+    const on = TL.filter((x) => t + half >= x.start && t - half < x.end);
+    return on.length > 0 && on.every((x) => {
+      const s = engine.loaded.get(x.id)?.scene as { refine?: unknown; stateful?: unknown } | null | undefined;
+      return s?.refine === true && !s.stateful;
+    });
+  };
+  const unhold = () => { rest.t = NaN; };
+  canvas.addEventListener('webglcontextlost', unhold);
+  canvas.addEventListener('webglcontextrestored', unhold);
   const tick = () => {
     // (the loop first: a loop that ends with the video must wrap before the player stops at the end)
     if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
@@ -322,7 +333,7 @@ function setupPlayer() {
     if (track.playing || tc !== rest.t || engine.errorsVersion !== rest.version) {
       rest = { t: tc, since: performance.now(), version: engine.errorsVersion };
       refined = false;
-    } else if (!refined && performance.now() - rest.since > 300 && wantsRefine(tc)) {
+    } else if (!refined && performance.now() - rest.since > 300 && wantsRefine(tc) && !engine.renderer.getContext().isContextLost()) {
       engine.render(tc, 1 / fps, true, 12);
       refined = true;
     }
@@ -334,7 +345,7 @@ function setupPlayer() {
     const e = entryAt(t);
     markEls.forEach((m, i) => m.classList.toggle('on', TL[i] === e));
     const l = engine.words.lineAt(t);
-    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}${refined ? '   full quality' : ''}`;
+    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}${refined ? '   refined (12 sub-frames)' : ''}`;
     if (engine.errorsVersion !== shownErrors) { shownErrors = engine.errorsVersion; showErrors(); }
     requestAnimationFrame(tick);
   };

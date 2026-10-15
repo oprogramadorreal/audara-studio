@@ -121,9 +121,11 @@ and what it can show.
   first frame. So a detailed world can be a slideshow on the director's machine even when it renders well.
 - **What it shows.** Playing, one sample a frame: no sub-pixel jitter, no soft shadows from the sun's disc,
   occlusion with its raw noise, no motion blur. Paused on a scene that sets `refine = true` (the kit's
-  example does; set it in every scene built on the kit), the frame is rendered again as the render renders
-  it, 12 sub-frames, 0.3 s after the playhead stops, and the info line says "full quality": the director
-  sees the finish of any moment by pausing there. The page waits meanwhile, 12 frames' cost (about 0.05 s
+  example does; set it in every scene built on the kit), the frame is rendered again with the render's
+  sampling, 12 sub-frames, 0.3 s after the playhead stops, and the info line says "refined": the director
+  sees the finish of any moment by pausing there, on the preview path's settings (a smaller shadow map
+  or a sparser blur, if the scene's preview path has them). Not during a crossfade with a scene that
+  doesn't set it, nor for a stateful scene. The page waits meanwhile, 12 frames' cost (about 0.05 s
   for the example on the RTX, 0.3 s on the integrated GPU; seconds for a heavy world). Motion is the one
   thing it can't show: flicker and crawling are judged in a short clip, `video --from <a> --to <b>
   --samples 12` (not `--draft`, which takes one sample). Say so to the director with the preview link. A

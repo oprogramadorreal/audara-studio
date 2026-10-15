@@ -587,10 +587,10 @@ other video as it was (history.md, 0.8.0):
   stutters rather than drifts; the kit's example plays at 3.8 ms a frame on a laptop RTX and 26 ms on an
   integrated GPU (after the depth of field's taps learned to stop at the largest blur nearby: it was 70% of
   the cost), while a golden-temple-scale world plays at 2-3 fps on an integrated GPU after minutes of
-  building. One sample a frame shows light, framing and motion. Paused, a scene that sets `refine = true`
-  (the kit's do) is rendered once more with the render's 12 sub-frames and held, so the director sees the
-  finish of any moment by pausing on it; every other scene's preview is drawn exactly as before (the
-  player's new branch runs only when such a scene is on screen). Flicker, which needs motion, is judged
+  building. One sample a frame shows light, framing and motion. Paused on a frame whose scenes all set
+  `refine = true` (the kit's do; none stateful), it is rendered once more with the render's 12 sub-frames
+  and held, so the director sees the finish of any moment by pausing on it; every other frame, a crossfade
+  with any other scene included, is drawn exactly as before. Flicker, which needs motion, is judged
   in full-sample clips. `realism.md` says so, with the preview path's levers and how to keep a long build
   out of the hot-swap loop.
 - **Fixed samples for a photographic stretch.** Jittered sub-frames never agree, so the adaptive sampler

@@ -2012,7 +2012,13 @@ example video paused, and a GLSL scene paused inside a video that also has a kit
 frame on every tick and never refined; the kit scene paused drew one-sample frames for about 0.3 s, then one
 12-sub-frame render, then nothing until a seek (refined again) or play (one sample a frame), and saving the
 scene while paused reloaded it and refined it again; the refined frame differed from the one-sample frame in
-24% of its pixels (edges and highlights).
+24% of its pixels (edges and highlights). Codex's review of it found four things, fixed: a kit scene in a
+crossfade refined and froze the other scene too (now every scene the frame's shutter touches has to set it);
+a stateful scene would have been sampled a little before the time already drawn, without a reset (stateful
+scenes don't refine); a lost and restored GL context would have kept a held frame (both events let it go);
+and "full quality" overstated a frame still on the preview path's settings (the info line says "refined
+(12 sub-frames)", and the docs say what stays cheaper). Re-checked live: a crossfade between the kit scene
+and a GLSL scene, paused, drew one sample a frame and never refined; the rest as before.
 
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows
