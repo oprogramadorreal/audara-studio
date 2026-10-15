@@ -1805,11 +1805,12 @@ What the evidence said:
 - **Why, unknown.** The thinking was redacted. A reading the descriptions invite: ruling out code-video
   ruled out the plugin, and soundtrack's own text read as code-video's companion ("the timing data the
   picture syncs to", "as the code-video engine reads them"), with "Not for ... voice cloning" beside a
-  request that named a cloned voice. But fresh sessions don't behave like that one. The same prompt, its
-  keys, links and brand swapped out (st-25), on Opus 5.5 at the user's xhigh in `claude -p`, loaded
-  code-video in 12 of 13 runs on 0.7.1's descriptions, the user's first expectation. The original session had
-  Ultracode on, with its workflow reference loaded before the prompt, and launched a research workflow
-  first; the trigger harness reproduces none of that.
+  request that named a cloned voice. Fresh sessions don't bear it out. An adaptation of the prompt (st-25:
+  keys, links and brand swapped, a short text script in place of the PDF, no brand research or Codex
+  consultant), on Opus 5.5 at the user's xhigh in `claude -p`, loaded soundtrack within six turns in 8 of 10
+  runs on 0.7.1's own descriptions. The original session had Ultracode on, with its workflow reference
+  loaded before the prompt, and launched a research workflow first; it read the plugin's files three minutes
+  in and wrote its own voice tool fifty minutes in. The trigger harness reproduces none of that.
 
 What changed:
 
@@ -1823,7 +1824,12 @@ What changed:
   parts: idea,", "and style-template.md", "doesn't suit it" and "a video or animation" (7,996 bytes).
 - **Trigger cases:** st-21 (an ad shot with AI video, a cloned voice, music and the mix, tools left open),
   st-22 (a voice clone the user already has, beside st-16), st-23 (the picture made in another tool; also
-  cv-25, a code-video near-miss), st-24 (the AI shots alone, a near-miss), st-25 (the original prompt).
+  cv-25, a code-video near-miss), st-24 (the AI shots alone, a near-miss), st-25 (the adapted prompt).
+- **The eval harness:** an installed audara-studio is turned off for each trigger and task run, in both
+  tools, so each skill is there once, with the description under test; until now a machine with the plugin
+  installed ran every skill twice (st-25's runs loaded `audara-studio:code-video` from the 0.7.1 cache beside
+  the linked copy). Claude Code's `--plugin` mode keeps it. `HIGGSFIELD_*` variables leave the environment
+  as the OpenAI and ElevenLabs keys do, since st-25 names a Higgsfield key and a budget.
 - **design.md** ("With any picture", the near-misses, the overview), **README**, **evals/README.md**, and the
   snapshot in `docs/research/`.
 
@@ -1839,18 +1845,22 @@ Considered and left out:
 - **soundtrack's scripts fitted to this film** (four voices, two music cues in one mix, a phone treatment):
   one project.
 
-What was checked: trigger runs on Opus 5.5 (the user's xhigh), this branch against `main` in a worktree with
-the same cases. st-16 and st-21 to st-24 passed on both, 3 of 3 (the short requests load soundtrack with
-either wording), as did cv-12 and cv-25 (0 of 3). st-25 loaded soundtrack in 3 of 13 runs on `main`, the rest
-code-video, and in 7 of 13 on the branch, 6 of them code-video first or alone; the harness stops a run when
-the skill under test loads, so code-video's count on the branch is a floor. Thirteen runs suggest a shift,
-not a measured one. The three spec validators passed on code-video and soundtrack, with no byte-order mark.
-Not run: a task eval (the miss came an hour into a long production, which a six-turn trigger run can't
-reach), Codex's trigger runs, Sonnet.
+What was checked: trigger runs on Opus 5.5 (the user's xhigh), this branch against `main` in a worktree, with
+the same harness and cases. A first round left the installed 0.7.1 plugin on beside the linked skills; there
+st-25 loaded soundtrack in 3 of 13 runs on `main` and 7 of 13 on the branch. With the plugin off the gap
+went away: 8 of 10 on `main` (soundtrack the first skill in 7, code-video in 3) and 7 of 10 on the branch (6
+and 4). The other cases gave the same results in both rounds and on both wordings: st-21 to st-23 loaded
+soundtrack 3 of 3; st-16, st-24, cv-12 and cv-25 loaded their skill 0 of 3. So the new wording is a
+clarification with no measured effect on a fresh session's routing, and these counts don't predict a full
+production session. The three spec validators passed on code-video and soundtrack, with no byte-order mark.
+Not run: a task eval (the session wrote its own voice tool fifty minutes into a long production, which a
+six-turn trigger run can't reach), Codex's trigger runs, Sonnet.
 
-Codex reviewed the branch read-only and found six things, all fixed: st-24 asked for 5-second clips that
-didn't add up to 30 s; the snapshot and design.md said the custom audio tools lacked the skill's rules,
-where they kept requests and measured loudness and only the licence came late; "every script" takes
-`--out` (the production scripts do, their model helpers don't); the stand-up was an earlier Seedance take,
-not a new one; alpha overlays were used, not asked for; and the snapshot said the keys were revoked with no
-source (the user said so in this session).
+Codex reviewed the branch read-only twice. The first round found six things, all fixed: st-24 asked for
+5-second clips that didn't add up to 30 s; the snapshot and design.md said the custom audio tools lacked the
+skill's rules, where they kept requests and measured loudness and only the licence came late; "every
+script" takes `--out` (the production scripts do, their model helpers don't); the stand-up was an earlier
+Seedance take, not a new one; alpha overlays were used, not asked for; and the snapshot said the keys were
+revoked with no source (the user said so in this session). The second found the installed plugin in the
+runs and the Higgsfield key st-25 names (both fixed in the harness, above), and asked for "adapted prompt"
+and for counts that claim no more than they show.

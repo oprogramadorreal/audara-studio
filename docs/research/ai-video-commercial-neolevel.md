@@ -70,9 +70,9 @@ motion graphics (1,531). Sound: a voice generator, an effects helper, a stem too
   video, and its production scripts (beats, align, eleven, mix, standin) take `--out <dir>` outside an
   audara project. The session read `eleven.py`, `mix.py` and `elevenlabs.md` from the plugin's folder and
   ran `eleven.py` for the music, but wrote the voice, effects and mix tools itself, without loading the
-  skill. Those tools kept their requests, reported credits and measured loudness and peaks; what the skill
-  would have changed is the music licence (the account's Pro plan for a company's ad), raised at handoff
-  after the score was in the cut, where the skill says before relying on it. Where its needs went past the
+  skill. Those tools kept their requests, reported credits and measured loudness and peaks. The music
+  licence (the account's Pro plan for a company's ad) was raised at handoff, after the score was in the
+  cut; the skill calls for raising it before relying on the score. Where its needs went past the
   scripts: one film used four voices (`eleven.py tts` keeps one per narration), two music cues (`mix.py`
   takes one music file, so they'd be joined first) and a phone treatment for some lines.
 - **code-video** didn't fit the picture: its description excluded AI video clips and camera footage; code

@@ -68,10 +68,11 @@ soundtrack's set ends with films whose picture isn't the engine's: st-21 asks fo
 video model, its narration, music and mix; st-23 says the picture is made in another tool; st-22 narrates in
 a voice clone the user already has, beside st-16, which asks to make one; st-24, the AI shots alone, is the
 near-miss. cv-25, in code-video's set, is st-23. st-21 isn't one of code-video's near-misses: an ad can
-fairly use code for its titles. st-25 is the long prompt a 2026-10 session answered without soundtrack
-(`docs/history.md`, 0.7.2), its keys, links and brand swapped out. It sits near the pass line (soundtrack
-loaded in 7 of 13 runs on Opus 5.5), and a run that loads code-video first and soundtrack only when the
-sound starts is fine in a real session but fails here, since a run stops at six turns.
+fairly use code for its titles. st-25 adapts the long prompt a 2026-10 session answered without
+soundtrack (`docs/history.md`, 0.7.2): keys, links and brand swapped, a short text script in place of a
+PDF. On Opus 5.5 it loaded soundtrack in 7 of 10 runs, code-video first in the rest; a run that loads
+code-video first and soundtrack only when the sound starts would be fine in a real session but fails here,
+since a run stops at six turns.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
