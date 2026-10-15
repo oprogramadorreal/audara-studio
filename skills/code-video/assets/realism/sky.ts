@@ -97,7 +97,14 @@ export function createSky(env: Env, o: { clouds?: number } = {}): Sky {
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(4800, 64, 32), mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = 1000;
-  mesh.onBeforeRender = (_r, _s, cam) => { mesh.position.copy(cam.position); mesh.updateMatrixWorld(); };
+  // centred on the camera's world position (a CubeCamera's face cameras sit at 0 inside their parent)
+  const at = new THREE.Vector3();
+  mesh.onBeforeRender = (_r, _s, cam) => {
+    cam.getWorldPosition(at);
+    if (mesh.parent) mesh.parent.worldToLocal(at);
+    mesh.position.copy(at);
+    mesh.updateMatrixWorld();
+  };
   return { mesh, uniforms, dispose: () => { mesh.geometry.dispose(); mat.dispose(); } };
 }
 

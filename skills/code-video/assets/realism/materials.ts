@@ -100,6 +100,10 @@ export function patch<M extends THREE.MeshStandardMaterial>(mat: M, hooks: Hooks
   ];
   const key = 'realism-' + mat.type + '-' + hashKey([VERT_HEAD, VERT_WORLD, fragHead, SHADOW_PARS, String(!!env), ...steps.map((s) => s[1] ?? '')].join('\u0001'));
   const prev = mat.onBeforeCompile;
+  // the material's key before this patch: its own key function if it has one (an earlier patch), else what
+  // three's default would give, the source of the callback this one wraps (read now, before it is replaced)
+  const ownKey = Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey') ? mat.customProgramCacheKey.bind(mat) : null;
+  const prevSrc = prev.toString();
   mat.onBeforeCompile = (shader, renderer) => {
     prev.call(mat, shader, renderer);
     if (hooks.uniforms) Object.assign(shader.uniforms, hooks.uniforms);
@@ -113,8 +117,7 @@ export function patch<M extends THREE.MeshStandardMaterial>(mat: M, hooks: Hooks
     if (env) fs = fs.replace('#include <fog_fragment>', 'gl_FragColor.rgb = applyAerial(gl_FragColor.rgb, vWPos, cameraPosition);');
     shader.fragmentShader = fs;
   };
-  const prevKey = mat.customProgramCacheKey.bind(mat);
-  mat.customProgramCacheKey = () => prevKey() + key;
+  mat.customProgramCacheKey = () => (ownKey ? ownKey() : prevSrc) + key;
   mat.needsUpdate = true;
   return mat;
 }

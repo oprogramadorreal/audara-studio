@@ -26,8 +26,9 @@ export const SS_TAP: THREE.IUniform<number> = { value: -1 };
  * The sub-frame being rendered: its index `k` within the frame (0, 1, 2 … in rendering order, the same
  * for every frame), or -1 for a single-sample frame (the preview, stills, verify's seek checks). A scene
  * that spreads samples over a frame's sub-frames (a sub-pixel camera offset, a point on the sun's disc, an
- * ambient-occlusion kernel's turn) takes them from `k`, never from the frame's number or time: a surface
- * that doesn't move then gets the same samples in every frame and doesn't crawl. It is a rendering
+ * ambient-occlusion kernel's turn) takes them from `k`, never from the frame's number or time: with a fixed
+ * sample count, a surface that doesn't move then gets the same samples in every frame and doesn't crawl
+ * (adaptive frames that stop at different counts average different sets). It is a rendering
  * parameter, never a clock: what a scene shows still comes from `f.t`. Nothing in the engine reads it.
  */
 export const SUBFRAME = { k: -1 };

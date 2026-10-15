@@ -579,7 +579,7 @@ other video as it was (history.md, 0.8.0):
   it (no jitter); `realism.md` gives the few lines that add it.
 - **Fixed samples for a photographic stretch.** Jittered sub-frames never agree, so the adaptive sampler
   climbs to its cap (108 on a near-still frame where it stops at 12); frames that stop at different counts
-  average different samples. A fixed `--samples`, or the entry's `maxSamples`, is the recipe.
+  average different samples. A fixed `--samples` is the recipe; an entry's `maxSamples` only bounds the cost.
 - **Left out:** a tone operator (AgX against the engine's shoulder was a small difference on the same
   frame, and a new one would also have to drive the adaptive sampler's error estimate, which once
   undersampled when the two disagreed); a shadow setting in the engine (scenes enable shadows around their

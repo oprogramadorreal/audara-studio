@@ -79,8 +79,8 @@ one sun. Its `Env` defaults are golden-temple's golden hour: change them for the
 reload the preview page; edits to a scene hot-swap it.
 
 The jitter needs the engine's `SUBFRAME` (`src/engine/gl.ts`, from 0.8.0). In an older project the kit still
-works without it, with no jitter; to add it, export `export const SUBFRAME = { k: -1 };` from `gl.ts`, and
-in `Engine.render` set `SUBFRAME.k = k` beside `SS_TAP.value` in the sub-frame function and `SUBFRAME.k = -1`
+works without it, with no jitter; to add it, export `export const SUBFRAME = { k: -1 };` from `gl.ts`, add
+`SUBFRAME` to `engine.ts`'s import from `./gl`, and in `Engine.render` set `SUBFRAME.k = k` beside `SS_TAP.value` in the sub-frame function and `SUBFRAME.k = -1`
 wherever `SS_TAP.value = -1` is set (the single-sample branch, and after the sub-frame loops, in a
 `finally`), then run verify on every video.
 
@@ -106,9 +106,10 @@ measured each on footage, not stills):
   jitter. A heavier scene gets a cheaper preview path (`ctx.export` false): a smaller shadow map, fewer
   occlusion taps, never other content.
 - Jittered sub-frames never converge to the adaptive sampler's threshold quickly: a near-still frame went to
-  108 sub-frames, where it stops at 12 without jitter. Render a photographic stretch with a fixed count
-  (`video --samples 12` measured 0.12 s a frame at 1080p for the example, about 3x a draft), or cap its entry
-  with `maxSamples` and check a moving clip: frames that stop at different counts average different samples.
+  108 sub-frames, where it stops at 12 without jitter, and frames it stops at different counts average
+  different samples. Render a photographic stretch with a fixed count (`video --samples 12` measured 0.12 s
+  a frame at 1080p for the example, about 3x a draft). An entry's `maxSamples` only bounds the cost, in a
+  video whose other stretches want adaptive sampling: check a moving clip if you use it.
 - Say how long the render will take before a long one. golden-temple's 70 s took 4 hours at 3.3 s a frame,
   on an integrated GPU, with 24 million triangles.
 

@@ -1891,8 +1891,9 @@ into three's PBR materials, a Nishita sky with clouds, aerial perspective and "a
 material through three's fog chunks, PMREM captures from the sky and then the scene, a fitted sun shadow,
 SAO-style occlusion, a scatter-as-gather depth of field, an ACES/AgX blend, a shot evaluator); the other
 28,000 build the temple. audara's engine already had the base it stands on (HDR targets, averaged
-sub-frames, a bloom pyramid), but its sub-frames varied only time, and its docs led a three.js scene to flat
-materials, a RoomEnvironment and THREE.Fog. The user's own projects had already hand-rolled pieces of it
+sub-frames, a bloom pyramid), but its sub-frames varied time (and cycled four supersampling taps for the
+shaders that ask for them) without giving a three.js scene an index to move its camera, sun or occlusion
+kernel by, and its docs led a three.js scene to flat materials, a RoomEnvironment and THREE.Fog. The user's own projects had already hand-rolled pieces of it
 (audaces-1's `_realism.ts`: VSM shadows, area lights, a planar mirror, a depth of field; oprog-1 and oprog-4:
 shadow maps in the engine), and 0.6.1 and 0.7.1 had left those engine additions out for scope, not for not
 working.
@@ -1960,8 +1961,9 @@ What changed:
 Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
 measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows
 on around their own draws; one type, PCF, project-wide); golden-temple's global shader-chunk patches (they
-would reach every scene of a video); its ambient volumes, volumetric light and god rays (off in its own
-film), water, vegetation and SDF sculpture as kit code (each a scene's own); a shimmer metric in qc.py
+would reach every scene of a video); its ambient volumes (boxes that dim sky light indoors), its volumetric
+light and god rays (both off in its own film), and its water, vegetation and SDF sculpture as kit code (each
+a scene's own); a shimmer metric in qc.py
 (golden-temple's `mcflicker` was used here by hand); a realism example in the template, or realism as the
 default for 3D.
 
@@ -2000,3 +2002,14 @@ controls):
 Not run: the `cv-photoreal-shot` task eval with and without the skills (an hour or more per run and tool),
 so whether a fresh session reaches the kit and makes better pictures than the model alone is not yet
 measured; Codex's trigger runs; a long photographic film; a GPU other than this laptop's.
+
+Codex reviewed the branch read-only. The first round found seven things, all fixed: a patch chained onto a
+material with its own `onBeforeCompile` lost that hook's identity in the program cache key (three's default
+key reads the callback, which the patch had replaced; the key is now taken before: four checks on CPU-only
+materials pass); the sky followed a camera's local position, which inside a CubeCamera is its face camera's
+zero (now its world position: the example's frame changed by 1 level in 1.4% of pixels, verify passes); the
+eval case asked the `--without` arm for audara's internals (now scoped to the skill arm, with equivalents);
+the recipe for adding `SUBFRAME` to an older engine left out its import; the stability promise held only for a
+fixed sample count (now said wherever it is made, and `maxSamples` described as a cost bound only); and two
+lines here (golden-temple's ambient volumes are on in its film; the engine's sub-frames already cycled four
+supersampling taps).

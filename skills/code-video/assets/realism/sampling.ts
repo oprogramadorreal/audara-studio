@@ -2,9 +2,11 @@
 // golden-temple moves three more things across them: the camera by a fraction of a pixel (anti-aliasing with a
 // wide, smooth filter, which keeps railings and tile edges from crawling in slow moves), the sun inside its
 // disc (soft shadows) and the ambient-occlusion kernel (noise-free AO). The rule that keeps the result from
-// flickering: every pattern depends on the sub-frame's index only, never on the frame's number or time, so a
-// surface that doesn't move gets the same samples in every frame (golden-temple's docs/ARCHITECTURE.md, "Why
-// the sub-frame sampling is temporally stable"; MIT, Leon Lin: see LICENSE).
+// flickering: every pattern depends on the sub-frame's index only, never on the frame's number or time, so
+// with a fixed sample count a surface that doesn't move gets the same samples in every frame (golden-temple's
+// docs/ARCHITECTURE.md, "Why the sub-frame sampling is temporally stable"; MIT, Leon Lin: see LICENSE). The
+// adaptive sampler stops frames at different counts, which average different sets: render a jittered stretch
+// with a fixed --samples.
 //
 // The index comes from the engine (src/engine/gl.ts SUBFRAME, audara 0.8.0 on; README.md says how to add it
 // to an older engine). Without it, and in the preview, stills and verify's seek checks (one sample each),

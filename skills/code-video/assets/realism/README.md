@@ -23,12 +23,14 @@ Rules that keep the shared engine safe and the frames stable:
 - Fine detail faded by its pixel footprint (`n_aa`), metals with `n_specAA`.
 - No `scene.fog` with patched materials; no post overrides from a scene (they reach a crossfade's other
   scene): grain, vignette and exposure go in `src/look.ts` or the entry's `post`.
-- Render photographic stretches with a fixed `--samples` (12 is a good start), or cap the entry's
-  `maxSamples`: jittered frames keep the adaptive sampler climbing.
+- Render photographic stretches with a fixed `--samples` (12 is a good start): jittered frames keep the
+  adaptive sampler climbing, and frames it stops at different counts average different samples (an entry's
+  `maxSamples` only bounds the cost).
 - Supported: fresh MeshStandard/Physical materials on Mesh and InstancedMesh, static geometry, metres.
 - Dispose what you create: the environment target, the `Sky`, the `Sun`, the `Lens`, geometries, materials.
 
 Without `SUBFRAME` (an engine older than audara 0.8.0) the kit works with no jitter. To add it: in
-`src/engine/gl.ts`, `export const SUBFRAME = { k: -1 };`; in `src/engine/engine.ts` `render()`, set
-`SUBFRAME.k = k` beside `SS_TAP.value` in the sub-frame function, and `SUBFRAME.k = -1` in the single-sample
-branch and after the sub-frame loops (in a `finally`). Run verify on every video after.
+`src/engine/gl.ts`, `export const SUBFRAME = { k: -1 };`; in `src/engine/engine.ts`, add `SUBFRAME` to its
+import from `./gl`, and in `render()` set `SUBFRAME.k = k` beside `SS_TAP.value` in the sub-frame function,
+and `SUBFRAME.k = -1` in the single-sample branch and after the sub-frame loops (in a `finally`). Run verify
+on every video after.

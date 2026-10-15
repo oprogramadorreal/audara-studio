@@ -570,10 +570,11 @@ What this asks of scenes:
   rendering order, the same for every frame), and -1 for a single-sample frame: the preview, stills, and
   verify's seek checks. A scene that spreads samples over the sub-frames (a sub-pixel camera offset, a
   point on the sun's disc, an occlusion kernel's turn: the realism kit's `src/realism/sampling.ts`) takes
-  them from `k`, never from the frame's number or time, so a surface that doesn't move gets the same
-  samples in every frame and doesn't crawl. It is a rendering parameter, not a clock: what the frame shows
-  still comes from `f.t`. Jittered sub-frames keep the adaptive sampler climbing (they never agree), so
-  render such a stretch with a fixed `--samples`, or cap its entry's `maxSamples`.
+  them from `k`, never from the frame's number or time, so with a fixed sample count a surface that
+  doesn't move gets the same samples in every frame and doesn't crawl. It is a rendering parameter, not a
+  clock: what the frame shows still comes from `f.t`. Jittered sub-frames keep the adaptive sampler
+  climbing (they never agree), and frames it stops at different counts average different sets: render
+  such a stretch with a fixed `--samples` (a `maxSamples` cap only bounds the cost).
 - Post parameters (shake, flash, zoom, fades, the HUD's paper mode) are read at one point of the shutter,
   1/8 of it after the frame's time (a point every sample set includes); the HUD, grain and dither are drawn
   once per frame.
