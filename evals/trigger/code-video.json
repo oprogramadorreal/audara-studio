@@ -24,6 +24,7 @@
     { "id": "cv-21", "should_trigger": false, "files": [], "query": "give me a few ideas for a short video about my coffee shop, don't make anything yet" },
     { "id": "cv-22", "should_trigger": false, "files": ["song.mp3"], "query": "help me write a prompt for a music video for song.mp3 that I can paste into another session" },
     { "id": "cv-23", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "put this project in a git repository so someone else can clone it and render the video, no renders or keys in it" },
-    { "id": "cv-24", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "make three YouTube thumbnails for this video, plus the title, the description with chapters and the tags" }
+    { "id": "cv-24", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "make three YouTube thumbnails for this video, plus the title, the description with chapters and the tags" },
+    { "id": "cv-25", "should_trigger": false, "files": ["ad-script.txt"], "query": "The shots and the picture edit of this 30-second ad are done in another tool. Narrate ad-script.txt in my existing ElevenLabs voice clone, compose the music and mix the ad's audio." }
   ]
 }

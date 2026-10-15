@@ -36,8 +36,9 @@ session file, since its `--json` stream doesn't), and `modelArg`, what `--model`
 
 Does a fresh session load the skill for a realistic request, and leave near-misses alone? About twenty
 requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
-they compete as they do once the plugin is installed; code-video's set ends with two requests for ideas
-only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
+they compete as they do once the plugin is installed (an installed audara-studio is turned off for the run,
+in both tools, so each skill is there once, with the description under test); code-video's set ends with
+two requests for ideas only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
 read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
 `scripts/render.ts`, which video-repo's own work can do). A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
@@ -62,6 +63,16 @@ youtube-package's set holds the user's own thumbnail prompt and three requests i
 near-misses sit beside it in the other sets: cv-24 (the package asked for inside a project, in code-video's
 set) and vi-23 (a better title for a finished video, in video-ideas'). A packaging run that renders plates
 calls `render.ts`, which counts as code-video's use on Codex: read cv-24 by its loads, as cv-23.
+
+soundtrack's set ends with films whose picture isn't the engine's: st-21 asks for a whole ad shot with an AI
+video model, its narration, music and mix; st-23 says the picture is made in another tool; st-22 narrates in
+a voice clone the user already has, beside st-16, which asks to make one; st-24, the AI shots alone, is the
+near-miss. cv-25, in code-video's set, is st-23. st-21 isn't one of code-video's near-misses: an ad can
+fairly use code for its titles. st-25 adapts the long prompt a 2026-10 session answered without
+soundtrack (`docs/history.md`, 0.7.2): keys, links and brand swapped, a short text script in place of a
+PDF. On Opus 5.5 it loaded soundtrack in 7 of 10 runs, code-video first in the rest; a run that loads
+code-video first and soundtrack only when the sound starts would be fine in a real session but fails here,
+since a run stops at six turns.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
@@ -160,7 +171,8 @@ encoder delay, which ffmpeg and browsers drop). The no-key cases run the mock to
 `AUDARA_IMAGES_BASE_URL`, with a fake `OPENAI_API_KEY` in Claude Code runs only, to keep a fake key away
 from Codex's own sign-in. Codex's built-in image generation can't be mocked: in a Codex run it would
 draw on the ChatGPT plan's limits, which the image cases check it only does when asked. The harness never
-passes a real `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` to a session, in task or trigger runs. The
+passes a real `ELEVENLABS_API_KEY` or `OPENAI_API_KEY` to a session, in task or trigger runs, nor any
+`HIGGSFIELD_*` variable (st-25 names a Higgsfield key and a budget). The
 later-session case has a decoy (`"decoy": 5173` in its setup): for the whole run an unrelated Vite app
 answers on 127.0.0.1:5173, as one left running on a developer's machine does, with its page for every path
 and no JSON at `/__audara`, so a grader can see whether the agent checked that the preview it links is its

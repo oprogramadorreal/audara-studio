@@ -385,7 +385,8 @@ extras.
 It has five skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
 for deciding what to make, **`video-repo`** for handing a finished project on and **`youtube-package`** for
 publishing a finished video. `soundtrack` turns a song
-or a script into audio files plus the timing data the engine reads. When the user provides an ElevenLabs API
+or a script into audio files plus the timing data the engine reads, and does the sound of a video made
+elsewhere too (filmed, or from AI video clips). When the user provides an ElevenLabs API
 key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs"). `video-ideas` is
 text only and ends with a starting prompt (see "Before the brief"). `video-repo` puts the project in git so
 someone else can clone it and render it again (see "Handing it on: a repository"). `youtube-package` makes a
@@ -610,6 +611,11 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
 
 - **Not in `code-video`.** The picture method has to work with any audio, or none. Its SKILL.md only points
   to `soundtrack` for narration, music and timing data.
+- **With any picture.** The reverse holds too: a video made outside the engine (filmed, AI video clips,
+  another editor) gets its sound here, since the production scripts take `--out <dir>` in place of `--video`
+  and the files and timings work in any edit. Both descriptions say so: a session making a commercial from
+  AI video clips loaded neither skill, ran `eleven.py` for its music and wrote its own narration, effects
+  and mix tools (history.md, 0.7.2).
 - **Not through the ElevenLabs MCP server.** The official server exists, but here each generation has to
   become timing JSON in the engine's format, with a record of the request, and be cached. A script does that
   in one step and runs the same way in Claude Code and Codex.
@@ -684,7 +690,9 @@ they differ, follow the stricter rule. What that means here:
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
     "render").
   - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage, for
-    generating clips with AI video models, or for ideas and a prompt alone; `video-ideas` is not for making a
+    generating AI video clips, or for ideas and a prompt alone, and that exclusion says `soundtrack` still
+    does the sound of such a film, so ruling out the picture doesn't rule out the plugin; `soundtrack` is
+    not for making a voice clone (narrating in one the user has is fine); `video-ideas` is not for making a
     video, for prompts for other generators, or for ideas for filmed content; `video-repo` is not for
     everyday commits, branches or pull requests, or for projects that aren't videos; `youtube-package` is not
     for making or changing the video (title cards and text inside it included), for choosing what to make, or
