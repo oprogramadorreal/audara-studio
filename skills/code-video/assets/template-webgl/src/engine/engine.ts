@@ -248,15 +248,18 @@ export class Engine {
   /** Instantiate and init one entry's scene (`load`: a fresh module, when the preview hot-swaps it). */
   private async loadEntry(e: TimelineEntry, load = e.load): Promise<Loaded> {
     const rec: Loaded = { entry: e, scene: null, lastT: -1 };
+    let s: Scene | null = null;
     try {
       const mod = await load();
       if (typeof mod?.default !== 'function') throw new Error(`the scene module of '${e.id}' has no default export (a class extending Scene)`);
-      const s = new mod.default({ ...this.ctx, id: e.id, params: e.params ?? {}, start: e.start, end: e.end });
+      s = new mod.default({ ...this.ctx, id: e.id, params: e.params ?? {}, start: e.start, end: e.end });
       await s.init();
       rec.scene = s;
     } catch (err) {
       rec.error = String((err as Error)?.stack ?? err);
       console.error(`scene ${e.id} failed`, err);
+      // what it built before failing is released (a failed save in the preview would otherwise keep it, once per save)
+      try { s?.dispose(); } catch { /* a half-built scene's dispose may fail too: its error above is the one to fix */ }
     }
     return rec;
   }

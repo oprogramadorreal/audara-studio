@@ -2086,3 +2086,72 @@ A fourth round, on the prompt's update, found three things, fixed: the compare c
 folder nothing creates (it now writes beside the still); handing the critic the builder's side-by-side pairs
 broke its independence (it gets the references and makes its own); and design.md credited the author with
 audara's side-by-side compare and time budget.
+
+**A code review of the branch, settled with Codex.** A `/code-review` at its highest effort found 14
+things. Codex (GPT-6 Astra, read-only in a second terminal) checked each against the code before any fix:
+it agreed with most, disputed one, and added three of its own. Then it reviewed the fixes twice, which
+found seven more, fixed below. Each was checked in a fresh project made by this branch's init with the kit
+copied in (1080p, the laptop's RTX 5070 unless named):
+
+- **The final render's sampling.** `video` and `poster` sample adaptively by default, and a jittered scene
+  keeps the sampler climbing: the example's default poster at 3 s took 324 sub-frames, the cap. A scene's
+  `refine = true` now says its frame depends on its sub-frame samples, so render.ts gives a range that
+  shows one a fixed 12 when `--samples` isn't given, as it did for stateful scenes (that poster: 12, with
+  the reason printed); `--samples auto` asked for by name is obeyed, with a note. Codex first preferred a
+  second flag, then agreed one was enough. Its review of the fix found that the range missed a crossfade
+  partner ending exactly at `--from` (the first frame's earlier sub-frames still show it) and the first
+  frame's rounding. The range is now what the first and last frames' shutters reach, at the times the
+  page renders them (n · 1/fps, not n / fps, which can land on the other side of a cut). A `refine` scene
+  counts up to a hard cut, as the engine clamps sub-frames, while a stateful one counts by the engine's
+  own test, the whole shutter, since the engine refuses it there (a default poster on the cut just after a
+  stateful scene: a fixed 12). After a kit scene that crossfades out at 1 s, `--from 1` took a fixed 12
+  and `--from 1.2` stayed adaptive. The preview chooses the scenes it
+  refines the same way, up to a hard cut: paused on a kit scene just after a cut from another kind, it
+  refined nothing before. init's AGENTS.md line promises the fixed default only where the project's
+  render.ts has it, and says `--samples 12` otherwise.
+- **Memory with many shots.** Every entry's scene is built when the page opens, each with its own `Lens`
+  targets (about 150 MB at 1080p) and a shadow map (about 128 MB at 4096²: three gives it a colour and a depth
+  texture). The `Lens` targets are now shared by every `Lens` of one frame size, counted by their users. Only
+  the two `Sun`s fitted last keep their maps; an older one's is released, and three allocates it again at its
+  next shadowed draw. Four example shots in one video took 1,180 MB of GPU memory in the preview, now 600
+  (Chrome's GPU process, dedicated memory, twice each). Six frames of that video, a crossfade included, were
+  bit-identical to renders with neither the sharing nor the releasing. At Codex's word the engine now also
+  disposes a scene whose `init()` throws: a failed save in the preview would otherwise keep what it built,
+  once per save.
+- **Shadows that swam.** A shadow frustum that follows the shot slid the map's texels over still surfaces.
+  `Sun.fit` now puts its centre on whole texels across the light. With a still camera and the fit's centre
+  moving 1.2 mm a frame (a texel is 6.8 mm), 155 to 234 pixels changed by more than 2 levels between
+  frames before, and none after.
+- **The camera** turned by blending the direction's components, which has no direction half-way between
+  keys facing opposite ways and bunches a wide turn into a few frames. It now interpolates pan and tilt per
+  key, the shorter way round, and `applyLens` takes them directly (Codex: aiming at a look point loses the pan
+  of a key looking straight down). Keys facing +X then -X turn an even 9.00° every twentieth of the move;
+  an ordinary pose matches the old aim exactly. The example's middle frame moves a little with it.
+- **Smaller things.** A second `patch()` on a material declared its GLSL twice and broke it: it now
+  throws. materials.ts checks three's shader text where it edits it when it loads, and names what is
+  missing (a three upgrade would otherwise leave shadows crawling or hooks out without a word). `makeEnv`
+  keeps a default for a haze field given as undefined (it threw). The depth of field's loop is as long as
+  its spacing needs (600 taps cut the blur short below a `dofStep` of about 0.5). The occlusion's reach and
+  blur scale with `--scale`: the macro at 4K, downscaled, now differs from 1x by 0.9 levels on average (99th
+  percentile 6), down from 2.45 (36). The sky's reversed `smoothstep`, undefined in GLSL, is turned round.
+  The preview keeps a refined frame when a scene elsewhere in the video is saved; it used to render it
+  again on any save. A lost and restored GL context reloads the page at its moment, since what scenes
+  captured on the GPU went with the old context; it listens from before the scenes load (Codex). The
+  example uses the engine's `fbm2`, and camera.ts its `keys()`: the hills' outline changed, not their look.
+- **The docs.** realism.md said edits to `src/realism/` reload the preview page. That held only while the
+  timeline played `src/realism/example` itself, as in the check above: in the usual setup, with the
+  example copied into `scenes/`, a kit edit hot-swaps the scenes that import it. Its tip to call
+  `compileAsync` in `init()` compiled program variants the scene never draws (shadows off, the canvas's
+  colour space), and the page already compiles every scene before it plays: removed.
+
+Declined: the sub-frame index as a field of `Frame` instead of `SUBFRAME`, a global like `SS_TAP` that
+keeps the kit working on an older engine (Codex agreed). Also declined: moving the sky's terms that depend
+only on the sun into its vertex shader. The whole sky was 2.7 of 18 ms a frame on the integrated GPU, and
+the move changed nothing measurable (18.0 and 32.5 ms preview and export, against 18.2 and 32.8), so it was
+taken out again.
+
+Checked as well: `bun run check`; verify on the example video, a kit video and the four-shot video; and
+the preview driven by Playwright. Paused on a kit scene, it refined once. Saving a scene elsewhere (it
+swapped) left the frame refined, and saving the scene on screen refined it again. A context lost and
+restored reloaded the page at the same `?t=` and refined. A scene that throws in `init()` was disposed
+once.

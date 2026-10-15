@@ -45,7 +45,7 @@ float cloudDensity(vec2 p){
   return clamp((cov * (puff + n_fbm(q * 11.0 + w * 4.0, 2) * 0.12) - 0.36) * 2.6, 0.0, 1.0);
 }
 vec3 skyColor(vec3 dir, vec3 sun, float sunI, float disc){
-  vec3 d = dir; float below = smoothstep(0.0, -0.08, d.y); d.y = max(d.y, 0.0005); d = normalize(d);
+  vec3 d = dir; float below = 1.0 - smoothstep(-0.08, 0.0, d.y); d.y = max(d.y, 0.0005); d = normalize(d);
   vec3 col = atmosphere(d, sun, sunI);
   vec3 sunCol = sunTransmittance(vec3(0.0, Re + 60.0, 0.0), sun);
   float ang = acos(clamp(dot(d, sun), -1.0, 1.0)); float R = 0.0095;

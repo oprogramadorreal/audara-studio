@@ -574,9 +574,17 @@ other video as it was (history.md, 0.8.0):
   scoped so that it touches nothing it doesn't own. Materials are patched per material (golden-temple edits
   three's shared shader chunks, which would reach every scene of a video); shadows are on only inside
   `withRenderer`, which restores the shared renderer however a draw ends; the program cache key is a hash of
-  everything injected, so a hot-reloaded scene never gets a stale shader. Not in the template: a piece that
-  doesn't ask for it never carries it, and its README and init's AGENTS.md line tell a later session its
-  rules.
+  everything injected, so a hot-reloaded scene never gets a stale shader; a material is patched once (a
+  second patch would declare everything twice, so it throws), and a three.js whose shader text no longer
+  has what the patch edits stops the kit with what is missing instead of changing nothing. Every entry's
+  scene is built when the page opens, so what one holds multiplies with the shots: the `Lens` targets are
+  scratch shared by every scene of one frame size, and only the two most recently fitted `Sun`s keep a
+  shadow map (a 4096² one is about 128 MB); four shots of the example took 600 MB of GPU memory in the
+  preview instead of 1,180. `Sun.fit` puts the shadow frustum on whole texels, so a frustum that follows the
+  shot doesn't make still shadows swim, and the camera turns as a camera head does, pan and tilt
+  (golden-temple blends the direction's components, which has no direction half-way through a half turn).
+  Not in the template: a piece that doesn't ask for it never carries it, and its README and init's
+  AGENTS.md line tell a later session its rules.
 - **One engine hook, `SUBFRAME`** (`gl.ts`): the sub-frame's index within its frame, -1 for a single sample.
   Sampling patterns that depend on it, never on the frame or the time, keep still surfaces identical from
   frame to frame. Nothing in the engine reads it; it is reset however the sampling loop ends; the example
@@ -589,13 +597,19 @@ other video as it was (history.md, 0.8.0):
   the cost), while a golden-temple-scale world plays at 2-3 fps on an integrated GPU after minutes of
   building. One sample a frame shows light, framing and motion. Paused on a frame whose scenes all set
   `refine = true` (the kit's do; none stateful), it is rendered once more with the render's 12 sub-frames
-  and held, so the director sees the finish of any moment by pausing on it; every other frame, a crossfade
-  with any other scene included, is drawn exactly as before. Flicker, which needs motion, is judged
-  in full-sample clips. `realism.md` says so, with the preview path's levers and how to keep a long build
-  out of the hot-swap loop.
-- **Fixed samples for a photographic stretch.** Jittered sub-frames never agree, so the adaptive sampler
-  climbs to its cap (108 on a near-still frame where it stops at 12); frames that stop at different counts
-  average different samples. A fixed `--samples` is the recipe; an entry's `maxSamples` only bounds the cost.
+  and held until the playhead moves or a scene it shows is swapped, so the director sees the finish of any
+  moment by pausing on it; every other frame, a crossfade with any other scene included, is drawn exactly
+  as before. Flicker, which needs motion, is judged in full-sample clips. `realism.md` says so, with the
+  preview path's levers and how to keep a long build out of the hot-swap loop. A GL context lost and
+  restored (a GPU reset) reloads the page at its moment, since what scenes captured on the GPU when they
+  were built is gone with the old one.
+- **Fixed samples for a photographic stretch, by default.** Jittered sub-frames never agree, so the
+  adaptive sampler climbs toward its cap (108 sub-frames on a near-still frame where it stops at 12, 324 on
+  a frame of the example's move); frames that stop at different counts average different samples, which
+  flickers. `refine = true` is the one flag a kit scene sets: its frame depends on its sub-frame samples. So
+  the preview refines it paused, and render.ts gives a range that shows it, in any sub-frame, a fixed 12
+  when `--samples` isn't given, as it does for a stateful scene (`--samples auto` asked for by name is
+  obeyed, with a note). An entry's `maxSamples` only bounds the cost.
 - **Left out:** a tone operator (AgX against the engine's shoulder was a small difference on the same
   frame, and a new one would also have to drive the adaptive sampler's error estimate, which once
   undersampled when the two disagreed); a shadow setting in the engine (scenes enable shadows around their

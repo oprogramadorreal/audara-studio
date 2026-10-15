@@ -155,7 +155,8 @@ their own audio drift by about 50 ms at every join (measured).
   scene that must stay crisp returns `{ bloom: 0 }` or keeps its values under 0.7; values above 1 are for
   light that should glow.
 - three.js frees GPU memory only in `dispose()`, and the preview swaps a scene on every save: free the
-  targets, textures and geometry the scene made there.
+  targets, textures and geometry the scene made there. It also runs after an `init()` that threw, so it
+  copes with what `init()` didn't reach (`this.sky?.dispose()`).
 
 ## Time from the data
 

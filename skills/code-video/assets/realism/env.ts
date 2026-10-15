@@ -40,6 +40,7 @@ export function sunFrom(elevationDeg: number, azimuthDeg: number) {
 }
 
 export function makeEnv(o: Partial<Omit<Env, 'haze'>> & { haze?: Partial<Haze> } = {}): Env {
+  const h = o.haze ?? {}; // (a field given as undefined, e.g. from an entry's missing param, keeps its default)
   return {
     sunDir: (o.sunDir ?? sunFrom(6.8, -110)).clone().normalize(),
     sunColor: (o.sunColor ?? new THREE.Color().setRGB(1.0, 0.7, 0.43, THREE.LinearSRGBColorSpace)).clone(),
@@ -47,9 +48,8 @@ export function makeEnv(o: Partial<Omit<Env, 'haze'>> & { haze?: Partial<Haze> }
     skyIntensity: o.skyIntensity ?? 20,
     sunRadius: o.sunRadius ?? 0.0065,
     haze: {
-      height: 22, ground: 0.0013, air: 0.00022,
-      color: [0.32, 0.35, 0.44], glow: [1.0, 0.62, 0.3], glowStrength: 0.9, g: 0.78,
-      ...o.haze,
+      height: h.height ?? 22, ground: h.ground ?? 0.0013, air: h.air ?? 0.00022,
+      color: h.color ?? [0.32, 0.35, 0.44], glow: h.glow ?? [1.0, 0.62, 0.3], glowStrength: h.glowStrength ?? 0.9, g: h.g ?? 0.78,
     },
   };
 }

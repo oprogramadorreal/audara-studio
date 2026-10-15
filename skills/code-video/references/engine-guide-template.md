@@ -34,8 +34,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
 - **Saving files while it plays:** a scene, or a helper a scene imports, swaps in place and the rest
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),
-  `video.json`, `src/` and a new or changed file in the video's `data/`, `audio/` or `assets/` reload the
-  page, at the moment it was showing. An error the page keeps showing that `stills` of the same moment
+  `video.json`, `src/` (but a module only scenes import, like `src/realism/`, swaps those scenes) and a new
+  or changed file in the video's `data/`, `audio/` or `assets/` reload the page, at the moment it was
+  showing, as does a GL context lost and restored (a GPU reset). An error the page keeps showing that `stills` of the same moment
   don't (each run starts a fresh server) is a stale module in the preview's server, as when several
   authors save the same helpers at once: `bun scripts/render.ts preview --stop`, then `preview`, and reload.
 - **Stills** (the main way to check your work; then look at the PNGs):
@@ -55,7 +56,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   `--draft` takes one sub-frame per frame (no motion blur) and a fast encode (`--preset veryfast --crf 23`)
   and says so as it starts.
 - **The render**: `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, with motion
-  blur by default (`--samples auto --shutter 0.2`, see "Motion blur and sampling") and a slow, fine encode
+  blur by default (`--samples auto --shutter 0.2`, or a fixed 12 sub-frames where a stateful or `refine`
+  scene shows: see "Motion blur and sampling") and a slow, fine encode
   (`--preset slow --crf 16`). Add `--scale 2` for 4K, `--noaudio` for the picture alone, `--fps 30` for
   another rate than `video.json`'s. Only the whole video, every entry, on the full-quality path takes the
   name `<video>.mp4`; anything less is named for what it is, so it can't replace the delivery: a range
@@ -97,7 +99,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   posters and videos): `stills --t 12.5 --as-preview` lands beside `stills --t 12.5`, a heavy scene's
   cheaper preview next to what the render will show.
 - `--samples` and `--shutter` work in stills, sheet, poster, video and perf: sub-frames per frame (default
-  1, `auto` for `video` and `poster`) and the fraction of the frame time they spread over (default 0.2).
+  1; `auto` for `video` and `poster`, or a fixed 12 over a range showing a stateful or `refine` scene) and
+  the fraction of the frame time they spread over (default 0.2).
   verify's renders are fixed.
 - Every option is in the header of `scripts/render.ts`; this list has the common ones. An option it doesn't
   know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
@@ -314,13 +317,15 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
 - Transitions: entries that touch make a hard cut (the default); overlapping ones crossfade. For a custom
   transition set `handlesTransition = true` and composite `f.under` (the previous scene's frame) yourself
   using `f.tin` (0→1 over the overlap).
-- `refine = true` on a scene (a plain property: the realism kit's scenes set it): when the preview is
-  paused, the playhead has rested 0.3 s, and every scene the frame shows sets it (none stateful), the
-  player renders that frame once more with the render's sampling, 12 sub-frames with their jitter and
-  motion blur, holds it until the playhead moves or a scene reloads, and says "refined (12 sub-frames)"
-  on the info line. It is still the preview path (`ctx.export` false: a scene's cheaper settings stay).
-  The page waits while it renders (12 frames' cost). A frame that also shows another scene (a crossfade)
-  is drawn as before, like every scene without it.
+- `refine = true` on a scene (a plain property: the realism kit's scenes set it) says its frame depends
+  on its sub-frame samples (`SUBFRAME`, below). When the preview is paused, the playhead has rested 0.3 s,
+  and every scene the frame shows sets it (none stateful), the player renders that frame once more with
+  the render's sampling, 12 sub-frames with their jitter and motion blur, holds it until the playhead
+  moves or a scene it shows reloads, and says "refined (12 sub-frames)" on the info line. It is still the
+  preview path (`ctx.export` false: a scene's cheaper settings stay). The page waits while it renders (12
+  frames' cost). A frame that also shows a scene without it (a crossfade) is drawn as before, like every
+  scene without it. `video` and `poster` without `--samples` render a range that shows one with a fixed 12
+  sub-frames instead of adaptively, as for a stateful scene (`video --draft` still takes one).
 - Post overrides a scene can return per frame (`src/engine/post.ts`): `exposure, bloom, bloomThreshold,
   bloomKnee, bloomRadius, halation, ca, grain, vignette, hud` (HUD opacity), `frame` (crop marks, 0..1),
   `paper` (marks in `bg` on a light frame), `fade, flash, shake: [x, y], zoom, invert, hudDraw` (a Canvas2D
@@ -528,7 +533,8 @@ is refused: that is the same picture at another size, which `--scale` makes.
 `video` and `poster` render every frame as the average of many sub-frames spread over the shutter
 (`--shutter`, by default 0.2: a fifth of the frame time, centred on the frame's time), before
 post-processing, so the delivery gets real motion blur without anyone remembering a flag. By default they
-choose the count per frame (`--samples auto`); `--samples N` takes N evenly spaced sub-frames. Stills,
+choose the count per frame (`--samples auto`), or take a fixed 12 over a range that shows a stateful scene
+or one with `refine = true` (below); `--samples N` takes N evenly spaced sub-frames. Stills,
 sheets, perf and `video --draft` take one sub-frame unless told otherwise (`stills --samples auto` shows a
 moment's blur); verify's renders are fixed (one sub-frame, and four over the whole frame time at the
 cuts). The adaptive count (`Engine.render`, `AdaptiveSampling`):
@@ -582,8 +588,9 @@ What this asks of scenes:
   them from `k`, never from the frame's number or time, so with a fixed sample count a surface that
   doesn't move gets the same samples in every frame and doesn't crawl. It is a rendering parameter, not a
   clock: what the frame shows still comes from `f.t`. Jittered sub-frames keep the adaptive sampler
-  climbing (they never agree), and frames it stops at different counts average different sets: render
-  such a stretch with a fixed `--samples` (a `maxSamples` cap only bounds the cost).
+  climbing (they never agree), and frames it stops at different counts average different sets: such a
+  scene sets `refine = true`, and render.ts renders a stretch that shows it with a fixed 12 sub-frames
+  unless `--samples` says otherwise (a `maxSamples` cap only bounds the cost).
 - Post parameters (shake, flash, zoom, fades, the HUD's paper mode) are read at one point of the shutter,
   1/8 of it after the frame's time (a point every sample set includes); the HUD, grain and dither are drawn
   once per frame.

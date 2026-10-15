@@ -9,6 +9,41 @@
 import * as THREE from 'three';
 import { FSPass, makeRT } from '../engine/gl';
 
+/** The largest blur allowed, logical px. */
+const MAX_BLUR = 25;
+
+// The targets are scratch: filled by a scene's draw and read by finish() in the same render, then free. Every
+// Lens of one frame size shares one set, so a video of many kit shots (each entry's scene is built when the
+// page opens) holds one set instead of one per shot: about 150 MB at 1080p, four times that at --scale 2.
+interface Targets { rt: THREE.WebGLRenderTarget; aoA: THREE.WebGLRenderTarget; aoB: THREE.WebGLRenderTarget; cocRT: THREE.WebGLRenderTarget; tileRT: THREE.WebGLRenderTarget; users: number }
+const POOL = new Map<string, Targets>();
+const TILE = 16;
+
+function acquire(W: number, H: number): Targets {
+  let t = POOL.get(`${W}x${H}`);
+  if (!t) {
+    const rt = makeRT(W, H, { samples: 4 });
+    rt.depthTexture = new THREE.DepthTexture(rt.width, rt.height, THREE.FloatType);
+    t = {
+      rt, aoA: makeRT(W / 2, H / 2, { depthBuffer: false }), aoB: makeRT(W / 2, H / 2, { depthBuffer: false }),
+      cocRT: makeRT(W, H, { depthBuffer: false }),
+      // the largest blur in each 16x16-logical-px tile: the gather stops where no blur nearby reaches further
+      tileRT: makeRT(Math.ceil(W / TILE), Math.ceil(H / TILE), { depthBuffer: false, pxScale: 1, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter }),
+      users: 0,
+    };
+    POOL.set(`${W}x${H}`, t);
+  }
+  t.users++;
+  return t;
+}
+
+function release(W: number, H: number, t: Targets) {
+  if (--t.users > 0) return;
+  POOL.delete(`${W}x${H}`);
+  t.rt.depthTexture?.dispose();
+  for (const x of [t.rt, t.aoA, t.aoB, t.cocRT, t.tileRT]) x.dispose();
+}
+
 const DEPTH = /* glsl */ `
 uniform sampler2D tDepth; uniform mat4 uProjInv; uniform float cameraNear, cameraFar;
 float lz(float d){ return (cameraNear * cameraFar) / ((cameraFar - cameraNear) * d - cameraFar); } // view z (negative)
@@ -34,12 +69,16 @@ export interface LensSettings {
 export const focalToFov = (focal: number, aspect: number) => (2 * Math.atan(36 / aspect / (2 * focal)) * 180) / Math.PI;
 
 export class Lens {
-  /** Draw the scene here (4x multisampled, HDR, with a depth texture), then call finish(). */
+  /**
+   * Draw the scene here (4x multisampled, HDR, with a depth texture), then call finish() in the same render:
+   * every Lens of this frame size shares the target, so what it holds doesn't last past that.
+   */
   readonly rt: THREE.WebGLRenderTarget;
   private aoA: THREE.WebGLRenderTarget;
   private aoB: THREE.WebGLRenderTarget;
   private cocRT: THREE.WebGLRenderTarget;
   private tileRT: THREE.WebGLRenderTarget;
+  private targets: Targets | null;
   private passes: FSPass[];
   private ao: FSPass; private blur: FSPass; private coc: FSPass; private tile: FSPass; private dof: FSPass;
   private dofStep: number;
@@ -52,24 +91,24 @@ export class Lens {
   constructor(private W: number, private H: number, o: { aoSamples?: number; dofStep?: number } = {}) {
     const n = Math.max(4, Math.round(o.aoSamples ?? 16));
     this.dofStep = Math.max(0.3, o.dofStep ?? 0.55);
-    this.rt = makeRT(W, H, { samples: 4 });
-    this.rt.depthTexture = new THREE.DepthTexture(this.rt.width, this.rt.height, THREE.FloatType);
-    this.aoA = makeRT(W / 2, H / 2, { depthBuffer: false });
-    this.aoB = makeRT(W / 2, H / 2, { depthBuffer: false });
-    this.cocRT = makeRT(W, H, { depthBuffer: false });
-    // the largest blur in each 16x16-logical-px tile: the gather stops where no blur nearby reaches further
-    const TILE = 16, PS = Math.max(1, Math.round(this.cocRT.width / W));
-    this.tileRT = makeRT(Math.ceil(W / TILE), Math.ceil(H / TILE), { depthBuffer: false, pxScale: 1, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    // the spiral's radius grows by dofStep / radius a tap, so the largest blur takes MAX_BLUR² / (2 dofStep)
+    // taps: the loop allows them all, so a finer spacing never cuts a blur short
+    const taps = Math.ceil((MAX_BLUR * MAX_BLUR) / (2 * this.dofStep)) + 2;
+    const t = (this.targets = acquire(W, H));
+    ({ rt: this.rt, aoA: this.aoA, aoB: this.aoB, cocRT: this.cocRT, tileRT: this.tileRT } = t);
+    const PS = Math.max(1, Math.round(this.cocRT.width / W));
     const depthU = () => ({ tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, cameraNear: { value: 0.1 }, cameraFar: { value: 1000 } });
+    // (uPx: physical px per logical px of the occlusion's target, so its reach and its blur cover the same
+    // part of the frame at --scale 2 as at 1x)
     this.ao = new FSPass(/* glsl */ `${DEPTH}
-      uniform vec2 uRes; uniform float uRadius, uIntensity, uRot; uniform mat4 uProj;
+      uniform vec2 uRes; uniform float uRadius, uIntensity, uRot, uPx; uniform mat4 uProj;
       void main(){
         if (texture(tDepth, vUv).x >= 0.99999) { fragColor = vec4(1.0); return; }
         vec3 P = vpos(vUv); vec2 px = 1.0 / uRes;
         vec3 pr = vpos(vUv + vec2(px.x, 0.0)), pl = vpos(vUv - vec2(px.x, 0.0));
         vec3 pu = vpos(vUv + vec2(0.0, px.y)), pd = vpos(vUv - vec2(0.0, px.y));
         vec3 N = normalize(cross(abs(pr.z - P.z) < abs(P.z - pl.z) ? pr - P : P - pl, abs(pu.z - P.z) < abs(P.z - pd.z) ? pu - P : P - pd));
-        float rpx = min(uRadius * uProj[1][1] * 0.5 * uRes.y / -P.z, 120.0);
+        float rpx = min(uRadius * uProj[1][1] * 0.5 * uRes.y / -P.z, 120.0 * uPx);
         // the spiral turns per pixel and by sub-frame (uRot), never by frame
         float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))) + uRot);
         float ao = 0.0, r2 = uRadius * uRadius;
@@ -81,18 +120,18 @@ export class Lens {
         }
         ao = max(0.0, 1.0 - ao * uIntensity * 2.0 / ${n}.0);
         fragColor = vec4(ao, ao, ao, 1.0);
-      }`, { ...depthU(), uRes: { value: new THREE.Vector2() }, uRadius: { value: 0.9 }, uIntensity: { value: 1.3 }, uRot: { value: 0 }, uProj: { value: new THREE.Matrix4() } });
+      }`, { ...depthU(), uRes: { value: new THREE.Vector2() }, uRadius: { value: 0.9 }, uIntensity: { value: 1.3 }, uRot: { value: 0 }, uPx: { value: this.aoA.width / (W / 2) }, uProj: { value: new THREE.Matrix4() } });
     this.blur = new FSPass(/* glsl */ `${DEPTH}
-      uniform sampler2D tAO; uniform vec2 uDir, uRes;
+      uniform sampler2D tAO; uniform vec2 uDir, uRes; uniform float uPx;
       void main(){
         float d0 = -lz(texture(tDepth, vUv).x), sum = 0.0, ws = 0.0;
         for (int i = -4; i <= 4; i++){
-          vec2 uv = vUv + uDir * float(i) / uRes;
+          vec2 uv = vUv + uDir * float(i) * uPx / uRes;
           float w = exp(-float(i * i) / 10.0) * exp(-abs(-lz(texture(tDepth, uv).x) - d0) / (0.02 * d0 + 0.01));
           sum += texture(tAO, uv).x * w; ws += w;
         }
         float r = sum / max(ws, 1e-4); fragColor = vec4(r, r, r, 1.0);
-      }`, { ...depthU(), tAO: { value: null }, uDir: { value: new THREE.Vector2() }, uRes: { value: new THREE.Vector2() } });
+      }`, { ...depthU(), tAO: { value: null }, uDir: { value: new THREE.Vector2() }, uRes: { value: new THREE.Vector2() }, uPx: { value: this.aoA.width / (W / 2) } });
     // the circle of confusion in logical px, signed (behind the focus plane positive), in alpha
     this.coc = new FSPass(/* glsl */ `${DEPTH}
       uniform sampler2D tColor; uniform sampler2D tAO; uniform float uAO, uFocus, uFocal, uFstop, uWidth, uMaxCoc, uDof;
@@ -124,7 +163,7 @@ export class Lens {
         float reach = min(uMaxCoc, near + 1.0);
         vec4 c0 = texture(tCoc, vUv); float centre = abs(c0.a);
         vec3 col = c0.rgb; float tot = 1.0, radius = uStep, ang = 0.0;
-        for (int i = 0; i < 600; i++){
+        for (int i = 0; i < ${taps}; i++){
           if (radius >= reach) break;
           ang += 2.39996323;
           vec4 s = texture(tCoc, vUv + vec2(cos(ang), sin(ang)) * radius / uRes);
@@ -159,7 +198,7 @@ export class Lens {
     b.tAO!.value = this.aoA.texture; (b.uDir!.value as THREE.Vector2).set(1, 0); this.blur.render(renderer, this.aoB);
     b.tAO!.value = this.aoB.texture; (b.uDir!.value as THREE.Vector2).set(0, 1); this.blur.render(renderer, this.aoA);
     const dofOn = lens.dof !== false;
-    const maxCoc = Math.min(25, lens.maxBlur ?? 22 * (this.W / 1920));
+    const maxCoc = Math.min(MAX_BLUR, lens.maxBlur ?? 22 * (this.W / 1920));
     const c = this.coc.u;
     c.tColor!.value = this.rt.texture; c.tAO!.value = this.aoA.texture; c.uAO!.value = lens.ao ?? 0.75;
     c.uFocus!.value = Math.max(lens.focus, lens.focal * 0.001 * 1.01); c.uFocal!.value = lens.focal; c.uFstop!.value = lens.fstop;
@@ -176,10 +215,10 @@ export class Lens {
     this.dof.render(renderer, out);
   }
 
-  /** Release the targets, the depth texture and the passes' materials (the engine's shared quad stays). */
+  /** Release the passes' materials, and the targets once no Lens of this size holds them (the engine's shared quad stays). */
   dispose() {
-    this.rt.depthTexture?.dispose();
-    for (const t of [this.rt, this.aoA, this.aoB, this.cocRT, this.tileRT]) t.dispose();
+    if (this.targets) release(this.W, this.H, this.targets);
+    this.targets = null;
     for (const p of this.passes) p.mat.dispose();
   }
 }

@@ -5,8 +5,9 @@
 // material: nothing here edits three's shared shader chunks, so other scenes in the video are untouched.
 //
 // Supported: fresh MeshStandardMaterial / MeshPhysicalMaterial on Mesh and InstancedMesh, static geometry
-// (no vertex displacement: three's shadow pass draws the undisplaced shape). A material's existing
-// onBeforeCompile runs first. Not with scene.fog: the aerial perspective replaces three's fog in these materials.
+// (no vertex displacement: three's shadow pass draws the undisplaced shape), patched once. A material's
+// existing onBeforeCompile runs first. Not with scene.fog: the aerial perspective replaces three's fog in these
+// materials. Tested with three 0.186: a three whose shader text changed stops this module with what it lacks.
 import * as THREE from 'three';
 import { NOISE } from './noise';
 import { aerialGLSL, type Env } from './env';
@@ -72,6 +73,27 @@ const VERT_WORLD = /* glsl */ `
 const SHADOW_PARS = THREE.ShaderChunk.shadowmap_pars_fragment
   .split('float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;').join('float phi = 0.785;');
 
+const HOOK_AT = ['#include <color_fragment>', '#include <roughnessmap_fragment>', '#include <metalnessmap_fragment>', '#include <normal_fragment_maps>', '#include <emissivemap_fragment>'] as const;
+
+// Every edit here finds its place by three's shader text, and one that found nothing would change nothing
+// without a word (shadows crawling again, a hook left out): checked once against this three.js, whose
+// MeshStandard and MeshPhysical materials share these shaders, so a three that changed the text fails loudly.
+{
+  const vs = THREE.ShaderChunk.meshphysical_vert, fs = THREE.ShaderChunk.meshphysical_frag;
+  const missing = [
+    ...(SHADOW_PARS === THREE.ShaderChunk.shadowmap_pars_fragment ? ["the PCF taps' rotation in shadowmap_pars_fragment"] : []),
+    ...['#include <common>', '#include <project_vertex>'].filter((s) => !vs.includes(s)).map((s) => `${s} in the vertex shader`),
+    ...['#include <common>', '#include <shadowmap_pars_fragment>', ...HOOK_AT, '#include <fog_fragment>'].filter((s) => !fs.includes(s)),
+  ];
+  if (missing.length) {
+    throw new Error(`src/realism/materials.ts: three.js r${THREE.REVISION} no longer has the shader text this kit edits (${missing.join(', ')}). `
+      + 'The kit is tested with three 0.186: pin it (bun add three@0.186 @types/three@0.186) or update materials.ts.');
+  }
+}
+
+/** Materials this module has patched: a second patch() would declare everything twice. */
+const PATCHED = new WeakSet<THREE.Material>();
+
 /** FNV-1a, twice with different seeds: a program cache key from everything this patch injects. */
 function hashKey(s: string) {
   let a = 0x811c9dc5, b = 0x9747b28c;
@@ -88,20 +110,18 @@ function hashKey(s: string) {
  * perspective (null leaves it out: a material seen only up close, or one you haze yourself). Two materials
  * with the same hooks and Env share a compiled program; an edited hook, or an edited helper here, makes a new
  * one (the cache key is a hash of all the GLSL this adds), so a hot-reloaded scene never gets a stale shader.
+ * Once per material: to add a hook to a PROC surface, spread both into one call,
+ * `patch(m, { ...PROC.granite(), fragEmissive: '...' }, env)`.
  */
 export function patch<M extends THREE.MeshStandardMaterial>(mat: M, hooks: Hooks, env: Env | null): M {
+  if (PATCHED.has(mat)) throw new Error('patch(): this material is patched already, and a second patch would declare its GLSL twice: patch it once with every hook, e.g. patch(m, { ...PROC.granite(), fragEmissive: \'...\' }, env)');
   const fragHead = `${FRAG_HEAD}\n${env ? aerialGLSL(env) : ''}\n${hooks.fragHead ?? ''}`;
-  const steps: [string, string | undefined][] = [
-    ['#include <color_fragment>', hooks.fragColor],
-    ['#include <roughnessmap_fragment>', hooks.fragRough],
-    ['#include <metalnessmap_fragment>', hooks.fragMetal],
-    ['#include <normal_fragment_maps>', hooks.fragNormal],
-    ['#include <emissivemap_fragment>', hooks.fragEmissive],
-  ];
+  const hookCode = [hooks.fragColor, hooks.fragRough, hooks.fragMetal, hooks.fragNormal, hooks.fragEmissive];
+  const steps = HOOK_AT.map((at, i) => [at, hookCode[i]] as const);
   const key = 'realism-' + mat.type + '-' + hashKey([VERT_HEAD, VERT_WORLD, fragHead, SHADOW_PARS, String(!!env), ...steps.map((s) => s[1] ?? '')].join('\u0001'));
   const prev = mat.onBeforeCompile;
-  // the key the material had before this patch, whatever gives it (three's default, a subclass, an earlier
-  // patch), read with the callback this one wraps put back for the call: three's default reads the callback
+  // the key the material had before this patch, whatever gives it (three's default, a subclass, a hook of
+  // its own), read with the callback this one wraps put back for the call: three's default reads the callback
   const prevKey = mat.customProgramCacheKey;
   mat.onBeforeCompile = (shader, renderer) => {
     prev.call(mat, shader, renderer);
@@ -122,6 +142,7 @@ export function patch<M extends THREE.MeshStandardMaterial>(mat: M, hooks: Hooks
     try { return prevKey.call(this) + key; } finally { this.onBeforeCompile = cur; }
   };
   mat.needsUpdate = true;
+  PATCHED.add(mat);
   return mat;
 }
 

@@ -78,13 +78,15 @@ Leave the engine's post as it is; grain, vignette or exposure go in `src/look.ts
 | `light.ts` | `Sun`: shadowed, its frustum fitted to the shot, jittered in its disc; `withRenderer()`: renderer settings for a draw, restored however it ends |
 | `lens.ts` | `Lens`: the scene's 4x multisampled target with depth, then occlusion and depth of field into `out` (the blur's taps stop at the largest blur nearby; `dofStep` spaces them for a preview path); `focalToFov()` |
 | `sampling.ts` | `jitter()`, `jitterCamera()`: this sub-frame's samples from the engine's `SUBFRAME` |
-| `camera.ts` | `lensAt(t, keys)`, `applyLens()`, `reveal`: lens keys at times; direction, look and focus distances interpolated the way a camera moves |
+| `camera.ts` | `lensAt(t, keys)`, `applyLens()`, `reveal`: lens keys at times; pan and tilt, look and focus distances interpolated the way a camera moves |
 | `example.ts` | a scene using all of it (a gilt finial pulling back to a gate); play it with `E('garden', '../../../src/realism/example', a, b)`, then copy it into `scenes/` to make it yours |
 
 What it supports, and what it doesn't: fresh MeshStandardMaterial or MeshPhysicalMaterial on Mesh and
-InstancedMesh, static geometry (a vertex displacement would cast the undisplaced shadow), metres as units,
-one sun. Its `Env` defaults are golden-temple's golden hour: change them for the piece. Edits to `src/realism/`
-reload the preview page; edits to a scene hot-swap it.
+InstancedMesh, patched once (spread a `PROC` surface and your own hooks into one `patch()`), static geometry
+(a vertex displacement would cast the undisplaced shadow), metres as units, one sun. Its `Env` defaults are
+golden-temple's golden hour: change them for the piece. Saving a scene hot-swaps it; saving a file in
+`src/realism/` hot-swaps the scenes that import it (and rebuilds a world in a helper module that imports
+it), or reloads the page while the timeline plays `src/realism/example` itself.
 
 The jitter needs the engine's `SUBFRAME` (`src/engine/gl.ts`, from 0.8.0). In an older project the kit still
 works without it, with no jitter; to add it, export `export const SUBFRAME = { k: -1 };` from `gl.ts`, add
@@ -102,7 +104,8 @@ measured each on footage, not stills):
   turns fast across a pixel (`n_specAA`), and a small bright feature (a droplet, a rivet) shrinks away once
   it is under a pixel, so it doesn't sparkle.
 - Shadows: a fixed PCF rotation (patch does it), the softness from the sun's disc; the shadow frustum fitted
-  to the shot (`Sun.fit`), the smallest radius that holds what casts and receives.
+  to the shot (`Sun.fit`), the smallest radius that holds what casts and receives, on whole texels, so it
+  can follow the shot without still shadows swimming.
 - The renderer is shared: shadows on only inside `withRenderer()`, which restores every setting even when a
   draw throws; one shadow type (PCF) in the whole project, since three rebuilds shadowed materials when it
   changes. No `scene.fog` with patched materials: the haze replaces it.
@@ -139,16 +142,22 @@ and what it can show.
 - **Load time.** Every entry builds in `init()` when the page opens and again when its file is saved. A
   world that takes long to build belongs in a helper module beside the scenes (`scenes/_world.ts`) that
   builds once into a module-level value and hands it to the scenes that show it, which don't dispose it:
-  saving a scene's camera or timing then hot-swaps in seconds, and only saving the world rebuilds it. Move
-  shader compiles off the first frame with `await renderer.compileAsync(scene, camera)` in `init()`.
+  saving a scene's camera or timing then hot-swaps in seconds, and only saving the world (or a kit file it
+  imports) rebuilds it. The shaders need nothing of yours: the page warms every entry before it plays (a
+  draw at its start, middle and end), which compiles them.
 
 ## Sampling and cost
 
 - Jittered sub-frames never converge to the adaptive sampler's threshold quickly: a near-still frame went to
-  108 sub-frames, where it stops at 12 without jitter, and frames it stops at different counts average
-  different samples. Render a photographic stretch with a fixed count (`video --samples 12` measured 0.12 s
-  a frame at 1080p for the example, about 3x a draft). An entry's `maxSamples` only bounds the cost, in a
-  video whose other stretches want adaptive sampling: check a moving clip if you use it.
+  108 sub-frames, where it stops at 12 without jitter, a frame of the example's move to 324, and frames it
+  stops at different counts average different samples, which flickers. So a range that shows a scene with
+  `refine = true` renders with a fixed 12 sub-frames when `--samples` isn't given (render.ts says so;
+  measured 0.12 s a frame at 1080p for the example, about 3x a draft). `--samples N` sets another count;
+  `--samples auto` asked for by name is obeyed, with a note. An entry's `maxSamples` only bounds the cost.
+- Every entry's scene is built when the page opens, so a film of many shots holds them all: the `Lens`
+  targets are shared by every scene of one frame size (draw and `finish()` in the same render), and only
+  the two `Sun`s fitted last keep a shadow map (call `fit()` before every shadowed draw, as the example
+  does). Four shots of the example took 600 MB of GPU memory in the preview, instead of 1,180.
 - Say how long the render will take before a long one. golden-temple's 70 s took 4 hours at 3.3 s a frame,
   on an integrated GPU, with 24 million triangles.
 

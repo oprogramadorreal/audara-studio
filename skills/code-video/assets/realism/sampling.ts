@@ -5,12 +5,13 @@
 // flickering: every pattern depends on the sub-frame's index only, never on the frame's number or time, so
 // with a fixed sample count a surface that doesn't move gets the same samples in every frame (golden-temple's
 // docs/ARCHITECTURE.md, "Why the sub-frame sampling is temporally stable"; MIT, Leon Lin: see LICENSE). The
-// adaptive sampler stops frames at different counts, which average different sets: render a jittered stretch
-// with a fixed --samples.
+// adaptive sampler stops frames at different counts, which average different sets: render.ts gives a stretch
+// showing a scene with refine = true a fixed 12 (an older render.ts: pass --samples 12).
 //
 // The index comes from the engine (src/engine/gl.ts SUBFRAME, audara 0.8.0 on; README.md says how to add it
-// to an older engine). Without it, and in the preview, stills and verify's seek checks (one sample each),
-// jitter() returns null and the scene renders its centred sample: it works, only without these extras.
+// to an older engine). Without it, and in single-sample frames (the preview while it plays, stills, verify's
+// seek checks), jitter() returns null and the scene renders its centred sample: it works, only without these
+// extras.
 import * as THREE from 'three';
 import * as GL from '../engine/gl';
 

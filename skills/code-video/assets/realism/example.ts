@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { Scene, type Frame } from '../engine/scene';
 import { clearRT } from '../engine/gl';
-import { clamp } from '../engine/util';
+import { clamp, fbm2 } from '../engine/util';
 import { makeEnv, sunFrom, type Env } from './env';
 import { PROC, patch, type Hooks } from './materials';
 import { captureEnv, captureSkyEnv, createSky, type Sky } from './sky';
@@ -19,13 +19,8 @@ import { Lens } from './lens';
 import { jitter, jitterCamera } from './sampling';
 import { applyLens, lensAt, linearKeys, reveal, type LensKey } from './camera';
 
-/** Seeded value noise for shaping geometry in init() (deterministic: no Math.random). */
-function vnoise(x: number, y: number, seed: number) {
-  const h = (i: number, j: number) => { let n = (i * 374761393 + j * 668265263 + seed * 2246822519) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; };
-  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
-  return (h(i, j) * (1 - ux) + h(i + 1, j) * ux) * (1 - uy) + (h(i, j + 1) * (1 - ux) + h(i + 1, j + 1) * ux) * uy;
-}
-const fbm = (x: number, y: number, o: number, seed = 0) => { let s = 0, a = 0.5, f = 1; for (let i = 0; i < o; i++) { s += a * vnoise(x * f, y * f, seed + i); f *= 2.03; a *= 0.5; } return s; };
+/** The engine's seeded fbm, 0..1, for shaping geometry in init() (deterministic: no Math.random). */
+const fbm = (x: number, y: number, o: number, seed = 0) => fbm2(x, y, o, seed) * 0.5 + 0.5;
 
 /** Raked gravel with moss islands: this scene's own surface, written like the kit's PROC ones. */
 const GROUND: Hooks = {
