@@ -11,7 +11,8 @@ audara-studio is a plugin for Claude Code and Codex with five skills:
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
   render and any moment has a link.
 - **soundtrack**: turns a song or a script into audio and the timing the picture syncs to: beats, sections,
-  word timings, narration and music (with ElevenLabs, asking before spending credits), effects and the mix.
+  word timings, narration and music (with ElevenLabs, asking before spending credits), effects and the mix,
+  also for a video made elsewhere (filmed, or from AI video clips).
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
   one and writes it up as a prompt, without building anything until you ask.
 - **video-repo**: for when you want a project in git, finished or not started yet. It keeps what someone
