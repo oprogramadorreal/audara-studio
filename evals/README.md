@@ -63,6 +63,13 @@ near-misses sit beside it in the other sets: cv-24 (the package asked for inside
 set) and vi-23 (a better title for a finished video, in video-ideas'). A packaging run that renders plates
 calls `render.ts`, which counts as code-video's use on Codex: read cv-24 by its loads, as cv-23.
 
+soundtrack's set ends with films whose picture isn't the engine's: st-21 asks for a whole ad shot with an AI
+video model, its narration, music and mix (the request a 2026-10 session answered without soundtrack, see
+`docs/history.md`, 0.7.2); st-23 says the picture is made in another tool; st-22 narrates in a voice clone the
+user already has, beside st-16, which asks to make one; st-24, the AI shots alone, is the near-miss. cv-25,
+in code-video's set, is st-23. st-21 isn't one of code-video's near-misses: an ad can fairly use code for
+its titles.
+
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
 fails only when the skill is used (one of its scripts runs). video-ideas has no scripts, so its use can't be
