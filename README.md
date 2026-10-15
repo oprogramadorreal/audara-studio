@@ -73,6 +73,9 @@ Other ways in:
 - **Your product:** "a 15-second teaser for our app, the screens are in screens/". It shows your real
   screens as they are and asks for any the story needs that you didn't give, rather than drawing a
   lookalike. Ask for a concept or a mockup and it makes one, marked as a concept.
+- **Photoreal 3D:** "a 15-second photoreal shot of a stone lantern at dusk, opening on a macro of its flame".
+  It is lit like a photograph (a physical sky, sunlight and haze, a real lens), for places and things rather
+  than people, and takes longer to render than a graphic piece.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You

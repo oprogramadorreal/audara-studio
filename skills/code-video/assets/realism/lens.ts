@@ -1,0 +1,156 @@
+// What a camera adds after the light: ambient occlusion in the creases, then a depth of field from a real
+// lens (focal length, focus distance, f-stop on a 36 mm-wide sensor). Both run inside the scene, on its own
+// depth, per sub-frame, before the scene hands its picture to the engine; the engine's post (bloom, grain,
+// tone) then treats the whole frame. Adapted from golden-temple's src/core/post.js (SAO-style SSAO with a
+// depth-aware blur, and a scatter-as-gather depth of field after Gustafsson) and its main.js lens maths
+// (MIT, Leon Lin: see LICENSE).
+//
+// Sizes are in the video's logical px, so a blur looks the same at --scale 2 (the 4K render) as at 1x.
+import * as THREE from 'three';
+import { FSPass, makeRT } from '../engine/gl';
+
+const DEPTH = /* glsl */ `
+uniform sampler2D tDepth; uniform mat4 uProjInv; uniform float cameraNear, cameraFar;
+float lz(float d){ return (cameraNear * cameraFar) / ((cameraFar - cameraNear) * d - cameraFar); } // view z (negative)
+vec3 vpos(vec2 uv){ float d = texture(tDepth, uv).x; vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return v.xyz / v.w; }`;
+
+export interface LensSettings {
+  /** Focal length, mm (36 mm-wide sensor: 24 wide, 50 normal, 85+ long). */
+  focal: number;
+  /** Focus distance, m. */
+  focus: number;
+  /** Aperture, f-stop (2.8 shallow, 8 deep). */
+  fstop: number;
+  /** Depth of field on (default true). */
+  dof?: boolean;
+  /** Largest blur, logical px (default 22 at 1920 wide, in proportion to the frame; at most 25). */
+  maxBlur?: number;
+  /** How much the occlusion darkens (0 none, default 0.75), and its reach in metres (default 0.9). */
+  ao?: number;
+  aoRadius?: number;
+}
+
+/** Vertical field of view (degrees) of a focal length on a 36 mm-wide sensor, for a frame of this aspect. */
+export const focalToFov = (focal: number, aspect: number) => (2 * Math.atan(36 / aspect / (2 * focal)) * 180) / Math.PI;
+
+export class Lens {
+  /** Draw the scene here (4x multisampled, HDR, with a depth texture), then call finish(). */
+  readonly rt: THREE.WebGLRenderTarget;
+  private aoA: THREE.WebGLRenderTarget;
+  private aoB: THREE.WebGLRenderTarget;
+  private cocRT: THREE.WebGLRenderTarget;
+  private passes: FSPass[];
+  private ao: FSPass; private blur: FSPass; private coc: FSPass; private dof: FSPass;
+
+  /** `W`, `H`: the logical frame (ctx.W, ctx.H). `aoSamples`: 16 for the render; fewer is a fair preview path. */
+  constructor(private W: number, private H: number, o: { aoSamples?: number } = {}) {
+    const n = Math.max(4, Math.round(o.aoSamples ?? 16));
+    this.rt = makeRT(W, H, { samples: 4 });
+    this.rt.depthTexture = new THREE.DepthTexture(this.rt.width, this.rt.height, THREE.FloatType);
+    this.aoA = makeRT(W / 2, H / 2, { depthBuffer: false });
+    this.aoB = makeRT(W / 2, H / 2, { depthBuffer: false });
+    this.cocRT = makeRT(W, H, { depthBuffer: false });
+    const depthU = () => ({ tDepth: { value: null }, uProjInv: { value: new THREE.Matrix4() }, cameraNear: { value: 0.1 }, cameraFar: { value: 1000 } });
+    this.ao = new FSPass(/* glsl */ `${DEPTH}
+      uniform vec2 uRes; uniform float uRadius, uIntensity, uRot; uniform mat4 uProj;
+      void main(){
+        if (texture(tDepth, vUv).x >= 0.99999) { fragColor = vec4(1.0); return; }
+        vec3 P = vpos(vUv); vec2 px = 1.0 / uRes;
+        vec3 pr = vpos(vUv + vec2(px.x, 0.0)), pl = vpos(vUv - vec2(px.x, 0.0));
+        vec3 pu = vpos(vUv + vec2(0.0, px.y)), pd = vpos(vUv - vec2(0.0, px.y));
+        vec3 N = normalize(cross(abs(pr.z - P.z) < abs(P.z - pl.z) ? pr - P : P - pl, abs(pu.z - P.z) < abs(P.z - pd.z) ? pu - P : P - pd));
+        float rpx = min(uRadius * uProj[1][1] * 0.5 * uRes.y / -P.z, 120.0);
+        // the spiral turns per pixel and by sub-frame (uRot), never by frame
+        float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))) + uRot);
+        float ao = 0.0, r2 = uRadius * uRadius;
+        for (int i = 0; i < ${n}; i++){
+          float fi = (float(i) + 0.5) / ${n}.0, ang = float(i) * 2.39996 + noise * 6.2831;
+          vec3 v = vpos(vUv + vec2(cos(ang), sin(ang)) * sqrt(fi) * rpx * px) - P;
+          float vv = dot(v, v), f = max(r2 - vv, 0.0) / r2;
+          ao += f * f * f * max((dot(v, N) - 0.01 * -P.z) / (vv + 0.01), 0.0);
+        }
+        ao = max(0.0, 1.0 - ao * uIntensity * 2.0 / ${n}.0);
+        fragColor = vec4(ao, ao, ao, 1.0);
+      }`, { ...depthU(), uRes: { value: new THREE.Vector2() }, uRadius: { value: 0.9 }, uIntensity: { value: 1.3 }, uRot: { value: 0 }, uProj: { value: new THREE.Matrix4() } });
+    this.blur = new FSPass(/* glsl */ `${DEPTH}
+      uniform sampler2D tAO; uniform vec2 uDir, uRes;
+      void main(){
+        float d0 = -lz(texture(tDepth, vUv).x), sum = 0.0, ws = 0.0;
+        for (int i = -4; i <= 4; i++){
+          vec2 uv = vUv + uDir * float(i) / uRes;
+          float w = exp(-float(i * i) / 10.0) * exp(-abs(-lz(texture(tDepth, uv).x) - d0) / (0.02 * d0 + 0.01));
+          sum += texture(tAO, uv).x * w; ws += w;
+        }
+        float r = sum / max(ws, 1e-4); fragColor = vec4(r, r, r, 1.0);
+      }`, { ...depthU(), tAO: { value: null }, uDir: { value: new THREE.Vector2() }, uRes: { value: new THREE.Vector2() } });
+    // the circle of confusion in logical px, signed (behind the focus plane positive), in alpha
+    this.coc = new FSPass(/* glsl */ `${DEPTH}
+      uniform sampler2D tColor; uniform sampler2D tAO; uniform float uAO, uFocus, uFocal, uFstop, uWidth, uMaxCoc, uDof;
+      void main(){
+        vec3 c = texture(tColor, vUv).rgb * mix(1.0, texture(tAO, vUv).x, uAO);
+        float z = -lz(texture(tDepth, vUv).x), f = uFocal * 0.001, A = f / uFstop;
+        float coc = A * f * (z - uFocus) / (z * (uFocus - f));
+        fragColor = uDof > 0.5 ? vec4(c, clamp(coc / 0.036 * uWidth, -uMaxCoc, uMaxCoc)) : vec4(c, 1.0);
+      }`, { ...depthU(), tColor: { value: null }, tAO: { value: null }, uAO: { value: 0.75 }, uFocus: { value: 10 }, uFocal: { value: 35 }, uFstop: { value: 4 }, uWidth: { value: W }, uMaxCoc: { value: 22 }, uDof: { value: 1 } });
+    // gather along a golden-angle spiral; a sample counts where its own blur reaches this far, so sharp
+    // things in front keep their edges and blurred ones don't pull them in
+    this.dof = new FSPass(/* glsl */ `
+      uniform sampler2D tCoc; uniform vec2 uRes; uniform float uMaxCoc;
+      void main(){
+        vec4 c0 = texture(tCoc, vUv); float centre = abs(c0.a);
+        vec3 col = c0.rgb; float tot = 1.0, radius = 0.55, ang = 0.0;
+        for (int i = 0; i < 600; i++){
+          if (radius >= uMaxCoc) break;
+          ang += 2.39996323;
+          vec4 s = texture(tCoc, vUv + vec2(cos(ang), sin(ang)) * radius / uRes);
+          float size = abs(s.a); if (s.a > c0.a) size = clamp(size, 0.0, centre * 2.0);
+          col += mix(col / tot, s.rgb, smoothstep(radius - 0.5, radius + 0.5, size)); tot += 1.0;
+          radius += 0.55 / radius;
+        }
+        fragColor = vec4(col / tot, 1.0);
+      }`, { tCoc: { value: null }, uRes: { value: new THREE.Vector2(W, H) }, uMaxCoc: { value: 22 } });
+    this.passes = [this.ao, this.blur, this.coc, this.dof];
+  }
+
+  /**
+   * After the scene was drawn into `rt` with `cam` (its projection as drawn, jitter included): occlusion,
+   * then the depth of field, into `out`, every pixel of it, opaque. `rot`: this sub-frame's kernel turn
+   * (sampling.ts jitter().rot), 0 for a single sample.
+   */
+  finish(renderer: THREE.WebGLRenderer, cam: THREE.PerspectiveCamera, out: THREE.WebGLRenderTarget, lens: LensSettings, rot = 0) {
+    for (const p of [this.ao, this.blur, this.coc]) {
+      p.u.tDepth!.value = this.rt.depthTexture;
+      (p.u.uProjInv!.value as THREE.Matrix4).copy(cam.projectionMatrixInverse);
+      p.u.cameraNear!.value = cam.near; p.u.cameraFar!.value = cam.far;
+    }
+    const a = this.ao.u;
+    (a.uRes!.value as THREE.Vector2).set(this.aoA.width, this.aoA.height);
+    (a.uProj!.value as THREE.Matrix4).copy(cam.projectionMatrix);
+    a.uRadius!.value = lens.aoRadius ?? 0.9;
+    a.uRot!.value = rot;
+    this.ao.render(renderer, this.aoA);
+    const b = this.blur.u;
+    (b.uRes!.value as THREE.Vector2).set(this.aoA.width, this.aoA.height);
+    b.tAO!.value = this.aoA.texture; (b.uDir!.value as THREE.Vector2).set(1, 0); this.blur.render(renderer, this.aoB);
+    b.tAO!.value = this.aoB.texture; (b.uDir!.value as THREE.Vector2).set(0, 1); this.blur.render(renderer, this.aoA);
+    const dofOn = lens.dof !== false;
+    const maxCoc = Math.min(25, lens.maxBlur ?? 22 * (this.W / 1920));
+    const c = this.coc.u;
+    c.tColor!.value = this.rt.texture; c.tAO!.value = this.aoA.texture; c.uAO!.value = lens.ao ?? 0.75;
+    c.uFocus!.value = Math.max(lens.focus, lens.focal * 0.001 * 1.01); c.uFocal!.value = lens.focal; c.uFstop!.value = lens.fstop;
+    c.uWidth!.value = this.W; c.uMaxCoc!.value = maxCoc; c.uDof!.value = dofOn ? 1 : 0;
+    this.coc.render(renderer, dofOn ? this.cocRT : out);
+    if (!dofOn) return;
+    this.dof.u.tCoc!.value = this.cocRT.texture;
+    (this.dof.u.uRes!.value as THREE.Vector2).set(this.W, this.H);
+    this.dof.u.uMaxCoc!.value = maxCoc;
+    this.dof.render(renderer, out);
+  }
+
+  /** Release the targets, the depth texture and the passes' materials (the engine's shared quad stays). */
+  dispose() {
+    this.rt.depthTexture?.dispose();
+    for (const t of [this.rt, this.aoA, this.aoB, this.cocRT]) t.dispose();
+    for (const p of this.passes) p.mat.dispose();
+  }
+}

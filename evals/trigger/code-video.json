@@ -11,6 +11,7 @@
     { "id": "cv-08", "should_trigger": true, "files": ["revenue.csv"], "query": "make an animated video of our revenue growing from 2019 to 2025 for the all-hands, data's in revenue.csv, 30 seconds" },
     { "id": "cv-09", "should_trigger": true, "files": [], "query": "build me a short generative art clip in glsl, something like ink spreading in water, and export it as an mp4" },
     { "id": "cv-10", "should_trigger": true, "files": ["brand.png"], "query": "can you animate our product launch announcement? three short scenes, around 25 seconds total, use the colors from brand.png" },
+    { "id": "cv-26", "should_trigger": true, "files": [], "query": "make a 15-second photoreal 3D shot of a Japanese temple at golden hour, all made in code (no stock footage), opening on a macro of a bronze bell and pulling back to reveal the pagoda" },
     { "id": "cv-11", "should_trigger": false, "files": ["interview.mp4"], "query": "trim the first 10 seconds off interview.mp4 and add a 1 second fade out at the end" },
     { "id": "cv-12", "should_trigger": false, "files": [], "query": "generate a realistic video of a cat surfing a wave using an AI video model like Sora or Veo" },
     { "id": "cv-13", "should_trigger": false, "files": ["clip.mov"], "query": "convert clip.mov to mp4 and get it under 10MB so I can send it on whatsapp" },

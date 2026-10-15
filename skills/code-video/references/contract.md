@@ -225,6 +225,10 @@ The rule, applied to three.js:
 - `docs/ENGINE.md` lists what the example's three.js scene ran into: aliased edges without a multisampled
   target of your own (and the seam a colour gradient makes there), an `InstancedMesh` culled by its first
   frame's bounds, light intensities in multiples of π, a straight-down camera's `up`.
+- A shot meant to read as photographed (photoreal, a real place or object in real light): `references/realism.md`
+  and its kit (procedural surfaces in three's PBR materials, a physical sky, haze, a shadowed sun, a lens,
+  samples spread over sub-frames through `SUBFRAME`), with the renderer's settings changed only around the
+  scene's own draws and restored after (`withRenderer`).
 
 ## Images and footage
 

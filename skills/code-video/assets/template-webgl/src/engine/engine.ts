@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { AudioData } from './audio';
 import { Words } from './words';
-import { Compositor, FSPass, W, H, PW, PH, SCALE, SS_TAP, makeRT, clearRT } from './gl';
+import { Compositor, FSPass, W, H, PW, PH, SCALE, SS_TAP, SUBFRAME, makeRT, clearRT } from './gl';
 import { DEFAULT_POST, Post, SHOULDER_GLSL, type PostParams } from './post';
 import { Hud } from './hud';
 import type { Frame, Scene, SceneClass, SceneCtx, PostOverrides } from './scene';
@@ -362,6 +362,7 @@ export class Engine {
     let n = 1;
     if (samples === 1) {
       SS_TAP.value = -1;
+      SUBFRAME.k = -1;
       ({ outTex, post } = this.composite(t, dt, seeked));
     } else {
       const adaptive = typeof samples !== 'number';
@@ -385,6 +386,7 @@ export class Engine {
       // sub-frame k at shutter offset u (-0.5..0.5), summed into `into`; `step` = the nominal sub-frame spacing
       const sub = (k: number, u: number, into: THREE.WebGLRenderTarget, step: number) => {
         SS_TAP.value = cycle ? (k + (k >> 2)) % 4 : -1;
+        SUBFRAME.k = k;
         // (clamped at 0, where no scene is active before, and to the frame's side of every hard cut: a frame
         // on a cut would otherwise average both scenes into a double exposure)
         const res = this.composite(this.sameSide(t, Math.max(0, t + dt * shutter * u)), step, seeked && k === 0);
@@ -394,28 +396,33 @@ export class Engine {
         if (d < nearest - 1e-9 || (d < nearest + 1e-9 && u > POST_U)) { nearest = d; post = res.post; }
       };
       clearRT(r, this.sumRT, [0, 0, 0], 0);
-      if (!adaptive) {
-        n = samples;
-        for (let k = 0; k < n; k++) sub(k, (k + 0.5) / n - 0.5, this.sumRT, (dt * shutter) / n);
-      } else {
-        const lg3 = (x: number) => Math.log(x / 4) / Math.log(3);
-        const lo = Math.max(0, Math.round(lg3(samples.min))), hi = Math.max(lo, Math.floor(lg3(maxAdaptive) + 1e-9));
-        const u = ternaryOffsets(hi);
-        n = 4 * 3 ** lo;
-        this.lastErrors = [];
-        for (let k = 0; k < n; k++) sub(k, u[k]!, this.sumRT, (dt * shutter) / n);
-        for (let l = lo; l < hi; l++) {
-          clearRT(r, this.newRT, [0, 0, 0], 0);
-          for (let k = n; k < 3 * n; k++) sub(k, u[k]!, this.newRT, (dt * shutter) / (3 * n));
-          // (the post is the frame's already: the first set holds the sub-frame at POST_U)
-          const err = this.sampleError(n, post.shoulder) / 2;
-          this.lastErrors.push(err);
-          this.comp.draw(r, this.newRT.texture, this.sumRT, { mode: 'add', opacity: 1, premult: false });
-          n *= 3;
-          if (err < samples.tol) break;
+      // (both reset however the loop ends: a sub-frame index left behind would reach the preview's next frame)
+      try {
+        if (!adaptive) {
+          n = samples;
+          for (let k = 0; k < n; k++) sub(k, (k + 0.5) / n - 0.5, this.sumRT, (dt * shutter) / n);
+        } else {
+          const lg3 = (x: number) => Math.log(x / 4) / Math.log(3);
+          const lo = Math.max(0, Math.round(lg3(samples.min))), hi = Math.max(lo, Math.floor(lg3(maxAdaptive) + 1e-9));
+          const u = ternaryOffsets(hi);
+          n = 4 * 3 ** lo;
+          this.lastErrors = [];
+          for (let k = 0; k < n; k++) sub(k, u[k]!, this.sumRT, (dt * shutter) / n);
+          for (let l = lo; l < hi; l++) {
+            clearRT(r, this.newRT, [0, 0, 0], 0);
+            for (let k = n; k < 3 * n; k++) sub(k, u[k]!, this.newRT, (dt * shutter) / (3 * n));
+            // (the post is the frame's already: the first set holds the sub-frame at POST_U)
+            const err = this.sampleError(n, post.shoulder) / 2;
+            this.lastErrors.push(err);
+            this.comp.draw(r, this.newRT.texture, this.sumRT, { mode: 'add', opacity: 1, premult: false });
+            n *= 3;
+            if (err < samples.tol) break;
+          }
         }
+      } finally {
+        SS_TAP.value = -1;
+        SUBFRAME.k = -1;
       }
-      SS_TAP.value = -1;
       this.comp.draw(r, this.sumRT.texture, this.avgRT, { mode: 'replace', opacity: 1 / n, premult: false });
       outTex = this.avgRT.texture;
     }

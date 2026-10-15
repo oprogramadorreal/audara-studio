@@ -405,7 +405,8 @@ frame at `t` of a clip rendered from the entry's start.
   half the cost of a GPU canvas and rasterizes the same pixels every time; `clear(color?)` also resets
   every drawing setting, `upload()`); `makeRT()` (an HDR target the size of the frame; `makeRT(w, h)`
   takes logical px); `clearRT(renderer, rt, [r, g, b])`; `W`, `H` (logical size), `SCALE`, `PW`, `PH`
-  (output scale and physical size); `SS_TAP`, `SS_TAP_GLSL`; `scaleContext2D`.
+  (output scale and physical size); `SS_TAP`, `SS_TAP_GLSL`; `SUBFRAME` (the sub-frame's index, below);
+  `scaleContext2D`.
 - `glsl/common.ts` (`GLSL_COMMON`, prepended to every FSPass; import it into your own ShaderMaterials): the
   palette constants, `PI`, `TAU`, `PX_SCALE`, `FRAG_PX`, `sat`, `remap`, `rot2`, `luma`, `hash11/12/13/22/33`,
   `snoise(vec2|vec3)`, `fbm`, `curl2`, 2D/3D SDFs (`sdCircle`, `sdBox`, `sdSegment`, `sdSphere`, `sdBox3`,
@@ -565,6 +566,14 @@ What this asks of scenes:
   loop `for (int k = ssK0(); k < ssK1(); k++) ... rgss(k)`, weighting by `ssWeight()`. The engine then
   hands each sub-frame one tap, cycling them (every set is a multiple of 4), which averages to the same
   image for a quarter of the cost. In the preview and single-sample stills they take all four.
+- `SUBFRAME.k` (`gl.ts`) is the index of the sub-frame being rendered within its frame (0, 1, 2 … in
+  rendering order, the same for every frame), and -1 for a single-sample frame: the preview, stills, and
+  verify's seek checks. A scene that spreads samples over the sub-frames (a sub-pixel camera offset, a
+  point on the sun's disc, an occlusion kernel's turn: the realism kit's `src/realism/sampling.ts`) takes
+  them from `k`, never from the frame's number or time, so a surface that doesn't move gets the same
+  samples in every frame and doesn't crawl. It is a rendering parameter, not a clock: what the frame shows
+  still comes from `f.t`. Jittered sub-frames keep the adaptive sampler climbing (they never agree), so
+  render such a stretch with a fixed `--samples`, or cap its entry's `maxSamples`.
 - Post parameters (shake, flash, zoom, fades, the HUD's paper mode) are read at one point of the shutter,
   1/8 of it after the frame's time (a point every sample set includes); the HUD, grain and dither are drawn
   once per frame.

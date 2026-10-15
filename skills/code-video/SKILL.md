@@ -50,8 +50,8 @@ Run in the project folder (`<skill>`: this skill's folder); all options: the hea
 - references/motion.md: eases, keys, cuts, sync, pacing.
 - references/glsl-cookbook.md: working code: 4K lines, raymarching, kinetic type, karaoke, fields, particles, inks.
 - references/critique.md: the stills loop, the critic, the checks.
-- references/images.md: when code would draw it poorly (a painted or photographic surface, a face) or images are given or asked for.
-- references/blender.md: a 3D shot three.js can't model or light (Blender installed).
+- references/images.md: what code draws poorly (a painted or photographic surface, a face); images given or asked for.
+- references/realism.md: photoreal 3D; blender.md: what three.js can't model or light, if installed.
 - references/math.md: equations, plots, formula morphs.
 - references/backends.md: when the engine doesn't suit it.
 

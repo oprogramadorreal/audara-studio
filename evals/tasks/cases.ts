@@ -31,6 +31,7 @@ const cases: Record<string, Case> = {
       "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
       "Turn 1's build ends in the preview, its reply offering the render, with no full render (not a --draft) in that turn. Since 0.2.0 that offer can make turn 2's \"Go ahead\" a yes to it: a full render in turn 2 passes when the reply says it took the words that way, and otherwise none runs before turn 3 asks for one. Turn 2's notes are applied and checked in the preview and stills before any render (the transcripts).",
       'The brief honours "Minimal and elegant": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2\'s "no tagline, just the name" in the director\'s words.',
+      "The realism kit stays out: no src/realism/ and no photographic 3D lighting (a physical sky, haze, a shadowed sun), since nothing in the prompt asks for a photographed look; a title card that chooses depth and light on purpose says why in the treatment's Look.",
     ],
   },
   'cv-song-brief': {
@@ -208,6 +209,27 @@ const cases: Record<string, Case> = {
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece flashes or wipes there on purpose.',
       'Turn 1, to its hand-off, takes under 60 minutes (result.json); report the time either way.',
       'For the set (judged blind against the --without runs, from contact sheets at 4 fps, full-size stills and the final MP4s with sound): the skill runs are judged at least as impressive and as varied as the runs without them, and the sound fits the picture.',
+    ],
+  },
+  // A photographic 3D shot (0.8.0, from golden-temple): the director asks for photoreal, names the subject and the
+  // move, and leaves the rest open. The skill should reach references/realism.md and its kit, keep the shared
+  // renderer and the f(t) rule safe, stage the detail where the lens is, and render with a fixed sample count.
+  // Run it --without too: the set is judged blind on how photographic the frames read, and on shimmer in motion.
+  'cv-photoreal-shot': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 180,
+    turns: [
+      { prompt: 'make a 15-second photoreal shot of a stone lantern in a Japanese garden at dusk: open on a macro of its flame, then pull back to reveal the garden. Everything made in code, no stock images.' },
+      { prompt: 'Render it.' },
+    ],
+    assertions: [
+      "With the skills, turn 1 reads references/realism.md before the first scene file is written, and the project's scenes either use the kit (src/realism/, copied whole with its LICENSE) or the treatment says why it builds its own lighting instead (the transcripts).",
+      "The 3D is lit and shaded as a photograph: three's MeshStandardMaterial or MeshPhysicalMaterial with procedural surface detail, a sun with shadows, environment light from a sky, and aerial haze on distant things (the scene code); no MeshBasicMaterial or MeshLambertMaterial on the lantern, the ground or the garden.",
+      "Every change a scene makes to the shared renderer (shadowMap.enabled, type, autoUpdate, autoClear, toneMapping, the render target) is restored before render() returns, also when a draw throws: inside withRenderer or a try/finally (the scene code).",
+      "Per-sub-frame jitter, if any, comes from the engine's SUBFRAME index, never from frameIdx(t), t or Math.random; render.ts verify passes.",
+      "The render of turn 2 uses a fixed --samples for the photographic stretch, or that entry has maxSamples (render.ts's report: one sub-frame count for the stretch, or a cap), and before it starts the reply says about how long it will take.",
+      "It opens on the flame up close with a shallow depth of field (a still at 0.3 s: the flame sharp, the background visibly blurred) and ends wider on the garden (a still 0.3 s before the end shows the lantern whole and the garden around it); no person, face or animal appears in any frame.",
+      'After turn 2 an MP4 of 15.0 +/- 0.1 s exists at 16:9, tagged BT.709; no frame at t=0 or at a cut is near-black unless it fades in on purpose; no paid request is made.',
+      'For the set (judged blind against the --without runs, from full-size stills at 0.3 s, 7.5 s and 14.7 s and the MP4s): the skill runs are judged at least as photographic (light with a source, surfaces with wear, haze with distance, a lens), and no more shimmering or crawling in motion (mcflicker-style residual or by eye at 1:1).',
     ],
   },
   // Detailed direction over several turns, a rejection that must survive a new session (turn 5 starts one), and
