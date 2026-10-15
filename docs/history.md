@@ -2017,4 +2017,4 @@ The second round found two more, fixed: the cache key still collided for a mater
 the key on its prototype, and for an override that delegates to three's default (the patch now calls the
 material's earlier key, whatever gives it, with the original callback put back for the call: seven checks
 on CPU-only materials pass, and the example's frames are unchanged); and the eval's renderer assertion
-counted binding `out`, which every scene does.
+counted binding `out`, which every scene does. The third round found nothing.
