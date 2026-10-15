@@ -22,6 +22,8 @@ Contents
 - One video or many in a project (0.6.1, 2026-10-11)
 - Publishing it: youtube-package (0.7.0, 2026-10-12)
 - Small fixes from three published videos (0.7.1, 2026-10-13)
+- Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
+- Photographic 3D from golden-temple (0.8.0, 2026-10-15)
 
 ## Definition of done
 
@@ -1866,3 +1868,290 @@ revoked with no source (the user said so in this session). The second found the 
 runs and the Higgsfield key st-25 names (both fixed in the harness, above), and asked for "adapted prompt"
 and for counts that claim no more than they show. The third found that a task case's copied project
 settings could turn the plugin back on (task.ts now reads them too) and softened two inferences.
+
+## Photographic 3D from golden-temple (0.8.0, 2026-10-15)
+
+The user pointed at [golden-temple](https://github.com/Leonxlnx/golden-temple) (MIT, Leon Lin, one commit,
+`97fd9ec`, published that day): a golden-hour Japanese temple built entirely in three.js r186 and GLSL with
+Claude Code (Opus 5.5 orchestrating parallel agents), rendered offline into a 70-second 1080p60 film in
+headless Chrome. No models, textures or HDRIs; 24.4 million triangles; 8 averaged sub-frames per frame, about
+3.3 s a frame and 4 hours for the film on a laptop iGPU (AMD Radeon 780M). They asked what audara could learn
+from it to reach that quality as an option, without making every piece realistic and without risking the
+skills' current behavior, and whether its prompts were known. At first they weren't: the repository was
+created that day, has no issues, its release notes describe the film, and web searches found nothing, so the
+first reading went by its README's "How it was made" and the code: one site plan and one time of day every
+module reads, one agent per world module owning its hero shot, GPU stills compared with reference images (not
+published), the world laid out for the cameras (the hero lotus at the first key's focus point), and camera
+motion and flicker measured before the final render. The prompt turned up later (below). A Claude Code session (Opus 5.5) read both repositories and Codex (GPT-6 Astra,
+through Herdr) read them independently first, then they argued it out over two rounds; the user gave Claude
+the last call and asked for the change.
+
+What the reading found: about 2,500 of golden-temple's 31,000 lines are reusable engine (material patching
+into three's PBR materials, a Nishita sky with clouds, aerial perspective and "ambient volumes" in every
+material through three's fog chunks, PMREM captures from the sky and then the scene, a fitted sun shadow,
+SAO-style occlusion, a scatter-as-gather depth of field, an ACES/AgX blend, a shot evaluator); the other
+28,000 build the temple. audara's engine already had the base it stands on (HDR targets, averaged
+sub-frames, a bloom pyramid), but its sub-frames varied time (and cycled four supersampling taps for the
+shaders that ask for them) without giving a three.js scene an index to move its camera, sun or occlusion
+kernel by, and its docs led a three.js scene to flat materials, a RoomEnvironment and THREE.Fog. The user's own projects had already hand-rolled pieces of it
+(audaces-1's `_realism.ts`: VSM shadows, area lights, a planar mirror, a depth of field; oprog-1 and oprog-4:
+shadow maps in the engine), and 0.6.1 and 0.7.1 had left those engine additions out for scope, not for not
+working.
+
+**A proof of concept, in a scratch project** (nothing in the repository): the techniques ported into the
+engine, scoped to one scene, and one small scene (a gilt finial on a vermilion post, a gate, stepping stones,
+hills) rendered three ways at the same times and 12 sub-frames: A, a minimal PBR setup (what the docs led
+to); B, golden-temple's way with AgX; C, B with the engine's shoulder. Findings:
+
+- B against A: a large jump on the macro, which read as a photograph; the wide shot of the same simple
+  geometry still read as CG (low-poly hills, bare ground). The geometry the lens resolves sets the ceiling,
+  which is what golden-temple's macro-then-reveal grammar answers.
+- B against C: a small difference. The tone curve isn't where the realism is, so the engine's post stays as
+  it is.
+- Sub-frame jitter (a Gaussian sub-pixel offset, a point in the sun's disc, the occlusion kernel's turn, all
+  from the sub-frame's index) worked under verify's rules but kept the adaptive sampler climbing: 108
+  sub-frames on a near-still frame, where it stops at 12 without jitter.
+- Cost: the scene played in real time in the preview (8-10 ms a frame at 1080p) and cost about 18 ms per
+  export sub-frame.
+
+Codex's first round agreed on the direction (a reference, a kit copied on demand, no default) and ranked the
+same levers, with modelled detail first. It added that a new tone mode would also have to drive the adaptive
+sampler's error estimate, which once undersampled when the two disagreed (0.3.0); that verify's hashes need a
+baseline rendered twice as a control; and that history's notes on shadows meant scope, not failure. Its
+second round reviewed the proof of concept's code and found what packaging had to fix: program cache keys
+from a counter (a hot reload could reuse a stale program), PMREM targets and passes never disposed, renderer
+settings restored only on success (and a project with `shadowMap.autoUpdate = false` would skip the
+shadows), the sub-frame index not reset in the single-sample branch or on a throw, a sub-pixel jitter
+clipped on one side only, a depth of field that shrank at 4K, the sun counted twice in the scene's
+environment capture, normals wrong under non-uniform scale, a scene's post overrides reaching a crossfade's
+other scene, and "works with verify" overstated (verify's seek checks render one sample, with no jitter). It
+preferred an engine index to deriving the sample from `t` (a zero shutter gives every sub-frame the same
+time, and cut clamping repeats times), fixed samples as the first recipe, and checks of the sampled and
+lifecycle paths.
+
+What changed:
+
+- **`references/realism.md`**: when a photographic shot earns its place (built and natural things; not
+  people, faces or animals; Blender for organic heroes, cloth, fluids and glass), what makes it read as real
+  in order, the kit, the rules that keep it stable in motion, sampling and cost, the method, prompting (an
+  example prompt; the critic asked what reads as CG first) and the limits.
+- **The realism kit, `skills/code-video/assets/realism/`**, copied whole into a project's `src/realism/`
+  when a piece needs it, with golden-temple's MIT notice in its LICENSE: `env.ts` (one scene's sun, sky
+  brightness and haze), `materials.ts` (`patch()` per material, no shared chunk edits, a content-hash cache
+  key, three's own normals, an existing `onBeforeCompile` kept; `PROC` lacquer, gold, bronze, granite, wood,
+  plaster; `n_aa`, `n_specAA`), `sky.ts`, `light.ts` (`Sun`, `withRenderer`), `lens.ts` (occlusion and depth
+  of field in logical px), `sampling.ts` (Halton jitter from `SUBFRAME`, a symmetric truncated Gaussian,
+  nothing on an engine without it), `camera.ts` (lens keys at times: direction, log look and focus
+  distances), `example.ts` and a README with its rules. Pinned to three 0.186.
+- **The engine:** `SUBFRAME` in `gl.ts`, set per sub-frame in `Engine.render` and reset to -1 in the
+  single-sample branch and in a `finally` around the sampling loops. Nothing in the engine reads it.
+- **SKILL.md** "Read when": `references/realism.md: photoreal 3D; blender.md: what three.js can't model or
+  light, if installed.`, paid back by the images line (`what code draws poorly (...); images given or asked
+  for.`): 7,997 bytes.
+- **contract.md** ("three.js in this engine": a photographed shot goes to realism.md), **blender.md** (such
+  a shot stays in three.js, and the kit lights a GLB), **engine-guide-template.md** (`SUBFRAME`, and fixed
+  samples for jittered stretches), **init.ts** (AGENTS.md names `src/realism/` and its rules only in a
+  project that has it), **README** ("Photoreal 3D" under other ways in), **NOTICE** and **LICENSE**
+  (golden-temple), **design.md** ("Photographic 3D: an optional kit, not a default", the layout, "Coming
+  back later").
+- **Evals:** task case `cv-photoreal-shot` (a stone lantern at dusk, macro to reveal, rendered; judged blind
+  with `--without`), a control in `cv-title-card` (no `src/realism/` for a minimal title card), and trigger
+  case cv-26.
+
+**The prompt, found afterwards.** With the branch open, the user found the author's post on X
+(<https://x.com/LexnLin/status/2110657641831956870>, 2026-10-15) and, in his replies, "How I made this"
+(<https://x.com/LexnLin/status/2110657793376039323>; read logged out in headless Chrome, its full text
+through the fxtwitter API, and the same as the user pasted). The build was inspired by a Gemini scene
+("argon") the author found full of mistakes. He generated about ten images of Japanese temples as references
+(the board is attached to the reply: pagoda, arched bridge, lotus pond, lanterns, the gilt sanctum, a night
+and a rain variant, which the film's shots follow closely) and gave Opus a short prompt of five parts: ten
+7-second shots, each starting close up and pulling back; golden hour, as real as possible, light and shadows
+first, matching the references "until you reach 99.9%"; everything in code but a free music track found
+online; detail "2x more than you think is enough", the ground good from above too, light and shadows clean
+with "zero flickering"; and verify and iterate, not stopping until it matched, "even if it takes days". What
+that changed here: the macro-then-reveal grammar was the prompt's, not something the model found; the
+engineering the kit ports (the sampling rule, the flicker tools, the patching) is what the model built to
+meet "zero flickering" and "as real as possible", which is why it is worth shipping; and the quality came
+from a visual target and an open-ended loop against it, which realism.md had treated as optional. So
+realism.md's method now starts with a reference board (the director's photos, public-domain ones, or
+generated ones, about $0.04 each through `imagegen.py`, offered in the brief and waiting for a yes, kept out
+of the frame), a side-by-side compare (one ffmpeg command, tested), the bars in plain words and the time as
+the budget (the side-by-side compare and the agreed budget are audara's, not the author's); its Prompting
+follows the five parts. `images.md` names references as a use (a target, never
+material), `cv-photoreal-shot` checks that the brief offers a board and spends nothing, and design.md and the
+README follow. Nothing in the kit or the engine changed with it.
+
+**The preview.** The user then asked how such scenes play in the browser preview. The player draws each
+frame at the soundtrack's clock, so a slow scene drops frames and stays in sync, and while paused it redraws
+the same one-sample frame. Measured at 1080p (`render.ts perf`, Chrome on the laptop's RTX 5070 and on its
+integrated Intel GPU with `CHROME_FLAGS=--force_low_power_gpu`): the kit's example cost 8.4 ms a frame on
+the RTX and 53 ms on the Intel GPU (19 fps); with the depth of field, sky, shadows and both switched off in
+turn, the depth of field was 37 of the 53 ms, since its spiral sampled out to the largest blur allowed at
+every pixel, in focus or not, while the sky and the shadows were cheap. So `lens.ts` now finds the largest
+blur in each 16x16-px tile and stops the spiral at the largest within two tiles (render frames unchanged
+to 1 level in 0.1% of pixels), and `dofStep` spaces the taps for a preview path (the example uses 1.2 when
+`ctx.export` is false): 3.8 ms on the RTX, 26 ms on the Intel GPU (38 fps); the render's cost stayed where it
+was on the Intel GPU (the macro, blurred everywhere, dominates). The example adds 1-3 s to opening the
+preview. golden-temple itself, in its own preview (one sample, no depth of field, a 2048 shadow map, 23.2
+million triangles), took 161 s on the RTX and 137 s on the Intel GPU to build and compile before the first
+frame, then played at 21-44 fps on the RTX and 2.4-3 fps on the Intel GPU. What no speed fixes: one sample a
+frame shows no jitter, soft shadows or motion blur, so the finish and its flicker are judged in renders.
+`realism.md` has a section on it (what each shows, the preview path's levers in order, a long build kept
+in a helper module so a scene's edits hot-swap in seconds: checked in the live preview, three edits of a
+scene hot-swapped it while its world, built in `_world.ts`, was built once), and the kit's README and
+design.md follow.
+The paused frame came next, at the user's word, with no change to any other scene's preview. Asked
+whether it overcomplicated things: refining it progressively, sub-frame by sub-frame across display
+frames, would have needed new accumulation in the engine, so it is done the simple way, with the sampling
+the engine has. In `src/main.ts`, when the preview is paused, the playhead has rested 0.3 s and a scene on
+screen sets `refine = true` (a plain property, read by duck typing, so a kit scene still builds on an older
+engine), the player renders that frame once with 12 sub-frames and holds it until the playhead moves or a
+scene reloads ("full quality" on the info line); otherwise its loop draws exactly as before. The kit's
+example sets it. Checked in the live preview (Playwright, the player's `engine.render` calls counted): the
+example video paused, and a GLSL scene paused inside a video that also has a kit scene, drew one sample a
+frame on every tick and never refined; the kit scene paused drew one-sample frames for about 0.3 s, then one
+12-sub-frame render, then nothing until a seek (refined again) or play (one sample a frame), and saving the
+scene while paused reloaded it and refined it again; the refined frame differed from the one-sample frame in
+24% of its pixels (edges and highlights). Codex's review of it found four things, fixed: a kit scene in a
+crossfade refined and froze the other scene too (now every scene the frame's shutter touches has to set it);
+a stateful scene would have been sampled a little before the time already drawn, without a reset (stateful
+scenes don't refine); a lost and restored GL context would have kept a held frame (both events let it go);
+and "full quality" overstated a frame still on the preview path's settings (the info line says "refined
+(12 sub-frames)", and the docs say what stays cheaper). Re-checked live: a crossfade between the kit scene
+and a GLSL scene, paused, drew one sample a frame and never refined; the rest as before. A second round found
+one more, fixed: paused at the video's very end, the shutter reached past it, where nothing draws, and
+would have darkened the held frame (the end's frame isn't refined: checked live). The third found nothing.
+
+Considered and left out: a tone operator (AgX or golden-temple's ACES/AgX blend: a small difference
+measured, and coupled to the sampler's error estimate); a shadow setting in the engine (scenes turn shadows
+on around their own draws; one type, PCF, project-wide); golden-temple's global shader-chunk patches (they
+would reach every scene of a video); its ambient volumes (boxes that dim sky light indoors), its volumetric
+light and god rays (both off in its own film), and its water, vegetation and SDF sculpture as kit code (each
+a scene's own); a shimmer metric in qc.py
+(golden-temple's `mcflicker` was used here by hand); a realism example in the template, or realism as the
+default for 3D.
+
+What was checked, in fresh projects made by this branch's init (and by `main`'s, in a worktree, for
+controls):
+
+- `bun run check` passes with the kit in `src/realism/`, on this branch's engine and on `main`'s (which has
+  no `SUBFRAME`: the kit imports the engine's module as a namespace, so it builds and renders without
+  jitter).
+- The example video is unchanged by the engine hook: on `main`'s engine, verify twice gave the same hashes
+  (48 sampled frames compared: the control); this branch's against that baseline, the same 48; an adaptive
+  poster at 5.2 s (12 sub-frames) bit-identical between the two.
+- The kit's example scene: verify passes; the same frame after different seek histories is bit-identical
+  with fixed sampling (12 sub-frames) and adaptive sampling (108); crossfades with the example's GLSL and
+  three.js scenes, both ways, render as expected and repeat bit-identically in four runs of five (one run
+  differed from the others by 1 level in 2 pixels of a crossfade frame, unexplained; each scene alone and a
+  crossfade of two example scenes repeated exactly); the example's three.js scene after the kit scene is
+  bit-identical to it rendered alone.
+- Renderer restoration: a probe scene that writes the shared renderer's settings into its pixels read the
+  engine's defaults (shadows off, PCF, `autoUpdate` on, `autoClear` off) before the kit scene, after it, and
+  after a scene that throws inside `withRenderer` with shadows and `autoClear` changed and another target
+  bound.
+- 4K: the macro at `--scale 2`, downscaled, matched 1x within 3.3 levels on average, with the same blur
+  size.
+- Hot reload in the live preview (Playwright, five edits each): the scene copied into
+  `videos/<video>/scenes/` hot-swapped on every edit with geometries (49) and textures (39) unchanged and
+  programs between 22 and 23, back to 22 after; an edit in `src/realism/` reloads the page instead (the
+  preview hot-swaps scene modules under `videos/`), which `realism.md` says.
+- A 6-second full-quality clip at 12 sub-frames: 360 frames in 44 s (0.12 s a frame). On `main`'s engine
+  (no jitter) against this branch's, golden-temple's `mcflicker` residual went from 0.748 to 0.711 per 255
+  (5% less shimmer) and the second temporal difference from 1.873 to 1.816: a measurable, modest gain on a
+  scene with little thin geometry.
+- Trigger: cv-26 loaded code-video in 3 of 3 runs and the near-miss cv-12 (a realistic AI clip) in 0 of 3
+  (Opus 5.5, low effort). The three spec validators passed on code-video; `test_init_gitignore.ts` 3/3.
+
+Not run: the `cv-photoreal-shot` task eval with and without the skills (an hour or more per run and tool),
+so whether a fresh session reaches the kit and makes better pictures than the model alone is not yet
+measured; Codex's trigger runs; a long photographic film; a GPU other than this laptop's.
+
+Codex reviewed the branch read-only. The first round found seven things, all fixed: a patch chained onto a
+material with its own `onBeforeCompile` lost that hook's identity in the program cache key (three's default
+key reads the callback, which the patch had replaced; the key is now taken before: four checks on CPU-only
+materials pass); the sky followed a camera's local position, which inside a CubeCamera is its face camera's
+zero (now its world position: the example's frame changed by 1 level in 1.4% of pixels, verify passes); the
+eval case asked the `--without` arm for audara's internals (now scoped to the skill arm, with equivalents);
+the recipe for adding `SUBFRAME` to an older engine left out its import; the stability promise held only for a
+fixed sample count (now said wherever it is made, and `maxSamples` described as a cost bound only); and two
+lines here (golden-temple's ambient volumes are on in its film; the engine's sub-frames already cycled four
+supersampling taps).
+The second round found two more, fixed: the cache key still collided for a material subclass that overrides
+the key on its prototype, and for an override that delegates to three's default (the patch now calls the
+material's earlier key, whatever gives it, with the original callback put back for the call: seven checks
+on CPU-only materials pass, and the example's frames are unchanged); and the eval's renderer assertion
+counted binding `out`, which every scene does. The third round found nothing.
+A fourth round, on the prompt's update, found three things, fixed: the compare command wrote into a
+folder nothing creates (it now writes beside the still); handing the critic the builder's side-by-side pairs
+broke its independence (it gets the references and makes its own); and design.md credited the author with
+audara's side-by-side compare and time budget.
+
+**A code review of the branch, settled with Codex.** A `/code-review` at its highest effort found 14
+things. Codex (GPT-6 Astra, read-only in a second terminal) checked each against the code before any fix:
+it agreed with most, disputed one, and added three of its own. Then it reviewed the fixes twice, which
+found seven more, fixed below. Each was checked in a fresh project made by this branch's init with the kit
+copied in (1080p, the laptop's RTX 5070 unless named):
+
+- **The final render's sampling.** `video` and `poster` sample adaptively by default, and a jittered scene
+  keeps the sampler climbing: the example's default poster at 3 s took 324 sub-frames, the cap. A scene's
+  `refine = true` now says its frame depends on its sub-frame samples, so render.ts gives a range that
+  shows one a fixed 12 when `--samples` isn't given, as it did for stateful scenes (that poster: 12, with
+  the reason printed); `--samples auto` asked for by name is obeyed, with a note. Codex first preferred a
+  second flag, then agreed one was enough. Its review of the fix found that the range missed a crossfade
+  partner ending exactly at `--from` (the first frame's earlier sub-frames still show it) and the first
+  frame's rounding. The range is now what the first and last frames' shutters reach, at the times the
+  page renders them (n · 1/fps, not n / fps, which can land on the other side of a cut). A `refine` scene
+  counts up to a hard cut, as the engine clamps sub-frames, while a stateful one counts by the engine's
+  own test, the whole shutter, since the engine refuses it there (a default poster on the cut just after a
+  stateful scene: a fixed 12). After a kit scene that crossfades out at 1 s, `--from 1` took a fixed 12
+  and `--from 1.2` stayed adaptive. The preview chooses the scenes it
+  refines the same way, up to a hard cut: paused on a kit scene just after a cut from another kind, it
+  refined nothing before. init's AGENTS.md line promises the fixed default only where the project's
+  render.ts has it, and says `--samples 12` otherwise.
+- **Memory with many shots.** Every entry's scene is built when the page opens, each with its own `Lens`
+  targets (about 150 MB at 1080p) and a shadow map (about 128 MB at 4096²: three gives it a colour and a depth
+  texture). The `Lens` targets are now shared by every `Lens` of one frame size, counted by their users. Only
+  the two `Sun`s fitted last keep their maps; an older one's is released, and three allocates it again at its
+  next shadowed draw. Four example shots in one video took 1,180 MB of GPU memory in the preview, now 600
+  (Chrome's GPU process, dedicated memory, twice each). Six frames of that video, a crossfade included, were
+  bit-identical to renders with neither the sharing nor the releasing. At Codex's word the engine now also
+  disposes a scene whose `init()` throws: a failed save in the preview would otherwise keep what it built,
+  once per save.
+- **Shadows that swam.** A shadow frustum that follows the shot slid the map's texels over still surfaces.
+  `Sun.fit` now puts its centre on whole texels across the light. With a still camera and the fit's centre
+  moving 1.2 mm a frame (a texel is 6.8 mm), 155 to 234 pixels changed by more than 2 levels between
+  frames before, and none after.
+- **The camera** turned by blending the direction's components, which has no direction half-way between
+  keys facing opposite ways and bunches a wide turn into a few frames. It now interpolates pan and tilt per
+  key, the shorter way round, and `applyLens` takes them directly (Codex: aiming at a look point loses the pan
+  of a key looking straight down). Keys facing +X then -X turn an even 9.00° every twentieth of the move;
+  an ordinary pose matches the old aim exactly. The example's middle frame moves a little with it.
+- **Smaller things.** A second `patch()` on a material declared its GLSL twice and broke it: it now
+  throws. materials.ts checks three's shader text where it edits it when it loads, and names what is
+  missing (a three upgrade would otherwise leave shadows crawling or hooks out without a word). `makeEnv`
+  keeps a default for a haze field given as undefined (it threw). The depth of field's loop is as long as
+  its spacing needs (600 taps cut the blur short below a `dofStep` of about 0.5). The occlusion's reach and
+  blur scale with `--scale`: the macro at 4K, downscaled, now differs from 1x by 0.9 levels on average (99th
+  percentile 6), down from 2.45 (36). The sky's reversed `smoothstep`, undefined in GLSL, is turned round.
+  The preview keeps a refined frame when a scene elsewhere in the video is saved; it used to render it
+  again on any save. A lost and restored GL context reloads the page at its moment, since what scenes
+  captured on the GPU went with the old context; it listens from before the scenes load (Codex). The
+  example uses the engine's `fbm2`, and camera.ts its `keys()`: the hills' outline changed, not their look.
+- **The docs.** realism.md said edits to `src/realism/` reload the preview page. That held only while the
+  timeline played `src/realism/example` itself, as in the check above: in the usual setup, with the
+  example copied into `scenes/`, a kit edit hot-swaps the scenes that import it. Its tip to call
+  `compileAsync` in `init()` compiled program variants the scene never draws (shadows off, the canvas's
+  colour space), and the page already compiles every scene before it plays: removed.
+
+Declined: the sub-frame index as a field of `Frame` instead of `SUBFRAME`, a global like `SS_TAP` that
+keeps the kit working on an older engine (Codex agreed). Also declined: moving the sky's terms that depend
+only on the sun into its vertex shader. The whole sky was 2.7 of 18 ms a frame on the integrated GPU, and
+the move changed nothing measurable (18.0 and 32.5 ms preview and export, against 18.2 and 32.8), so it was
+taken out again.
+
+Checked as well: `bun run check`; verify on the example video, a kit video and the four-shot video; and
+the preview driven by Playwright. Paused on a kit scene, it refined once. Saving a scene elsewhere (it
+swapped) left the frame refined, and saving the scene on screen refined it again. A context lost and
+restored reloaded the page at the same `?t=` and refined. A scene that throws in `init()` was disposed
+once.

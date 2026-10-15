@@ -15,6 +15,8 @@ timelines and spliced soundtracks to upstream commit `bdbad53`.
 - **License: MIT.** A `NOTICE` file credits:
   - pdoom-video (MIT, © 2026 Giacomo Magnanini);
   - motion-video-kit (MIT, © 2026 echris6), where its text or algorithms are adapted;
+  - golden-temple (MIT, © 2026 Leon Lin), whose rendering code the realism kit adapts (each project that
+    copies the kit keeps its notice in `src/realism/LICENSE`);
   - each font under its own license: the SIL Open Font License for Archivo, IBM Plex Mono, Cormorant
     Garamond and the EMS stroke fonts, and the Hershey fonts' liberal license, whose text is inside their
     SVG files.
@@ -182,6 +184,8 @@ what a later session needs:
 - the shared style and the engine guide;
 - the preview and render commands;
 - the f(t) rule, in one line;
+- when the project has copied the realism kit (`src/realism/`), that it is there and the rules in its
+  README that keep the shared renderer and the frames stable;
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
 - what the agent owes the director, including that a request for ideas or a prompt alone gets those and
@@ -195,7 +199,8 @@ can do, and says that `init --force` updates it. `render.ts` itself stops on an 
 since 0.2.0's copy ignored `--size` and rendered the video's own format under the same name, and on one
 given without its value, which would read as not given in the same way. Its engine, `src/engine/`, is never
 replaced, not even by `--force`, so a setting the engine gained later (the post's `shoulder`) does nothing
-there: where the skill names one, it says how to tell and what to do instead (`references/images.md`).
+there: where the skill names one, it says how to tell and what to do instead (`references/images.md`; the
+realism kit's `SUBFRAME`, which the kit does without, in `references/realism.md`).
 The player outside it (`src/main.ts`) is updated by `--force`, so it checks what the engine has: on an
 engine from before 0.4.0 it skips the shader warm-up and plays as before.
 
@@ -545,6 +550,73 @@ scenes through `remix`, audio by a relative path). But a video reads its timing 
 copy would have needed the song's data and audio copied too, and the two would drift. A format that needs
 another edit (another length, other scenes) is still another video.
 
+### Photographic 3D: an optional kit, not a default
+
+[golden-temple](https://github.com/Leonxlnx/golden-temple) (MIT, Leon Lin, 2026-10-15) showed that the
+engine's own stack (three.js, GLSL, headless Chrome, averaged sub-frames) reaches near-photographic frames:
+a temple at golden hour, 24.4 million triangles, 8 sub-frames a frame. What made it look real was mostly
+scene-side: modelled detail where the lens looks, one sun-sky-haze environment that every material shares,
+procedural wear inside three's PBR materials with fine detail faded by its pixel footprint, a lens, and
+samples spread over the sub-frames by their index. So audara takes it as an optional path that leaves every
+other video as it was (history.md, 0.8.0):
+
+- **`references/realism.md`**, reached from SKILL.md's "Read when" and from `contract.md`'s three.js section
+  and `blender.md`: when a photographic shot earns its place (built and natural things, not people), what
+  makes it read as real in order, the rules that keep it stable in motion, the cost, the method and
+  prompting. The method starts from the author's own, as he described it on X: a board of about ten
+  reference images (golden-temple's were generated), a short prompt that names the bars (light and shadows
+  first, more detail than seems enough, zero flicker) and verifying and iterating against the references
+  until they match. audara adds how: stills compared side by side with the references, and a time budget
+  agreed with the director in place of "even if it takes days". The kit saves finding the techniques; the
+  loop is still the work. Generated references go through `references/images.md` and its yes, and never
+  into the frame.
+- **A kit copied on demand**, `skills/code-video/assets/realism/` → a project's `src/realism/`: the port,
+  scoped so that it touches nothing it doesn't own. Materials are patched per material (golden-temple edits
+  three's shared shader chunks, which would reach every scene of a video); shadows are on only inside
+  `withRenderer`, which restores the shared renderer however a draw ends; the program cache key is a hash of
+  everything injected, so a hot-reloaded scene never gets a stale shader; a material is patched once (a
+  second patch would declare everything twice, so it throws), and a three.js whose shader text no longer
+  has what the patch edits stops the kit with what is missing instead of changing nothing. Every entry's
+  scene is built when the page opens, so what one holds multiplies with the shots: the `Lens` targets are
+  scratch shared by every scene of one frame size, and only the two most recently fitted `Sun`s keep a
+  shadow map (a 4096² one is about 128 MB); four shots of the example took 600 MB of GPU memory in the
+  preview instead of 1,180. `Sun.fit` puts the shadow frustum on whole texels, so a frustum that follows the
+  shot doesn't make still shadows swim, and the camera turns as a camera head does, pan and tilt
+  (golden-temple blends the direction's components, which has no direction half-way through a half turn).
+  Not in the template: a piece that doesn't ask for it never carries it, and its README and init's
+  AGENTS.md line tell a later session its rules.
+- **One engine hook, `SUBFRAME`** (`gl.ts`): the sub-frame's index within its frame, -1 for a single sample.
+  Sampling patterns that depend on it, never on the frame or the time, keep still surfaces identical from
+  frame to frame. Nothing in the engine reads it; it is reset however the sampling loop ends; the example
+  video renders bit-identically with it. Time can't stand in for it: with a zero shutter every sub-frame
+  has the same time, and cut clamping repeats times. An older project's engine works with the kit without
+  it (no jitter); `realism.md` gives the few lines that add it.
+- **The preview plays it, with less finish.** The player keeps time by dropping frames, so a slow scene
+  stutters rather than drifts; the kit's example plays at 3.8 ms a frame on a laptop RTX and 26 ms on an
+  integrated GPU (after the depth of field's taps learned to stop at the largest blur nearby: it was 70% of
+  the cost), while a golden-temple-scale world plays at 2-3 fps on an integrated GPU after minutes of
+  building. One sample a frame shows light, framing and motion. Paused on a frame whose scenes all set
+  `refine = true` (the kit's do; none stateful), it is rendered once more with the render's 12 sub-frames
+  and held until the playhead moves or a scene it shows is swapped, so the director sees the finish of any
+  moment by pausing on it; every other frame, a crossfade with any other scene included, is drawn exactly
+  as before. Flicker, which needs motion, is judged in full-sample clips. `realism.md` says so, with the
+  preview path's levers and how to keep a long build out of the hot-swap loop. A GL context lost and
+  restored (a GPU reset) reloads the page at its moment, since what scenes captured on the GPU when they
+  were built is gone with the old one.
+- **Fixed samples for a photographic stretch, by default.** Jittered sub-frames never agree, so the
+  adaptive sampler climbs toward its cap (108 sub-frames on a near-still frame where it stops at 12, 324 on
+  a frame of the example's move); frames that stop at different counts average different samples, which
+  flickers. `refine = true` is the one flag a kit scene sets: its frame depends on its sub-frame samples. So
+  the preview refines it paused, and render.ts gives a range that shows it, in any sub-frame, a fixed 12
+  when `--samples` isn't given, as it does for a stateful scene (`--samples auto` asked for by name is
+  obeyed, with a note). An entry's `maxSamples` only bounds the cost.
+- **Left out:** a tone operator (AgX against the engine's shoulder was a small difference on the same
+  frame, and a new one would also have to drive the adaptive sampler's error estimate, which once
+  undersampled when the two disagreed); a shadow setting in the engine (scenes enable shadows around their
+  own draws, one type, PCF, project-wide); golden-temple's world, volumetrics, god rays and water as kit
+  code (each scene's own); a realism default or example video, which would pull every 3D piece toward one
+  look.
+
 ### Remotion: optional, and only when it really helps
 
 The user doesn't want to depend on a paid tool. Remotion is free for individuals and teams of up to three
@@ -780,7 +852,7 @@ they differ, follow the stricter rule. What that means here:
 ```
 audara-studio/
 ├── README.md                         # short: what it is, install, first video
-├── LICENSE, NOTICE                   # MIT; credits pdoom-video, motion-video-kit and the fonts
+├── LICENSE, NOTICE                   # MIT; credits pdoom-video, motion-video-kit, golden-temple and the fonts
 ├── AGENTS.md, CLAUDE.md              # notes for agents working on this repo (CLAUDE.md imports AGENTS.md)
 ├── .claude-plugin/plugin.json        # Claude Code's manifest
 ├── .claude-plugin/marketplace.json   # Claude Code's marketplace
@@ -798,9 +870,10 @@ audara-studio/
     │   ├── scripts/demo-track.ts     # the example video's synthesized demo track
     │   ├── scripts/qc.py             # holds, still at a glance, blank frames, loudness, stream tags on any MP4
     │   ├── scripts/imagegen.py       # optional: generated images, each with its request record
-    │   └── assets/template-webgl/    # engine, preview player, render.ts, font-instances.py, fonts, an
-    │                                 # example video with one scene per way of drawing; pdoom specifics
-    │                                 # removed
+    │   ├── assets/template-webgl/    # engine, preview player, render.ts, font-instances.py, fonts, an
+    │   │                             # example video with one scene per way of drawing; pdoom specifics
+    │   │                             # removed
+    │   └── assets/realism/           # the realism kit, copied into a project's src/realism/ on demand
     ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
@@ -839,6 +912,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 - `critique.md`: the director's loop, the stills loop, the critic and its prompts, the measured checks, the
   hand-off and the delivery.
 - `images.md`, `blender.md`, `math.md`: optional tools, each read only when in play.
+- `realism.md`: a photographic 3D shot, with the realism kit (`assets/realism/`).
 - `backends.md`: the order of choice (the engine, then HyperFrames, then Remotion as an optional last
   resort), and how to use the alternatives through their own skills.
 

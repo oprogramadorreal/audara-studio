@@ -38,6 +38,20 @@ Its text and algorithms are adapted in:
 - skills/soundtrack/scripts/mix.py: the per-effect level solver and the mix
   rules.
 
+golden-temple
+-------------
+https://github.com/Leonxlnx/golden-temple
+Copyright (c) 2026 Leon Lin. MIT License.
+
+The realism kit in skills/code-video/assets/realism/, which the code-video
+skill copies into a project's src/realism/ when a shot should read as
+photographed, adapts golden-temple's src/core/ (its material patching and
+procedural surfaces, GLSL noise, physical sky, aerial perspective, sun and
+environment capture, ambient occlusion and depth of field), its shot evaluator
+and its sub-frame sampling rules, from commit 97fd9ec. Each project that copies
+the kit keeps its MIT notice in src/realism/LICENSE.
+skills/code-video/references/realism.md describes its method.
+
 Fonts
 -----
 

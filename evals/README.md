@@ -131,7 +131,10 @@ video in the same project with a look of its own, which must leave the first one
 session, in `baseline/` beside `work/`, for the grader to compare with), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
-a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`). The `vi-` cases stand
+a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and a photographic 3D shot asked
+for by its subject and its move (`cv-photoreal-shot`: the realism kit, judged blind with `--without` on how
+photographic its frames read, and like the showreels not in `run-tasks.sh`'s default list; `cv-title-card` checks the
+kit stays out of a piece that doesn't ask for it). The `vi-` cases stand
 for someone choosing what to make: ideas only, from nothing or from product screens, in an empty folder or
 an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project`), a prompt to improve or
 one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and

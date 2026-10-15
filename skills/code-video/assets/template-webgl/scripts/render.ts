@@ -37,8 +37,9 @@
 //            (out/<video>/<video>-draft.mp4 for the whole video); any of those options given as well still wins
 //            --samples N averages N sub-frames per frame over shutter×(1/fps): motion blur + temporal AA;
 //            --samples auto picks the count per frame (4, 12, 36, 108 or 324, see Engine.render)
-//            [--min-samples 4] [--max-samples 324] [--tol 3]. A stateful scene can't be sampled adaptively:
-//            with --samples left out, a range that shows one renders with a fixed 12.
+//            [--min-samples 4] [--max-samples 324] [--tol 3]. A stateful scene can't be sampled adaptively,
+//            and a scene that sets `refine = true` (it jitters its sub-frames: the realism kit's) flickers
+//            with it: with --samples left out, a range that shows either renders with a fixed 12.
 //   perf:    bun scripts/render.ts perf --from 0 --to 5 [--only ids] [--samples 1]   (ms per frame: what the preview pays,
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
@@ -187,8 +188,8 @@ let SAMPLES: Sampling = 1;
 /** The shutter, as a fraction of the frame time: 0.2 in every mode (sub-frames spread over a fifth of a frame). */
 let SHUTTER = 0.2;
 const SAMPLES_GIVEN = opt('samples') !== undefined;
-/** A video with a stateful scene, rendered without --samples: this many fixed sub-frames instead of auto. */
-const STATEFUL_SAMPLES = 12;
+/** A range showing a stateful or a refine scene, rendered without --samples: this many fixed sub-frames instead of auto. */
+const FIXED_SAMPLES = 12;
 function parseSampling() {
   const s = opt('samples', (mode === 'video' && !DRAFT) || mode === 'poster' ? 'auto' : '1')!;
   SAMPLES = s === 'auto' ? { min: int('min-samples', '4'), max: int('max-samples', '324'), tol: num('tol', '3') } : int('samples', s);
@@ -660,20 +661,41 @@ async function sheet(page: Page, info: Info, groups: Tile[][], cols: number, tw:
 }
 
 /**
- * Adaptive sampling refuses stateful scenes (it renders sub-frames out of time order): before a render
- * meets one mid-way, take a fixed count instead, or stop when --samples auto was asked for by name.
+ * Adaptive sampling refuses stateful scenes (it renders sub-frames out of time order), and a scene that sets
+ * `refine = true` jitters its sub-frames (the realism kit's camera, sun and occlusion samples), so the
+ * adaptive sampler keeps climbing on it and stops frames at different counts, which average different sets
+ * of samples: a flicker. Before a render meets either mid-way, take a fixed count instead; when --samples
+ * auto was asked for by name, stop for a stateful scene and only say so for a refine one. `first`, `last`:
+ * the times of the first and last frames rendered, as the page computes them (n * dt). The scenes looked for
+ * are those their shutters reach (a crossfade partner that ended just before the first frame still shows in
+ * its earlier sub-frames): a stateful one by the engine's own test, which takes the whole shutter (Engine.render
+ * refuses one there), a refine one only up to a hard cut, where the engine keeps every sub-frame on its
+ * frame's side (Engine.sameSide).
  */
-async function settleSampling(page: Page, from: number, to: number) {
+async function settleSampling(page: Page, first: number, last: number, dt: number) {
   if (typeof SAMPLES === 'number') return;
-  const ids: string[] = await page.evaluate(({ from, to }) => {
+  const found: { stateful: string[]; refine: string[] } = await page.evaluate(({ first, last, dt, shutter }) => {
     const E = (window as any).__audara.engine;
-    return E.timeline.filter((e: any) => e.start < to && e.end > from && E.loaded.get(e.id)?.scene?.stateful).map((e: any) => e.id);
-  }, { from, to });
-  if (!ids.length) return;
-  const which = `${ids.map((x) => `'${x}'`).join(', ')} ${ids.length > 1 ? 'are' : 'is'} stateful`;
-  if (SAMPLES_GIVEN) fail(`--samples auto: ${which}, and adaptive sampling renders sub-frames out of time order, which a simulation can't follow: give a fixed count, e.g. --samples ${STATEFUL_SAMPLES}`);
-  SAMPLES = STATEFUL_SAMPLES;
-  console.log(`sub-frames: a fixed ${STATEFUL_SAMPLES} per frame, since ${which} (adaptive sampling needs stateless scenes); --samples N sets another count`);
+    const w = dt * shutter, scene = (e: any) => E.loaded.get(e.id)?.scene;
+    const side = (t: number, ts: number) => (typeof E.sameSide === 'function' ? E.sameSide(t, ts) : ts);
+    const lo = side(first, Math.max(0, first - w / 2)), hi = side(last, last + w / 2);
+    return {
+      stateful: E.timeline.filter((e: any) => last + w / 2 >= e.start && first - w / 2 < e.end && scene(e)?.stateful).map((e: any) => e.id),
+      refine: E.timeline.filter((e: any) => hi >= e.start && lo < e.end && scene(e)?.refine === true && !scene(e).stateful).map((e: any) => e.id),
+    };
+  }, { first, last, dt, shutter: SHUTTER });
+  const list = (ids: string[], what: string) => `${ids.map((x) => `'${x}'`).join(', ')} ${ids.length > 1 ? 'are' : 'is'} ${what}`;
+  if (found.stateful.length) {
+    const which = list(found.stateful, 'stateful');
+    if (SAMPLES_GIVEN) fail(`--samples auto: ${which}, and adaptive sampling renders sub-frames out of time order, which a simulation can't follow: give a fixed count, e.g. --samples ${FIXED_SAMPLES}`);
+    SAMPLES = FIXED_SAMPLES;
+    console.log(`sub-frames: a fixed ${FIXED_SAMPLES} per frame, since ${which} (adaptive sampling needs stateless scenes); --samples N sets another count`);
+  } else if (found.refine.length) {
+    const which = list(found.refine, 'jittered (refine = true)');
+    if (SAMPLES_GIVEN) { console.log(`--samples auto, as asked: ${which}, and frames the sampler stops at different counts average different samples, which can flicker; --samples ${FIXED_SAMPLES} holds them still`); return; }
+    SAMPLES = FIXED_SAMPLES;
+    console.log(`sub-frames: a fixed ${FIXED_SAMPLES} per frame, since ${which}: the adaptive sampler would stop its frames at different counts, which average different samples and flicker; --samples N sets another count`);
+  }
 }
 
 /**
@@ -1257,7 +1279,7 @@ async function main() {
       inside(t);
       const file = path.resolve(opt('out', path.join(OUT, `poster${AS_PREVIEW ? '-preview' : ''}.png`))!);
       if (path.extname(file).toLowerCase() !== '.png') fail(`--out ${opt('out')}: a poster is written as a .png file`);
-      await settleSampling(page, t - 1 / fps, t + 1 / fps);
+      await settleSampling(page, t, t, 1 / fps);
       const [k] = await stills(page, [{ t, file }]);
       console.log(`poster at ${t} s: ${k} sub-frame${k === 1 ? '' : 's'}, shutter ${SHUTTER}, ${info.width}x${info.height}`);
       console.log(file);
@@ -1329,7 +1351,10 @@ async function main() {
     } else if (mode === 'video') {
       const from = num('from', '0'), to = Math.min(num('to', String(D)), D);
       if (!(to > from)) fail(`--from ${from} --to ${to}: nothing to render`);
-      await settleSampling(page, from, to);
+      // (the frames video() renders, at the times the page's stream() computes: n * dt from round(from * fps)
+      // up to round(to * fps), that one left out)
+      const dt = 1 / fps;
+      await settleSampling(page, Math.round(from * fps) * dt, (Math.round(to * fps) - 1) * dt, dt);
       // only the whole video, every entry, on the full-quality path takes the final render's name: anything
       // less is named for what it is, so a quick clip can't replace the delivery
       const whole = from <= 1e-9 && to >= D - 1e-9;

@@ -11,7 +11,9 @@ Checked 2026-10 with Blender 5.2.2 LTS on Windows 11 (an RTX laptop); other vers
   simulations, geometry nodes, a modelled hero object (a product, a logo with real bevels, a character).
 - Not for a camera move: smooth 3D camera rides are what a model reaches for when asked for fluid motion,
   and three.js does them already. A shot that only needs bevelled type or simple solids stays in three.js
-  (`MeshPhysicalMaterial`, a PMREM environment: `references/contract.md`, "three.js in this engine").
+  (`MeshPhysicalMaterial`, a PMREM environment: `references/contract.md`, "three.js in this engine"), and
+  so does a photographic shot of built or natural things (stone, wood, lacquer, metal, terrain) in sunlight
+  and haze: `references/realism.md`, whose kit also lights a GLB exported from here.
 - Without Blender, make the shot in three.js and say in a line what Blender would have added.
 
 ## Running it

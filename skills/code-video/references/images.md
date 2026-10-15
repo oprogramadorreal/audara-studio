@@ -17,6 +17,11 @@ does to it. A still that only pans and zooms is the Ken
 Burns line on the Avoid list. For anything factual or historical, a real image beats a generated one: a
 generated "1920s photo" in an explainer is a fabrication.
 
+An image can also be a target rather than material: the reference board of a photographic 3D shot
+(`references/realism.md`), compared side by side with the renders and never put in the frame. Generated
+references cost like any generated image and wait for the same yes; their `SOURCES.md` rows say "reference
+only" in the Used column.
+
 ## Where images come from
 
 **The director's own.** Their files, their rights; for a client's piece, note the basis they give (own

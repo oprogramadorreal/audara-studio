@@ -35,6 +35,24 @@ declare global {
 
 let engine: Engine;
 
+/** This page's address, at this video (`?v=`) and time t (`?t=`). */
+const link = (t: number) => {
+  const u = new URL(location.href);
+  u.searchParams.set('v', VIDEO.name);
+  u.searchParams.set('t', String(+t.toFixed(3)));
+  return u.toString();
+};
+
+// A lost GL context takes with it what scenes made on the GPU when they were built (a captured environment
+// light, a baked texture), and nothing makes it again: when the context comes back, the preview reloads at
+// the moment it was on, paused (the link's own while the scenes are still loading; the player sets these)
+let playhead = () => FROM ?? 0, pausePlayer = () => {};
+if (!EXPORT) {
+  let lostAt = 0;
+  canvas.addEventListener('webglcontextlost', () => { lostAt = playhead(); pausePlayer(); });
+  canvas.addEventListener('webglcontextrestored', () => location.replace(link(lostAt)));
+}
+
 async function boot() {
   if (VIDEO_ERROR) throw new Error(VIDEO_ERROR);
   // (ctx.export: the scenes draw their full-quality path for render.ts, unless it asks for the preview's)
@@ -184,6 +202,8 @@ function setupPlayer() {
   const TL = engine.timeline, D = engine.duration, fps = VIDEO.fps;
   const byStart = [...TL].sort((a, b) => a.start - b.start); // ([ and ] step through the entries in time)
   const track = new SoundtrackPlayer(engine.soundtrack ?? [], D);
+  playhead = () => track.now();
+  pausePlayer = () => track.pause();
   window.__audara = { preview: true, engine, track }; // (a handle for the browser console)
   setupPicker();
   canvas.style.aspectRatio = `${W} / ${H}`;
@@ -212,12 +232,6 @@ function setupPlayer() {
 
   // the URL's ?t follows the playhead whenever it moves without playing, so the address bar is always
   // a link to what is on screen (throttled: browsers limit history updates)
-  const link = (t: number) => {
-    const u = new URL(location.href);
-    u.searchParams.set('v', VIDEO.name);
-    u.searchParams.set('t', String(+t.toFixed(3)));
-    return u.toString();
-  };
   let urlTimer = 0, urlT = 0;
   const syncUrl = (t: number) => {
     urlT = t;
@@ -306,6 +320,31 @@ function setupPlayer() {
   }
 
   let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false;
+  // A paused frame whose scenes all ask for it (`refine = true` on the scene: the realism kit's; none of them
+  // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
+  // playhead has rested 0.3 s, then held until something changes (the playhead, or a scene it shows hot-
+  // swapped; one saved elsewhere in the video leaves it). Every other frame, a crossfade with any other scene
+  // included, is drawn as it always was.
+  let rest = { t: NaN, since: 0, scenes: [] as unknown[] }, refined = false;
+  const half = (0.2 / fps) / 2; // (the render's default shutter, 0.2 of a frame, either side of t)
+  // the entries the frame's sub-frames draw: its shutter, up to a hard cut, where the engine keeps every
+  // sub-frame on the frame's side (an engine without sameSide: the whole shutter)
+  const sameSide = (engine as unknown as { sameSide?: (t: number, ts: number) => number }).sameSide;
+  const side = (t: number, ts: number) => (typeof sameSide === 'function' ? sameSide.call(engine, t, ts) : ts);
+  const onAt = (t: number) => {
+    const lo = side(t, Math.max(0, t - half)), hi = side(t, t + half);
+    return TL.filter((x) => hi >= x.start && lo < x.end);
+  };
+  const scenesAt = (t: number) => onAt(t).map((x) => engine.loaded.get(x.id)?.scene);
+  const same = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+  const wantsRefine = (t: number) => {
+    if (t + half >= D) return false; // (past the video's end nothing draws: the end's frame stays as it is)
+    const on = onAt(t);
+    return on.length > 0 && on.every((x) => {
+      const s = engine.loaded.get(x.id)?.scene as { refine?: unknown; stateful?: unknown } | null | undefined;
+      return s?.refine === true && !s.stateful;
+    });
+  };
   const tick = () => {
     // (the loop first: a loop that ends with the video must wrap before the player stops at the end)
     if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
@@ -313,7 +352,15 @@ function setupPlayer() {
     const t = track.now();
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;
-    engine.render(Math.min(t, D - 0.001), 1 / fps);
+    const tc = Math.min(t, D - 0.001), scenes = scenesAt(tc);
+    if (track.playing || tc !== rest.t || !same(scenes, rest.scenes)) {
+      rest = { t: tc, since: performance.now(), scenes };
+      refined = false;
+    } else if (!refined && performance.now() - rest.since > 300 && wantsRefine(tc) && !engine.renderer.getContext().isContextLost()) {
+      engine.render(tc, 1 / fps, true, 12);
+      refined = true;
+    }
+    if (!refined) engine.render(tc, 1 / fps);
     scrub.value = String(t);
     frames++;
     const now = performance.now();
@@ -321,7 +368,7 @@ function setupPlayer() {
     const e = entryAt(t);
     markEls.forEach((m, i) => m.classList.toggle('on', TL[i] === e));
     const l = engine.words.lineAt(t);
-    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}`;
+    info.textContent = `${VIDEO.name}${params.has('size') ? ` ${W}x${H}` : ''}  ${t.toFixed(2)}s  beat ${engine.audio.beatAt(t).toFixed(2)}  bar ${engine.audio.barAt(t).toFixed(2)}  [${e ? e.id : '—'}]  ${fpsNow.toFixed(0)}fps${l ? `   “${l.text}”` : ''}${loop ? '   LOOP' : ''}${refined ? '   refined (12 sub-frames)' : ''}`;
     if (engine.errorsVersion !== shownErrors) { shownErrors = engine.errorsVersion; showErrors(); }
     requestAnimationFrame(tick);
   };

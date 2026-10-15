@@ -1,0 +1,27 @@
+{
+  "id": "cv-photoreal-shot",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 180,
+  "turns": [
+    {
+      "prompt": "make a 15-second photoreal shot of a stone lantern in a Japanese garden at dusk: open on a macro of its flame, then pull back to reveal the garden. Everything made in code, no stock images."
+    },
+    {
+      "prompt": "Render it."
+    }
+  ],
+  "assertions": [
+    "With the skills, turn 1 reads references/realism.md before the first scene file is written, and the project's scenes either use the kit (src/realism/, copied whole with its LICENSE) or the treatment says why it builds its own lighting instead (the transcripts).",
+    "With the skills, the brief offers a reference board (the director's photos, public-domain ones, or generated ones with their cost) as a question with a default, makes no paid request (the case has no key), and builds meanwhile; any reference used is in videos/<video>/assets/ with a SOURCES.md row marked reference only, appears in no frame, and is compared with renders in side-by-side images kept under out/<video>/; a critic gets the references and makes its own comparisons.",
+    "The picture is lit and shaded as a photograph (the frames, and the scene code): a sun with shadows, light from a sky, aerial haze on distant things, surfaces with procedural detail. With the skills, in three's MeshStandardMaterial or MeshPhysicalMaterial, with no MeshBasicMaterial or MeshLambertMaterial on the lantern, the ground or the garden.",
+    "With the skills, every setting a scene changes on the shared renderer (shadowMap.enabled, type, autoUpdate, autoClear, toneMapping) is restored before render() returns, also when a draw throws: inside withRenderer or a try/finally (the scene code). Binding render targets to draw into, `out` included, is ordinary and not counted.",
+    "With the skills, per-sub-frame jitter, if any, comes from the engine's SUBFRAME index, never from frameIdx(t), t or Math.random, and render.ts verify passes; without them, the MP4 plays and its frames match its own timeline.",
+    "With the skills, the render of turn 2 renders the photographic stretch at one fixed sub-frame count (render.ts's report: one count for it), from the kit scene's refine = true or from --samples. Either way, before a render of more than a few minutes starts, a reply says about how long it will take.",
+    "It opens on the flame up close with a shallow depth of field (a still at 0.3 s: the flame sharp, the background visibly blurred) and ends wider on the garden (a still 0.3 s before the end shows the lantern whole and the garden around it); no person, face or animal appears in any frame.",
+    "After turn 2 an MP4 of 15.0 +/- 0.1 s exists at 16:9, tagged BT.709; no frame at t=0 or at a cut is near-black unless it fades in on purpose; no paid request is made.",
+    "For the set (judged blind against the --without runs, from full-size stills at 0.3 s, 7.5 s and 14.7 s and the MP4s): the skill runs are judged at least as photographic (light with a source, surfaces with wear, haze with distance, a lens), and no more shimmering or crawling in motion (mcflicker-style residual or by eye at 1:1)."
+  ]
+}

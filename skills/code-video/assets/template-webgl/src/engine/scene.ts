@@ -98,6 +98,7 @@ export abstract class Scene {
   /** Render into `out` (HalfFloat, linear HDR). Must fully overwrite/clear it. Return post-processing overrides. */
   abstract render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides | void;
 
+  /** Free what the scene made on the GPU. Also called when init() threw, so it copes with a half-built scene. */
   dispose(): void {}
 }
 
