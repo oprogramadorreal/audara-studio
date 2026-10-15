@@ -215,10 +215,12 @@ function codexOff(cwd: string): string[] {
  *  and evals/results/ is inside the repo (Codex stops at the run's own git root). */
 function claudeOff(): string[] {
   let on: Record<string, unknown> = {};
-  try {
-    const dir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
-    on = JSON.parse(readFileSync(path.join(dir, 'settings.json'), 'utf8')).enabledPlugins ?? {};
-  } catch { /* no settings */ }
+  // (the user's settings, then those of a project copied in with setup.from, which keeps .claude/settings*.json;
+  // trigger.ts's runs have no project settings, so it reads the user's only)
+  const user = path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'settings.json');
+  for (const f of [user, path.join(WORK, '.claude', 'settings.json'), path.join(WORK, '.claude', 'settings.local.json')]) {
+    try { on = { ...on, ...(JSON.parse(readFileSync(f, 'utf8')).enabledPlugins ?? {}) }; } catch { /* no settings */ }
+  }
   const off = Object.keys(on).filter((p) => on[p] && (DESKTOP.test(p) || AUDARA.test(p)));
   const settings = {
     claudeMdExcludes: [path.join(REPO, 'CLAUDE.md'), path.join(REPO, 'AGENTS.md')],

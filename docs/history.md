@@ -1827,8 +1827,9 @@ What changed:
   cv-25, a code-video near-miss), st-24 (the AI shots alone, a near-miss), st-25 (the adapted prompt).
 - **The eval harness:** an installed audara-studio is turned off for each trigger and task run, in both
   tools, so each skill is there once, with the description under test; until now a machine with the plugin
-  installed ran every skill twice (st-25's runs loaded `audara-studio:code-video` from the 0.7.1 cache beside
-  the linked copy). Claude Code's `--plugin` mode keeps it. `HIGGSFIELD_*` variables leave the environment
+  installed offered two copies of each skill (st-25's runs loaded `audara-studio:code-video` from the 0.7.1
+  cache beside the linked copy). Claude Code's `--plugin` mode keeps it; a task case's copied project
+  settings are read too. `HIGGSFIELD_*` variables leave the environment
   as the OpenAI and ElevenLabs keys do, since st-25 names a Higgsfield key and a budget.
 - **design.md** ("With any picture", the near-misses, the overview), **README**, **evals/README.md**, and the
   snapshot in `docs/research/`.
@@ -1847,20 +1848,21 @@ Considered and left out:
 
 What was checked: trigger runs on Opus 5.5 (the user's xhigh), this branch against `main` in a worktree, with
 the same harness and cases. A first round left the installed 0.7.1 plugin on beside the linked skills; there
-st-25 loaded soundtrack in 3 of 13 runs on `main` and 7 of 13 on the branch. With the plugin off the gap
-went away: 8 of 10 on `main` (soundtrack the first skill in 7, code-video in 3) and 7 of 10 on the branch (6
-and 4). The other cases gave the same results in both rounds and on both wordings: st-21 to st-23 loaded
-soundtrack 3 of 3; st-16, st-24, cv-12 and cv-25 loaded their skill 0 of 3. So the new wording is a
-clarification with no measured effect on a fresh session's routing, and these counts don't predict a full
-production session. The three spec validators passed on code-video and soundtrack, with no byte-order mark.
-Not run: a task eval (the session wrote its own voice tool fifty minutes into a long production, which a
-six-turn trigger run can't reach), Codex's trigger runs, Sonnet.
+st-25 loaded soundtrack in 3 of 13 runs on `main` and 7 of 13 on the branch. With the plugin off the clean
+re-run didn't reproduce the gap: 8 of 10 on `main` (soundtrack the first skill in 7, code-video in 3) and 7
+of 10 on the branch (6 and 4). The other cases gave the same results in both rounds and on both wordings:
+st-21 to st-23 loaded soundtrack 3 of 3; st-16, st-24, cv-12 and cv-25 loaded their skill 0 of 3. This small
+clean comparison did not demonstrate a routing improvement: the new wording stands as a clarification, and
+these counts don't predict a full production session. The three spec validators passed on code-video and
+soundtrack, with no byte-order mark. Not run: a task eval (the session wrote its own voice tool fifty minutes
+into a long production, which a six-turn trigger run can't reach), Codex's trigger runs, Sonnet.
 
-Codex reviewed the branch read-only twice. The first round found six things, all fixed: st-24 asked for
+Codex reviewed the branch read-only three times. The first round found six things, all fixed: st-24 asked for
 5-second clips that didn't add up to 30 s; the snapshot and design.md said the custom audio tools lacked the
 skill's rules, where they kept requests and measured loudness and only the licence came late; "every
 script" takes `--out` (the production scripts do, their model helpers don't); the stand-up was an earlier
 Seedance take, not a new one; alpha overlays were used, not asked for; and the snapshot said the keys were
 revoked with no source (the user said so in this session). The second found the installed plugin in the
 runs and the Higgsfield key st-25 names (both fixed in the harness, above), and asked for "adapted prompt"
-and for counts that claim no more than they show.
+and for counts that claim no more than they show. The third found that a task case's copied project
+settings could turn the plugin back on (task.ts now reads them too) and softened two inferences.
