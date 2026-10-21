@@ -1120,10 +1120,13 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   // must be the same: a scene that remembers what it drew before (a cache filled by whichever frame reached it
   // first) shows here what no single render or verify can show
   const seams: number[] = [];
-  let checked = 0;
+  let checked = 0, stateful = 0, unsupported = false;
   for (let i = 0; i + 1 < pieces.length; i++) {
     const a = endsOf(pieces[i]!), b = endsOf(pieces[i + 1]!);
-    if (!a?.after || !b?.first) continue;
+    // (every piece after the range's first asks for its first frame's hash: a main.ts that leaves none
+    // predates the check; a missing `after` is a meeting point next to a stateful scene, skipped above)
+    if (!b?.first) { unsupported = true; continue; }
+    if (!a?.after) { stateful++; continue; }
     checked++;
     if (a.after !== b.first) seams.push(pieces[i + 1]![0]);
   }
@@ -1132,7 +1135,8 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   rmSync(dir, { recursive: true, force: true });
   console.log(`wrote ${out} (${DRAFT ? 'a draft: ' : ''}${total} frames in ${(p.seconds() / 60).toFixed(1)} min on ${count} browser${count === 1 ? '' : 's'}, ${info.width}x${info.height} @ ${fps} fps${segs?.length ? '' : ', no audio'})`);
   if (Object.keys(used).length) console.log(`sub-frames per frame (count:frames)${kept ? ', the pieces this run rendered' : ''}: ${hist(used)}`);
-  if (pieces.length > 1 && !checked) console.log("the frames where pieces meet weren't compared: this project's src/main.ts is older than that check (the code-video skill's init.ts --force updates it)");
+  if (unsupported) console.log("the frames where pieces meet weren't compared: this project's src/main.ts is older than that check (the code-video skill's init.ts --force updates it)");
+  if (stateful) console.log(`${stateful} place${stateful === 1 ? '' : 's'} where pieces meet beside a stateful scene, which remembers its past by design, ${stateful === 1 ? "wasn't" : "weren't"} compared`);
   if (seams.length)
     console.log(`WARNING: where ${seams.length} of the ${checked} pieces meet, the first frame of a piece, rendered after a jump, differs from the same frame rendered straight on from the one before it: a scene there remembers what it drew before (docs/ENGINE.md: every frame a function of t), so the video may jump at ${seams.map((n) => `${(n / fps).toFixed(3)} s`).join(', ')}. Make that scene a function of t and render again.`);
 }
