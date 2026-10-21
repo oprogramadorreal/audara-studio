@@ -2341,4 +2341,8 @@ piece, a retried piece stranded when the other browsers had left, the delete tha
 up to half a frame off at an off-grid `--from`, the counter over its total after a retry, and pieces
 thrown away for a forgotten flag or a notes edit; and in the text, the still between frames, numbers taken
 too far (the rounds' drafts, the hours to the first file, the time lost, the ETA), the turn-based exemptions,
-what asking for a round means, and the re-timed round.
+what asking for a round means, and the re-timed round. Codex's look at those fixes found three more, fixed
+and checked in the scratch project: a pieces folder without its run.json would have been adopted unchecked
+(now refused); a piece could start on a frame whose shutter still reached back into a stateful scene ending
+in a crossfade (the boundary now moves past it, and stays at a hard cut); and the YouTube exclusion skipped
+any folder of that name (now only `videos/<video>/youtube/`, and notes only under `videos/`).

@@ -894,14 +894,18 @@ const PIECE_SECONDS = 4;
  * Frames [n0, n1) cut into half-open pieces of about PIECE_SECONDS. An end moves to a hard cut when one is
  * near (the picture starts afresh there, so a piece that starts on one renders what a single render does,
  * even through a scene that breaks the f(t) rule), and never falls inside a stateful scene (overlapping ones
- * taken as one stretch), whose state a jump re-simulates only so far back (Scene.preroll).
+ * taken as one stretch), whose state a jump re-simulates only so far back (Scene.preroll): nor on a frame
+ * whose shutter still reaches back into one that ends in a crossfade (a hard cut keeps every sub-frame on
+ * its own side).
  */
-function planPieces(n0: number, n1: number, fps: number, cuts: number[], stateful: [number, number][]) {
+function planPieces(n0: number, n1: number, fps: number, cuts: number[], stateful: [number, number][], shutter: number) {
   const len = Math.max(1, Math.round(PIECE_SECONDS * fps));
   const at = (t: number) => Math.ceil(t * fps - 1e-6); // the first frame at or after a time
   const hard = [...new Set(cuts.map(at))].filter((c) => c > n0 && c < n1);
+  /** The first frame whose sub-frames all fall after `e`, the end of a stateful entry. */
+  const past = (e: number) => (cuts.some((c) => Math.abs(c - e) < 1e-6) ? at(e) : Math.ceil(e * fps + shutter / 2 - 1e-9));
   const spans: [number, number][] = [];
-  for (const [s, e] of stateful.map(([s, e]): [number, number] => [at(s), at(e)]).sort((x, y) => x[0] - y[0])) {
+  for (const [s, e] of stateful.map(([s, e]): [number, number] => [at(s), past(e)]).sort((x, y) => x[0] - y[0])) {
     const last = spans.at(-1);
     if (last && s < last[1]) last[1] = Math.max(last[1], e);
     else spans.push([s, e]);
@@ -924,9 +928,10 @@ function planPieces(n0: number, n1: number, fps: number, cuts: number[], statefu
 /**
  * What a render's frames depend on besides its options: the project's code, data and assets (src/, videos/
  * with every video's scenes, since one can remix another's, public/, the dependencies, render.ts itself), by
- * path, size and modification time, and the browser. Notes (*.md: a treatment's Decisions, the critic's
- * ledger) and YouTube packages aren't inputs. --resume reuses pieces only while it is unchanged. (Footage a
- * scene reads from outside these folders isn't in it, and links aren't followed.)
+ * path, size and modification time, and the browser. A video's notes (the .md files under videos/: a
+ * treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs. --resume
+ * reuses pieces only while it is unchanged. (Footage a scene reads from outside these folders isn't in it,
+ * and links aren't followed.)
  */
 function inputsFingerprint(browser: string) {
   const h = new Bun.CryptoHasher('sha1');
@@ -934,9 +939,9 @@ function inputsFingerprint(browser: string) {
   const walk = (rel: string) => {
     const abs = path.join(PROJECT, rel);
     if (!existsSync(abs)) return;
-    const st = lstatSync(abs);
-    if (st.isDirectory()) { if (path.basename(rel) !== 'youtube') for (const n of readdirSync(abs).sort()) walk(path.join(rel, n)); }
-    else if (st.isFile() && !rel.endsWith('.md')) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
+    const st = lstatSync(abs), parts = rel.split(path.sep), inVideos = parts[0] === 'videos';
+    if (st.isDirectory()) { if (!(inVideos && parts.length === 3 && parts[2] === 'youtube')) for (const n of readdirSync(abs).sort()) walk(path.join(rel, n)); }
+    else if (st.isFile() && !(inVideos && rel.endsWith('.md'))) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
   };
   for (const rel of ['src', 'videos', 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', path.join('scripts', 'render.ts')]) walk(rel);
   return h.digest('hex');
@@ -980,7 +985,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     const E = (window as any).__audara.engine;
     return { cuts: [...(E.cuts ?? [])], stateful: E.timeline.filter((e: any) => E.loaded.get(e.id)?.scene?.stateful).map((e: any) => [e.start, e.end]) };
   });
-  const pieces = planPieces(n0, n1, fps, shape.cuts, shape.stateful);
+  const pieces = planPieces(n0, n1, fps, shape.cuts, shape.stateful, SHUTTER);
   const dir = `${out}.pieces`, runFile = path.join(dir, 'run.json');
   const pieceFile = ([a, b]: [number, number]) => path.join(dir, `${String(a).padStart(7, '0')}-${String(b).padStart(7, '0')}.mp4`);
   type Ends = { first?: string; after?: string; sha1?: string } | null;
@@ -990,6 +995,9 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version()) };
   const run = JSON.stringify(runOf, null, 1);
   let kept = 0;
+  // (files a run.json doesn't vouch for, from an older render.ts or put there by hand, are never adopted)
+  if (existsSync(dir) && !existsSync(runFile) && readdirSync(dir).length)
+    fail(`${dir} holds files no run of this render.ts recorded, so they can't be checked: delete the folder to render every piece`);
   if (existsSync(runFile)) {
     let before: Record<string, unknown> = {};
     try { before = JSON.parse(readFileSync(runFile, 'utf8')); } catch {}
