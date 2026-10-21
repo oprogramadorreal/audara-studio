@@ -929,16 +929,17 @@ function planPieces(n0: number, n1: number, fps: number, cuts: number[], statefu
  * What a render's frames depend on besides its options: the project's code, data and assets (src/, videos/
  * with every video's scenes, since one can remix another's, public/, the dependencies, render.ts itself), by
  * path, size and modification time, and the browser. A video's notes (the .md files under videos/: a
- * treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs. --resume
- * reuses pieces only while it is unchanged. (Footage a scene reads from outside these folders isn't in it,
- * and links aren't followed.)
+ * treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs,
+ * nor is the render's own output (`skip`: the file, its .part and its pieces, wherever --out puts them).
+ * --resume reuses pieces only while it is unchanged. (Footage a scene reads from outside these folders isn't
+ * in it, and links aren't followed.)
  */
-function inputsFingerprint(browser: string) {
+function inputsFingerprint(browser: string, skip: string[]) {
   const h = new Bun.CryptoHasher('sha1');
   h.update(`${browser}\n${process.env.CHROME_FLAGS ?? ''}\n`);
   const walk = (rel: string) => {
     const abs = path.join(PROJECT, rel);
-    if (!existsSync(abs)) return;
+    if (!existsSync(abs) || skip.some((x) => samePath(abs, x))) return;
     const st = lstatSync(abs), parts = rel.split(path.sep), inVideos = parts[0] === 'videos';
     if (st.isDirectory()) { if (!(inVideos && parts.length === 3 && parts[2] === 'youtube')) for (const n of readdirSync(abs).sort()) walk(path.join(rel, n)); }
     else if (st.isFile() && !(inVideos && rel.endsWith('.md'))) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
@@ -994,7 +995,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   const endsOf = (x: [number, number]): Ends => { try { return JSON.parse(readFileSync(`${pieceFile(x)}.json`, 'utf8')) as Ends; } catch { return null; } };
   // what the pieces are made from: --resume reuses them only when all of it is the same (an edited scene,
   // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ)
-  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version()) };
+  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version(), [out, `${out}.part`, dir]) };
   const run = JSON.stringify(runOf, null, 1);
   let kept = 0;
   // (files a run.json doesn't vouch for, from an older render.ts or put there by hand, are never adopted)
