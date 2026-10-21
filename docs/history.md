@@ -2345,4 +2345,5 @@ what asking for a round means, and the re-timed round. Codex's look at those fix
 and checked in the scratch project: a pieces folder without its run.json would have been adopted unchecked
 (now refused); a piece could start on a frame whose shutter still reached back into a stateful scene ending
 in a crossfade (the boundary now moves past it, and stays at a hard cut); and the YouTube exclusion skipped
-any folder of that name (now only `videos/<video>/youtube/`, and notes only under `videos/`).
+any folder of that name (now only `videos/<video>/youtube/`, and notes only under `videos/`). Its last
+look, at those, found nothing.
