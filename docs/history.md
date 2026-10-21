@@ -24,6 +24,7 @@ Contents
 - Small fixes from three published videos (0.7.1, 2026-10-13)
 - Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
 - Photographic 3D from golden-temple (0.8.0, 2026-10-15)
+- Iteration time on a 13-minute video (0.8.1, 2026-10-21)
 
 ## Definition of done
 
@@ -2155,3 +2156,153 @@ the preview driven by Playwright. Paused on a kit scene, it refined once. Saving
 swapped) left the frame refined, and saving the scene on screen refined it again. A context lost and
 restored reloaded the page at the same `?t=` and refined. A scene that throws in `init()` was disposed
 once.
+
+## Iteration time on a 13-minute video (0.8.1, 2026-10-21)
+
+The user made "recriando" with 0.7.1 over eight days: a 13.5-minute pt-BR remake of their most-watched video,
+at 60 fps, narrated in their cloned voice, with a browser Minecraft clone built for its footage. That was a
+build, seven rounds of notes and a Full HD render, in Claude Code with Opus 5.5 at xhigh and ultracode (a
+mode that tells the model to run every substantive task as a multi-agent workflow). They were very happy
+with the video and asked why iterating took so long: draft renders of over an hour and a critic review
+after every round of notes, and a final render that took several approaches. A Claude Code session read the
+open session through Herdr and its transcript (371 MB), 54 workflow records, the project's git log, logs and
+renders, and the user's eight prompts; ten read-only subagents took a slice each. Codex (through Herdr)
+reviewed the diagnosis and the plan.
+
+What worked, to keep: the build's critic and its verification found what mattered most there (five
+concept findings, all in the build and the first round of notes; a stretch costing over 400 s a final
+frame, before the final render); the notes saved verbatim with the lead's readings; a `?t=` link for every
+change with the reading taken and offers, which the director took up ("Do as you suggested"); a
+note-by-note check, which found notes done in the code and not on screen; sound checked on `mix.wav`;
+verify's changed stretches; the voice pilot and two recognizers per take. The director: "The video is
+getting superb! Nice job so far."
+
+What the evidence said:
+
+- **Where the time went.** The rounds of notes took about 71 hours from each message to its hand-off. Model
+  time on the main thread was 7-12% of a round (round 3: 67 of 545 minutes); renders, workflows and waits
+  took the rest. Ultracode added a verifier for every critic finding, skeptics, design panels and
+  review-and-fix loops inside build workflows: about 13% of the 107M workflow tokens, little wall time
+  directly. But round 4 ran with ultracode's reminder off and kept the same structure ("same structure as
+  round 3"): the conversation's precedent carried it. External: three PC reboots, four usage-limit stops,
+  C: full twice.
+- **A critic round after every round of notes.** Every round from the first ran a draft of the whole
+  video (68-78 minutes each from round 3 on, single-process, on the critical path), five or six critics with
+  verifiers, fixes, and in three rounds a second whole draft and a verification. From that draft to the
+  hand-off took about 35 of the 71 hours (an estimate; it includes the fixes and recaptures, so not all of
+  it was avoidable). The text didn't ask for it: "any further round follows their notes" read as a round
+  after each set of notes, beside "Not after every edit: notes go through your stills loop and the preview",
+  and SKILL.md's "Before it's done" had no end once notes began. The 95 findings the critics confirmed: 5
+  concept, 54 clear defects, 36 polish; the cheapest check that reproduces each, once found, was stills or
+  sheets for 38, a measurement of the mix for 34, qc.py on a segment for 10, verify or the data for 6, a
+  fresh critic for the 5 concept ones; none needed the whole-video draft. (That a check reproduces a defect
+  once it is known doesn't prove the lead's own checks would have found it.) The critics raised 8 things
+  before the director did, and in 6 of them the fix didn't satisfy him; about 320 of his roughly 330 notes
+  were things no critic raised (voice, taste, intent, facts only he knew); he reversed two critic-driven
+  changes; the verification rounds mostly found regressions of the previous round's fixes. He never asked
+  for a critic, a draft or more checks, and wrote the next notes while the critics ran (round 6's were
+  finished 2 h 07 min before round 5's hand-off); his one question about time was "can you check why
+  workflow is taking so long to finish?", after 3 h 16 min without a status. Round 7, five notes checked
+  with one scoped reviewer on a 0-60 s clip, took 1.9 hours and was approved 15 minutes later.
+- **The final render.** One `render.ts video` used one browser's main thread: GPU 27%, CPU 33% on an RTX
+  4090 and an i9-9900K, an estimated 6.5-7.2 hours. The agent stopped it after 35 minutes and wrote five
+  queue scripts and a join of its own: four renders at once gave twice the frames an hour, and the first
+  complete file came 3 h 18 min after the request, about 130 minutes of the turn lost to the improvisation
+  (a healthy piece killed as hung, since render.ts printed a line every 60 frames and heavy frames took
+  12-22 s; a piece failed on a transient Windows resource error and rendered again byte for byte the same;
+  50-s pieces that left 44-67-minute poles; CRLF in a queue file). The first ETA, from the first minute's
+  rate, was 1.9 hours. render.ts also renamed `<out>.part` to the delivery's name before main() checked the
+  browser log, so a run that then failed left a file that passed for a render.
+- **Steps inside the shutter.** A ten-agent QC the agent chose found one-frame double images in the final:
+  scenes stepping on `t` itself inside a frame's motion-blur shutter (cuts inside a scene, punches, a pose
+  snap, a counter). A scan found 2,154 such frames in 72 scenes. Every check before the final renders one
+  sub-frame (preview, stills, sheets, `--draft`, verify), and verify guards only cuts between entries (84,
+  all clean). The rule was in ENGINE.md, and the nine scene authors had read it; some wrote
+  `t >= frameTime(moment)`, which puts the step on a frame's centre every time. Rated minor ("one frame,
+  17 ms"), they took 8.5 hours to repair overnight without asking: per-frame shutter windows in the engine
+  from a data file, 51% of the video rendered again, a second QC and a review of the frames the narrow
+  windows made strobe. A still with 12 sub-frames shows such a step (measured on the example: a background
+  switched on `t >= frameTime(9.5)` read 183 of 255 at 9.5 s, a blend; on `frameTime(t) >= 9.5`, 239, as at
+  one sample).
+- **Render history.** The repair's pieces started inside a scene and showed that c6-tile's painted grid
+  kept whichever moment first drew it; contract.md said such a cache makes verify fail, but verify's seeks
+  come after the first fill. Reproduced on the example: a scene that remembers its first frame passed
+  verify (0 of 117 renders mismatched).
+- **Smaller ones.** The build held the preview link 34 hours (the rule was there). A stale mix voided a
+  critic's sound review twice. `mix.wav` couldn't be replaced while something held it open, so the agent
+  stopped the director's preview for every mix (8 times in rounds 3-4); what held it is unverified. verify's
+  changed stretches are useless after a re-timing (98-100% of samples flagged in rounds 2-5): it compares
+  the same `t`. A whole draft costs 3-4 times its scenes per frame (unprofiled).
+
+What changed:
+
+- **critique.md, the cadence.** The build keeps its full-cut round and, past 30 s, its verification. After
+  it, a critic round runs when the director asks, and before the render (Delivery step 2, unchanged); a
+  round of notes goes through the stills loop and back to the preview. A new paragraph, "A round of
+  notes": each note checked where the viewer meets it (a still, a sheet, a clip), the mix rebuilt when
+  stale and measured, and on a piece past a minute qc.py on draft clips of the stretches the round changed
+  rather than a whole draft. Its hand-off offers a critic round, with its time and why, only when the round
+  rebuilt much of the cut or left something the lead's checks couldn't settle (Codex: an offer every round
+  is ceremony). A verification on a piece past a minute can review draft clips of verify's changed
+  stretches and the mix (one round did that in 23 minutes; two that drew the whole 13 minutes again took
+  over two hours each). The stop rule's cap is per build or round of notes, not per turn (background
+  workflows start new turns: the build ran three full-cut rounds). Hand-off: the qc lines say what they
+  cover, and the render on offer names the review it gets first and its time. Delivery: past about an
+  hour, `--jobs`; a defect only the render shows is fixed in the scene, and a long render again waits for
+  the director, with the frame and the cost.
+- **SKILL.md:** the Critic line says when later rounds run ("later, when the director asks, and before a
+  render"); the qc lines come "on drafts"; the status line in long work carries the time left. Paid for by
+  folding the cuts gotcha into the contact-sheet row ("frame 0 and every cut, where blank frames hide")
+  and dropping "a live preview" from the engine's list, which the description has: 7,989 bytes.
+- **render.ts (template):** the browser log and the scenes' errors are checked before the file takes its
+  name; failed requests are named in the log (an aborted media request isn't one); a progress line every
+  10 s whether or not a frame arrived, with the last minute's rate, the time left at that rate and the last
+  frame's age. `video --jobs N` renders in pieces of about 4 s on N browsers at once in one process, one
+  private server: piece ends move to a nearby hard cut and never fall inside a stateful scene; a browser's
+  failure renders the piece again once; the join is ffmpeg's concat without re-encoding, with the
+  soundtrack muxed as before, its frame count and length checked before it takes the name. `--resume`
+  reuses an interrupted run's pieces only when their settings, timeline, files under `src/`,
+  `videos/<video>/` and `public/` (path, size, time) and Chrome's version are unchanged, and checks each
+  piece's frame count. Where pieces meet, the frame rendered straight on and the one after a jump are
+  compared, and any difference is reported with its time.
+- **main.ts (template):** `stream()` leaves those two hashes when asked (`ends`); an older main.ts skips
+  the comparison and says so.
+- **contract.md, engine-guide-template.md:** compare the clock, not the moment (`frameTime(t) >= tCut`,
+  never `t >= frameTime(tCut)`), the shapes a step takes, the post's `zoom` and `shake` for a whole-frame
+  punch, `stills --samples 12` at a step to see it; a cut inside an entry gets no guard; two rows in "What
+  verify can't see"; the cache rule corrected; what a long render costs, its progress lines and `--jobs`.
+- **init.ts:** the AGENTS.md section's status line carries the time left, and its render line says a long
+  video takes hours, with `--jobs` when the project's render.ts has it (an older one is listed as lacking
+  it). **Template README:** the same in a line. **README:** another critic review on request.
+  **design.md:** steps 6-8 and the agent's dues. **Eval:** cv-direction-rejection's rounds of notes run no
+  critic round and don't ask for one without a reason, and its render still gets Delivery's review.
+
+Considered and left out: the project's shutter windows (they drop motion blur, strobed, and go stale with
+any edit; `frameTime` in the scene fixes the same frames); a whole-video step scan in verify (three
+one-sample renders a frame, 26 minutes on 8 workers here, about 3.7 hours in one process); `qc.py
+--against` a draft after the render (it finds the class after the hours are spent); the project's
+streamed-footage hook (`Engine.prepare`, `footage.ts`: general for long footage, but a feature for its own
+change); comparing a moved entry at its own time in verify; profiling the draft's per-frame floor; the
+voice-pick tooling; ultracode's verifiers and review loops, which are the mode's, not the plugin's.
+
+What was checked: in a scratch project made with init, the example rendered once and with `--jobs 3`, both
+at CRF 0: the 1,020 decoded frames identical (framemd5), the audio identical, the same tags, length and
+sub-frame counts; 105 s for one render, 66 s with 2 browsers (its 4 pieces bound it there; the long video's
+twofold gain at 4 is the evidence for longer ones). A run interrupted with 10 of 17 pieces done and resumed
+with `--resume` rendered only the 7; another, resumed after an interruption, matched the single render frame
+for frame; one resumed after a scene file was touched rendered every piece again. The piece-start comparison
+caught a scene made to remember its first frame (two differences, in 1-s pieces) that verify passed. A
+scene's `console.error` mid-render: exit 1 and no file. `--jobs` outside `video` and `--resume` without
+`--jobs` refused. The template's `bun run check`; init's section on a new project and on one with 0.7.1's
+render.ts; `test_init_gitignore.ts` 3/3; the eval cases regenerated; the three spec validators on
+code-video; SKILL.md 7,989 bytes, no byte-order mark. Not run: a task eval with the changes (an hour or more
+a case and tool, waiting for the user's yes); `--jobs` on a long video, on a laptop or in a Codex sandbox;
+and whether rounds of notes without critic rounds keep the quality, which the evidence above leads to
+expect, not measured.
+
+Codex (through Herdr) reviewed the diagnosis and the plan read-only. Taken: resume keyed to the files, not
+only the settings; piece ends at hard cuts, with stateful scenes kept whole; comparing where pieces meet,
+since verify missed c6-tile; checking the join's length too; the ETA worded as the last minute's rate; an
+offer of a critic round only when the round warrants it; narrower claims (a defect reproduced once known is
+not one the lead would have found; the 35 hours include fixes). Declined: choosing a piece's length from
+sampled costs (4 s with the cut snap is simpler, and a piece starts cheaply in a page that stays loaded).

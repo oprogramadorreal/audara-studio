@@ -85,6 +85,17 @@ check go in `.audara-cache/`, never `out/`.
   is theirs to watch: check motion with clips, not by driving their browser or desktop (a background tab
   skips frames). Say which you used.
 
+**A round of notes** (one note or forty) is answered from this loop, not by a critic round (Cadence). Check
+each note where the viewer meets it: its moment as rendered (a still, a sheet through the change, a clip
+for motion), not in the code, since a change can be made and not show; on one video a critic found star
+dust too faint to see after the encode, music stopping where the director had said not to, and a line
+promised to the director and never drawn, each one after the code said done. Rebuild the mix when its
+inputs changed, before any clip, and measure it where the sound changed (`mix.py measure`). On a piece
+past a minute, run `qc.py` on draft clips of the stretches the round changed, each taking in its
+transitions and padded for the 1.5-s glance window (`video --from <a> --to <b> --draft`, then
+`qc.py <clip> --cuts out/<video>/verify.json --offset <a>`), rather than on a draft of the whole video: that
+took 68 to 78 minutes a round on a 13-minute one.
+
 ## The critic
 
 You know what you meant, so that's what you see; a critic that starts empty sees only what's on screen.
@@ -121,10 +132,13 @@ session that built the video passed it after looking at one frame and an eight-f
   can be made in code.
 - **Verification.** Fix what's worth fixing, then start a new critic with the new render and the earlier
   reports. It marks every earlier finding FIXED, PARTLY or STILL PRESENT, hunts for regressions around
-  them, and ends with SHIP or ONE MORE PASS (at most three fixes).
+  them, and ends with SHIP or ONE MORE PASS (at most three fixes). On a piece past a minute, the new render
+  can be draft clips of the stretches `verify --since` lists as changed, with the mix, rather than a new
+  draft of the whole video (one round verified that way in 23 minutes; two that drew the whole 13 minutes
+  again took over two hours each), unless a change of timing moved everything after it.
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame; a weak picture is not cosmetic when the
-  look was left to you), or when the director says so, not after a set number of rounds (but one turn holds at most a full-cut
-  round and one verification). After SHIP, what's left goes to the director as open findings, not into
+  look was left to you), or when the director says so, not after a set number of rounds (but the build,
+  or a round of notes, holds at most a full-cut round and one verification). After SHIP, what's left goes to the director as open findings, not into
   the picture: a change after the last round is reviewed at delivery, before the render (Delivery,
   step 2). The director outranks the critic: a finding that goes against their words is reported, not
   acted on. A choice only the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
@@ -132,17 +146,23 @@ session that built the video passed it after looking at one frame and an eight-f
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
   - a scene round when separate authors make the scenes (or one round per few scenes);
-  - a full-cut round on a `--draft` render of the whole video before you call it done, then, past
+  - a full-cut round on a `--draft` render of the whole video before you call the build done, then, past
     about 30 s, one verification round after its fixes. Then the director gets the sheets and the
-    findings still open (they have had the preview link since setup, and watch while the critics work),
-    and any further round follows their notes. The build then ends in the preview (Hand-off); a render
-    waits for their word (Delivery).
+    findings still open (they have had the preview link since setup, and watch while the critics work).
+    The build then ends in the preview (Hand-off); a render waits for their word (Delivery);
+  - after the build, a round when the director asks for one, and the one before the render (Delivery,
+    step 2). A round of notes, however many, goes through your stills loop (A round of notes) and back to
+    the preview, not to a critic. On one 13-minute video a critic round after every round of notes took
+    about half of seven rounds' time while the director, who never asked for one, wrote the next notes;
+    its critics anticipated few of those notes, none of the defects they confirmed needed the draft of the
+    whole video, and the one round run lean was approved at once. When a round rebuilt much of the cut, or
+    left something your own checks couldn't settle, its hand-off offers a critic round, with what it would
+    take on this video (the whole draft's time and the critics') and why; otherwise it doesn't ask.
 
   A short piece (up to about 30 s) stops after the full-cut round and its fixes: the hand-off lists
   those fixes as not yet reviewed, and the render gets the review (Delivery, step 2). A second round
   there cost 10–14 minutes and found only polish in four test runs out of four. A longer piece stops
-  there too when the director asks for speed (a quick version, a rough cut, a first pass). Not after
-  every edit: notes go through your stills loop and the preview.
+  there too when the director asks for speed (a quick version, a rough cut, a first pass).
 - **The ledger** is `videos/<video>/CRITIQUE.md`, a row per round, so a later session sees what was
   found, what changed, what was left and why:
 
@@ -284,7 +304,7 @@ End with SHIP or ONE MORE PASS. Be blunt; no padding.
 
 ```text
 You are an independent critic; you didn't build this or write the earlier reports. Artifact: <the new
-render, or the scene>. Earlier reports: <paths>. <If timings moved: the new cuts or sections.> The
+render, the draft clips of what changed, or the scene>. Earlier reports: <paths>. <If timings moved: the new cuts or sections.> The
 director's words: "<verbatim>".
 <tools>
 What changed since the render they reviewed, as verify measured it (frames that differ, by the hash of
@@ -340,12 +360,14 @@ director, every time:
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
 - the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
   reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the last
-  full-cut draft (by default `out/<video>/<video>-draft.mp4`), with a `?t=` link to each hold the
-  treatment doesn't mark; and what wasn't checked;
+  full-cut draft (by default `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of
+  what it changed, each saying what it covers, with a `?t=` link to each hold the treatment doesn't mark;
+  and what wasn't checked;
 - the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
   if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
-  costs) and what it brings: the MP4 with motion blur, sheets, a poster and the QC report; and
-  that the project's `README.md` has the commands to watch and render it without an agent.
+  costs), the review it gets first when the picture changed since the last critic round (Delivery, step
+  2) and that review's time, and what it brings: the MP4 with motion blur, sheets, a poster and the QC
+  report; and that the project's `README.md` has the commands to watch and render it without an agent.
 
 ## Delivery
 
@@ -365,13 +387,22 @@ When the director asks for a render, in their request or later:
    commands are also stopped when memory runs low: two renders were lost that way, one at 86%). It renders
    with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful`
    scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives
-   4K). A `--draft` is never the delivery.
+   4K). A `--draft` is never the delivery. A long video takes hours (a 13.5-minute one, an estimated 7 as
+   one render): past about an hour by its estimate, add `--jobs 3` (2 on a laptop), which renders the same
+   frames in pieces at once; if it stops, the same command with `--resume` renders only what's missing. Its
+   progress lines give the rate over the last minute: early frames say little about the rest.
 4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).
 6. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
+
+A defect only the render shows (no draft or still could: a one-frame double image where a scene steps on
+`t` inside the shutter, contract.md) is fixed in the scene. When that means rendering a long video again,
+the director gets the frame, how far it reaches and what another render costs, and picks: one final render
+found such frames, rated minor and only seen frame by frame, and its repair took 8 hours overnight
+without asking.
 
 A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
 with `--size` on every command, its own review included: a layout that holds in one shape can collide or
