@@ -2346,4 +2346,8 @@ and checked in the scratch project: a pieces folder without its run.json would h
 (now refused); a piece could start on a frame whose shutter still reached back into a stateful scene ending
 in a crossfade (the boundary now moves past it, and stays at a hard cut); and the YouTube exclusion skipped
 any folder of that name (now only `videos/<video>/youtube/`, and notes only under `videos/`). Its last
-look, at those, found nothing.
+look, at those, found nothing. A second Codex reviewer then found one more: the probe that renders the
+next piece's first frame advanced a stateful scene starting there, and a page that went on to render that
+piece started it from the advanced state (reproduced: a `--jobs 1` render differed from a single one in 8
+frames after a stateful scene's start). The probe now skips a frame whose shutter reaches a stateful scene,
+which remembers its past by design; the same render then matched the single one frame for frame.

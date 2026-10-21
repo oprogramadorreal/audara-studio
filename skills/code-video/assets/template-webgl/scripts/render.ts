@@ -986,6 +986,8 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     return { cuts: [...(E.cuts ?? [])], stateful: E.timeline.filter((e: any) => E.loaded.get(e.id)?.scene?.stateful).map((e: any) => [e.start, e.end]) };
   });
   const pieces = planPieces(n0, n1, fps, shape.cuts, shape.stateful, SHUTTER);
+  /** Whether frame n's shutter reaches a stateful entry. */
+  const touchesStateful = (n: number) => shape.stateful.some(([s, e]) => s < (n + SHUTTER / 2) / fps && e > (n - SHUTTER / 2) / fps);
   const dir = `${out}.pieces`, runFile = path.join(dir, 'run.json');
   const pieceFile = ([a, b]: [number, number]) => path.join(dir, `${String(a).padStart(7, '0')}-${String(b).padStart(7, '0')}.mp4`);
   type Ends = { first?: string; after?: string; sha1?: string } | null;
@@ -1066,8 +1068,11 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
       let frames = 0, ok = false;
       try {
         // the hashes where pieces meet, at the boundaries inside the range only (the frame after the range
-        // may show a scene this render's sampling can't take)
-        const u = await encodeFrames(w.page, info, job.piece[0], job.piece[1], fps, part, null, () => { frames++; p.frame(); }, { first: job.piece[0] > n0, after: job.piece[1] < n1 });
+        // may show a scene this render's sampling can't take), and not where the next frame shows a stateful
+        // scene: rendering it ahead would advance that scene's state, which this page keeps if it renders the
+        // next piece too (and a stateful scene remembers its past by design)
+        const after = job.piece[1] < n1 && !touchesStateful(job.piece[1]);
+        const u = await encodeFrames(w.page, info, job.piece[0], job.piece[1], fps, part, null, () => { frames++; p.frame(); }, { first: job.piece[0] > n0, after });
         const trouble = await pageTrouble(w.page, w.logs);
         // (a scene that throws throws again: only a browser's trouble is worth another try)
         if (trouble.startsWith('SCENE ERRORS')) { failure = trouble; await discard(part); }
