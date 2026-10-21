@@ -751,13 +751,18 @@ function spliceAudio(segs: NonNullable<Info['audio']>, from: number, to: number)
   return { inputs, filter: parts.join(';') };
 }
 
-/** ffmpeg with libx264, or a message that says how to get it. */
-function checkFfmpeg() {
+/** ffmpeg with libx264 (and ffprobe for --jobs), or a message that says how to get it. */
+function checkFfmpeg(probe = false) {
   let r: ReturnType<typeof Bun.spawnSync>;
   try { r = Bun.spawnSync(['ffmpeg', '-hide_banner', '-encoders']); }
   catch { return fail('ffmpeg not found. Install it (Windows: winget install Gyan.FFmpeg; macOS: brew install ffmpeg; Linux: sudo apt install ffmpeg), then open a new terminal so it is on PATH.'); }
   if (r.exitCode !== 0) fail(`ffmpeg does not run (ffmpeg -encoders exited with ${r.exitCode}): reinstall it.`);
   if (!/libx264/.test(String(r.stdout ?? ''))) fail('this ffmpeg has no libx264 (H.264) encoder: install a full build (Windows: winget install Gyan.FFmpeg; macOS: brew install ffmpeg; Linux: sudo apt install ffmpeg).');
+  if (probe) {
+    try { r = Bun.spawnSync(['ffprobe', '-version']); }
+    catch { return fail('ffprobe not found: --jobs needs it to check the joined video. Install a full ffmpeg build, then open a new terminal.'); }
+    if (r.exitCode !== 0) fail(`ffprobe does not run (ffprobe -version exited with ${r.exitCode}): reinstall a full ffmpeg build.`);
+  }
 }
 
 /** x264's settings: the final render encodes slowly at a low CRF (fine grain and gradients survive); a draft is for judging motion. */
@@ -827,10 +832,12 @@ async function pageTrouble(page: Page, logs: string[]) {
 /**
  * Deletes a half-written file, waiting a moment while the encoder still holds it (a killed ffmpeg behind a
  * shim, as Chocolatey installs it, lets go a little after the shim exits); a file left over does no harm,
- * since the next try overwrites it.
+ * since the next try overwrites it. Also used for the pieces folder after delivery: false means cleanup
+ * failed, not that the completed video failed.
  */
-async function discard(file: string) {
-  for (let i = 0; i < 10; i++) { try { rmSync(file, { force: true }); return; } catch { await Bun.sleep(200); } }
+async function discard(file: string, recursive = false) {
+  for (let i = 0; i < 10; i++) { try { rmSync(file, { force: true, recursive }); return true; } catch { await Bun.sleep(200); } }
+  return false;
 }
 
 /**
@@ -851,40 +858,61 @@ async function encodeFrames(page: Page, info: Info, n0: number, n1: number, fps:
   if (sound) args.push(...sound.encode);
   args.push('-movflags', '+faststart', '-f', 'mp4', file);
   const ff = Bun.spawn(args, { stdin: 'pipe', stdout: 'inherit', stderr: 'inherit' });
-  let frames = 0;
+  let frames = 0, aborting = false;
+  let rejectFailure!: (error: Error) => void;
+  const failed = new Promise<never>((_, reject) => { rejectFailure = reject; });
+  // The encoder can fail while the page waits for an ack. Its exit and socket write errors belong to
+  // this attempt, rather than a detached callback that leaves the page streaming forever.
+  void failed.catch(() => {});
+  void ff.exited.then((code) => {
+    if (code !== 0 || frames < total)
+      rejectFailure(new Fail(`ffmpeg exited with code ${code} after ${frames}/${total} frames (its message is above), so this render wrote nothing`));
+  }, rejectFailure);
   const server = Bun.serve({
     port: 0,
     fetch(req, srv) { return srv.upgrade(req) ? undefined : new Response('ws only', { status: 400 }); },
     websocket: {
       maxPayloadLength: Math.max(64 * 1024 * 1024, OW * OH * 4 + 1024),
       async message(ws, msg) {
-        ff.stdin.write(msg as Uint8Array);
-        await ff.stdin.flush();
-        frames++;
-        onFrame();
-        ws.send(String(frames)); // ack: the page keeps at most a few frames ahead of ffmpeg (bounded memory at 4K)
+        if (aborting) return;
+        try {
+          ff.stdin.write(msg as Uint8Array);
+          await ff.stdin.flush();
+          if (aborting) return;
+          frames++;
+          onFrame();
+          ws.send(String(frames)); // ack: the page keeps at most a few frames ahead of ffmpeg (bounded memory at 4K)
+        } catch (e) { rejectFailure(new Fail(`could not send a frame to ffmpeg: ${(e as Error).message}`)); }
       },
     },
   });
   let used: Record<string, number>;
   try {
-    used = await page.evaluate((o) => (window as any).__audara.stream(o), { from, to, fps, ws: `ws://localhost:${server.port}`, samples: SAMPLES, shutter: SHUTTER, inflight: 4, ends });
-    // wait for all frames to arrive (or for ffmpeg to give up)
-    while (frames < total && ff.exitCode === null) await Bun.sleep(20);
+    used = await Promise.race([
+      page.evaluate((o) => (window as any).__audara.stream(o), { from, to, fps, ws: `ws://localhost:${server.port}`, samples: SAMPLES, shutter: SHUTTER, inflight: 4, ends }),
+      failed,
+    ]);
+    // The page may finish sending before the receiver finishes writing. Either wait can fail.
+    while (frames < total) await Promise.race([Bun.sleep(20), failed]);
+    ff.stdin.end();
+    const code = await ff.exited;
+    if (code !== 0) fail(`ffmpeg failed with exit code ${code} (its message is above), so this render wrote nothing`);
+    return used;
   } catch (e) {
-    // (no half-written video: stop the encoder and the socket, then say why)
-    try { ff.stdin.end(); } catch {}
-    ff.kill();
-    await ff.exited;
+    // Closing the failed page cancels its producer as well as our wait for it. A worker opens a fresh
+    // page before retrying; callbacks still flushing cannot add progress after this attempt is undone.
+    aborting = true;
     server.stop(true);
+    try { ff.stdin.end(); } catch {}
+    if (ff.exitCode === null) ff.kill();
+    await page.close().catch(() => {});
+    await ff.exited;
     await discard(file);
     throw e;
+  } finally {
+    aborting = true;
+    server.stop(true);
   }
-  ff.stdin.end();
-  const code = await ff.exited;
-  server.stop();
-  if (code !== 0) { await discard(file); fail(`ffmpeg failed with exit code ${code} (its message is above), so this render wrote nothing`); }
-  return used;
 }
 
 /** About how long a piece of a --jobs render is: short enough that a stretch of heavy frames doesn't hold up one browser for hours (one video had 5 s at 22 s a frame), long enough that starting one costs little. */
@@ -895,17 +923,19 @@ const PIECE_SECONDS = 4;
  * near (the picture starts afresh there, so a piece that starts on one renders what a single render does,
  * even through a scene that breaks the f(t) rule), and never falls inside a stateful scene (overlapping ones
  * taken as one stretch), whose state a jump re-simulates only so far back (Scene.preroll): nor on a frame
- * whose shutter still reaches back into one that ends in a crossfade (a hard cut keeps every sub-frame on
- * its own side).
+ * whose shutter reaches into either end of one that crossfades (a hard cut keeps every sub-frame on its
+ * own side). Its first exposed frame belongs to the same piece, so the next piece's warm-up can't replay it.
  */
 function planPieces(n0: number, n1: number, fps: number, cuts: number[], stateful: [number, number][], shutter: number) {
   const len = Math.max(1, Math.round(PIECE_SECONDS * fps));
   const at = (t: number) => Math.ceil(t * fps - 1e-6); // the first frame at or after a time
   const hard = [...new Set(cuts.map(at))].filter((c) => c > n0 && c < n1);
+  /** The first frame whose shutter can reach the start of a stateful entry. */
+  const first = (s: number) => (cuts.some((c) => Math.abs(c - s) < 1e-6) ? at(s) : Math.ceil(s * fps - shutter / 2 - 1e-9));
   /** The first frame whose sub-frames all fall after `e`, the end of a stateful entry. */
   const past = (e: number) => (cuts.some((c) => Math.abs(c - e) < 1e-6) ? at(e) : Math.ceil(e * fps + shutter / 2 - 1e-9));
   const spans: [number, number][] = [];
-  for (const [s, e] of stateful.map(([s, e]): [number, number] => [at(s), past(e)]).sort((x, y) => x[0] - y[0])) {
+  for (const [s, e] of stateful.map(([s, e]): [number, number] => [first(s), past(e)]).sort((x, y) => x[0] - y[0])) {
     const last = spans.at(-1);
     if (last && s < last[1]) last[1] = Math.max(last[1], e);
     else spans.push([s, e]);
@@ -927,9 +957,9 @@ function planPieces(n0: number, n1: number, fps: number, cuts: number[], statefu
 
 /**
  * What a render's frames depend on besides its options: the project's code, data and assets (src/, videos/
- * with every video's scenes, since one can remix another's, public/, the dependencies, render.ts itself), by
- * path, size and modification time, and the browser. A video's notes (the .md files under videos/: a
- * treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs,
+ * with every video's scenes, since one can remix another's, public/, the dependencies, root tsconfig*.json,
+ * render.ts itself), by path, size and modification time, and the browser. A video's notes (the .md files
+ * under videos/: a treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs,
  * nor is the render's own output (`skip`: the file, its .part and its pieces, wherever --out puts them).
  * --resume reuses pieces only while it is unchanged. (Footage a scene reads from outside these folders isn't
  * in it, and links aren't followed.)
@@ -944,7 +974,8 @@ function inputsFingerprint(browser: string, skip: string[]) {
     if (st.isDirectory()) { if (!(inVideos && parts.length === 3 && parts[2] === 'youtube')) for (const n of readdirSync(abs).sort()) walk(path.join(rel, n)); }
     else if (st.isFile() && !(inVideos && rel.endsWith('.md'))) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
   };
-  for (const rel of ['src', 'videos', 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', path.join('scripts', 'render.ts')]) walk(rel);
+  const configs = readdirSync(PROJECT).filter((n) => /^tsconfig.*\.json$/.test(n)).sort();
+  for (const rel of ['src', 'videos', 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'bun.lockb', ...configs, path.join('scripts', 'render.ts')]) walk(rel);
   return h.digest('hex');
 }
 
@@ -975,7 +1006,7 @@ interface Worker { browser: Browser; page: Page; logs: string[]; crashed: boolea
  * missing ones.
  */
 async function videoInPieces(first: { browser: Browser; page: Page; logs: string[] }, server: Server, name: string, info: Info, from: number, to: number, fps: number, out: string, jobs: number) {
-  checkFfmpeg();
+  checkFfmpeg(true);
   const n0 = Math.round(from * fps), n1 = Math.round(to * fps), total = n1 - n0;
   const segs = flag('noaudio') ? null : info.audio;
   // (an error while the page loaded, a texture that didn't arrive say, stops the run now: each piece starts
@@ -1133,7 +1164,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   }
   try { renameSync(part, out); }
   catch (e) { fail(`the video is complete in ${part}, but ${out} can't be replaced (open in a player?): ${(e as Error).message}`); }
-  rmSync(dir, { recursive: true, force: true });
+  if (!(await discard(dir, true))) console.warn(`the video is complete in ${out}, but its pieces could not be removed: ${dir}. Close anything holding them, then delete that folder when convenient.`);
   console.log(`wrote ${out} (${DRAFT ? 'a draft: ' : ''}${total} frames in ${(p.seconds() / 60).toFixed(1)} min on ${count} browser${count === 1 ? '' : 's'}, ${info.width}x${info.height} @ ${fps} fps${segs?.length ? '' : ', no audio'})`);
   if (Object.keys(used).length) console.log(`sub-frames per frame (count:frames)${kept ? ', the pieces this run rendered' : ''}: ${hist(used)}`);
   if (unsupported) console.log("the frames where pieces meet weren't compared: this project's src/main.ts is older than that check (the code-video skill's init.ts --force updates it)");

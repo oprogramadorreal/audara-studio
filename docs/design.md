@@ -118,8 +118,8 @@ The steps follow SKILL.md's session checklist, in its order:
    project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
    itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
    browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
-   frames, and `--resume` picks up an interrupted one. (Until 0.2.0 the first build ended with the MP4;
-   history.md says why it changed.)
+   frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
+   unchanged. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
 8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes what the note names and what it forces, checks what `verify` says changed
    and each note's moment as it renders (a still, a clip with its `qc.py` lines, the mix measured), and

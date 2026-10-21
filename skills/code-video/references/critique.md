@@ -397,7 +397,7 @@ When the director asks for a render, in their request or later:
    names SwiftShader, no GPU), which renders the same frames in pieces at once, and check after a few
    minutes that its rate beats the estimate. If it stops, the same command with `--resume` renders only
    what's missing, while the scenes, data and assets are unchanged. Its progress lines give the rate over
-   the last minute, a floor rather than a forecast: early frames say little about the rest.
+   the last minute, a recent measurement rather than a forecast: early frames say little about the rest.
 4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the

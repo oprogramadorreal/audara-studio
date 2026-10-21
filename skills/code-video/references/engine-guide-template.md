@@ -353,7 +353,7 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   17-second example, 7× for a 20-second Canvas2D piece whose flips took 108-324 sub-frames, about 6× for a
   13.5-minute narrated video at 60 fps, an estimated 7 hours as one render. Estimate it from this video's
   draft, tell the director before starting, and firm it up with the render's progress lines, whose rate is
-  the last minute's, a floor rather than a forecast (that long video's first 60 frames ran at 7 fps, an ETA
+  the last minute's, a recent measurement rather than a forecast (that long video's first 60 frames ran at 7 fps, an ETA
   of 1.9 hours; its heavier stretches brought the average to 2.8 by 35 minutes). One render takes one
   browser's main thread and left that desktop mostly idle (GPU 27 %, CPU 33 %): past about an hour,
   `--jobs 3` (2 on a laptop; none when `gpu` names SwiftShader) renders the same frames sooner; 4 at once

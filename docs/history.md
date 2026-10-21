@@ -2356,3 +2356,42 @@ no longer blame an old main.ts: the two are now told apart. Its judgment of that
 (`--out videos/<video>/final.mp4`) counted its own pieces as inputs, so `--resume` turned down an unchanged
 run (reproduced); the output, its .part and its pieces are now left out of the fingerprint, and the same
 run resumed and matched a single render frame for frame. Its judgment of that found nothing.
+
+Follow-up with Claude Code on tab 3 and Codex through Herdr (2026-10-21): reviewed the 15 findings together
+before changing the code, and agreed on six fixes. An encoder that exits while `stream()` waits for an ack,
+or a socket callback whose flush rejects, left the render waiting forever. `encodeFrames` now carries both
+failures into the attempt, closes its page to cancel the producer, stops and reaps the encoder, and discards
+the partial file. Callbacks still flushing after an abort cannot add progress to an attempt already undone.
+A successful encoder exit after every frame arrived is allowed while the page finishes its seam hash.
+`--jobs` also checks ffprobe before encoding, instead of discovering it missing at the join.
+
+At 60 fps a stateful entry beginning at 4.001 s produced pieces 0-240 and 240-241 before the rest of that
+entry: frame 240's late shutter samples entered it, and the next piece's warm-up replayed them with negative
+`f.dt`. The documented fixed-step simulation still matched; a nonlinear simulation adding `f.dt` did not.
+The planner now protects the leading shutter as well as the trailing one, keeping hard-cut boundaries as
+they were. Resume fingerprints now include root `tsconfig*.json` and legacy `bun.lockb`. After delivery,
+cleanup retries a held pieces folder and then warns with its path; a completed MP4 no longer exits as a
+failed render because Windows won't delete a piece (reproduced with Bun 1.4.3 and a file held without delete
+sharing; `rmSync`'s own retry options did not wait). The guide and critique call the recent rate a
+measurement, with no claim that it bounds the remaining work.
+
+Focused offline regressions: `test_render_failures.ts` 13/13 and `test_render_inputs.ts` 16/16. Against
+8703f34's helpers in memory, ten failure/preflight checks and all five new input/boundary checks caught
+their respective regressions. The template's two TypeScript projects passed in an isolated fixture.
+Claude independently reran both offline suites and their baseline controls and reviewed the working diff;
+it found no blocking issues. Its suggestion to keep implementation details in history rather than design
+was taken, and the review kept the stateful reproduction and the regression checks below distinct.
+Its documented fixed-step stateful scene starts at 4.001 s: serial, `--jobs 1` and `--jobs 2` gave identical
+492 decoded frames at 60 fps with 12 samples, shutter 1 and CRF 0. This checks for regressions; the negative
+`f.dt` reproduction above used the engine's extracted logic and a different, nonlinear `dt` integrator.
+At 29.97 fps, serial and `--jobs 2` gave identical 246 decoded frames, timestamps and decoded audio
+(picture 8.208208 s, audio 8.208000 s). An invalid x264 preset stopped serial and `--jobs 2` with exit 1,
+no final or partial MP4; the latter retried then stopped, retaining its run manifest. Both finished inside
+the test's 120-second limit, including browser startup; neither needed the watchdog to terminate it.
+A real Windows run holding its first completed piece without delete sharing still delivered a decodable
+492-frame MP4, warned with the leftover folder, and exited 0 (recorded by a child-process wrapper); the
+test then released its file handle. No long-video task eval was run for this follow-up.
+Left out by agreement: making seam warnings fatal, hash and scheduling changes without a demonstrated
+gain, a late browser-log race without a reproduction, startup worker fallback, and concurrent same-output
+render locking (which also affects serial renders and needs its own recovery design). Conservative seam
+probe skips and OS metadata exclusions also stay as they were.
