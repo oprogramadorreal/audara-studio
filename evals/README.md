@@ -218,12 +218,17 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 ("0:99"), the video's length taken from video.json before its audio, the tags' 500-character count, hashtags past
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
 and three text files); preview's sheets; and what niche refuses before any network call.
+`test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
+with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints and piece
+boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
 
 ```sh
 uv run evals/tests/test_imagegen.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
+bun evals/tests/test_render_failures.ts
+bun evals/tests/test_render_inputs.ts
 ```
 
 ## Spec checks

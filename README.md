@@ -43,8 +43,8 @@ Open an empty folder and ask:
 > make a 20-second video showing why the sky is blue, with music and sound effects
 
 The agent shows a short plan, gives you a preview link and builds while you watch; redirect it whenever you
-like. It ends with the video in the preview and a critic's review, and offers to render. Give notes by time,
-and say "render it" when you want the MP4, which comes with a contact sheet, a poster frame and a quality
+like. It ends with the video in the preview and a critic's review, and offers to render. Give notes by time
+(ask for another critic's review whenever you want one), and say "render it" when you want the MP4, which comes with a contact sheet, a poster frame and a quality
 report (or ask for the MP4 in your first message to get it in one go). The project's own README has the
 two commands to watch and render it yourself.
 

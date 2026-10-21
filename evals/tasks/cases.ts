@@ -234,7 +234,10 @@ const cases: Record<string, Case> = {
     ],
   },
   // Detailed direction over several turns, a rejection that must survive a new session (turn 5 starts one), and
-  // a small note that must change only what it names.
+  // a small note that must change only what it names. Rounds of notes go through the lead's own checks, not a
+  // critic (0.8.1: on a 13-minute video, critic rounds after six of seven rounds of notes took, with their fixes,
+  // about half those rounds' time),
+  // and the render is still reviewed first.
   'cv-direction-rejection': {
     skill: 'code-video', setup: { files: [] }, timeoutMinutes: 90,
     turns: [
@@ -248,6 +251,7 @@ const cases: Record<string, Case> = {
       'After turn 2 no serif face is loaded for this video (font files and font calls in src/look.ts and the scenes) and no still at the brief\'s beat times shows leaves or plants.',
       "Before turn 2 ends, both rejections are written in the director's words where a later session reads them: TREATMENT.md's Decisions or docs/STYLE.md's Decisions or Avoid.",
       "After turn 3 the title's first visible frame is at 6.00 +/- 0.05 s (the timecode kept as given, not moved to a beat), the key green's HSV saturation is lower than after turn 2 at the same pixel and time, and nothing else moved: stills at the brief's other beat times match turn 2's.",
+      "With the skills, turns 2 and 3 run no critic round after the build's hand-off (no fresh critic subagent, no new round folder under out/<name>/critique/: the transcripts, file times; the build's own round in turn 2 passes when turn 1 ended before its hand-off); each answers its notes with stills of the moments they name and ?t= links, and its reply doesn't ask whether to run a critic round unless it says why (much of the cut rebuilt, or something its own checks couldn't settle) and about how long one takes. Turn 4 reviews the picture with a full-cut critic round on a draft before its render (Delivery), since turns 2 and 3 changed it.",
       'After turn 4 the MP4 is 20.00 +/- 0.04 s, 1920x1080; render.ts verify passes.',
       'Turn 5 (a new session, not resumed) uses no serif and no leaf or plant imagery, reuses the project\'s palette from src/look.ts, and its message cites the recorded decisions.',
     ],

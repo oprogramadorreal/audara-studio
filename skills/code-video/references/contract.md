@@ -38,7 +38,8 @@ adds is how much hangs on it:
   frame stops changing.
 - **Ranges render alone.** Stills, a `--from`/`--to` clip and pieces rendered separately are the frames the
   whole video has (measured: two halves rendered side by side and joined with ffmpeg's concat matched a
-  single render frame for frame, to the encoder's precision).
+  single render frame for frame, to the encoder's precision; so did `video --jobs`, which renders in pieces,
+  lossless at CRF 0). `video --jobs` compares the frames where its pieces meet.
 - **It can be checked.** `render.ts verify` renders the same `t` after different seeks (from 1 s before,
   1 s after, from 0, and straight after the frame before) and fails on any pixel that differs; it also
   checks that motion blur never carries a scene across a hard cut.
@@ -54,6 +55,8 @@ while being wrong somewhere verify doesn't look:
 | noise seeded by continuous `t` | the grain the preview shows averages away in the render | Noise and emitters |
 | a `stateful` scene adding up `f.dt` | a simulation that isn't linear ends up somewhere else in the preview, after a seek and in the render | Stateful scenes |
 | `mixer.setTime()` with a play-once clip | jumps back to the start once the clip has ended | three.js in this engine |
+| a step on `t` itself inside one scene (`t >= tCut`, `t >= frameTime(tCut)`, a counter of `t`) | the render shows both states in the frame whose shutter holds the step, a double image | Randomness, flicker and steps |
+| a cache that keeps whichever frame first drew it | a still, a clip or a `--jobs` piece that starts inside the stretch shows another picture than the preview | Randomness, flicker and steps |
 
 `Math.random()`, a generator kept across `render()` calls and a target left half-drawn do fail it, with the
 scene's name.
@@ -69,13 +72,25 @@ scene's name.
   mid-grey; keyed on `frameIdx`, each frame kept its state). `floor` misses even at one sample: for about one
   frame in twenty at 30 or 60 fps (one in seven at 24), the frame's own time times fps comes out a hair under
   its index (frame 31's time is 31 × (1/30), and that × 30 is 30.999…) and floors to the frame before.
-- Anything that changes in steps (a counter, a word lighting up, a font stepping wider, a cut inside a scene)
-  changes on `frameTime(t)`, so the step falls between two frames instead of splitting one frame's
-  sub-frames into a double image. Motion stays on `t`, so it blurs.
+- Anything that changes in steps (a counter, a word lighting up, a font stepping wider, a cut inside a scene,
+  a pose that snaps, a punch's start) changes on the frame's own time, so the step falls between two frames
+  instead of splitting one frame's sub-frames into a double image. Compare the clock, not the moment:
+  `frameTime(t) >= tCut`, never `t >= frameTime(tCut)`, which puts the step on a frame's centre, where half its
+  sub-frames fall on each side every time; a counter shows `n(frameTime(t))`, not `n(t)`. A punch or shake of
+  the whole frame can be the post's `zoom` or `shake`, which a frame reads once. Motion stays on `t`, so it
+  blurs. Nothing at one sample shows the double image (the preview, stills, sheets, `--draft`, verify); a
+  still with sub-frames at the frame nearest the step does: `stills --t <frameTime of the step's time>
+  --samples 12` (at a time between two frames, even a step taken right blends). In one 13-minute video,
+  written by authors given this rule, a scan of the final render found such frames in 72 of its scenes
+  (about ten clear enough for a frame-by-frame QC to confirm), after every draft and critic had passed
+  them; the repair took 8 hours.
 - A cache across frames is fine when its key is everything the result depends on (a layout per line of
   text, a layer redrawn when its text changes). A cache keyed on "the last frame" is state. A key rounded to
-  steps (an opacity to hundredths) needs the layer drawn with the rounded value too: drawn with the exact one,
-  the layer keeps whichever frame filled it first, so verify fails, or a faint ghost stays while the key reads 0.
+  steps (an opacity to hundredths), or one that holds over a stretch (a painting finished at a moment), needs
+  the layer drawn with the rounded value, or as at the stretch's first frame, too: drawn with the exact `t`,
+  the layer keeps whichever frame filled it first, so a still, a clip or a `--jobs` piece that starts inside
+  the stretch draws another picture than the preview (verify's seeks come after the first fill, so they agree),
+  or a faint ghost stays while the key reads 0.
 
 ## Noise and emitters
 
@@ -122,7 +137,8 @@ verify's seeks all replay the same way, so they agree even when the state hasn't
 scene by comparing a still at `t` (reached by a seek) with the frame at `t` of a clip rendered from the
 entry's start.
 
-Rendering in pieces, to give a stateful stretch its own sample count (or to split a long render):
+A long render is split by `video --jobs N` (Performance, below), which checks its joins. By hand, rendering
+in pieces gives a stateful stretch its own sample count:
 
 ```
 bun scripts/render.ts video --video <video> --from 0 --to 42 --noaudio --out out/<video>/part1.mp4
@@ -181,7 +197,8 @@ is craft: `references/motion.md`.
   beat is centred on it.
 - The render keeps every sub-frame on its own frame's side of a hard cut: the frame on the cut shows only
   the scene after it, the frame before only the scene before, as on film. Spread across the cut, every cut
-  frame would double-expose; verify checks it. A crossfade is continuous and blurs freely.
+  frame would double-expose; verify checks it. A crossfade is continuous and blurs freely. A cut inside one
+  entry (a scene that switches shots itself) gets no such guard: it is a step (Randomness, flicker and steps).
 - A gap between entries renders black (verify warns). `sheet --cuts` shows the frames around every cut.
 - Overlapping entries crossfade by default, linearly in linear light. For another transition set
   `handlesTransition = true`: the scene gets the previous scene's frame as `f.under` and the overlap's
@@ -307,7 +324,10 @@ much), and the example's scenes 0.3–2.6 ms each. Where a scene's time goes:
   readback (about 15 ms at 1080p), the transfer to ffmpeg and the encode, about 60 ms a frame at 1080p in
   all (measured: the 17-second example's 1,020 frames took 60 s as a `--draft`, one sub-frame each, and
   about 115 s as the render, most frames at 12). A scene that keeps the sampler at 324 renders 27 times as often
-  as a still one: tell the director how long a render will take before starting a long one.
+  as a still one: tell the director how long a render will take before starting a long one. A long video
+  renders for hours: a 13.5-minute one at 60 fps would take an estimated 7 hours as one render, about 6 times its
+  draft, with the GPU at 27 % and the CPU at 33 % (one browser's thread sets the pace); `video --jobs N`
+  renders it in pieces on N browsers at once (4 rendered twice the frames an hour there).
 - **Measure** with `bun scripts/render.ts perf --video <video> --from <a> --to <b> --only <entry id>`: the
   preview's cost split into the engine's share and the scenes', and what the render pays for a frame of one
   sub-frame, with the readback. It leaves out the transfer and the encode: a few seconds of

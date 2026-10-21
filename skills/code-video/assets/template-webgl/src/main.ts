@@ -84,6 +84,17 @@ async function boot() {
 }
 
 // ------------------------------------------------------------------ export API
+/** A hash of a frame's pixels (two 32-bit lanes over its 32-bit words): equal frames hash the same. */
+function hashPixels(b: Uint8Array) {
+  const w = new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
+  let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
+  for (let i = 0; i < w.length; i++) {
+    h1 = Math.imul(h1 ^ w[i]!, 0x01000193);
+    h2 = Math.imul(h2 ^ w[i]!, 0x5bd1e995) ^ (h2 >>> 13);
+  }
+  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
+}
+
 function setupExport() {
   document.body.classList.add('export');
   // the canvas at the logical size, top-left (what --headed shows; render.ts reads frame() instead)
@@ -140,9 +151,12 @@ function setupExport() {
      * Returns when all frames were sent, with a histogram of sub-frames per frame. With `inflight`, the
      * receiver acknowledges each frame it has handed on (a text message with its running count) and at
      * most `inflight` frames are unacknowledged: backpressure from the encoder, so a slow encode (4K)
-     * cannot pile frames up in the receiver's memory.
+     * cannot pile frames up in the receiver's memory. With `ends` (render.ts video --jobs, a piece of the
+     * video each), it also leaves in `streamEnds` a hash of its first frame, rendered after a jump (`first`),
+     * and of the frame after its last, rendered straight on from it (`after`): where one piece ends and the
+     * next starts, the two must be equal, or a scene there depends on what was rendered before it.
      */
-    async stream(opts: { from: number; to: number; fps: number; ws: string; samples?: number | AdaptiveSampling; shutter?: number; inflight?: number }) {
+    async stream(opts: { from: number; to: number; fps: number; ws: string; samples?: number | AdaptiveSampling; shutter?: number; inflight?: number; ends?: { first?: boolean; after?: boolean } }) {
       const ws = new WebSocket(opts.ws);
       ws.binaryType = 'arraybuffer';
       let acked = 0;
@@ -156,15 +170,23 @@ function setupExport() {
       // (adaptive sampling only runs stateless scenes: one sample is enough for the warm-up)
       if (n0 > 0) engine.render((n0 - 1) * dt, dt, false, typeof S === 'number' ? S : 1, SH);
       const used: Record<number, number> = {}; // sub-frames per frame -> frames
+      const ends: { first?: string; after?: string } = {};
       for (let n = n0; n < n1; n++) {
         const k = engine.render(n * dt, dt, false, S, SH);
         used[k] = (used[k] ?? 0) + 1;
         await engine.readPixelsAsync(buf);
+        if (opts.ends?.first && n === n0) ends.first = hashPixels(buf);
         if (opts.inflight) while (n - n0 - acked >= opts.inflight) await new Promise((r) => setTimeout(r, 2));
         while (ws.bufferedAmount > 64 * 1024 * 1024) await new Promise((r) => setTimeout(r, 2));
         ws.send(buf);
         if (n % 30 === 0) await new Promise((r) => setTimeout(r, 0)); // let the socket flush
       }
+      if (opts.ends?.after && n1 < Math.round(engine.duration * opts.fps)) {
+        engine.render(n1 * dt, dt, false, S, SH);
+        await engine.readPixelsAsync(buf);
+        ends.after = hashPixels(buf);
+      }
+      window.__audara.streamEnds = ends;
       while (ws.bufferedAmount > 0) await new Promise((r) => setTimeout(r, 5));
       ws.close();
       return used;

@@ -106,21 +106,28 @@ The steps follow SKILL.md's session checklist, in its order:
 5. **Build.** It writes the scenes, one subagent per scene when there are many, and looks at each scene's
    stills. The preview reloads as scenes change.
 6. **Critic.** A fresh critic reviews a draft of the whole cut, looking first as a stranger, and the agent
-   fixes what it finds; a piece longer than about 30 s also gets a verification round.
+   fixes what it finds; a piece longer than about 30 s also gets a verification round. After the build,
+   a critic round runs when the director asks for one and before the render; a round of notes goes
+   through the agent's own checks instead (step 8), and its hand-off offers a critic round only when it
+   rebuilt much of the cut or left something those checks couldn't settle. (Until 0.8.1 the text let a
+   critic round follow every round of notes; history.md says why it changed.)
 7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
    asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
    quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
    and a poster frame, and an offer to delete, after a yes, the drafts and frame folders the work left (one
    project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
-   itself it sometimes took the integrated one. (Until 0.2.0 the first build ended with the MP4;
-   history.md says why it changed.)
+   itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
+   browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
+   frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
+   unchanged. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
 8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
-   snare"). The agent changes what the note names and what it forces, checks what `verify` says changed,
-   and answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
+   snare"). The agent changes what the note names and what it forces, checks what `verify` says changed
+   and each note's moment as it renders (a still, a clip with its `qc.py` lines, the mix measured), and
+   answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
 
 What the agent owes the director:
 
-- a one-line status during long work;
+- a one-line status during long work, with the time left;
 - a link for every change, with what moved;
 - for a note that reads two ways, the reading taken and the other on offer;
 - the work shown: contact sheets, numbers (`qc.py`'s holds and blank frames, with a link to each),
@@ -427,7 +434,9 @@ How the skills could still limit it, and what prevents that:
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
   A piece up to about 30 s gets one critic round before the hand-off, and the render's review is its
-  second. Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
+  second. A round of notes gets none unless the director asks: on a 13-minute video, critic rounds after
+  six of seven rounds of notes took, with the fixes they led to, about half those rounds' time (history.md,
+  0.8.1). Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
   minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
   over their defaults, including the list of clichés to avoid. A form or a style the director names (a
@@ -448,7 +457,7 @@ The GLSL is the visible part, but the value to reuse is six things around it:
 1. **Every frame depends only on the time `t`** (`docs/ENGINE.md:49`). Randomness is seeded, flicker is
    keyed to the frame index (`frameIdx(t)`), and scenes that keep state have to opt in (`stateful`). That's
    why the browser preview matches the export, and why motion blur from averaged sub-frames and rendering
-   in parallel segments both work.
+   in parallel segments (`render.ts video --jobs`) both work.
 2. **A live preview to direct the video** (`app/src/main.ts`). `bunx vite` serves the video as a web page
    that plays in real time with the song (in audara, `render.ts preview` starts it, detached, so it
    outlives the agent's turn):

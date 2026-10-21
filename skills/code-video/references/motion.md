@@ -28,7 +28,7 @@ Match the size of a change to the size of its musical unit:
 |---|---|---|
 | A scene or a composition | a section or phrase start, on its downbeat (a montage's chapters, as often as every bar) | `audio.sections`, `audio.downbeats`; the example timeline's `bar(n)` |
 | A camera move, a big gesture | its end on a downbeat | `audio.downbeats` |
-| An accent: a punch, a flash, a step | a beat, an onset or a word | `audio.beatAt(t)`, `f.a.kick`, `audio.hit('snare', t, 0.1)`, `audio.events('kick', t0, t1)` |
+| An accent: a punch, a flash, a step | a beat, an onset or a word | `audio.beatAt(t)`, `f.a.kick`, `audio.hit('snare', t, 0.1)`, `audio.events('kick', t0, t1)`; a punch that steps reads it at the frame's own time, `audio.hit('kick', frameTime(t))`, or is the post's `zoom` (contract.md, steps) |
 | Text, and what it sets off | its word | `words.get('…')`, `words.findWords('…')`, `Words.wordProgress(w, t)` |
 | Texture, breathing | the envelopes | `f.a.low`, `audio.env('drums', t)` |
 
