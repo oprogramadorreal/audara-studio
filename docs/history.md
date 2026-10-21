@@ -2355,4 +2355,4 @@ judgment of that fix agreed, and asked that a run whose every meeting point was 
 no longer blame an old main.ts: the two are now told apart. Its judgment of that found nothing. Its next review found that an output under a fingerprinted folder
 (`--out videos/<video>/final.mp4`) counted its own pieces as inputs, so `--resume` turned down an unchanged
 run (reproduced); the output, its .part and its pieces are now left out of the fingerprint, and the same
-run resumed and matched a single render frame for frame.
+run resumed and matched a single render frame for frame. Its judgment of that found nothing.
