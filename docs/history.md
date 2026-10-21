@@ -2352,4 +2352,4 @@ piece started it from the advanced state (reproduced: a `--jobs 1` render differ
 frames after a stateful scene's start). The probe now skips a frame whose shutter reaches a stateful scene,
 which remembers its past by design; the same render then matched the single one frame for frame. Its
 judgment of that fix agreed, and asked that a run whose every meeting point was skipped for that reason
-no longer blame an old main.ts: the two are now told apart.
+no longer blame an old main.ts: the two are now told apart. Its judgment of that found nothing.
