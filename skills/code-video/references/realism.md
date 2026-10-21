@@ -183,7 +183,8 @@ matched. The kit saves the hours of finding the techniques; the loop is still th
   with zero flickering, checked in motion. "Stable in motion" above is what the last one took.
 - **Iteration is the budget.** Its prompt asked the model to keep going until the match was close, even if
   it took days, and the film took a long session of parallel agents. Here, agree the time with the director (a
-  realistic piece of a minute is hours, not one turn), say where it stands in each status line, and stop
+  realistic piece of a minute is hours, not one turn), and the critic rounds it holds (critique.md,
+  Cadence: past the build, a round runs on their word), say where it stands in each status line, and stop
   when the critic's list of what reads as CG first is down to the cosmetic, or the budget is spent.
 - **One plan first.** Units (metres), where everything stands, the time of day (one `Env`), the shared
   materials. golden-temple kept them in a site plan and an environment file every module read.

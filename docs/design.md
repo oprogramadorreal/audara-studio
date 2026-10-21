@@ -434,8 +434,9 @@ How the skills could still limit it, and what prevents that:
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
   A piece up to about 30 s gets one critic round before the hand-off, and the render's review is its
-  second. A round of notes gets none unless the director asks: on a 13-minute video, a critic round after
-  each of seven rounds of notes took about half their time (history.md, 0.8.1). Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
+  second. A round of notes gets none unless the director asks: on a 13-minute video, critic rounds after
+  six of seven rounds of notes took, with the fixes they led to, about half those rounds' time (history.md,
+  0.8.1). Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
   minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
   over their defaults, including the list of clichés to avoid. A form or a style the director names (a

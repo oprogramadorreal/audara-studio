@@ -151,15 +151,12 @@ function setupExport() {
      * Returns when all frames were sent, with a histogram of sub-frames per frame. With `inflight`, the
      * receiver acknowledges each frame it has handed on (a text message with its running count) and at
      * most `inflight` frames are unacknowledged: backpressure from the encoder, so a slow encode (4K)
-     * cannot pile frames up in the receiver's memory.
+     * cannot pile frames up in the receiver's memory. With `ends` (render.ts video --jobs, a piece of the
+     * video each), it also leaves in `streamEnds` a hash of its first frame, rendered after a jump (`first`),
+     * and of the frame after its last, rendered straight on from it (`after`): where one piece ends and the
+     * next starts, the two must be equal, or a scene there depends on what was rendered before it.
      */
-    /**
-     * With `ends` (render.ts video --jobs, one piece of the video each), it also leaves in `streamEnds` a
-     * hash of its first frame, rendered after a jump, and of the frame after its last, rendered straight on
-     * from it: where one piece ends and the next starts, the two must be equal, or a scene there depends on
-     * what was rendered before it.
-     */
-    async stream(opts: { from: number; to: number; fps: number; ws: string; samples?: number | AdaptiveSampling; shutter?: number; inflight?: number; ends?: boolean }) {
+    async stream(opts: { from: number; to: number; fps: number; ws: string; samples?: number | AdaptiveSampling; shutter?: number; inflight?: number; ends?: { first?: boolean; after?: boolean } }) {
       const ws = new WebSocket(opts.ws);
       ws.binaryType = 'arraybuffer';
       let acked = 0;
@@ -178,13 +175,13 @@ function setupExport() {
         const k = engine.render(n * dt, dt, false, S, SH);
         used[k] = (used[k] ?? 0) + 1;
         await engine.readPixelsAsync(buf);
-        if (opts.ends && n === n0) ends.first = hashPixels(buf);
+        if (opts.ends?.first && n === n0) ends.first = hashPixels(buf);
         if (opts.inflight) while (n - n0 - acked >= opts.inflight) await new Promise((r) => setTimeout(r, 2));
         while (ws.bufferedAmount > 64 * 1024 * 1024) await new Promise((r) => setTimeout(r, 2));
         ws.send(buf);
         if (n % 30 === 0) await new Promise((r) => setTimeout(r, 0)); // let the socket flush
       }
-      if (opts.ends && n1 < Math.round(engine.duration * opts.fps)) {
+      if (opts.ends?.after && n1 < Math.round(engine.duration * opts.fps)) {
         engine.render(n1 * dt, dt, false, S, SH);
         await engine.readPixelsAsync(buf);
         ends.after = hashPixels(buf);

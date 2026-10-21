@@ -66,8 +66,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   it yourself. Its first line says what it will write (`-> out/<video>/<video>.mp4: 1920x1080 at 60 fps,
   20 s (1200 frames)`): the size is `video.json`'s times `--scale`, so check it before the minutes go by.
   A long video renders for hours: `--jobs N` renders it in pieces on N browsers at once and joins them,
-  the same frames; after an interruption the same command with `--resume` renders only the missing pieces
-  (see "Rules": what a render costs).
+  the same frames; after an interruption the same command with `--resume` renders only the missing pieces,
+  while the scenes, data and assets are unchanged (see "Rules": what a render costs).
 - **Poster**: `bun scripts/render.ts poster --video <video> --t 9.5` renders that one frame as the video
   renders it, motion blur included, to `out/<video>/poster.png` (`--out <file.png>` to choose).
 - **Verify** before calling anything done: `bun scripts/render.ts verify --video <video>`. It renders every
@@ -353,9 +353,11 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   17-second example, 7× for a 20-second Canvas2D piece whose flips took 108-324 sub-frames, about 6× for a
   13.5-minute narrated video at 60 fps, an estimated 7 hours as one render. Estimate it from this video's
   draft, tell the director before starting, and firm it up with the render's progress lines, whose rate is
-  the last minute's (that long video ran at 7 fps for its first minute and under 3 after). One render takes
-  one browser's main thread and left that desktop mostly idle (GPU 27 %, CPU 33 %): past about an hour,
-  `--jobs 3` (2 on a laptop) renders the same frames sooner; 4 at once rendered twice the frames an hour there.
+  the last minute's, a floor rather than a forecast (that long video's first 60 frames ran at 7 fps, an ETA
+  of 1.9 hours; its heavier stretches brought the average to 2.8 by 35 minutes). One render takes one
+  browser's main thread and left that desktop mostly idle (GPU 27 %, CPU 33 %): past about an hour,
+  `--jobs 3` (2 on a laptop; none when `gpu` names SwiftShader) renders the same frames sooner; 4 at once
+  rendered twice the frames an hour there.
 - A scene too heavy for real time gets a cheaper preview path, not a simpler idea. `ctx.export` is false
   in the live preview and true whenever render.ts renders (stills, sheets, verify, the video), so the
   scene can trade quality for speed in the preview alone: a lower internal resolution (render into
@@ -583,8 +585,10 @@ What this asks of scenes:
   once a frame (below). Motion stays on `t`, so it blurs; and what moves because of a step (the rest of a
   line making room for a wider word) glides there over a few frames rather than jumping (the example's
   `layer2d.ts`). The preview, stills, sheets, `--draft` and verify take one sub-frame, so none shows the
-  double image; `stills --t <the step's time> --samples 12` does. Check each step you write that way: one
-  13-minute video's final render showed them in 72 scenes, and its repair took 8 hours.
+  double image; a still with sub-frames at the frame nearest the step does, `stills --t <frameTime of the
+  step's time> --samples 12` (between two frames, even a step taken right blends). Check each step you
+  write that way: a scan of one 13-minute video's final render found them in 72 scenes, and their repair
+  took 8 hours.
 - Noise that changes with continuous `t` (a hash seeded by time) is resampled in every sub-frame: it
   averages out, but slowly, and makes the adaptive sampler work harder. Seed it with `frameIdx(t)` unless
   it is meant to smooth out.

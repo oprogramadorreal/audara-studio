@@ -79,9 +79,11 @@ scene's name.
   sub-frames fall on each side every time; a counter shows `n(frameTime(t))`, not `n(t)`. A punch or shake of
   the whole frame can be the post's `zoom` or `shake`, which a frame reads once. Motion stays on `t`, so it
   blurs. Nothing at one sample shows the double image (the preview, stills, sheets, `--draft`, verify); a
-  still at the step with sub-frames does: `stills --t <the step's time> --samples 12`. One 13-minute video's
-  final render had such frames in 72 of its scenes, written by authors who had read this rule, after every
-  draft and critic had passed them; the repair took 8 hours.
+  still with sub-frames at the frame nearest the step does: `stills --t <frameTime of the step's time>
+  --samples 12` (at a time between two frames, even a step taken right blends). In one 13-minute video,
+  written by authors given this rule, a scan of the final render found such frames in 72 of its scenes
+  (about ten clear enough for a frame-by-frame QC to confirm), after every draft and critic had passed
+  them; the repair took 8 hours.
 - A cache across frames is fine when its key is everything the result depends on (a layout per line of
   text, a layer redrawn when its text changes). A cache keyed on "the last frame" is state. A key rounded to
   steps (an opacity to hundredths), or one that holds over a stretch (a painting finished at a moment), needs
@@ -135,7 +137,8 @@ verify's seeks all replay the same way, so they agree even when the state hasn't
 scene by comparing a still at `t` (reached by a seek) with the frame at `t` of a clip rendered from the
 entry's start.
 
-Rendering in pieces, to give a stateful stretch its own sample count (or to split a long render):
+A long render is split by `video --jobs N` (Performance, below), which checks its joins. By hand, rendering
+in pieces gives a stateful stretch its own sample count:
 
 ```
 bun scripts/render.ts video --video <video> --from 0 --to 42 --noaudio --out out/<video>/part1.mp4
@@ -322,7 +325,7 @@ much), and the example's scenes 0.3–2.6 ms each. Where a scene's time goes:
   all (measured: the 17-second example's 1,020 frames took 60 s as a `--draft`, one sub-frame each, and
   about 115 s as the render, most frames at 12). A scene that keeps the sampler at 324 renders 27 times as often
   as a still one: tell the director how long a render will take before starting a long one. A long video
-  renders for hours: a 13.5-minute one at 60 fps took an estimated 7 hours as one render, about 6 times its
+  renders for hours: a 13.5-minute one at 60 fps would take an estimated 7 hours as one render, about 6 times its
   draft, with the GPU at 27 % and the CPU at 33 % (one browser's thread sets the pace); `video --jobs N`
   renders it in pieces on N browsers at once (4 rendered twice the frames an hour there).
 - **Measure** with `bun scripts/render.ts perf --video <video> --from <a> --to <b> --only <entry id>`: the

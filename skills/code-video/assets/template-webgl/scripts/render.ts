@@ -47,9 +47,13 @@
 //            re-encoding, then given the soundtrack: the same frames sooner where one render leaves the
 //            machine mostly idle (a 13.5-minute 60 fps final took one browser's thread, GPU 27 %, CPU 33 %, an
 //            estimated 7 h; 4 at once rendered twice the frames an hour). Each browser is a Chrome with its own
-//            GPU context and memory: on a laptop, 2. The pieces wait in <out>.pieces/ until the join; after an
-//            interruption, the same command with --resume renders only the missing ones (only when nothing
-//            changed since: an edited scene needs them all again)
+//            GPU context and memory: on a laptop, 2; with `gpu` naming SwiftShader (no GPU), none. The pieces
+//            wait in <out>.pieces/ until the join. After an interruption, the same command with --resume
+//            renders only the missing ones while what they're made from is unchanged (the scenes, data and
+//            assets under src/, videos/ and public/, the options); otherwise it says what changed and stops.
+//            Without --resume, pieces of the same render stop the run instead of being thrown away. Where two
+//            pieces meet, the frame rendered after a jump is compared with the one rendered straight on: a
+//            difference means a scene there depends on what was drawn before it
 //   perf:    bun scripts/render.ts perf --from 0 --to 5 [--only ids] [--samples 1]   (ms per frame: what the preview pays,
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
@@ -497,7 +501,7 @@ const SECOND_THREE_FIX = "Two copies of three.js loaded, so objects made by one 
  * Browser log lines that mean something went wrong: errors, failed requests, WebGL errors (a draw the GPU
  * refused), a second copy of three.js.
  */
-const isProblem = (l: string) => /^\[(error|pageerror|http )/.test(l) || /GL_INVALID|WebGL: INVALID|CONTEXT_LOST/.test(l) || SECOND_THREE.test(l);
+const isProblem = (l: string) => /^\[(error|pageerror|http |request failed)/.test(l) || /GL_INVALID|WebGL: INVALID|CONTEXT_LOST/.test(l) || SECOND_THREE.test(l);
 
 /** The page for one video, booted; `preview`: the scenes draw their preview path (ctx.export false). */
 async function openPage(browser: Browser, server: Server, video: string, preview = AS_PREVIEW) {
@@ -775,7 +779,7 @@ function soundArgs(segs: NonNullable<Info['audio']>, from: number, to: number, f
     const splice = spliceAudio(segs, from, to);
     args.push(...splice.inputs, '-filter_complex', splice.filter, '-map', '0:v', '-map', '[aout]');
   }
-  return { inputs: args, encode: ['-c:a', 'aac', '-b:a', '320k', '-t', (frames / fps).toFixed(6), '-shortest'] };
+  return { inputs: args, encode: ['-c:a', 'aac', '-b:a', '320k', '-t', (frames / fps).toFixed(6)] };
 }
 
 /**
@@ -802,6 +806,8 @@ function progress(total: number, extra = () => '') {
   const timer = setInterval(line, 10000);
   return {
     frame() { done++; lastAt = performance.now(); },
+    /** Takes back `n` frames of an attempt that failed (they will be rendered again). */
+    undo(n: number) { done -= n; for (const m of marks) m[1] = Math.min(m[1], done); },
     stop() { clearInterval(timer); if (done) line(); if (process.stdout.isTTY) process.stdout.write('\n'); },
     seconds: () => (performance.now() - t0) / 1000,
   };
@@ -815,15 +821,25 @@ async function pageTrouble(page: Page, logs: string[]) {
   const errors: string[] = await page.evaluate(() => (window as any).__audara.errors);
   if (errors.length) return 'SCENE ERRORS:\n' + errors.join('\n');
   if (!logs.some(isProblem)) return '';
-  return `browser or WebGL errors occurred while rendering:\n${logs.filter(isProblem).slice(0, 20).join('\n')}${logs.some((l) => SECOND_THREE.test(l)) ? `\n${SECOND_THREE_FIX}` : ''}`;
+  return `browser or WebGL errors occurred:\n${logs.filter(isProblem).slice(0, 20).join('\n')}${logs.some((l) => SECOND_THREE.test(l)) ? `\n${SECOND_THREE_FIX}` : ''}`;
+}
+
+/**
+ * Deletes a half-written file, waiting a moment while the encoder still holds it (a killed ffmpeg behind a
+ * shim, as Chocolatey installs it, lets go a little after the shim exits); a file left over does no harm,
+ * since the next try overwrites it.
+ */
+async function discard(file: string) {
+  for (let i = 0; i < 10; i++) { try { rmSync(file, { force: true }); return; } catch { await Bun.sleep(200); } }
 }
 
 /**
  * Renders frames [n0, n1) of the page's video and encodes them into `file` (with the soundtrack when `segs`
  * is given), calling `onFrame` for each frame handed to the encoder. Returns the sub-frames each frame used,
- * as a histogram. `file` is the caller's to rename or delete.
+ * as a histogram. `file` is the caller's to rename or delete. `ends`: the hashes video --jobs compares where
+ * its pieces meet (stream()).
  */
-async function encodeFrames(page: Page, info: Info, n0: number, n1: number, fps: number, file: string, segs: Info['audio'], onFrame: () => void, ends = false) {
+async function encodeFrames(page: Page, info: Info, n0: number, n1: number, fps: number, file: string, segs: Info['audio'], onFrame: () => void, ends?: { first: boolean; after: boolean }) {
   const OW = info.width, OH = info.height, total = n1 - n0, from = n0 / fps, to = n1 / fps, enc = x264();
   const args = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${OW}x${OH}`, '-r', String(fps), '-i', 'pipe:0'];
   const sound = segs?.length ? soundArgs(segs, from, to, total, fps) : null;
@@ -857,16 +873,17 @@ async function encodeFrames(page: Page, info: Info, n0: number, n1: number, fps:
     while (frames < total && ff.exitCode === null) await Bun.sleep(20);
   } catch (e) {
     // (no half-written video: stop the encoder and the socket, then say why)
+    try { ff.stdin.end(); } catch {}
     ff.kill();
     await ff.exited;
     server.stop(true);
-    rmSync(file, { force: true });
+    await discard(file);
     throw e;
   }
   ff.stdin.end();
   const code = await ff.exited;
   server.stop();
-  if (code !== 0) { rmSync(file, { force: true }); fail(`ffmpeg failed with exit code ${code} (its message is above), so this render wrote nothing`); }
+  if (code !== 0) { await discard(file); fail(`ffmpeg failed with exit code ${code} (its message is above), so this render wrote nothing`); }
   return used;
 }
 
@@ -876,20 +893,26 @@ const PIECE_SECONDS = 4;
 /**
  * Frames [n0, n1) cut into half-open pieces of about PIECE_SECONDS. An end moves to a hard cut when one is
  * near (the picture starts afresh there, so a piece that starts on one renders what a single render does,
- * even through a scene that breaks the f(t) rule), and never falls inside a stateful scene, whose state a
- * jump re-simulates only so far back (Scene.preroll).
+ * even through a scene that breaks the f(t) rule), and never falls inside a stateful scene (overlapping ones
+ * taken as one stretch), whose state a jump re-simulates only so far back (Scene.preroll).
  */
 function planPieces(n0: number, n1: number, fps: number, cuts: number[], stateful: [number, number][]) {
   const len = Math.max(1, Math.round(PIECE_SECONDS * fps));
   const at = (t: number) => Math.ceil(t * fps - 1e-6); // the first frame at or after a time
   const hard = [...new Set(cuts.map(at))].filter((c) => c > n0 && c < n1);
-  const spans = stateful.map(([s, e]) => [at(s), at(e)] as const);
+  const spans: [number, number][] = [];
+  for (const [s, e] of stateful.map(([s, e]): [number, number] => [at(s), at(e)]).sort((x, y) => x[0] - y[0])) {
+    const last = spans.at(-1);
+    if (last && s < last[1]) last[1] = Math.max(last[1], e);
+    else spans.push([s, e]);
+  }
   const pieces: [number, number][] = [];
   for (let a = n0; a < n1;) {
     let b = a + len;
     const near = hard.filter((c) => c >= a + len / 2 && c <= a + 1.5 * len);
     if (near.length) b = near.reduce((x, c) => (Math.abs(c - (a + len)) < Math.abs(x - (a + len)) ? c : x));
-    for (const [s, e] of spans) if (s < b && b < e) b = s > a ? s : e;
+    const inside = spans.find(([s, e]) => s < b && b < e);
+    if (inside) b = inside[0] > a ? inside[0] : inside[1];
     if (n1 - b < len / 2) b = n1; // (no stub of a piece at the end)
     b = Math.min(b, n1);
     pieces.push([a, b]);
@@ -899,22 +922,23 @@ function planPieces(n0: number, n1: number, fps: number, cuts: number[], statefu
 }
 
 /**
- * What a render's frames depend on besides its options: the project's code, data and assets (src/,
- * videos/<video>/, public/, the dependencies), by path, size and modification time, and the browser.
- * --resume reuses pieces only while it is unchanged. (Footage a scene reads from elsewhere isn't in it, and
- * links aren't followed.)
+ * What a render's frames depend on besides its options: the project's code, data and assets (src/, videos/
+ * with every video's scenes, since one can remix another's, public/, the dependencies, render.ts itself), by
+ * path, size and modification time, and the browser. Notes (*.md: a treatment's Decisions, the critic's
+ * ledger) and YouTube packages aren't inputs. --resume reuses pieces only while it is unchanged. (Footage a
+ * scene reads from outside these folders isn't in it, and links aren't followed.)
  */
-function inputsFingerprint(video: string, browser: string) {
+function inputsFingerprint(browser: string) {
   const h = new Bun.CryptoHasher('sha1');
-  h.update(`${browser}\n`);
+  h.update(`${browser}\n${process.env.CHROME_FLAGS ?? ''}\n`);
   const walk = (rel: string) => {
     const abs = path.join(PROJECT, rel);
     if (!existsSync(abs)) return;
     const st = lstatSync(abs);
-    if (st.isDirectory()) for (const n of readdirSync(abs).sort()) walk(path.join(rel, n));
-    else if (st.isFile()) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
+    if (st.isDirectory()) { if (path.basename(rel) !== 'youtube') for (const n of readdirSync(abs).sort()) walk(path.join(rel, n)); }
+    else if (st.isFile() && !rel.endsWith('.md')) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
   };
-  for (const rel of ['src', path.join('videos', video), 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock']) walk(rel);
+  for (const rel of ['src', 'videos', 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', path.join('scripts', 'render.ts')]) walk(rel);
   return h.digest('hex');
 }
 
@@ -929,18 +953,29 @@ function probeFrames(file: string) {
   } catch { return { frames: NaN, seconds: NaN }; }
 }
 
+/** A file's SHA-1: a piece kept for --resume must be the bytes its run wrote. */
+const fileHash = async (file: string) => new Bun.CryptoHasher('sha1').update(await Bun.file(file).arrayBuffer()).digest('hex');
+
+/** A browser rendering pieces: its page is replaced when it crashed or met trouble its loaded state may keep. */
+interface Worker { browser: Browser; page: Page; logs: string[]; crashed: boolean; renewed: number }
+
 /**
  * video --jobs N: the range in pieces, rendered by N browsers at once (one is the page already open), each
  * piece encoded on its own without sound, then joined without re-encoding and given the soundtrack, as
  * video() gives it. A render takes one browser's main thread and leaves most of a desktop's GPU and CPU idle
  * (one final render: GPU 27 %, CPU 33 %); four at once rendered twice as many frames an hour. The pieces stay
- * in <out>.pieces/ until the joined file is checked: a piece that fails is rendered again once (a browser
- * that ran out of some resource), and after an interruption --resume renders only the missing ones.
+ * in <out>.pieces/ until the joined file is checked: a piece that fails is rendered again once, on a fresh
+ * page (a browser that ran out of some resource), and after an interruption --resume renders only the
+ * missing ones.
  */
-async function videoInPieces(first: { page: Page; logs: string[] }, server: Server, browserVersion: string, name: string, info: Info, from: number, to: number, fps: number, out: string, jobs: number) {
+async function videoInPieces(first: { browser: Browser; page: Page; logs: string[] }, server: Server, name: string, info: Info, from: number, to: number, fps: number, out: string, jobs: number) {
   checkFfmpeg();
   const n0 = Math.round(from * fps), n1 = Math.round(to * fps), total = n1 - n0;
   const segs = flag('noaudio') ? null : info.audio;
+  // (an error while the page loaded, a texture that didn't arrive say, stops the run now: each piece starts
+  // with an empty log, which would lose it)
+  const early = await pageTrouble(first.page, first.logs);
+  if (early) fail(`${early}\nso nothing was rendered`);
   const shape: { cuts: number[]; stateful: [number, number][] } = await first.page.evaluate(() => {
     const E = (window as any).__audara.engine;
     return { cuts: [...(E.cuts ?? [])], stateful: E.timeline.filter((e: any) => E.loaded.get(e.id)?.scene?.stateful).map((e: any) => [e.start, e.end]) };
@@ -948,93 +983,133 @@ async function videoInPieces(first: { page: Page; logs: string[] }, server: Serv
   const pieces = planPieces(n0, n1, fps, shape.cuts, shape.stateful);
   const dir = `${out}.pieces`, runFile = path.join(dir, 'run.json');
   const pieceFile = ([a, b]: [number, number]) => path.join(dir, `${String(a).padStart(7, '0')}-${String(b).padStart(7, '0')}.mp4`);
+  type Ends = { first?: string; after?: string; sha1?: string } | null;
+  const endsOf = (x: [number, number]): Ends => { try { return JSON.parse(readFileSync(`${pieceFile(x)}.json`, 'utf8')) as Ends; } catch { return null; } };
   // what the pieces are made from: --resume reuses them only when all of it is the same (an edited scene,
   // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ)
-  const run = JSON.stringify({ video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(name, browserVersion) }, null, 1);
+  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version()) };
+  const run = JSON.stringify(runOf, null, 1);
   let kept = 0;
-  if (existsSync(dir)) {
-    if (flag('resume') && existsSync(runFile) && readFileSync(runFile, 'utf8') === run) {
-      // (a piece is renamed into place only when complete, but a damaged file is rendered again rather than trusted)
-      for (const x of pieces) if (existsSync(pieceFile(x))) { if (probeFrames(pieceFile(x)).frames === x[1] - x[0]) kept++; else rmSync(pieceFile(x), { force: true }); }
+  if (existsSync(runFile)) {
+    let before: Record<string, unknown> = {};
+    try { before = JSON.parse(readFileSync(runFile, 'utf8')); } catch {}
+    const differs = Object.keys(runOf).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((runOf as Record<string, unknown>)[k]));
+    const changed = [...new Set(differs.map((k) => (k === 'inputs' ? 'the files (a scene, its data, an asset, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
+    const has = pieces.filter((x) => existsSync(pieceFile(x))).length;
+    // (hours of pieces aren't thrown away for a forgotten flag, nor kept for a render they don't belong to)
+    if (!differs.length && !flag('resume') && has)
+      fail(`${has} pieces of this same render are in ${dir}: --resume renders only the rest; delete the folder to render them all again`);
+    if (differs.length && flag('resume'))
+      fail(`--resume: the pieces in ${dir} were made before a change of ${changed}, so they don't belong to this render; delete the folder to render them all again`);
+    if (!differs.length) {
+      // (a piece is renamed into place only when complete; one whose bytes changed since is rendered again)
+      for (const x of pieces) if (existsSync(pieceFile(x))) {
+        const sha1 = endsOf(x)?.sha1;
+        if (sha1 && sha1 === (await fileHash(pieceFile(x)))) kept++;
+        else rmSync(pieceFile(x), { force: true });
+      }
     } else {
       rmSync(dir, { recursive: true, force: true });
-      console.log(flag('resume')
-        ? `--resume: the pieces in ${dir} were made from other files or settings (a scene, its data or an option changed since), so every piece renders again`
-        : `deleted the pieces an earlier run left in ${dir} (after an interruption, --resume reuses them)`);
+      console.log(`deleted the pieces an earlier render left in ${dir}, made before a change of ${changed}`);
     }
   } else if (flag('resume')) console.log(`--resume: no pieces of an earlier run in ${dir}, so every piece renders`);
   mkdirSync(dir, { recursive: true });
   await Bun.write(runFile, run);
   const todo = pieces.filter((x) => !existsSync(pieceFile(x)));
-  const workers = Math.max(1, Math.min(jobs, todo.length));
-  announce(info, out, from, to, fps, total, segs, `, in ${pieces.length} pieces on ${workers} browser${workers === 1 ? '' : 's'}${kept ? ` (${kept} done by an earlier run)` : ''}`);
+  const count = Math.max(1, Math.min(jobs, todo.length));
+  announce(info, out, from, to, fps, total, segs, `, in ${pieces.length} pieces on ${count} browser${count === 1 ? '' : 's'}${kept ? ` (${kept} done by an earlier run)` : ''}`);
+  const watch = (w: Worker) => w.page.on('crash', () => { w.crashed = true; });
+  /** A new page for a worker after a crash or a failed piece; false when it can't get a clean one. */
+  const renew = async (w: Worker) => {
+    if (++w.renewed > 3) return false;
+    await w.page.close().catch(() => {});
+    try {
+      const f = await openPage(w.browser, server, name);
+      Object.assign(w, { page: f.page, logs: f.logs, crashed: false });
+      watch(w);
+      return !(await pageTrouble(w.page, w.logs));
+    } catch { return false; }
+  };
   // the other browsers, each with its own page on the same private server
-  const pages = [first, ...(await Promise.all(Array.from({ length: workers - 1 }, async () => {
+  const workers: Worker[] = [{ ...first, crashed: false, renewed: 0 }, ...(await Promise.all(Array.from({ length: count - 1 }, async () => {
     const browser = await launch();
     extraBrowsers.push(browser);
     const { page, logs } = await openPage(browser, server, name);
-    return { page, logs };
-  })))].map((w) => ({ ...w, crashed: false }));
-  // (a browser that crashed leaves the work to the others, and its piece's failure isn't held against it)
-  for (const w of pages) w.page.on('crash', () => { w.crashed = true; });
+    const w: Worker = { browser, page, logs, crashed: false, renewed: 0 };
+    // (the first page already loaded as cleanly: another one's trouble gets one fresh page before it counts)
+    const trouble = await pageTrouble(page, logs);
+    if (trouble && !(await renew(w))) fail(`${trouble}\nso nothing was rendered`);
+    return w;
+  })))];
+  for (const w of workers) watch(w);
   const queue = todo.map((piece) => ({ piece, tries: 0 }));
   const used: Record<string, number> = {};
   let running = 0, failure = '';
   const p = progress(todo.reduce((s, x) => s + x[1] - x[0], 0), () => `  pieces ${pieces.length - queue.length - running}/${pieces.length}`);
-  await Promise.all(pages.map(async (w) => {
-    const { page, logs } = w;
-    for (let job = queue.shift(); job && !failure; job = queue.shift()) {
+  await Promise.all(workers.map(async (w) => {
+    for (;;) {
+      if (failure) break;
+      const job = queue.shift();
+      // (none waiting, but a piece still rendering elsewhere may come back to be rendered again)
+      if (!job) { if (!running) break; await Bun.sleep(250); continue; }
       running++;
       const file = pieceFile(job.piece), part = `${file}.part`;
-      logs.length = 0;
+      w.logs.length = 0;
+      let frames = 0, ok = false;
       try {
-        const u = await encodeFrames(page, info, job.piece[0], job.piece[1], fps, part, null, p.frame, true);
-        const trouble = await pageTrouble(page, logs);
+        // the hashes where pieces meet, at the boundaries inside the range only (the frame after the range
+        // may show a scene this render's sampling can't take)
+        const u = await encodeFrames(w.page, info, job.piece[0], job.piece[1], fps, part, null, () => { frames++; p.frame(); }, { first: job.piece[0] > n0, after: job.piece[1] < n1 });
+        const trouble = await pageTrouble(w.page, w.logs);
         // (a scene that throws throws again: only a browser's trouble is worth another try)
-        if (trouble.startsWith('SCENE ERRORS')) { failure = trouble; rmSync(part, { force: true }); }
+        if (trouble.startsWith('SCENE ERRORS')) { failure = trouble; await discard(part); }
         else if (trouble) throw new Error(trouble);
         else {
-          await Bun.write(`${file}.json`, JSON.stringify(await page.evaluate(() => (window as any).__audara.streamEnds ?? null)));
+          const ends = await w.page.evaluate(() => (window as any).__audara.streamEnds ?? null);
+          await Bun.write(`${file}.json`, JSON.stringify({ ...ends, sha1: await fileHash(part) }));
           renameSync(part, file);
           for (const [k, v] of Object.entries(u)) used[k] = (used[k] ?? 0) + v;
+          ok = true;
         }
       } catch (e) {
-        rmSync(part, { force: true });
+        await discard(part);
+        p.undo(frames);
         const why = String((e as Error)?.message ?? e).split('\n').slice(0, 10).join('\n');
         if (!w.crashed) job.tries++;
         if (job.tries < 2) { console.log(`\npiece ${job.piece[0]}-${job.piece[1]} failed, rendering it again: ${why}`); queue.push(job); }
         else failure = `piece ${job.piece[0]}-${job.piece[1]} (${(job.piece[0] / fps).toFixed(2)}-${(job.piece[1] / fps).toFixed(2)} s) failed twice: ${why}`;
       }
       running--;
-      if (w.crashed) { console.log('\na browser crashed: the others render the rest'); break; }
+      // a page that crashed or met trouble is replaced: what it loaded may be missing something
+      if (!ok && !failure && !(await renew(w))) { console.log('\na browser could not go on: the others render the rest'); break; }
     }
   }));
   p.stop();
-  if (!failure && queue.length) failure = 'every browser crashed before the pieces were done';
+  if (!failure && queue.length) failure = 'no browser could go on before the pieces were done';
   if (failure) {
     const done = pieces.filter((x) => existsSync(pieceFile(x))).length;
-    fail(`${failure}\n${done} of ${pieces.length} pieces are done in ${dir}; once the cause is fixed, the same command with --resume renders only the rest (when what they're made from is unchanged)`);
+    fail(`${failure}\n${done} of ${pieces.length} pieces are done in ${dir}; once the cause is fixed, the same command with --resume renders only the rest (while what they're made from is unchanged)`);
   }
-  // the join: the pieces as they are, one after the other, then the soundtrack over the whole range
+  // the join: the pieces as they are, one after the other, each placed by its exact length (by its
+  // container's rounded one, a 29.97 fps join lost a frame), then the soundtrack over the frames' own span
   const list = path.join(dir, 'pieces.txt'), part = `${out}.part`;
-  await Bun.write(list, pieces.map((x) => `file '${path.basename(pieceFile(x))}'`).join('\n') + '\n');
-  const sound = segs?.length ? soundArgs(segs, from, to, total, fps) : null;
+  await Bun.write(list, pieces.map((x) => `file '${path.basename(pieceFile(x))}'\nduration ${((x[1] - x[0]) / fps).toFixed(6)}`).join('\n') + '\n');
+  const sound = segs?.length ? soundArgs(segs, n0 / fps, n1 / fps, total, fps) : null;
   const args = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, ...(sound ? sound.inputs : []), '-c:v', 'copy', ...(sound ? sound.encode : []), '-movflags', '+faststart', '-f', 'mp4', part];
   const join = Bun.spawnSync(args, { stdout: 'inherit', stderr: 'inherit' });
-  if (join.exitCode !== 0) { rmSync(part, { force: true }); fail(`joining the pieces failed (ffmpeg exit code ${join.exitCode}, its message is above); the pieces are kept in ${dir}`); }
+  if (join.exitCode !== 0) { await discard(part); fail(`joining the pieces failed (ffmpeg exit code ${join.exitCode}, its message is above); the pieces are kept in ${dir}`); }
   const got = probeFrames(part);
   if (got.frames !== total || !(Math.abs(got.seconds - total / fps) < 0.5 / fps)) {
-    rmSync(part, { force: true });
+    await discard(part);
     fail(`the joined video has ${got.frames} frames over ${got.seconds} s, not ${total} over ${(total / fps).toFixed(3)} s; the pieces are kept in ${dir}`);
   }
   // where one piece ends and the next starts, the frame rendered straight on and the one rendered after a jump
   // must be the same: a scene that remembers what it drew before (a cache filled by whichever frame reached it
   // first) shows here what no single render or verify can show
-  const ends = (x: [number, number]) => { try { return JSON.parse(readFileSync(`${pieceFile(x)}.json`, 'utf8')) as { first?: string; after?: string } | null; } catch { return null; } };
   const seams: number[] = [];
   let checked = 0;
   for (let i = 0; i + 1 < pieces.length; i++) {
-    const a = ends(pieces[i]!), b = ends(pieces[i + 1]!);
+    const a = endsOf(pieces[i]!), b = endsOf(pieces[i + 1]!);
     if (!a?.after || !b?.first) continue;
     checked++;
     if (a.after !== b.first) seams.push(pieces[i + 1]![0]);
@@ -1042,7 +1117,7 @@ async function videoInPieces(first: { page: Page; logs: string[] }, server: Serv
   try { renameSync(part, out); }
   catch (e) { fail(`the video is complete in ${part}, but ${out} can't be replaced (open in a player?): ${(e as Error).message}`); }
   rmSync(dir, { recursive: true, force: true });
-  console.log(`wrote ${out} (${DRAFT ? 'a draft: ' : ''}${total} frames in ${(p.seconds() / 60).toFixed(1)} min on ${workers} browser${workers === 1 ? '' : 's'}, ${info.width}x${info.height} @ ${fps} fps${segs?.length ? '' : ', no audio'})`);
+  console.log(`wrote ${out} (${DRAFT ? 'a draft: ' : ''}${total} frames in ${(p.seconds() / 60).toFixed(1)} min on ${count} browser${count === 1 ? '' : 's'}, ${info.width}x${info.height} @ ${fps} fps${segs?.length ? '' : ', no audio'})`);
   if (Object.keys(used).length) console.log(`sub-frames per frame (count:frames)${kept ? ', the pieces this run rendered' : ''}: ${hist(used)}`);
   if (pieces.length > 1 && !checked) console.log("the frames where pieces meet weren't compared: this project's src/main.ts is older than that check (the code-video skill's init.ts --force updates it)");
   if (seams.length)
@@ -1066,6 +1141,9 @@ async function video(page: Page, logs: string[], info: Info, from: number, to: n
   const part = `${out}.part`;
   const segs = flag('noaudio') ? null : info.audio;
   const n0 = Math.round(from * fps), n1 = Math.round(to * fps), total = n1 - n0;
+  // (an error while the page loaded, a texture that didn't arrive say, stops the run now, not hours on)
+  const early = await pageTrouble(page, logs);
+  if (early) fail(`${early}\nso nothing was rendered`);
   announce(info, out, from, to, fps, total, segs);
   const p = progress(total);
   let used: Record<string, number>;
@@ -1074,7 +1152,7 @@ async function video(page: Page, logs: string[], info: Info, from: number, to: n
   // (a scene that threw or a browser error mid-run, such as a footage frame that failed to load, can leave a
   // wrong frame in a file that looks complete: checked before the file takes the target's name)
   const trouble = await pageTrouble(page, logs);
-  if (trouble) { rmSync(part, { force: true }); fail(`${trouble}\nso nothing was written to ${out}`); }
+  if (trouble) { await discard(part); fail(`${trouble}\nso nothing was written to ${out}`); }
   try { renameSync(part, out); }
   catch (e) { fail(`the video is complete in ${part}, but ${out} can't be replaced (open in a player?): ${(e as Error).message}`); }
   console.log(`wrote ${out} (${DRAFT ? 'a draft: ' : ''}${total} frames in ${p.seconds().toFixed(1)}s, ${info.width}x${info.height} @ ${fps} fps${segs?.length ? '' : ', no audio'})`);
@@ -1476,7 +1554,7 @@ async function main() {
   if (bare.length) fail(`${bare.join(', ')}: no value after it (the header says what each option takes)`);
   if (DRAFT && mode !== 'video') fail(`--draft is for video (a quick look at the motion); ${mode} ${mode === 'poster' ? 'is the full-quality frame' : 'renders one sub-frame per frame already'}`);
   if ((opt('jobs') !== undefined || flag('resume')) && mode !== 'video') fail(`--jobs and --resume are for video (a render in pieces, several at once)`);
-  if (flag('resume') && opt('jobs') === undefined) fail('--resume reuses the pieces of an interrupted --jobs run: give the same --jobs (and every other option) as that run');
+  if (flag('resume') && opt('jobs') === undefined) fail('--resume reuses the pieces of an interrupted --jobs run: give --jobs (any count) and every other option as that run');
   if (opt('url') && opt('jobs') !== undefined) fail('--jobs renders through its own private server; leave --url out');
   JOBS = opt('jobs') === undefined ? 0 : int('jobs', '1');
   parseSampling();
@@ -1625,7 +1703,7 @@ async function main() {
       const whole = from <= 1e-9 && to >= D - 1e-9;
       const parts = [name!, ...(whole ? [] : [`${+from.toFixed(3)}-${+to.toFixed(3)}`]), ...(ONLY.length ? [`only-${ONLY.join('+')}`] : []), ...(DRAFT ? ['draft'] : []), ...(AS_PREVIEW ? ['preview'] : [])];
       const out = path.resolve(opt('out', path.join(OUT, `${parts.join('-')}.mp4`))!);
-      if (JOBS) await videoInPieces({ page, logs }, server, browser.version(), name!, info, from, to, fps, out, JOBS);
+      if (JOBS) await videoInPieces({ browser, page, logs }, server, name!, info, from, to, fps, out, JOBS);
       else await video(page, logs, info, from, to, fps, out);
     }
     // (video checks its frames itself, before its file takes the target's name)

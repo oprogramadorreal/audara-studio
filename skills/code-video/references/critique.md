@@ -90,11 +90,13 @@ each note where the viewer meets it: its moment as rendered (a still, a sheet th
 for motion), not in the code, since a change can be made and not show; on one video a critic found star
 dust too faint to see after the encode, music stopping where the director had said not to, and a line
 promised to the director and never drawn, each one after the code said done. Rebuild the mix when its
-inputs changed, before any clip, and measure it where the sound changed (`mix.py measure`). On a piece
-past a minute, run `qc.py` on draft clips of the stretches the round changed, each taking in its
-transitions and padded for the 1.5-s glance window (`video --from <a> --to <b> --draft`, then
-`qc.py <clip> --cuts out/<video>/verify.json --offset <a>`), rather than on a draft of the whole video: that
-took 68 to 78 minutes a round on a 13-minute one.
+inputs changed, before any clip, and measure it where the sound changed (the soundtrack skill's
+`mix.py measure`). On a piece past a minute, run `qc.py` on draft clips of the stretches the round
+changed, each taking in its transitions and padded for the 1.5-s glance window (`video --from <a> --to <b>
+--draft`, then `qc.py <clip> --cuts out/<video>/verify.json --offset <a>`), rather than on a draft of the
+whole video: that took 68 to 78 minutes a round on a 13-minute one. After a change of timing, verify flags
+everything after it (it compares the same `t`): clip the moments the notes name and each moved cut at its
+new time, and say in the hand-off what stayed unchecked.
 
 ## The critic
 
@@ -138,7 +140,7 @@ session that built the video passed it after looking at one frame and an eight-f
   again took over two hours each), unless a change of timing moved everything after it.
 - **Stop** at SHIP, when what's left is cosmetic (sub-frame; a weak picture is not cosmetic when the
   look was left to you), or when the director says so, not after a set number of rounds (but the build,
-  or a round of notes, holds at most a full-cut round and one verification). After SHIP, what's left goes to the director as open findings, not into
+  or a review the director asks for, holds at most a full-cut round and one verification). After SHIP, what's left goes to the director as open findings, not into
   the picture: a change after the last round is reviewed at delivery, before the render (Delivery,
   step 2). The director outranks the critic: a finding that goes against their words is reported, not
   acted on. A choice only the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
@@ -151,13 +153,16 @@ session that built the video passed it after looking at one frame and an eight-f
     findings still open (they have had the preview link since setup, and watch while the critics work).
     The build then ends in the preview (Hand-off); a render waits for their word (Delivery);
   - after the build, a round when the director asks for one, and the one before the render (Delivery,
-    step 2). A round of notes, however many, goes through your stills loop (A round of notes) and back to
-    the preview, not to a critic. On one 13-minute video a critic round after every round of notes took
-    about half of seven rounds' time while the director, who never asked for one, wrote the next notes;
-    its critics anticipated few of those notes, none of the defects they confirmed needed the draft of the
-    whole video, and the one round run lean was approved at once. When a round rebuilt much of the cut, or
-    left something your own checks couldn't settle, its hand-off offers a critic round, with what it would
-    take on this video (the whole draft's time and the critics') and why; otherwise it doesn't ask.
+    step 2). Asking for one means asking for a critic or a review of the whole video; "check this part
+    carefully" is a note, answered from your stills loop on that part (or one critic on a clip of it). A
+    round of notes, however many, goes through your stills loop (A round of notes) and back to the
+    preview, not to a critic. On one 13-minute video, critic rounds after six of its seven rounds of notes,
+    with the fixes they led to, took about half of those rounds' time while the director, who never asked
+    for one, wrote the next notes; the critics raised few of those notes before him, each defect they
+    confirmed showed, once known, on a still, the mix or a clip, and round 7, five notes checked without a
+    critic, was approved within minutes. When a round rebuilt much of the cut, or left something your own
+    checks couldn't settle, its hand-off offers a critic round, with what it would take on this video (the
+    whole draft's time and the critics') and why; otherwise it doesn't ask.
 
   A short piece (up to about 30 s) stops after the full-cut round and its fixes: the hand-off lists
   those fixes as not yet reviewed, and the render gets the review (Delivery, step 2). A second round
@@ -376,8 +381,8 @@ When the director asks for a render, in their request or later:
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. The review, before the render. A picture changed since the last critic round gets one full-cut round
    on a `--draft` of the whole video (the last one, when nothing changed after it), and its fixes, unless
-   this turn already ran its rounds (a full-cut round and its verification, or the full-cut round alone
-   for a short piece or when the director asked for speed). That is delivery's only round: fixes made after it are listed as
+   this request already ran its rounds, in however many turns (a full-cut round and its verification, or
+   the full-cut round alone for a short piece or when the director asked for speed). That is delivery's only round: fixes made after it are listed as
    not yet reviewed, not sent through another round and another render. A render made before its review
    is thrown away when the review finds anything, and each costs minutes.
 3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
@@ -388,9 +393,11 @@ When the director asks for a render, in their request or later:
    with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful`
    scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives
    4K). A `--draft` is never the delivery. A long video takes hours (a 13.5-minute one, an estimated 7 as
-   one render): past about an hour by its estimate, add `--jobs 3` (2 on a laptop), which renders the same
-   frames in pieces at once; if it stops, the same command with `--resume` renders only what's missing. Its
-   progress lines give the rate over the last minute: early frames say little about the rest.
+   one render): past about an hour by its estimate, add `--jobs 3` (2 on a laptop; none when `render.ts gpu`
+   names SwiftShader, no GPU), which renders the same frames in pieces at once, and check after a few
+   minutes that its rate beats the estimate. If it stops, the same command with `--resume` renders only
+   what's missing, while the scenes, data and assets are unchanged. Its progress lines give the rate over
+   the last minute, a floor rather than a forecast: early frames say little about the rest.
 4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
 5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
@@ -398,11 +405,11 @@ When the director asks for a render, in their request or later:
 6. A poster, the frame that best stands for the video, rendered as the video renders it:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
 
-A defect only the render shows (no draft or still could: a one-frame double image where a scene steps on
-`t` inside the shutter, contract.md) is fixed in the scene. When that means rendering a long video again,
-the director gets the frame, how far it reaches and what another render costs, and picks: one final render
-found such frames, rated minor and only seen frame by frame, and its repair took 8 hours overnight
-without asking.
+A defect only the render shows (a one-frame double image where a scene steps on `t` inside the shutter,
+which no single-sample check can show: contract.md) is fixed in the scene, but when that means rendering
+a long video again, ask first: the director gets the frame, how far it reaches and what another render
+costs, and picks. One final render showed such frames, rated minor and seen only frame by frame, and their
+repair took 8 hours overnight without asking.
 
 A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
 with `--size` on every command, its own review included: a layout that holds in one shape can collide or
