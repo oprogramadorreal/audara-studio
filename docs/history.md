@@ -2528,8 +2528,9 @@ What was checked: the speed probe from `.audara-cache/` and verify of the transp
 project made with init, with the new render.ts, `bun run check` passing; the
 vermilion bars at 1 to 6x with and without bloom, sampled from stills; qc.py on the synthetic video and its
 clips, and its help; `bun evals/tests/test_render_failures.ts` 13/13 and `test_render_inputs.ts` 16/16; the
-five prompts in docs/prompts.md against the sessions' first messages, byte for byte; SKILL.md files unchanged.
-Not run: a task eval, and the five prompts on Codex.
+five prompts in docs/prompts.md against the sessions' first messages, byte for byte; SKILL.md files unchanged
+by these fixes (the Look step's wording changed after the comparison below: 7,994 bytes, the three validators
+pass). Not run: a task eval, and the five prompts on Codex.
 
 Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only, checking the facts against the transcripts,
 the measurements' raw logs and PNGs, and the render tests (29/29). It found three low-severity points, all
@@ -2538,3 +2539,79 @@ creating when a preview is already running (the recipe now says to make it); thi
 quality came from naming how the picture is made, more than the research established; and docs/prompts.md
 gave the extra worlds as the cause of prompt 5's time, which an outage shared. Its second round found nothing
 in the repo.
+
+### The same five prompts without the plugin
+
+That evening the user ran the five prompts again, word for word in empty folders, with audara-studio disabled,
+to see whether the plugin limits what Opus makes. Same machine, Opus 5.5 at xhigh, auto mode; runs 2-5 were on
+Claude Code 2.1.311 without the 1M-context variant, while run 1 and all five plugin runs were on 2.1.310 with
+it. Each arm ran its five at once: the plugin's runs 1-4 shared the GPU with the music video's lead and five
+scene authors from 12:56, while the model alone rendered 1-4 on the CPU in Python. Their verdicts, unblinded:
+the ink train about the same; the Van Gogh, Hopf and Archimedes pictures about the same but silent without the
+plugin, so its versions were better; the music video better without it ("it seems the plugin forced opus to
+use too much text on the screen. Without the plugin it created better 3D animations"), except the plugin's last
+scene, the door. Sound by default and the preview were the plugin's gains, and the runs without it were much
+faster. A Claude Code session read all ten sessions through Herdr and their transcripts and compared frames of
+both arms' videos (it could not watch motion), and Codex reviewed the reading. One run per arm.
+
+| Prompt | With 0.8.1, to the hand-off (preview, draft without motion blur) | Without, to a final MP4 | Output tokens, with / without |
+|---|---|---|---|
+| Ink night train, 20 s | 74 min | 51 min (1.45x), with sound: the prompt asks for it | 347K / 211K |
+| Van Gogh, 20 s | 82 min | 36 min to its first hand-off; its 25-min render was stopped for low memory while the session sat idle, the user ran it again by hand, and an 8-min last turn fixed seams; silent | 321K / 164K |
+| Hopf fibration, 30 s | 65 min | 38 min (1.71x), silent | 290K / 148K |
+| Archimedes, 40 s | 83 min | 27 min (3.07x), silent | 365K / 138K |
+| Music video, 46 s | 4 h 55 min, about 4 h 20 min without a 35-min network outage | 65 min (about 4x), with motion blur | 2.19M / 240K |
+
+- **Sound by default was the clearest gain.** Without the plugin, runs 2 and 3 never considered sound and run
+  4 called its video silent (its prompt says "no narration"); run 1's prompt asks for sound, and it made a full
+  score. The plugin's synthesized scores took 2-5 minutes each.
+- **Prompts 1-4: the pictures came out broadly comparable, and the approach wasn't narrowed.** Both arms
+  reached the same core designs (the Van Gogh's camera path; the Hopf's colour by latitude, 13° lens and tube
+  radius), and each was stronger in places. Smaller steers: the ink run's STYLE.md put "a red seal or a red
+  accent" on its Avoid list, where the model alone added a seal of its own, a recurrence of 0.4.0's class (an
+  Avoid item against what a named style asks for; the first for a named medium); a slate ground for the Hopf;
+  the Archimedes glass made opaque to pass verify (fixed above). The plugin's Hopf and Archimedes put no more
+  text on screen than the model alone's (whose Hopf had captions, a footer and small labels).
+- **Where the time went.** Each plugin run reached its first critic 44-49 minutes in; the critic rounds and
+  their fixes, 21-39 minutes of each, were most of the rest. Each caught a real defect (a sphere drawn inside
+  out, crown tears, a frozen ending, a train drawn as vector shapes), while the user judged the delivered
+  pictures broadly comparable; some of those defects came from the plugin run's own route (the model alone
+  avoided a frozen ending by tilting its orbit). The plugin arm ended at drafts with the render offered; the
+  other rendered finals. Prompt to first file was 3-12 minutes shorter with the plugin; the model alone wrote
+  47-111K output tokens of thought before its first file.
+- **The music video.** Text was on screen in 18 of 24 evenly spaced frames of the plugin's draft, against about
+  6 of 23 of the other's (read from contact sheets). The one thing was the lead's draw: a text cursor writing
+  the lyric, set in its treatment and listed under Assumed. The template's default is no lyrics on screen, but
+  its skeleton's "Words on screen" section asks how the words live in the picture, and SKILL.md's Look step
+  asked for "the key moment, its words included"; the lead read both before writing the treatment. The model
+  alone also timed the words first (faster-whisper), put words in three of its eleven worlds and ended on a
+  cursor; its one thing was a die, from the lyric "jogo os dados", built as lit three.js objects. Observed in
+  the plugin run: all three style frames staged the lyric; a shared text mask and the briefs put it in five of
+  six worlds; critic round 1 found it hard to read in two worlds (2.1-2.2:1 contrast), and the re-staging asked
+  for an x-height of at least 70 px beside STYLE.md's 36-px minimum. That the plugin caused the density is an
+  inference. What multiplied it (words designed into the frame and living in the picture, type minimums,
+  legibility checks) is round 4's fix for a lyric video that was captions over a background any song could have,
+  and round 4 and 0.4.0 judged the plugin's lyric videos above the model alone, blind: a change that dials text
+  back has to keep that case. The time: the authors' first reports came 40-71 minutes after they started, the
+  last first-round report (after a look pass the lead asked for) about 106 minutes after, then two critic rounds; the storyboard round critique.md asks for before
+  several authors build was skipped (the lead read critique.md only after starting them) and might have
+  questioned the staging. The critics fixed a breach of the brief (a world repeating another) and made the door
+  work, the user's favourite scene, built by a scene author. The plugin's draft had no motion blur; the other
+  video was a final with it.
+
+What changed: SKILL.md's Look step asks for "the key moment, with any words it shows" instead of "its words
+included", which keeps 8671961's case and stops presuming words (7,994 bytes; its effect on a run like this is
+a hypothesis: the concept was the lead's, and the song invites text). docs/prompts.md gives both arms' results
+and, for prompt 5, the tip to say whether you want lyrics on screen. design.md's "Scene authors stay" notes the
+comparison.
+
+Considered and left out: the skeleton's Words on screen slot showing "none" (the lead read the default and
+departed on purpose); a storyboard-critic pointer in SKILL.md (5 bytes left; the late catch cost about 19
+minutes off the critical path); the verification round only past a minute (in both 30-60 s runs it caught
+sync slips: formula terms 20 frames late, tokens 6-10 frames late), or run off the critical path; a critic
+finding for words written out unasked (type alone can be the bold choice); an eval assertion on lyrics on
+screen (the treatment argued for them, so it would pass); `--jobs 2` for drafts (unmeasured); a change for the
+seal (style-template already says a named style brings what defines it). Two tests would settle more: replay
+prompt 5's brief stage (about 12 minutes) three to five times with the plugin as it was and as it is now, and
+count how often the lyric becomes the one thing; and build one treatment by a lead alone and by scene authors,
+concept and checks held fixed, judged blind.

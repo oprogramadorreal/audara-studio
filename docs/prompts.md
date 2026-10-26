@@ -23,6 +23,14 @@ with one more critic review before it. Add "then render it" to a prompt to get t
 stopped to ask a question, and none spent money: the sound was synthesized in code, or was the user's own
 song. They haven't been run in Codex yet.
 
+The same evening the maintainer ran all five again with the plugin disabled. Those runs were faster: 51, 38
+and 27 minutes to a final MP4 for 1, 3 and 4, against 74, 65 and 83 minutes to the plugin's draft, and 65
+minutes against 4 h 55 min for 5 (the Van Gogh's render had to be restarted by hand). Without the plugin, 2
+to 4 came out silent, since their prompts don't ask for sound, while their pictures were about the same, so
+the plugin's versions were the better ones; 1, whose prompt asks for sound, came out about the same in both.
+For 5 the picture made without the plugin was preferred (its entry below). The comparison is in
+[history.md](history.md), 0.8.2.
+
 | # | Prompt | Length | Time to the hand-off | Critic rounds |
 |---|---|---|---|---|
 | 1 | Ink wash, drawn in code | 20 s | 1 h 14 min | 1 |
@@ -117,9 +125,12 @@ Make a music video for about 45 seconds of song.mp3, from the part you choose. O
   cut 46.5 s, from the bridge to the last spoken word, and made a text cursor the one thing, in six worlds:
   it built one and five scene authors working in parallel built the others. It took about four times as
   long as the others (about 35 minutes of it a network outage) and several times their usage. The
-  critic's first round found one world was another seen from higher up, and it was re-staged.
+  critic's first round found one world was another seen from higher up, and it was re-staged. Without the
+  plugin, the same prompt made a die the one thing, through eleven worlds of lit 3D objects, in 65 minutes,
+  and the maintainer preferred that picture: the plugin's had the lyric on screen through most of the cut,
+  and only its last world, the door, was better.
 - **To adapt:** bring your own song, or one you have the rights to, as `song.mp3`. If you have the thing in
-  mind, name it. Fewer sections or a shorter part keeps it lighter. For the words to be timed on screen,
+  mind, name it. If you have a preference, say whether you want the lyrics on screen. Fewer sections or a shorter part keeps it lighter. For the words to be timed on screen,
   give `lyrics.txt` unless the file carries them; the first timing of sung words downloads about 3 GB of
   models, once.
 

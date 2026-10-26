@@ -438,7 +438,10 @@ How the skills could still limit it, and what prevents that:
   second. A round of notes gets none unless the director asks: on a 13-minute video, critic rounds after
   six of seven rounds of notes took, with the fixes they led to, about half those rounds' time (history.md,
   0.8.1). Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
-  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
+  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0). A 46-second music video took about four
+  times as long with the plugin as without it, excluding an outage, and the user preferred the picture made
+  without it; one builder with the plugin, the concept and the checks held fixed hasn't been compared
+  (history.md, 0.8.2).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
   over their defaults, including the list of clichés to avoid. A form or a style the director names (a
   showreel, psychedelic) brings what defines it: the Avoid list, the critic and the motion grammar's
