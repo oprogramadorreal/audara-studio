@@ -241,7 +241,8 @@ The rule, applied to three.js:
 - A physics engine that has to run forward is stateful (above); one that can run ahead in `init()` into a
   table keeps adaptive blur, and particles need no state at all ("Noise and emitters").
 - `docs/ENGINE.md` lists what the example's three.js scene ran into: aliased edges without a multisampled
-  target of your own (and the seam a colour gradient makes there), an `InstancedMesh` culled by its first
+  target of your own (and the seam a colour gradient makes there, and overlapping transparent faces that
+  blend differently between renders, which verify fails), an `InstancedMesh` culled by its first
   frame's bounds, light intensities in multiples of π, a straight-down camera's `up`.
 - A shot meant to read as photographed (photoreal, a real place or object in real light): `references/realism.md`
   and its kit (procedural surfaces in three's PBR materials, a physical sky, haze, a shadowed sun, a lens,

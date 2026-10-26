@@ -283,7 +283,8 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   your own, `makeRT(W, H, { samples: 4, resolveDepthBuffer: false })`, clear it (the renderer's
   `autoClear` is off), then copy it into `out` with `comp.draw(renderer, rt.texture, out, { mode: 'replace' })`.
   Under multisampling, a colour gradient across a face lights a seam where the face is seen edge-on: keep
-  per-instance colours flat.
+  per-instance colours flat. Transparent faces that overlap there blend differently from one render to the
+  next on some GPUs (a few pixels off by 1/255, which verify fails); in a target without samples they don't.
 - An `InstancedMesh` whose matrices change needs `frustumCulled = false`: three.js computes its bounds
   once, from the first frame, and culls it with them afterwards.
 - Lights are physical: a Lambert face square to a light of intensity π shows its own colour, so write
