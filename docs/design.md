@@ -429,7 +429,8 @@ How the skills could still limit it, and what prevents that:
 - **Anchoring on examples.** pdoom-video's scenes and taste (engraving, ink and orange) would pull every
   video toward one look. The example scenes are indexed by technique, not style, and the templates carry no
   pdoom-video palette, tone or motifs. The example's words are placeholders, and the f(t) rule is marked as
-  the code's: its sentence once became a showreel's message.
+  the code's: its sentence once became a showreel's message. Tested example prompts are for people:
+  `docs/prompts.md` keeps them, linked from the README, and no skill reads it (history.md, 0.5.0 and 0.8.2).
 - **Process overhead on small requests.** The brief scales with the piece: a ten-second loop needs a few
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
@@ -868,6 +869,7 @@ audara-studio/
 ├── plugin.json                       # Agent Plugins 1.0, with Codex's fields under extensions.com.openai
 ├── .agents/plugins/marketplace.json  # Codex's marketplace
 ├── docs/design.md, docs/history.md   # how it works and why; how it got here
+├── docs/prompts.md                   # tested example prompts, for people; no skill reads it
 ├── docs/research/                    # dated research snapshots: the video-ideas proposal, its sources
 ├── evals/                            # trigger and task evals, their harness, mocks of the paid APIs
 └── skills/

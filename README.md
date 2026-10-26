@@ -94,6 +94,7 @@ voice, pictures drawn in code.
 
 ## More
 
+- Tested prompts to copy or adapt, with what each took: [docs/prompts.md](docs/prompts.md)
 - How it's designed and why: [docs/design.md](docs/design.md); how it got there: [docs/history.md](docs/history.md)
 - Evals: [evals/README.md](evals/README.md)
 - Credits and licenses: [NOTICE](NOTICE), [LICENSE](LICENSE) (MIT; the fonts keep their own licenses)
