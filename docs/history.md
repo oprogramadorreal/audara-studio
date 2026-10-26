@@ -2530,3 +2530,11 @@ vermilion bars at 1 to 6x with and without bloom, sampled from stills; qc.py on 
 clips, and its help; `bun evals/tests/test_render_failures.ts` 13/13 and `test_render_inputs.ts` 16/16; the
 five prompts in docs/prompts.md against the sessions' first messages, byte for byte; SKILL.md files unchanged.
 Not run: a task eval, and the five prompts on Codex.
+
+Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only, checking the facts against the transcripts,
+the measurements' raw logs and PNGs, and the render tests (29/29). It found three low-severity points, all
+fixed: the cut-diff recipe wrote into `.audara-cache/`, which ffmpeg won't create and `render.ts preview` skips
+creating when a preview is already running (the recipe now says to make it); this entry said the sources'
+quality came from naming how the picture is made, more than the research established; and docs/prompts.md
+gave the extra worlds as the cause of prompt 5's time, which an outage shared. Its second round found nothing
+in the repo.
