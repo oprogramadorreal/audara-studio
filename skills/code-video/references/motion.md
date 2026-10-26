@@ -124,8 +124,8 @@ and last segments' speed, for a move already under way at a cut. Equal neighbour
 Check a move by its speed per frame: it should rise and fall once. A real move may swell a little again after
 a slow part; a dip more than 40% below the smaller of the peaks either side of it is a stutter. A bun script
 can't import engine modules directly (they use Vite's `import.meta.glob`), so this one loads them through
-Vite. Save it as `out/<video>/wip/speed.ts`, point it at the module that exports the pose, and run
-`bun out/<video>/wip/speed.ts` from the project root:
+Vite. Save it as `.audara-cache/speed.ts`, point it at the module that exports the pose, and run
+`bun .audara-cache/speed.ts` from the project root:
 
 ```ts
 import { createServer } from 'vite';
@@ -187,7 +187,7 @@ inside its rectangle: across the cut it should look like its neighbours, not spi
 
 ```
 bun scripts/render.ts video --video <video> --from <cut-0.2> --to <cut+0.2> --noaudio --draft --crf 0 --out out/<video>/wip/cut.mp4
-ffmpeg -i out/<video>/wip/cut.mp4 -vf "crop=<w>:<h>:<x>:<y>,format=gray,tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=out/<video>/wip/cut-diff.txt" -an -f null -
+ffmpeg -i out/<video>/wip/cut.mp4 -vf "crop=<w>:<h>:<x>:<y>,format=gray,tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=.audara-cache/cut-diff.txt" -an -f null -
 ```
 
 Each entry in `cut-diff.txt` gives a time from `--from` and the mean difference (0–255) from the frame
