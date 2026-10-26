@@ -284,7 +284,9 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   `autoClear` is off), then copy it into `out` with `comp.draw(renderer, rt.texture, out, { mode: 'replace' })`.
   Under multisampling, a colour gradient across a face lights a seam where the face is seen edge-on: keep
   per-instance colours flat. Transparent faces that overlap there blend differently from one render to the
-  next on some GPUs (a few pixels off by 1/255, which verify fails); in a target without samples they don't.
+  next on some GPUs (a few pixels off by 1/255, which verify fails); in a target without samples they don't,
+  and one at twice the size, `makeRT(W, H, { samples: 0, pxScale: 2 * SCALE })`, keeps its edges as smooth
+  as 4 samples for four times the pixels (measured).
 - An `InstancedMesh` whose matrices change needs `frustumCulled = false`: three.js computes its bounds
   once, from the first frame, and culls it with them afterwards.
 - Lights are physical: a Lambert face square to a light of intensity π shows its own colour, so write
@@ -310,10 +312,10 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   uniforms and three.js, and `rgba('<key>', alpha)` for Canvas2D (`src/engine/palette.ts`). Values from
   about 0.7 up start to bloom (`bloomThreshold` 1 with a soft knee) and the tone shoulder rolls off
   everything above 0.72: a large area of a near-white or fully saturated colour reads a little softer
-  than its hex, and values above 1 glow. A saturated colour changes hue as it rises, since the shoulder
-  holds its strongest channel near 1 while the others keep climbing: vermilion `#FF3B1A` renders
-  (255, 83, 39) at 2× and (255, 109, 66) at 3× before bloom, and (255, 151, 117) at 3× with the default
-  bloom over a wide area (measured). A frame showing a picture that must match its file (a screen, a
+  than its hex, and values above 1 glow. A saturated colour pales as it rises, since the shoulder holds
+  its strongest channel near 1 while the others keep climbing: vermilion `#FF3B1A` renders (255, 83, 39)
+  at 2× and (255, 109, 66) at 3× before bloom, and (255, 151, 117), a salmon, at 3× with the default bloom
+  over a wide area (measured). A frame showing a picture that must match its file (a screen, a
   logo) returns `{ bloom: 0, shoulder: 0 }`: both off, its white stays 255.
 - `ctx.params` holds the timeline entry's params (one module can serve several entries); `ctx.start`,
   `ctx.end` its window; `ctx.W`, `ctx.H` the logical frame; `ctx.export` whether render.ts is rendering

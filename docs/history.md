@@ -2418,15 +2418,17 @@ The runs, to the hand-off (each session's own count), output tokens with subagen
 strokes (20 s) 1 h 22 min, 321K, one; the Hopf fibration as lit tubes with a computed linking number (30 s)
 1 h 5 min, 290K, one; Archimedes' sphere and its shadow (40 s) 1 h 23 min, 365K, two; a music video for the
 user's own song, one text cursor through six worlds, the lead building one and five scene authors the others
-(46.5 s) 4 h 55 min, about 30 min of it a network outage, 2.19M, two. Nothing was spent.
+(46.5 s) 4 h 55 min, about 35 min of it a network outage, 2.19M, two. Nothing was spent.
 
-What worked, to keep: every run went treatment, preview, build, sound (synthesized, or the song analysed),
-verify, qc, a fresh full-cut critic, hand-off in the preview with the render offered. In every run the critic,
+What worked, to keep: every run had a treatment, a preview, the build, sound (synthesized, or the song
+analysed), verify, qc, a fresh full-cut critic and a hand-off in the preview with the render offered (the
+treatment late in two, below). In every run the critic,
 writing its first look before reading the treatment, caught a real defect the builder's own stills had passed:
 the train drawn as vector shapes in a painted landscape, the cypress crown tearing in the wind, a frozen-looking
 ending, a sphere rendered inside out for the whole film, one world laid out like another seen from higher up.
 The preview link went out within seconds of the preview starting; qc's glance line drove fixes before any
-critic (8.4 s still to 3.1 s, 16.6 s to 4.2 s); picture and score shared one plan module, and beats.py grid
+critic (the ink run's longest still stretch 8.4 s to 7.7 s, the Hopf run's still time 10.3 s to 6.1 s) and
+gave the critics and hand-offs their holds; picture and score shared one plan module, and beats.py grid
 fitted the synthesized scores; verify held through five custom renderers (an ink density sheet, instanced
 brush ribbons with a thickness buffer, instanced tubes with shadows, raymarched worlds); six agents worked
 about 4 hours in one project without a file collision; the Van Gogh run checked The Met's record and wrote
@@ -2447,19 +2449,24 @@ What the evidence said:
   pass (its hand-off and treatment still said glass). Reproduced in a scratch project on this machine (RTX 5070
   Laptop, ANGLE D3D11) with overlapping transparent cylinder bands in the engine guide's own target,
   `makeRT(W, H, { samples: 4 })`: 5 of 5 verify runs failed, at 3-5 probes; with `samples: 0` 8 of 8 passed,
-  with 2 samples 2 of 5 failed, and opaque bands with 4 samples passed 3 of 3. The same class cost about 23 min
-  in 0.4.0's sky run.
+  with 2 samples 2 of 5 failed, and opaque bands with 4 samples passed 3 of 3. A target at twice the size
+  without samples (`pxScale: 2 * SCALE`) passed 8 of 8 with edges as smooth as 4 samples in a crop, where 4
+  samples failed 8 of 8 in the same session (and samples 0 visibly stepped the bands' edges). The same class
+  cost about 23 min in 0.4.0's sky run.
 - **Glow that changes colour.** The music video's STYLE.md let the cursor's vermilion go "2-6x" above 1 (the
   style template's example is `C_ACCENT * 3.0`). Four scene authors and the lead each found by trial that it
-  turned orange or peach and capped it near 2x; two caret-box measurements failed on it. Measured with #FF3B1A
-  on black: before bloom 1x (243,59,26), 2x (255,83,39), 3x (255,109,66), 4x (255,136,99), 6x (255,185,158);
-  with the default bloom over a wide bar 2x (255,102,58), 3x (255,151,117), 6x (255,238,227). The shoulder
-  holds the strongest channel near 1 while the others climb; its desaturation toward white only starts to
-  matter from about 4x.
+  turned pink, salmon or peach (white in the pixel world) and capped it near 2x; two caret-box measurements
+  failed on it. Measured with #FF3B1A on black: before bloom 1x (243,59,26), 2x (255,83,39), 3x (255,109,66),
+  4x (255,136,99), 6x (255,185,158); with the default bloom over a wide bar 2x (255,102,58), 3x
+  (255,151,117), 6x (255,238,227). The hue barely moves (9° to 17° by 6x before bloom) while the saturation
+  falls (0.89 to 0.38; 0.54 at 3x with bloom): the colour pales, since the shoulder holds the strongest
+  channel near 1 while the others climb, and its desaturation toward white only starts to matter from
+  about 4x.
 - **qc on a clip.** A scene author's clip of 42.5-45.0 s read nothing still at a glance; the lead's whole
   draft then listed 39.93-43.43 and 43.57-46.53. The clip's end had cut the second stretch to 1.43 s, under
   qc's 1.5-s minimum, so it was dropped. It cost a lead-author round, a whole draft and a script
-  reverse-engineering qc. critique.md says to pad clips, but scene authors aren't sent there.
+  reverse-engineering qc. critique.md says to pad clips, but in the lead's paragraph: scene authors aren't
+  sent there, and the critics' tools block, which critics do run on clips, didn't say it.
 - **Recorded again, cause still open.** The preview held `mix.wav` on Windows, so the Van Gogh run stopped the
   director's preview 7 times around sound rebuilds (the third record, after 0.4.1 and 0.8.1). The treatment
   went out late or never in two runs (written 31 min in and never posted; posted 20 min after it was written),
@@ -2486,17 +2493,20 @@ What changed:
   `.audara-cache/<owner>/`, never `out/`.
 - **render.ts (template):** verify's determinism message gives the sign of GPU rounding (other probes fail
   when verify runs again) and names overlapping faces blended in a multisampled target (transparent meshes in a
-  `makeRT` with samples) beside LineBatch's `add`.
+  `makeRT` with samples: samples 0, at `pxScale` 2 × SCALE for smooth edges) beside LineBatch's `add`.
 - **engine-guide-template.md:** beside its multisampling caveats, overlapping transparent faces in a
-  multisampled target blend differently between renders on some GPUs, and don't without samples; beside its
-  tone-shoulder note, a saturated colour changes hue as it rises, with the measured vermilion numbers.
-  contract.md's summary of the guide's three.js list keeps in step.
-- **style-template.md:** the glow bullet says a saturated key changes hue on the way up, so a light that must
-  keep its colour takes a smaller push. images.md's "past about 1.2 linear ... washes to white" stays: it was
-  measured with light added onto a plate (4063f7e), where every channel lifts.
-- **qc.py:** `--offset`'s help says a still stretch a clip's start or end cuts under 1.5 s isn't listed, and to
-  take in 1.5 s more on each side (reproduced on a synthetic video: a 2.47-s still stretch listed in the full
-  video and a padded clip, missing when the clip's end or start cut it to 1.3 s).
+  multisampled target blend differently between renders on some GPUs, don't without samples, and keep smooth
+  edges in a target at twice the size; beside its tone-shoulder note, a saturated colour pales as it rises,
+  with the measured vermilion numbers. contract.md's summary of the guide's three.js list keeps in step.
+- **style-template.md and images.md:** the glow bullet says a saturated key pales on the way up, so a light
+  that must keep its colour takes a smaller push. images.md's "past about 1.2 linear ... washes to white"
+  (from 4063f7e's piece, with no measurement recorded) contradicted the measurement for a colour on its own;
+  it now says the colour pales, sooner where it adds to a lit plate, and keeps its advice of a coloured glow
+  near 1.0.
+- **qc.py and critique.md:** `--offset`'s help, and the critics' tools block, say a still stretch a clip's
+  start or end cuts under 1.5 s isn't listed, and to take in 1.5 s more on each side (reproduced on a
+  synthetic video: a 2.47-s still stretch listed in the full video and a padded clip, missing when the clip's
+  end or start cut it to 1.3 s).
 - **docs/prompts.md, new:** the five prompts word for word, with what each asks for, leaves open, came back
   with and took, how to adapt it, and what a new prompt needs to join (run word for word in an empty folder and
   judged good, the setup recorded, the mechanism named, real choices left, spending and licences stated,
@@ -2513,7 +2523,8 @@ placed by its first onset, util.ts usable from a bun script, and keeping the ver
 makers' CRITIQUE.md (one occurrence each).
 
 What was checked: the speed probe from `.audara-cache/` and verify of the transparent-band scene (samples 4,
-2 and 0, opaque) in a scratch project made with init, with the new render.ts, `bun run check` passing; the
+2 and 0, opaque, and twice the size without samples, with a crop of the same edge from each) in a scratch
+project made with init, with the new render.ts, `bun run check` passing; the
 vermilion bars at 1 to 6x with and without bloom, sampled from stills; qc.py on the synthetic video and its
 clips, and its help; `bun evals/tests/test_render_failures.ts` 13/13 and `test_render_inputs.ts` 16/16; the
 five prompts in docs/prompts.md against the sessions' first messages, byte for byte; SKILL.md files unchanged.

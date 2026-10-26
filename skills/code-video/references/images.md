@@ -187,8 +187,9 @@ Lighting and joining generated layers (from a 20 s piece made of a night plate, 
   the other with a reveal that starts at the light source, a wide ellipse along the horizon with a warm edge on
   the bright parts, rather than a crossfade, which reads as a dissolve.
 - **Masks** don't come with a generated image: make one in its own pixels (a shape tuned on an overlay, a
-  brightness test) and port its numbers to the shader. Light pushed past about 1.2 linear in a saturated
-  colour washes to white through the tone shoulder; keep a coloured glow near 1.0.
+  brightness test) and port its numbers to the shader. Light in a saturated colour pales as it rises
+  through the tone shoulder (vermilion reads salmon at 3× with the default bloom; `docs/ENGINE.md` has the
+  numbers), and sooner where it adds to a lit plate; keep a coloured glow near 1.0.
 
 ## One look across many images
 

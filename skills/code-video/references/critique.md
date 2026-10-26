@@ -196,6 +196,8 @@ out/<video>/critique/r<N>/; any script or data you write to measure goes under .
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
 - Measured checks on any MP4 (holds, blank frames, loudness, color tags):
   uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
+  a still stretch the clip's start or end cuts under 1.5 s isn't listed, so a clip you make takes in 1.5 s
+  more on each side;
   only if uv can't write its own cache, set the environment variable UV_CACHE_DIR to .audara-cache/uv,
   never a folder under out/)
 - The timing data: videos/<video>/data/audio.json (beats, downbeats, sections) and data/words.json (timed lines).
