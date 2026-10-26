@@ -115,8 +115,8 @@ Make a music video for about 45 seconds of song.mp3, from the part you choose. O
 - **Left open:** which part of the song, what the one thing is, and its worlds and their look.
 - **In the test:** `song.mp3` was the maintainer's own song, with its lyrics in the file's tags. The agent
   cut 46.5 s, from the bridge to the last spoken word, and made a text cursor the one thing, in six worlds:
-  it built one and five scene authors working in parallel built the others. That is why it took about four
-  times as long as the others (about 35 minutes of it a network outage) and several times their usage. The
+  it built one and five scene authors working in parallel built the others. It took about four times as
+  long as the others (about 35 minutes of it a network outage) and several times their usage. The
   critic's first round found one world was another seen from higher up, and it was re-staged.
 - **To adapt:** bring your own song, or one you have the rights to, as `song.mp3`. If you have the thing in
   mind, name it. Fewer sections or a shorter part keeps it lighter. For the words to be timed on screen,

@@ -2400,10 +2400,11 @@ probe skips and OS metadata exclusions also stay as they were.
 
 A research session (Claude Code, Opus 5.5, with Codex through Herdr) looked at huashu-art-motion's visual
 styles, ManimGX's 3D math animations, a YouTube montage of both (G_Kg1ZYSB9I) and an X post with the prompt
-behind a long Claude run, for anything audara-studio lacked. It recommended no skill change: the quality in
-those sources came from naming how the picture is made (how a medium is physically made, curves as lit tubes,
-a number measured from the drawn geometry, one thing transformed per section), which audara's engine already
-does, and the X post's prompt had been written by the model after its run. It drafted four text fixes, each to
+behind a long Claude run, for anything audara-studio lacked. It recommended no skill change: the techniques
+that carry over (how a medium is physically made, curves as lit tubes, a number measured from the drawn
+geometry, one thing transformed per section) are ones audara's engine can already express, so it proposed
+trying them through prompts before changing the skills; and the X post's prompt had been written by the
+model after its run. It drafted four text fixes, each to
 be made only if a run showed its failure (a painterly brief drawn as flat vector because images.md says code
 draws a painted surface poorly; strokes that flicker, or a long reinvented stroke renderer; a named painter as
 a palette swap never compared with the original; 3D curves crossing ambiguously), and wrote five example

@@ -190,8 +190,8 @@ bun scripts/render.ts video --video <video> --from <cut-0.2> --to <cut+0.2> --no
 ffmpeg -i out/<video>/wip/cut.mp4 -vf "crop=<w>:<h>:<x>:<y>,format=gray,tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=.audara-cache/cut-diff.txt" -an -f null -
 ```
 
-Each entry in `cut-diff.txt` gives a time from `--from` and the mean difference (0–255) from the frame
-before; the cut is about 0.2 s in. Crop tightly: when the background behind the object changes at the cut,
+ffmpeg doesn't create folders: make `.audara-cache/` first if it isn't there. Each entry in `cut-diff.txt`
+gives a time from `--from` and the mean difference (0–255) from the frame before; the cut is about 0.2 s in. Crop tightly: when the background behind the object changes at the cut,
 the number jumps anyway, and the two frames are compared by eye instead (`stills --t <cut-1/fps>,<cut>`).
 
 ## Pacing
