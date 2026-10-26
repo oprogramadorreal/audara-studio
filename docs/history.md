@@ -2546,7 +2546,7 @@ That evening the user ran the five prompts again, word for word in empty folders
 to see whether the plugin limits what Opus makes. Same machine, Opus 5.5 at xhigh, auto mode; runs 2-5 were on
 Claude Code 2.1.311 without the 1M-context variant, while run 1 and all five plugin runs were on 2.1.310 with
 it. Each arm ran its five at once: the plugin's runs 1-4 shared the GPU with the music video's lead and five
-scene authors from 12:56, while the model alone rendered 1-4 on the CPU in Python. Their verdicts, unblinded:
+scene authors from 12:56, while the model alone rendered 1, 2 and 4 on the CPU in Python and 3 with ModernGL. Their verdicts, unblinded:
 the ink train about the same; the Van Gogh, Hopf and Archimedes pictures about the same but silent without the
 plugin, so its versions were better; the music video better without it ("it seems the plugin forced opus to
 use too much text on the screen. Without the plugin it created better 3D animations"), except the plugin's last
@@ -2557,7 +2557,7 @@ both arms' videos (it could not watch motion), and Codex reviewed the reading. O
 | Prompt | With 0.8.1, to the hand-off (preview, draft without motion blur) | Without, to a final MP4 | Output tokens, with / without |
 |---|---|---|---|
 | Ink night train, 20 s | 74 min | 51 min (1.45x), with sound: the prompt asks for it | 347K / 211K |
-| Van Gogh, 20 s | 82 min | 36 min to its first hand-off; its 25-min render was stopped for low memory while the session sat idle, the user ran it again by hand, and an 8-min last turn fixed seams; silent | 321K / 164K |
+| Van Gogh, 20 s | 82 min | 36 min to its first hand-off; its render, estimated at 25 min, was stopped for low memory about 6 min in while the session sat idle, the user ran it again by hand, and an 8-min last turn fixed seams; silent | 321K / 164K |
 | Hopf fibration, 30 s | 65 min | 38 min (1.71x), silent | 290K / 148K |
 | Archimedes, 40 s | 83 min | 27 min (3.07x), silent | 365K / 138K |
 | Music video, 46 s | 4 h 55 min, about 4 h 20 min without a 35-min network outage | 65 min (about 4x), with motion blur | 2.19M / 240K |
@@ -2572,8 +2572,9 @@ both arms' videos (it could not watch motion), and Codex reviewed the reading. O
   Avoid item against what a named style asks for; the first for a named medium); a slate ground for the Hopf;
   the Archimedes glass made opaque to pass verify (fixed above). The plugin's Hopf and Archimedes put no more
   text on screen than the model alone's (whose Hopf had captions, a footer and small labels).
-- **Where the time went.** Each plugin run reached its first critic 44-49 minutes in; the critic rounds and
-  their fixes, 21-39 minutes of each, were most of the rest. Each caught a real defect (a sphere drawn inside
+- **Where the time went.** Each of the plugin's runs 1-4 reached its first critic 44-49 minutes in; the
+  critic rounds and their fixes, 21-39 minutes of each, were most of the rest (the music video's first critic
+  came about 136 minutes in). Each caught a real defect (a sphere drawn inside
   out, crown tears, a frozen ending, a train drawn as vector shapes), while the user judged the delivered
   pictures broadly comparable; some of those defects came from the plugin run's own route (the model alone
   avoided a frozen ending by tilting its orbit). The plugin arm ended at drafts with the render offered; the
