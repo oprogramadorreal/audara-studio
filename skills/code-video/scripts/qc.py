@@ -12,7 +12,8 @@ Usage (from the project folder; <skill> is the code-video skill's folder):
   --cuts       the video's cut times, so blank frames next to a cut are flagged: "2.2,4.4,6.5", or a file:
                render.ts's out/<video>/verify.json (its timeline), a JSON list of seconds, or a text file
   --offset S   VIDEO is a clip that starts S seconds into the video (render.ts video --from S): the cut
-               times are moved back by S, so they land where they are in the clip
+               times are moved back by S, so they land where they are in the clip. A still stretch the
+               clip's start or end cuts under 1.5 s isn't listed: take in 1.5 s more on each side
   --json       print the report as JSON instead of text
   --out FILE   also write the report to FILE (JSON when FILE ends in .json, text otherwise)
 
