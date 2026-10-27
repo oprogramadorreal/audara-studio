@@ -125,8 +125,10 @@ in Avoid, marked (director).>
   new palette never breaks it: leave it, or delete it when the director asks.
 - **Glow.** Bloom works on linear values: it picks up a pixel's brightest channel from about 0.7 and grows
   above 1 (`bloomThreshold` 1, soft knee 0.3). A palette hex reaches 1.0 at most (a channel at FF), where
-  it barely blooms, so glow means a scene pushing a key above 1, as in `C_ACCENT * 3.0`. Name the keys
-  allowed to; small type stays out of it, and crisp.
+  it barely blooms, so glow means a scene pushing a key above 1, as in `C_ACCENT * 3.0`. A saturated key
+  pales on the way up (vermilion reads salmon at 3× with the default bloom; `docs/ENGINE.md` has the
+  numbers), so a light that must keep its colour takes a smaller push. Name the
+  keys allowed to; small type stays out of it, and crisp.
 - **Brand colours.** Above 0.72 linear the tone shoulder compresses, so a large field of a saturated brand
   colour or a near-white renders a little softer than its hex (pure white comes out at 246 of 255 with the
   default bloom, 243 without it). When it has to match, sample a rendered still and adjust; a picture

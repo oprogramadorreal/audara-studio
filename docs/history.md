@@ -2395,3 +2395,224 @@ Left out by agreement: making seam warnings fatal, hash and scheduling changes w
 gain, a late browser-log race without a reproduction, startup worker fallback, and concurrent same-output
 render locking (which also affects serial renders and needs its own recovery design). Conservative seam
 probe skips and OS metadata exclusions also stay as they were.
+
+## Five tested prompts, and what they showed (0.8.2, 2026-10-26)
+
+A research session (Claude Code, Opus 5.5, with Codex through Herdr) looked at huashu-art-motion's visual
+styles, ManimGX's 3D math animations, a YouTube montage of both (G_Kg1ZYSB9I) and an X post with the prompt
+behind a long Claude run, for anything audara-studio lacked. It recommended no skill change: the techniques
+that carry over (how a medium is physically made, curves as lit tubes, a number measured from the drawn
+geometry, one thing transformed per section) are ones audara's engine can already express, so it proposed
+trying them through prompts before changing the skills; and the X post's prompt had been written by the
+model after its run. It drafted four text fixes, each to
+be made only if a run showed its failure (a painterly brief drawn as flat vector because images.md says code
+draws a painted surface poorly; strokes that flicker, or a long reinvented stroke renderer; a named painter as
+a palette swap never compared with the original; 3D curves crossing ambiguously), and wrote five example
+prompts instead. The user ran the five word for word on 2026-10-26, each in an empty folder, with 0.8.1
+(f6150a6) in Claude Code 2.1.310, Opus 5.5 at xhigh, auto mode, Windows 11, and judged all five videos good
+(from the preview and the drafts; no final render was asked for). A Claude Code session then read the five
+sessions through Herdr and their transcripts whole, critics and scene authors included, with reviewers and
+skeptics checking each claim against the plugin's source.
+
+The runs, to the hand-off (each session's own count), output tokens with subagents: ink wash night train
+(20 s) 1 h 14 min, 347K, one critic round; Van Gogh's Wheat Field with Cypresses repainted as about 260,000
+strokes (20 s) 1 h 22 min, 321K, one; the Hopf fibration as lit tubes with a computed linking number (30 s)
+1 h 5 min, 290K, one; Archimedes' sphere and its shadow (40 s) 1 h 23 min, 365K, two; a music video for the
+user's own song, one text cursor through six worlds, the lead building one and five scene authors the others
+(46.5 s) 4 h 55 min, about 35 min of it a network outage, 2.19M, two. Nothing was spent.
+
+What worked, to keep: every run had a treatment, a preview, the build, sound (synthesized, or the song
+analysed), verify, qc, a fresh full-cut critic and a hand-off in the preview with the render offered (the
+treatment late in two, below). In every run the critic,
+writing its first look before reading the treatment, caught a real defect the builder's own stills had passed:
+the train drawn as vector shapes in a painted landscape, the cypress crown tearing in the wind, a frozen-looking
+ending, a sphere rendered inside out for the whole film, one world laid out like another seen from higher up.
+The preview link went out within seconds of the preview starting; qc's glance line drove fixes before any
+critic (the ink run's longest still stretch 8.4 s to 7.7 s, the Hopf run's still time 10.3 s to 6.1 s) and
+gave the critics and hand-offs their holds; picture and score shared one plan module, and beats.py grid
+fitted the synthesized scores; verify held through five custom renderers (an ink density sheet, instanced
+brush ribbons with a thickness buffer, instanced tubes with shadows, raymarched worlds); six agents worked
+about 4 hours in one project without a file collision; the Van Gogh run checked The Met's record and wrote
+its SOURCES.md row unasked. None of the four drafted triggers fired: the ink run never opened images.md and
+its landscape read as ink from the first still, the Van Gogh run compared stills with the original from its
+first iteration, both stroke renderers took minutes, and the tubes passed over and under from the first
+render. The drafted fixes stay unmade.
+
+What the evidence said:
+
+- **Check scripts in out/.** Nine files across two runs (out/hopf/wip/, out/palavra/wip/<owner>/): motion.md
+  saved its speed probe as out/<video>/wip/speed.ts and its cut-diff data under out/, against critique.md
+  ("never `out/`") and cv-title-card's assertion, and the scene authors, who read motion.md but not
+  critique.md, put theirs beside their verify folders.
+- **verify's 1/255 failure, again.** The Archimedes run failed verify on 2-3 px at 1/255, at probes that moved
+  between runs. The message named only additive blending and LineBatch, the first thing bisected; after 6.4 min
+  and about 33 verify runs the cause was transparent strips, and the agent made its glass cylinder opaque to
+  pass (its hand-off and treatment still said glass). Reproduced in a scratch project on this machine (RTX 5070
+  Laptop, ANGLE D3D11) with overlapping transparent cylinder bands in the engine guide's own target,
+  `makeRT(W, H, { samples: 4 })`: 5 of 5 verify runs failed, at 3-5 probes; with `samples: 0` 8 of 8 passed,
+  with 2 samples 2 of 5 failed, and opaque bands with 4 samples passed 3 of 3. A target at twice the size
+  without samples (`pxScale: 2 * SCALE`) passed 8 of 8 with edges as smooth as 4 samples in a crop, where 4
+  samples failed 8 of 8 in the same session (and samples 0 visibly stepped the bands' edges). The same class
+  cost about 23 min in 0.4.0's sky run.
+- **Glow that changes colour.** The music video's STYLE.md let the cursor's vermilion go "2-6x" above 1 (the
+  style template's example is `C_ACCENT * 3.0`). Four scene authors and the lead each found by trial that it
+  turned pink, salmon or peach (white in the pixel world) and capped it near 2x; two caret-box measurements
+  failed on it. Measured with #FF3B1A on black: before bloom 1x (243,59,26), 2x (255,83,39), 3x (255,109,66),
+  4x (255,136,99), 6x (255,185,158); with the default bloom over a wide bar 2x (255,102,58), 3x
+  (255,151,117), 6x (255,238,227). The hue barely moves (9° to 17° by 6x before bloom) while the saturation
+  falls (0.89 to 0.38; 0.54 at 3x with bloom): the colour pales, since the shoulder holds the strongest
+  channel near 1 while the others climb, and its desaturation toward white only starts to matter from
+  about 4x.
+- **qc on a clip.** A scene author's clip of 42.5-45.0 s read nothing still at a glance; the lead's whole
+  draft then listed 39.93-43.43 and 43.57-46.53. The clip's end had cut the second stretch to 1.43 s, under
+  qc's 1.5-s minimum, so it was dropped. It cost a lead-author round, a whole draft and a script
+  reverse-engineering qc. critique.md says to pad clips, but in the lead's paragraph: scene authors aren't
+  sent there, and the critics' tools block, which critics do run on clips, didn't say it.
+- **Recorded again, cause still open.** The preview held `mix.wav` on Windows, so the Van Gogh run stopped the
+  director's preview 7 times around sound rebuilds (the third record, after 0.4.1 and 0.8.1). The treatment
+  went out late or never in two runs (written 31 min in and never posted; posted 20 min after it was written),
+  the fourth record, though init printed its "next: write TREATMENT.md" line in both. Direct3D's repeated
+  shader warnings filled render.ts's browser log on Windows; agents filtered every render with `grep -v`, and
+  one reran a 50-s perf (as 0.7.1 recorded). The music video's lead skipped the storyboard round critique.md
+  asks for before several authors build, and its sprite world was built and polished for about 105 min before
+  the critic found it repeated the city's staging. verify --since flagged one sample (38.5 s) as changed with no
+  file changed; two fresh renders of it were identical.
+- **Smaller ones, kept as they are.** Style frames made but not posted (three runs), no status line with the
+  time left (four), the turn ended while the critic ran (three; harmless in interactive Claude Code, where the
+  subagent woke the session), and hand-offs that dropped a different item of critique.md's list each time or
+  overstated one check (a flicker measurement taken before a shader rewrite, a critic's pair count from an
+  earlier version): the text already asks for each, and code-video's SKILL.md has 11 bytes left. Two runs
+  levelled their synthesized score by hand instead of with `mix.py build` (-16.2 and -14.2 LUFS, no visible
+  cost). The Van Gogh run edited files through 27 Python patch scripts under auto mode's bash-first steer, and a
+  write without an encoding emptied its treatment for about 30 s: the harness, not the plugin.
+
+What changed:
+
+- **motion.md:** the speed probe is `.audara-cache/speed.ts`, the cut diff `.audara-cache/cut-diff.txt` (the
+  probe was run from there in a scratch project: it resolves vite and loads a scene module as before).
+- **treatment-template.md:** scene briefs say scripts and data an author writes to check go in
+  `.audara-cache/<owner>/`, never `out/`.
+- **render.ts (template):** verify's determinism message gives the sign of GPU rounding (other probes fail
+  when verify runs again) and names overlapping faces blended in a multisampled target (transparent meshes in a
+  `makeRT` with samples: samples 0, at `pxScale` 2 × SCALE for smooth edges) beside LineBatch's `add`.
+- **engine-guide-template.md:** beside its multisampling caveats, overlapping transparent faces in a
+  multisampled target blend differently between renders on some GPUs, don't without samples, and keep smooth
+  edges in a target at twice the size; beside its tone-shoulder note, a saturated colour pales as it rises,
+  with the measured vermilion numbers. contract.md's summary of the guide's three.js list keeps in step.
+- **style-template.md and images.md:** the glow bullet says a saturated key pales on the way up, so a light
+  that must keep its colour takes a smaller push. images.md's "past about 1.2 linear ... washes to white"
+  (from 4063f7e's piece, with no measurement recorded) contradicted the measurement for a colour on its own;
+  it now says the colour pales, sooner where it adds to a lit plate, and keeps its advice of a coloured glow
+  near 1.0.
+- **qc.py and critique.md:** `--offset`'s help, and the critics' tools block, say a still stretch a clip's
+  start or end cuts under 1.5 s isn't listed, and to take in 1.5 s more on each side (reproduced on a
+  synthetic video: a 2.47-s still stretch listed in the full video and a padded clip, missing when the clip's
+  end or start cut it to 1.3 s).
+- **docs/prompts.md, new:** the five prompts word for word, with what each asks for, leaves open, came back
+  with and took, how to adapt it, and what a new prompt needs to join (run word for word in an empty folder and
+  judged good, the setup recorded, the mechanism named, real choices left, spending and licences stated,
+  something the others don't cover). No skill reads it, as 0.5.0 decided for example prompts; the README links
+  it under "More", and AGENTS.md and design.md say where it lives.
+
+Considered and left out: verify tolerating GPU rounding as a warning (it changes the check behind f(t), and
+the flake now has a named cause and a remedy); finding what holds `mix.wav` (needs a reproduction first); a
+treatment nudge from a tool line (init's own line didn't hold, and render.ts can't tell when the treatment was
+posted); making the storyboard round before several authors firm (one run, untested: a replay of the critic
+on that run's first treatment would settle it); collapsing Direct3D's shader warnings (small cost; a third
+record); a window field in AudioData for a song window's fade, mix.py warning about a pre-timed effects stem
+placed by its first onset, util.ts usable from a bun script, and keeping the verification critic out of the
+makers' CRITIQUE.md (one occurrence each).
+
+What was checked: the speed probe from `.audara-cache/` and verify of the transparent-band scene (samples 4,
+2 and 0, opaque, and twice the size without samples, with a crop of the same edge from each) in a scratch
+project made with init, with the new render.ts, `bun run check` passing; the
+vermilion bars at 1 to 6x with and without bloom, sampled from stills; qc.py on the synthetic video and its
+clips, and its help; `bun evals/tests/test_render_failures.ts` 13/13 and `test_render_inputs.ts` 16/16; the
+five prompts in docs/prompts.md against the sessions' first messages, byte for byte; SKILL.md files unchanged
+by these fixes (the Look step's wording changed after the comparison below: 7,994 bytes, the three validators
+pass). Not run: a task eval, and the five prompts on Codex.
+
+Codex (GPT-6 Astra, through Herdr) reviewed the branch read-only, checking the facts against the transcripts,
+the measurements' raw logs and PNGs, and the render tests (29/29). It found three low-severity points, all
+fixed: the cut-diff recipe wrote into `.audara-cache/`, which ffmpeg won't create and `render.ts preview` skips
+creating when a preview is already running (the recipe now says to make it); this entry said the sources'
+quality came from naming how the picture is made, more than the research established; and docs/prompts.md
+gave the extra worlds as the cause of prompt 5's time, which an outage shared. Its second round found nothing
+in the repo.
+
+### The same five prompts without the plugin
+
+That evening the user ran the five prompts again, word for word in empty folders, with audara-studio disabled,
+to see whether the plugin limits what Opus makes. Same machine, Opus 5.5 at xhigh, auto mode; runs 2-5 were on
+Claude Code 2.1.311 without the 1M-context variant, while run 1 and all five plugin runs were on 2.1.310 with
+it. Each arm ran its five at once: the plugin's runs 1-4 shared the GPU with the music video's lead and five
+scene authors from 12:56, while the model alone rendered 1, 2 and 4 on the CPU in Python and 3 with ModernGL. Their verdicts, unblinded:
+the ink train about the same; the Van Gogh, Hopf and Archimedes pictures about the same but silent without the
+plugin, so its versions were better; the music video better without it ("it seems the plugin forced opus to
+use too much text on the screen. Without the plugin it created better 3D animations"), except the plugin's last
+scene, the door. Sound by default and the preview were the plugin's gains, and the runs without it were much
+faster. A Claude Code session read all ten sessions through Herdr and their transcripts and compared frames of
+both arms' videos (it could not watch motion), and Codex reviewed the reading. One run per arm.
+
+| Prompt | With 0.8.1, to the hand-off (preview, draft without motion blur) | Without, to a final MP4 | Output tokens, with / without |
+|---|---|---|---|
+| Ink night train, 20 s | 74 min | 51 min (1.45x), with sound: the prompt asks for it | 347K / 211K |
+| Van Gogh, 20 s | 82 min | 36 min to its first hand-off; its render, estimated at 25 min, was stopped for low memory about 6 min in while the session sat idle, the user ran it again by hand, and an 8-min last turn fixed seams; silent | 321K / 164K |
+| Hopf fibration, 30 s | 65 min | 38 min (1.71x), silent | 290K / 148K |
+| Archimedes, 40 s | 83 min | 27 min (3.07x), silent | 365K / 138K |
+| Music video, 46 s | 4 h 55 min, about 4 h 20 min without a 35-min network outage | 65 min (about 4x), with motion blur | 2.19M / 240K |
+
+- **Sound by default was the clearest gain.** Without the plugin, runs 2 and 3 never considered sound and run
+  4 called its video silent (its prompt says "no narration"); run 1's prompt asks for sound, and it made a full
+  score. The plugin's synthesized scores took 2-5 minutes each.
+- **Prompts 1-4: the pictures came out broadly comparable, and the approach wasn't narrowed.** Both arms
+  reached the same core designs (the Van Gogh's camera path; the Hopf's colour by latitude, 13° lens and tube
+  radius), and each was stronger in places. Smaller steers: the ink run's STYLE.md put "a red seal or a red
+  accent" on its Avoid list, where the model alone added a seal of its own, a recurrence of 0.4.0's class (an
+  Avoid item against what a named style asks for; the first for a named medium); a slate ground for the Hopf;
+  the Archimedes glass made opaque to pass verify (fixed above). The plugin's Hopf and Archimedes put no more
+  text on screen than the model alone's (whose Hopf had captions, a footer and small labels).
+- **Where the time went.** Each of the plugin's runs 1-4 reached its first critic 44-49 minutes in; the
+  critic rounds and their fixes, 21-39 minutes of each, were most of the rest (the music video's first critic
+  came about 136 minutes in). Each caught a real defect (a sphere drawn inside
+  out, crown tears, a frozen ending, a train drawn as vector shapes), while the user judged the delivered
+  pictures broadly comparable; some of those defects came from the plugin run's own route (the model alone
+  avoided a frozen ending by tilting its orbit). The plugin arm ended at drafts with the render offered; the
+  other rendered finals. Prompt to first file was 3-12 minutes shorter with the plugin; the model alone wrote
+  47-111K output tokens of thought before its first file.
+- **The music video.** Text was on screen in 18 of 24 evenly spaced frames of the plugin's draft, against about
+  6 of 23 of the other's (read from contact sheets). The one thing was the lead's draw: a text cursor writing
+  the lyric, set in its treatment and listed under Assumed. The template's default is no lyrics on screen, but
+  its skeleton's "Words on screen" section asks how the words live in the picture, and SKILL.md's Look step
+  asked for "the key moment, its words included"; the lead read both before writing the treatment. The model
+  alone also timed the words first (faster-whisper), put words in three of its eleven worlds and ended on a
+  cursor; its one thing was a die, from the lyric "jogo os dados", built as lit three.js objects. Observed in
+  the plugin run: all three style frames staged the lyric; a shared text mask and the briefs put it in five of
+  six worlds; critic round 1 found it hard to read in two worlds (2.1-2.2:1 contrast), and the re-staging asked
+  for an x-height of at least 70 px beside STYLE.md's 36-px minimum. That the plugin caused the density is an
+  inference. What multiplied it (words designed into the frame and living in the picture, type minimums,
+  legibility checks) is round 4's fix for a lyric video that was captions over a background any song could have,
+  and round 4 and 0.4.0 judged the plugin's lyric videos above the model alone, blind: a change that dials text
+  back has to keep that case. The time: the authors' first reports came 40-71 minutes after they started, the
+  last first-round report (after a look pass the lead asked for) about 106 minutes after, then two critic rounds; the storyboard round critique.md asks for before
+  several authors build was skipped (the lead read critique.md only after starting them) and might have
+  questioned the staging. The critics fixed a breach of the brief (a world repeating another) and made the door
+  work, the user's favourite scene, built by a scene author. The plugin's draft had no motion blur; the other
+  video was a final with it.
+
+What changed: SKILL.md's Look step asks for "the key moment, with any words it shows" instead of "its words
+included", which keeps 8671961's case and stops presuming words (7,994 bytes; its effect on a run like this is
+a hypothesis: the concept was the lead's, and the song invites text). docs/prompts.md gives both arms' results
+and, for prompt 5, the tip to say whether you want lyrics on screen. design.md's "Scene authors stay" notes the
+comparison.
+
+Considered and left out: the skeleton's Words on screen slot showing "none" (the lead read the default and
+departed on purpose); a storyboard-critic pointer in SKILL.md (5 bytes left; the late catch cost about 19
+minutes off the critical path); the verification round only past a minute (in both 30-60 s runs it caught
+sync slips: formula terms 20 frames late, tokens 6-10 frames late), or run off the critical path; a critic
+finding for words written out unasked (type alone can be the bold choice); an eval assertion on lyrics on
+screen (the treatment argued for them, so it would pass); `--jobs 2` for drafts (unmeasured); a change for the
+seal (style-template already says a named style brings what defines it). Two tests would settle more: replay
+prompt 5's brief stage (about 12 minutes) three to five times with the plugin as it was and as it is now, and
+count how often the lyric becomes the one thing; and build one treatment by a lead alone and by scene authors,
+concept and checks held fixed, judged blind.

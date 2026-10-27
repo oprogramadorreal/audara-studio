@@ -429,7 +429,8 @@ How the skills could still limit it, and what prevents that:
 - **Anchoring on examples.** pdoom-video's scenes and taste (engraving, ink and orange) would pull every
   video toward one look. The example scenes are indexed by technique, not style, and the templates carry no
   pdoom-video palette, tone or motifs. The example's words are placeholders, and the f(t) rule is marked as
-  the code's: its sentence once became a showreel's message.
+  the code's: its sentence once became a showreel's message. Tested example prompts are for people:
+  `docs/prompts.md` keeps them, linked from the README, and no skill reads it (history.md, 0.5.0 and 0.8.2).
 - **Process overhead on small requests.** The brief scales with the piece: a ten-second loop needs a few
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
@@ -437,7 +438,10 @@ How the skills could still limit it, and what prevents that:
   second. A round of notes gets none unless the director asks: on a 13-minute video, critic rounds after
   six of seven rounds of notes took, with the fixes they led to, about half those rounds' time (history.md,
   0.8.1). Scene authors stay: a lead that built two showreels alone shortened the first turn by 31–43
-  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0).
+  minutes but scored lower blind than 0.3.0 (history.md, 0.4.0). A 46-second music video took about four
+  times as long with the plugin as without it, excluding an outage, and the user preferred the picture made
+  without it; one builder with the plugin, the concept and the checks held fixed hasn't been compared
+  (history.md, 0.8.2).
 - **Hard rules where taste belongs.** The skills give reasons, not MUSTs, and the user's brief always wins
   over their defaults, including the list of clichés to avoid. A form or a style the director names (a
   showreel, psychedelic) brings what defines it: the Avoid list, the critic and the motion grammar's
@@ -868,6 +872,7 @@ audara-studio/
 ├── plugin.json                       # Agent Plugins 1.0, with Codex's fields under extensions.com.openai
 ├── .agents/plugins/marketplace.json  # Codex's marketplace
 ├── docs/design.md, docs/history.md   # how it works and why; how it got here
+├── docs/prompts.md                   # tested example prompts, for people; no skill reads it
 ├── docs/research/                    # dated research snapshots: the video-ideas proposal, its sources
 ├── evals/                            # trigger and task evals, their harness, mocks of the paid APIs
 └── skills/

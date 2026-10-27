@@ -235,7 +235,8 @@ treatment's Decisions,
 (give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
 the lead for engine changes. Their verify runs write to their own folder
 (`--out out/<video>/wip/<owner>/verify.json`), since `out/<video>/verify.json` is the lead's record of what
-changed and a project's older render.ts writes even `--only` there.
+changed and a project's older render.ts writes even `--only` there. Scripts and data they write to check
+go in `.audara-cache/<owner>/`, never `out/`.
 
 ```markdown
 ### `<id>` · <owner, e.g. B2> · bars <a–b>, <section> (<m:ss–m:ss>)

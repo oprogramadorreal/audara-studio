@@ -9,6 +9,7 @@ title, description and tags. `evals/` tests all five.
 `docs/design.md` says how it works and why, `docs/history.md` how it got there, with the evidence: search
 them for the topic before changing a behavior, since most choices answer something that once went wrong.
 `docs/research/` holds dated research snapshots, not current behavior: they aren't updated as it changes.
+`docs/prompts.md` keeps tested example prompts for people, each entry a record of its run; no skill reads it.
 
 ## How we work
 - Simple and effective over complete: a tool joins only when it clearly earns its place. Free tools first;
