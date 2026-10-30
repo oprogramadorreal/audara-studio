@@ -167,8 +167,9 @@ where no picture should be made (`yp-title-only`); and generated images within a
 `--without` too, judging the thumbnails blind, small and beside their title, against the model alone.
 `ns-new-subject` stands for someone who names the Nutlight house style for a subject its reference images
 don't show (a swarm of bees choosing a home, from `article.md`), with a music library of three synthetic
-tracks in `music/`, a note that departs from the style and a later session that has only the project's files;
-with its three turns it takes hours, so it isn't in run-tasks.sh's default list. The `vi-` cases are graded on the conversation, preservation of constraints,
+tracks in `music/`, a note that departs from the style (a hard cut, and a human the kit doesn't draw), a later
+session that has only the project's files, and a second video in another look that the kit must not touch;
+with its four turns it takes hours, so it isn't in run-tasks.sh's default list. The `vi-` cases are graded on the conversation, preservation of constraints,
 faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
 judging with and `--without` the skills: they are the check that the skills make the picture better than
 the model alone, not just correct.

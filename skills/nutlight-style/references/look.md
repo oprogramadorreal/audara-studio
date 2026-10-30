@@ -78,7 +78,9 @@ Every character is the kit's squirrel (`src/nutlight/squirrel.ts`); each video c
 and gear. Distinct furs (`FUR`: amber, coral, tan, chestnut, grey, golden, or a new one) and gear (a cap,
 glasses, a suit) tell characters apart. Background characters can be silhouettes under the local light with a
 warm rim (`silhouette`). A squirrel drawn anew, even from these references, came out a different animal in the
-first run without the kit, and would differ again in the next video.
+first run without the kit, and would differ again in the next video. A character the director asks for that the
+kit doesn't draw (a person, another animal, a squirrel of another design) is theirs, made in the style's
+construction unless they say otherwise (SKILL.md, "When the director asks for something else").
 
 Before scene authors start, render the cast sheet (`assets/cast-sheet.ts`, with this video's cast) at the
 references' size and at a wide shot's. The kit already draws the qualities below. They are the checks for

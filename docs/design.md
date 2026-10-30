@@ -426,6 +426,12 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   by picture changes, clean entrances and joins. Left out: that film's places and framings, its cast's names and
   its STYLE.md, which contradicts itself across revisions. A project's kit is its own copy, so a newer skill
   never changes how a finished video looks unless the director asks.
+- **A default, not a fence.** The kit keeps what defines the style the same across videos and limits nothing
+  else. What the director asks for wins over both: a character or a shot the kit doesn't draw is made with
+  code-video's full range, beside the kit's scenes or instead of them; a video in another look, even in a
+  Nutlight project, is that video's own and doesn't use the kit; and a change for one video stays in its files,
+  since `src/nutlight/` reaches every video in the project. The user asked for exactly this once the kit
+  existed: consistency between videos, without the kit working against an explicit request.
 - **Music isn't bundled.** The tracks are licensed to the user, not for redistribution, and shipping them
   would make every video sound the same. The order is the director's library, then generated music after a
   yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses

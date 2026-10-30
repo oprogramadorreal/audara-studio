@@ -9,9 +9,9 @@ Nutlight is a house style for explainers: squirrels acting out ideas in luminous
 cinematic camera, scenes that flow into each other, and produced music cut to the story. This skill is art
 direction plus a code kit: code-video makes the picture, soundtrack the sound and video-ideas the ideas, each by
 its own steps; this skill says what the style asks of each step, and its kit draws the cast and the stage they
-live on, the same in every video, so the channel keeps one identity. The director's words outrank it. A video's content
-is always its own: subject, script, story, settings, length and tracks. The style brings no scenes, places or
-music from other videos. Paths that start with `references/` or `assets/` are this skill's; the rest are the
+live on, the same in every video, so the channel keeps one identity. A video's content is always its own:
+subject, script, story, settings, length and tracks; the style brings no scenes, places or music from other
+videos. The director's words outrank it and the kit ("When the director asks for something else"). Paths that start with `references/` or `assets/` are this skill's; the rest are the
 project's.
 
 ## What defines it
@@ -49,21 +49,33 @@ it). The rest of that list still applies.
   each side by side with the nearest reference before picking. Then write
   `docs/STYLE.md` as references/look.md describes. A setting the kit's rigs lack gets its palette and light in
   `src/nutlight/palette.ts`; `src/look.ts` keeps only the engine's `bg`, `fg` and post, from the main setting.
-- **Cast.** Cast each character from the kit (`CAST`, `FUR`, gear), with its own name: never a squirrel drawn
-  anew, which drifts from the design within a video and between videos. Copy `assets/cast-sheet.ts` into the
+- **Cast.** Cast each character from the kit (`CAST`, `FUR`, gear), with its own name: don't draw a squirrel
+  anew on your own, which drifts from the design within a video and between videos. Copy `assets/cast-sheet.ts` into the
   video's scenes and render it with this video's cast before scene authors start. A fur, gear or pose the kit
   lacks is added inside `src/nutlight/`, in the kit's construction, and checked on that sheet against
   references 01 and 02 (references/look.md, "The cast").
 - **Sound.** Use soundtrack, with references/music.md: library first; generated music only after a yes, with
   its cost.
 - **Build.** Each scene brief names its reference images, `docs/style/nutlight/README.md` and
-  `src/nutlight/README.md`, and gives the full paths of references/look.md and references/motion.md. Hold each scene's stills against
-  its references.
+  `src/nutlight/README.md`, and the full paths of references/look.md and motion.md. Hold each scene's stills
+  against its references.
 - **Critic.** Run it as code-video does, its first look as a stranger first. Then it reads
   `docs/style/nutlight/README.md` with the treatment and STYLE.md; add the checks at the end of look.md,
   motion.md and music.md to its prompt.
 - **Direct.** A note that departs from the style wins and goes in Decisions in the director's words; the
   style's defaults never override a decision.
+
+## When the director asks for something else
+The kit keeps what defines the style the same from video to video; it never limits what a video can be. What
+the director asks for, in the prompt or a note, wins over the style and the kit:
+- Something the kit doesn't draw (a person, a robot, another animal, a squirrel of another design, a 3D or
+  photographic shot, footage, generated images): make it with whatever serves it, code-video's full range,
+  beside the kit's scenes or instead of them, in the style unless they say otherwise.
+- A video in another look, in a Nutlight project: it is that video's own, its treatment saying how it departs;
+  it doesn't use the kit, and this style's defaults don't apply to it.
+- A change for one video stays in its files (an option, a module of its own). A change in `src/nutlight/`
+  reaches every video in the project, so it waits for the director to want it everywhere, and `verify` runs
+  on each video.
 
 ## Ideas, and later sessions
 - **Ideas only** (video-ideas): keep "in the Nutlight style" in the prompt it writes, and offer ideas the

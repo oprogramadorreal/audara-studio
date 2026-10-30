@@ -2789,3 +2789,28 @@ kit doesn't need. In a fresh project:
 The skill's text now casts from the kit and extends it in its own construction, never drawing a squirrel anew.
 A project's kit is its own copy, so a newer skill never changes a finished video's look unless the director
 asks. The prompt runs again with the kit; its record goes in `docs/prompts.md`.
+
+Codex reviewed the kit with in-memory probes and found five defects in helpers the cast sheet doesn't exercise:
+- a reach reported success while the paw missed by about 17 px (the wrist was aimed along the shoulder's line,
+  the paw extends along the forearm);
+- from the front, a blend from a side pose to a posed arm jumped 20 to 130 units on its first frame;
+- `new Counter(R)` threw "Atlas full" at its defaults;
+- `target(null)` stayed on the offscreen buffer;
+- `camRect` gave a zero-width rect under a rolled camera.
+
+All five are fixed and measured: misses of 0.2 to 0.5 rig units, a jump of 0.000, and 141.4 by 141.4 for a
+100 px square at 45°. The category-label tags went too.
+
+Then the user asked that the kit keep the videos consistent without limiting the model: "If in a new video,
+user ask something completely different explicitly in its prompt, the kit we just added must not work against
+it." The text had three gaps:
+- "every character is the kit's squirrel" and "never a squirrel drawn anew" read as absolute, though they
+  were meant against the model's own drift;
+- nothing said code-video's other means stay available inside a Nutlight video;
+- in a Nutlight project, a new video in another look wasn't told to leave the kit alone, and an edit to
+  `src/nutlight/` for one video would reach them all.
+
+SKILL.md now has "When the director asks for something else" (7,792 bytes), and look.md, design.md and the
+README follow. ns-new-subject now tests both sides: its second turn adds a human beekeeper the kit doesn't
+draw, and a fourth turn, in a new session, asks for a second video in flat Swiss typography with nothing of the
+style, which must leave `src/nutlight/` and the first video's frames as they were.
