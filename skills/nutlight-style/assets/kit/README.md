@@ -62,9 +62,10 @@ export default class Desk extends Scene {
   `hop(p, t, t0)`, `typing(p, t, k)`.
 - `alive(p, t, seed)`: breathing, blinks, tail sway, ear twitches. Always: nothing on screen is frozen.
 - `withPose(p, {...})`, `mixPose(a, b, k)`, `poseKeys(t, [[t, pose], …], blend)`: a pose change starts and ends at
-  rest; `headTurn()` passes the head through its 60° in-between; a paw moves into and out of a reach along the way.
-  From the front, a forearm turned straight at us blends its paw's direction fast, so key a change of pose at
-  three-quarter or in profile when it's close and big.
+  rest; `headTurn()` passes the head through its 60° in-between; a paw moves into and out of a reach along the way,
+  the arm turning and bending as an arm does. Two targets can flip an arm mid-blend, since a blend has to cut its
+  angles somewhere: one inside the body (behind and below the shoulder, in profile or from behind) and one over the
+  head on the far side (from the front). Neither is a place a paw goes.
 - `express(p, name, k)`, `exprKeys(t, [[t, name], …])`, `EXPR`: `neutral smile delighted surprised worried focused
   skeptical thinking sad determined`. Most moments need 0.4-0.8 of one, held, changing on a beat of the story.
 - Cause and effect: `sq.reach(x, y, wx, wy, o, 'N' | 'F', pose)` puts a paw on a target or says by how much it

@@ -456,6 +456,32 @@ const lerpAng = (a: number, b: number, k: number) => { let d = (b - a) % TAU; if
  * from about 34° off the vertical. (Up is where hanging toward the ground switches sides, so a paw fading into the
  * forearm's line there never flips from one side to the other as the forearm passes it.) */
 const hangRoom = (a2: number) => smootherstep(0, 0.6, Math.abs(lerpAng(0, a2 + Math.PI / 2, 1)));
+/**
+ * From the front, an arm between two placements of it (elbow, wrist) at t (0 → p0, 1 → p1): the upper arm turns and
+ * changes length, the forearm bends at the elbow and changes length, so the forearm never shrinks to a point between
+ * two opposed ones (lerping the joints' positions did, and its direction then spun). Angles from hanging down, + to the
+ * arm's own side (m mirrors the −x arm), each cut on its circle where no arm goes, so it never wraps mid-blend: the
+ * upper arm over the head to the other side (−2.36; arms from the front stay within 0..120°), the bend at −30° (no
+ * pose bends between −60° and 0°: forearms change sides through the fold instead). `u1` replaces p1's upper arm (a
+ * reach's, taken through its target's direction).
+ */
+function armBetween(sh: Pt, p0: [Pt, Pt], p1: [Pt, Pt], t: number, m: number, u1?: number): [Pt, Pt] {
+  const ang = (p: Pt, q: Pt) => Math.atan2(m * (q[0] - p[0]), q[1] - p[1]);
+  const from = (x: number, lo: number) => lo + ((((x - lo) % TAU) + TAU) % TAU);
+  const len = (p: Pt, q: Pt) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+  const ua = from(ang(sh, p0[0]), -2.36), ub = u1 ?? from(ang(sh, p1[0]), -2.36);
+  const ba = from(ang(p0[0], p0[1]) - ua, -0.52), bb = from(ang(p1[0], p1[1]) - ub, -0.52);
+  const u = lerp(ua, ub, t), v = u + lerp(ba, bb, t), l1 = lerp(len(sh, p0[0]), len(sh, p1[0]), t), l2 = lerp(len(p0[0], p0[1]), len(p1[0], p1[1]), t);
+  const e = addP(sh, [m * Math.sin(u) * l1, Math.cos(u) * l1]);
+  return [e, addP(e, [m * Math.sin(v) * l2, Math.cos(v) * l2])];
+}
+/** From the front, the paw's angle on a forearm at angle a2 whose projection is `len` of its length: it hangs by `hang`,
+ * and on a forearm pointing at us (under 0.3 of its length on screen, where its direction swings and means nothing;
+ * every pose held is over 0.4) it hangs straight down, both short of the vertical (hangRoom). */
+const pawFront = (a2: number, hang: number, len: number) => {
+  const h = lerpAng(a2, Math.PI / 2, hang * hangRoom(a2));
+  return lerpAng(h, Math.PI / 2, (1 - smootherstep(0.1, 0.3, len)) * hangRoom(h));
+};
 const rotP = (p: Pt, a: number): Pt => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
 const addP = (a: Pt, b: Pt): Pt => [a[0] + b[0], a[1] + b[1]];
 const lerpP = (a: Pt, b: Pt, k: number): Pt => [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
@@ -1715,28 +1741,32 @@ export class Squirrel {
         // (from the front the elbow bends out to its own side: solve the arm on the −x side mirrored)
         const m = front && out < 0 ? -1 : 1, r = reach2([m * dx, dy], L1, L2p);
         const d1 = dirA(r.sh), d2 = dirA(r.sh + r.el), e = addP(sh, [m * d1[0] * L1, d1[1] * L1]);
-        // (what the paw misses by: past the whole arm, or nearer than the folded arm's paw)
-        return { elbow: e, wrist: addP(e, [m * d2[0] * L2, d2[1] * L2]), short: Math.max(0, dd - (L1 + L2p), Math.abs(L2p - L1) - dd) };
+        // (what the paw misses by: past the whole arm, or nearer than the folded arm's paw; and the joints, with the
+        // target's direction, for a blend: r.sh is that direction less the elbow's offset, 0..π)
+        return { elbow: e, wrist: addP(e, [m * d2[0] * L2, d2[1] * L2]), short: Math.max(0, dd - (L1 + L2p), Math.abs(L2p - L1) - dd), u: r.sh, bend: r.el, base: Math.atan2(m * dx, dy) };
       };
       const w = reach ? clamp(rw) : 0;
       if (w > 0 && w < 1) {
-        // a blend into or out of a reach (mixPose), in the arm's joints: the shoulder's swing, the elbow's bend and the
-        // two lengths (foreshortened from the front) go from where the pose puts them to the reach, so the arm turns
-        // like an arm and never folds to nothing between two opposed forearms. Angles from hanging down, + forward, as
-        // reached() solves them (m mirrors the −x arm from the front). Each is read from a fixed direction, not from
-        // the other end, which moves during the blend: the shoulder from −1.2 (back and down, into the body), so an arm
-        // swings forward and over the top to a reach behind the head; the bend from −2.9 (folded back on itself).
+        // a blend into or out of a reach (mixPose): the arm goes from where the pose puts it to the reach as an arm
+        // moves, never folding to nothing between two opposed forearms. Angles from hanging down, + forward, as reached()
+        // solves them. An angle has to be cut somewhere on its circle to be blended, so each is read from a fixed
+        // direction no arm takes, not from the other end, which moves during the blend. The reach's upper arm is taken
+        // through its target's direction (the elbow's offset from it, 0..π, needs no cut), cut straight into the torso
+        // in profile and from behind (−0.65, in the rig's frame: a cut turning with the lean would sweep across targets
+        // as a pose change leans), over the head to the other side from the front (−2.36). In profile and
+        // from behind the pose's own joints blend with the reach's (they need no cut); from the front, armBetween.
         const A = arm(sh, a, null, k, out), B = reached(reach!), m = front && out < 0 ? -1 : 1;
-        const ang = (p: Pt, q: Pt) => Math.atan2(m * (q[0] - p[0]), q[1] - p[1]);
         const from = (x: number, lo: number) => lo + ((((x - lo) % TAU) + TAU) % TAU);
-        const uA = front ? from(ang(sh, A.elbow), -1.2) : a.sh + lean, bA = front ? from(ang(A.elbow, A.wrist) - uA, -2.9) : a.el;
-        const uB = from(ang(sh, B.elbow), -1.2), bB = from(ang(B.elbow, B.wrist) - uB, -2.9);
-        const lA1 = Math.hypot(A.elbow[0] - sh[0], A.elbow[1] - sh[1]), lA2 = Math.hypot(A.wrist[0] - A.elbow[0], A.wrist[1] - A.elbow[1]);
-        const u = lerp(uA, uB, w), v = u + lerp(bA, bB, w), l1 = lerp(lA1, L1, w), l2 = lerp(lA2, L2, w);
-        const el = addP(sh, [m * Math.sin(u) * l1, Math.cos(u) * l1]), wr = addP(el, [m * Math.sin(v) * l2, Math.cos(v) * l2]);
-        const a1 = Math.atan2(Math.cos(u), m * Math.sin(u)), a2 = Math.atan2(Math.cos(v), m * Math.sin(v));
+        const cut = front ? -2.36 : -0.65, uB = B.u + from(B.base, cut) - B.base;
+        let el: Pt, wr: Pt;
+        if (front) [el, wr] = armBetween(sh, [A.elbow, A.wrist], [B.elbow, B.wrist], w, m, uB);
+        else {
+          const u = lerp(a.sh + lean, uB, w), v = u + lerp(a.el, B.bend, w);
+          el = addP(sh, [Math.sin(u) * L1, Math.cos(u) * L1]); wr = addP(el, [Math.sin(v) * L2, Math.cos(v) * L2]);
+        }
+        const a1 = Math.atan2(el[1] - sh[1], el[0] - sh[0]), a2 = Math.atan2(wr[1] - el[1], wr[0] - el[0]);
         const hw = lerp(A.hang, 0, w);
-        return { sh, elbow: el, wrist: wr, a1, a2, aPaw: front ? lerpAng(a2, Math.PI / 2, hw * (1 - pk) * hangRoom(a2)) : a2, hang: hw, short: B.short };
+        return { sh, elbow: el, wrist: wr, a1, a2, aPaw: front ? pawFront(a2, hw * (1 - pk), Math.hypot(wr[0] - el[0], wr[1] - el[1]) / L2) : a2, hang: hw, short: B.short };
       }
       if (reach && w >= 1) {
         ({ elbow, wrist, short } = reached(reach));
@@ -1755,7 +1785,7 @@ export class Squirrel {
         };
         const I = w > 0 ? place(armFront({ sh: 0.06 + 0.25 * a.sh, el: clamp(a.el + 1.3, 1.8, 2.25), rot: -0.68, ab: a.ab ?? 0.1 }, out), 0.8) : null;
         const Q = w < 1 ? place(armFront(a, out), 1) : null;
-        [elbow, wrist] = I && Q ? [lerpP(Q[0], I[0], w), lerpP(Q[1], I[1], w)] : (I ?? Q)!;
+        [elbow, wrist] = I && Q ? armBetween(sh, Q, I, w, out) : (I ?? Q)!;
         hang = lerp(0.55, 0.78, w);
       } else {
         const d1 = dirA(a.sh + lean), d2 = dirA(a.sh + lean + a.el);
@@ -1765,7 +1795,7 @@ export class Squirrel {
       const a2 = Math.hypot(wrist[0] - elbow[0], wrist[1] - elbow[1]) > 4 * k ? Math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]) : a1;
       // from the front a resting paw hangs from the wrist toward the ground (reference 01's paws at the chest): its angle
       // (a pointing paw, pk, continues the forearm: it turns there as pointN rises, instead of snapping at the swap)
-      const aPaw = front ? lerpAng(a2, Math.PI / 2, hang * (1 - pk) * hangRoom(a2)) : a2;
+      const aPaw = front ? pawFront(a2, hang * (1 - pk), Math.hypot(wrist[0] - elbow[0], wrist[1] - elbow[1]) / L2) : a2;
       return { sh, elbow, wrist, a1, a2, aPaw, hang, short };
     };
     const armN = arm(shN, p.armN, p.reachN, rk, 1, p.reachNw, smootherstep(0.25, 0.75, p.pointN));
