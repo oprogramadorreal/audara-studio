@@ -2844,3 +2844,51 @@ kept a drawer hall reached through a lit doorway, over a hollow-oak vault with a
 The kit's act palettes still carried the reference video's act names and its story in comments. They are now
 plain (cool day, blue night, warm day, dusk, space), and the kit still typechecks. The prompt and its record
 are entry 6 in `docs/prompts.md`; the user hasn't watched the final MP4 yet.
+
+### Codex's third review of the kit
+
+After the run with the kit, Codex reviewed the branch again and found four defects, all in helpers no run had used
+yet:
+- a pose blending into a reach switched targets halfway, and the paw jumped 113 units;
+- a reach near the shoulder missed by 10 units while `reach()` reported success;
+- planets ignored the stage's clip, so `drawLens` spilled them outside the glass;
+- the README's example baked its plant outside the texture.
+
+The last three closed at once:
+- the forearm and the paw are now solved as one bone, so the paw lands from 14 units out, and `reach()` reports
+  targets too near as well as too far;
+- the planet shader takes the clip;
+- the example uses `bakeAt`.
+
+The blend took four rounds, each answering a counterexample from Codex or the probe:
+- **Lerping the joints' positions** let opposed forearms cancel halfway, and the paw's direction spun.
+- **Lerping the angles the short way round** flipped when the pose's own arm turned during the blend: stand → tap
+  jumped 114 units.
+- **A fixed cut on the upper arm's angle** flipped when the body moved 2 units across it. It also sat where close
+  targets below the shoulder put the upper arm, so those reaches swung over the head.
+- **The cause of the front-view trouble was a fix from the second review.** The front idle arm blended into a posed
+  one by lerping joint positions, the same collapse: that was the 37-unit jump in stand → point, which looked like
+  foreshortening.
+
+The design now:
+- A blend between two angles has to switch sides somewhere (there's no continuous mean on a circle), so the
+  switching set sits where a paw doesn't go.
+- A reach's upper arm is taken through its target's direction, cut straight into the torso in profile and from
+  behind, and over the head on the far side from the front.
+- From the front, `armBetween` turns the upper arm and bends the forearm. Its bend is cut at −30°, which none of
+  the 200 ordered pose pairs crosses.
+- A forearm projected to under 0.3 of its length hangs its paw down; every held pose is over 0.4.
+
+Measured as the paw's biggest step per 1/200 of a blend:
+- **From the front, without a reach:** stand → point 2.9 and stand → tap 3.1.
+- **The README's tap reaches:** 0.9 to 6.9.
+- **Reaches with the pose held:** 3.6 at most in profile and 5.1 from the front.
+- **Codex's case:** under 1.
+- **1,080 blends per view,** with the body moving and the pose changing: every step over 12 had its target inside
+  the torso or behind the back in profile and from behind, or at the cut over the head from the front.
+
+Held poses are unchanged and the cast sheet is pixel-identical, apart from two changes:
+- `startled`'s paws, from the front, follow its raised forearms;
+- the typing squirrel's reaching paws land exactly.
+
+`verify` passes. Codex accepted the result, with the two directions named in the kit README.
