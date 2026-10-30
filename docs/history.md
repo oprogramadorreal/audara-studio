@@ -2667,7 +2667,7 @@ Left with that video:
 - its tracks and their order;
 - the marks it showed, the outro's length and its pronunciations;
 - the names the agent gave its two squirrels (the director asked what they were);
-- its rig code (159 KB, tied to one copy of the engine);
+- at first, its rig code (159 KB): the first real run reversed that (below);
 - its style document, which contradicts itself across revisions (flat cel shading in revision 3, soft
   gradients in revision 6).
 
@@ -2693,7 +2693,7 @@ The user's decisions:
 
 What changed:
 - `skills/nutlight-style/`:
-  - SKILL.md, 5,888 bytes: what defines the style, what it asks of each step of code-video, ideas, and
+  - SKILL.md, 6,673 bytes: what defines the style, what it asks of each step of code-video, ideas, and
     later sessions;
   - `references/look.md`, `motion.md` and `music.md`;
   - `assets/references/`: the eight images and a README with the author's own description of the look and
@@ -2748,6 +2748,44 @@ What changed:
   - This entry was missing.
 - **The user's review.** SKILL.md named the references README only in its reading list, so it now says to
   read it before the style frames and in every scene brief, and gives it to the critic.
-- **docs/prompts.md's sixth prompt** (a 40-second hash-table explainer, the user's own 39-track library):
-  running as this entry is written; its record goes in the prompt's entry.
 - **Not run yet:** ns-new-subject (three turns, hours), in either tool.
+
+### The first real run, and the kit
+
+The plan's real run was the prompt the user asked for in `docs/prompts.md`: a 40-second explainer of how a hash
+table finds a key, staged as a squirrels' nut warehouse, narrated with a free voice and scored from the user's
+own 39-track library. It ran through the task harness in Claude Code, Opus 5.5 at xhigh, from 2026-10-30 13:37.
+The skill did what it said:
+- the references were copied in;
+- the session measured 8 of the 39 tracks and built a score and a mix;
+- it rendered style frames and a cast sheet, a draft and a critic round.
+
+But the squirrel was its own. Without code to start from, it wrote a 22 KB squirrel module from the words and
+the two images, and it came out a different animal: a flat ring for a tail, a small body, half-lidded eyes,
+characters small in frames dominated by props. The user watched the preview: "the squirrels style are very
+different from the ones from the reference images and the ones from [the reference video]. Both squirrels face
+and body are different. This is not good. We need to create a visual identity for consecutive videos on my
+channel." The reference video's squirrel had taken seven revisions of notes; words and two stills can't carry
+that, and each run would land somewhere else.
+
+So the skill now ships the cast as code: `assets/kit/`, about 480 KB of TypeScript, copied into a project's
+`src/nutlight/`, as code-video ships its realism kit. It is that video's squirrel rig and the stage it draws
+on:
+- one design baked into parts and posed per frame, in profile, three-quarter, front and from behind;
+- breathing, blinks, ear twitches and the tail's sway;
+- ten expressions;
+- reaches that land on their target, held props and gear;
+- the light rigs per setting, props and structures;
+- the camera and its transitions (iris, rect, wipe, a matched zoom-through, a fade).
+
+The port was imports, the project's palette moved into the kit, comments cleaned of the project's and the
+old characters' names, the characters replaced by fur presets, and the film's places and framings left out.
+It runs on the template's engine unchanged: that project's engine differed only in a post-processing fix the
+kit doesn't need. In a fresh project:
+- typecheck: no errors;
+- `verify`: passes, 17 determinism probes with 0 mismatched;
+- the cast sheet, beside references 01 and 02, shows the same character as the reference video's.
+
+The skill's text now casts from the kit and extends it in its own construction, never drawing a squirrel anew.
+A project's kit is its own copy, so a newer skill never changes a finished video's look unless the director
+asks. The prompt runs again with the kit; its record goes in `docs/prompts.md`.

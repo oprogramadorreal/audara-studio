@@ -174,7 +174,12 @@ const exprOf = (p: SqPose): Expr => (p.expr ? { ...EXPR0, ...p.expr } : EXPR0);
  * to the side (+: a shrug's open palms, a cheer) or in across the chest (−), `ab` opens the upper arm out from the body
  * (default 0.16). An arm without `rot` rests there as reference 01's do: the elbow tucked at the body's side, the paws apart
  * under the chest. */
-export interface ArmAngles { sh: number; el: number; rot?: number; ab?: number }
+export interface ArmAngles {
+  sh: number; el: number; rot?: number; ab?: number;
+  /** from the front, how much of the side pose's idle (no `rot`) is left while a blend turns it into a posed arm:
+   * set by mixPose, 0..1 (absent: 1 without `rot`, 0 with it) */
+  idle?: number;
+}
 /**
  * A pose (angles in radians). Arm angles are measured from hanging straight down, positive swinging forward (toward
  * the way the squirrel faces); `el` bends the elbow forward/up from the upper arm. `reachN` / `reachF` (rig units from
@@ -255,11 +260,17 @@ export const POSE = {
 export type PoseKey = keyof typeof POSE;
 
 const lerpU = (a: number | undefined, b: number | undefined, k: number) => (a === undefined && b === undefined ? undefined : lerp(a ?? (b as number), b ?? (a as number), k));
+const idleOf = (a: ArmAngles) => (a.rot === undefined ? 1 : a.idle ?? 0);
 const lerpArm = (a: ArmAngles, b: ArmAngles, k: number): ArmAngles => {
   const o: ArmAngles = { sh: lerp(a.sh, b.sh, k), el: lerp(a.el, b.el, k) };
-  const r = lerpU(a.rot, b.rot, k), ab = lerpU(a.ab, b.ab, k);
+  const ia = idleOf(a), ib = idleOf(b);
+  // (each side's effective opening: the front view's idle takes 0.1, a posed arm armFront's 0.16)
+  const abOf = (x: ArmAngles) => x.ab ?? (x.rot === undefined ? 0.1 : 0.16);
+  const r = lerpU(a.rot, b.rot, k), ab = a.ab === undefined && b.ab === undefined && ia === ib ? undefined : lerp(abOf(a), abOf(b), k);
   if (r !== undefined) o.rot = r;
   if (ab !== undefined) o.ab = ab;
+  // (a blend between an idle arm and a posed one fades the front view's idle out, instead of jumping at k > 0)
+  if (r !== undefined && (ia > 0 || ib > 0)) o.idle = lerp(ia, ib, k);
   return o;
 };
 const lerpPt = (a: Pt | null | undefined, b: Pt | null | undefined, k: number): Pt | null => (a && b ? [lerp(a[0], b[0], k), lerp(a[1], b[1], k)] : k < 0.5 ? a ?? null : b ?? null);
@@ -271,7 +282,7 @@ export const TURN_BAND = [0.46, 0.54] as const;
  * 60° head shows for a few frames and the face's volume turns instead of jumping profile → three-quarter (* reference 00-motion: "a head turn reveals the established facial volume"). When the two values lie on either side
  * of the band, the share `dwell` of the progress around where a plain lerp crosses the band's middle is spent crossing
  * the band (narrowed symmetrically when that crossing is near an end, so the middle is crossed at the same k as
- * before: calculator's headSwap() still swaps at the same instant); otherwise it is the plain lerp. The ends are exact
+ * before); otherwise it is the plain lerp. The ends are exact
  * (k 0 → from, 1 → to), so a held turn never changes. dwell 0.85 (the default) suits a ~0.25 s smootherstep ramp:
  * about three frames of the 60° head. A scene that ramps `turn` itself goes through it:
  *   turn: headTurn(smootherstep(t0, t0 + 0.25, t))          (0 → 1; a glance back: headTurn(pulse) on the way out too)
@@ -433,6 +444,7 @@ const SKF = {
 const lerpAng = (a: number, b: number, k: number) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return a + d * k; };
 const rotP = (p: Pt, a: number): Pt => { const c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
 const addP = (a: Pt, b: Pt): Pt => [a[0] + b[0], a[1] + b[1]];
+const lerpP = (a: Pt, b: Pt, k: number): Pt => [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 const dirA = (a: number): Pt => [Math.sin(a), Math.cos(a)]; // 0 down, + forward (toward +x)
 const angOf = (d: Pt) => Math.atan2(d[1], d[0]);
 
@@ -1549,7 +1561,7 @@ function packHeight(width: number, sizes: [number, number, number][]): number {
 /** Which baked head shows at a turn (and the next one fading in over it): 0 the profile, 1-3 the turned heads (YAWS). */
 function headsAt(turn: number, front: boolean): { a: number; b: number; k: number } {
   // a head's band, as the film has always read `turn`: the profile up to 0.46 (a small turn squashes it), the swap
-  // inside 0.46-0.54 (where it always was: calculator's headSwap() steps over it), three-quarter from 0.54 to 1.5,
+  // inside 0.46-0.54, three-quarter from 0.54 to 1.5,
   // front beyond. The 60° head is the swap's in-between (alone at 0.475-0.525, with headTurn() a turn
   // lingers there for about three frames), so a turn passes profile → 60° → three-quarter and every held value from
   // 0.54 up is the three-quarter face toward us (0.46 and 0.54 are still exactly the profile and the three-quarter).
@@ -1681,24 +1693,36 @@ export class Squirrel {
       const L1 = SK.upper * k, L2 = SK.fore * k;
       let elbow: Pt, wrist: Pt, short = 0, hang = 0.55;
       if (reach) {
-        // the paw (not the wrist) lands on the target: aim the wrist a paw's length short of it
+        // the paw (not the wrist) lands on the target: aim the wrist a paw's length short of it, along the forearm,
+        // which the paw continues (solved a few times, since the forearm's direction depends on where the wrist is)
         const dx = reach[0] - sh[0], dy = reach[1] - sh[1], dd = Math.hypot(dx, dy) || 1, pull = Math.min(SK.paw, dd * 0.5);
         // (from the front the elbow bends out to its own side: solve the arm on the −x side mirrored)
         const m = front && out < 0 ? -1 : 1;
-        const r = reach2([m * (dx - (dx / dd) * pull), dy - (dy / dd) * pull], L1, L2);
+        let ux = dx / dd, uy = dy / dd, d1: Pt = [0, 1], d2: Pt = [0, 1];
+        for (let it = 0; it < 4; it++) {
+          const r = reach2([m * (dx - ux * pull), dy - uy * pull], L1, L2);
+          d1 = dirA(r.sh); d2 = dirA(r.sh + r.el);
+          ux = m * d2[0]; uy = d2[1];
+        }
         short = Math.max(0, dd - (L1 + L2 + SK.paw));
-        const d1 = dirA(r.sh), d2 = dirA(r.sh + r.el);
         elbow = addP(sh, [m * d1[0] * L1, d1[1] * L1]); wrist = addP(elbow, [m * d2[0] * L2, d2[1] * L2]);
+        hang = 0; // a reaching paw continues the forearm, from the front too
       } else if (front) {
         // a pose made for the side (no `rot`) reads from the front as reference 01's idle: the upper arm down the body's side,
         // the elbow tucked in at the side, the forearm coming forward toward us and a little in, so the paws rest APART
         // under the chest and hang from the wrists; short and plump (foreshortened toward us: 0.8 of the arm's
         // length, its thickness kept), never folded into a W. Give rot (even the default −1.05) to have the angles
         // taken as they are
-        const idle = a.rot === undefined, kI = idle ? 0.8 : 1;
-        const F = armFront(idle ? { sh: 0.06 + 0.25 * a.sh, el: clamp(a.el + 1.3, 1.8, 2.25), rot: -0.68, ab: a.ab ?? 0.1 } : a, out);
-        elbow = addP(sh, [F.d1[0] * L1 * kI, F.d1[1] * L1 * kI]); wrist = addP(elbow, [F.d2[0] * L2 * kI, F.d2[1] * L2 * kI]);
-        if (idle) hang = 0.78;
+        // (idleOf: 1 for a side pose, 0 for a posed arm, between while mixPose turns one into the other)
+        const w = idleOf(a);
+        const place = (F: { d1: Pt; d2: Pt }, kI: number): [Pt, Pt] => {
+          const e = addP(sh, [F.d1[0] * L1 * kI, F.d1[1] * L1 * kI]);
+          return [e, addP(e, [F.d2[0] * L2 * kI, F.d2[1] * L2 * kI])];
+        };
+        const I = w > 0 ? place(armFront({ sh: 0.06 + 0.25 * a.sh, el: clamp(a.el + 1.3, 1.8, 2.25), rot: -0.68, ab: a.ab ?? 0.1 }, out), 0.8) : null;
+        const Q = w < 1 ? place(armFront(a, out), 1) : null;
+        [elbow, wrist] = I && Q ? [lerpP(Q[0], I[0], w), lerpP(Q[1], I[1], w)] : (I ?? Q)!;
+        hang = lerp(0.55, 0.78, w);
       } else {
         const d1 = dirA(a.sh + lean), d2 = dirA(a.sh + lean + a.el);
         elbow = addP(sh, [d1[0] * L1, d1[1] * L1]); wrist = addP(elbow, [d2[0] * L2, d2[1] * L2]);

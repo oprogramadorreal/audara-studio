@@ -42,8 +42,9 @@ export function camProject(c: Cam, x: number, y: number, d = 1): { x: number; y:
 }
 /** A world rect at depth d → its screen rect under camera c (the anchor a transition opens from). */
 export function camRect(c: Cam, r: { x: number; y: number; w: number; h: number }, d = 1): Rect {
-  const a = camProject(c, r.x, r.y, d), b = camProject(c, r.x + r.w, r.y + r.h, d);
-  return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y };
+  const P = [camProject(c, r.x, r.y, d), camProject(c, r.x + r.w, r.y, d), camProject(c, r.x, r.y + r.h, d), camProject(c, r.x + r.w, r.y + r.h, d)];
+  const x0 = Math.min(...P.map((p) => p.x)), y0 = Math.min(...P.map((p) => p.y));
+  return { x: x0, y: y0, w: Math.max(...P.map((p) => p.x)) - x0, h: Math.max(...P.map((p) => p.y)) - y0 };
 }
 /**
  * One camera across a wipe: the outgoing and the incoming scene apply the SAME move (dx world px of travel, a zoom

@@ -47,7 +47,8 @@ it). The rest of that list still applies.
   motion, and look at the images that guide this video's settings. Then make two or three style frames of the
   key moment, built on the kit's Stage, rigs and squirrels, each a different idea of how to stage it. Compare
   each side by side with the nearest reference before picking. Then write
-  `docs/STYLE.md` as references/look.md describes, and `src/look.ts` with a light rig for each setting.
+  `docs/STYLE.md` as references/look.md describes. A setting the kit's rigs lack gets its palette and light in
+  `src/nutlight/palette.ts`; `src/look.ts` keeps only the engine's `bg`, `fg` and post, from the main setting.
 - **Cast.** Cast each character from the kit (`CAST`, `FUR`, gear), with its own name: never a squirrel drawn
   anew, which drifts from the design within a video and between videos. Copy `assets/cast-sheet.ts` into the
   video's scenes and render it with this video's cast before scene authors start. A fur, gear or pose the kit

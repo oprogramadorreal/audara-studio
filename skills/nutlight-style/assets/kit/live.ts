@@ -320,13 +320,15 @@ export class Counter {
   constructor(public look: Look, o: { size?: number; family?: string; chars?: string; atlas?: Atlas } = {}) {
     const size = Math.max(48, o.size ?? 56), fam = o.family ?? F.mono(500);
     this.adv = measure('0', fam, size); this.lineH = Math.round(size * 1.2);
-    const lh = this.lineH, w = Math.ceil(this.adv) + 2, atlas = o.atlas ?? new Atlas(Math.max(160, w * 5), lh * 12 + 40, 1.5);
+    const lh = this.lineH, w = Math.ceil(this.adv) + 2, chars = [...new Set(o.chars ?? ' :,.%MBGkx')].filter((ch) => ch !== ' ');
+    // (the strip is the first shelf's height, so every glyph fits beside it when the atlas is wide enough for all)
+    const wide = chars.reduce((sum, ch) => sum + Math.ceil(measure(ch, fam, size)) + 12, w + 16);
+    const atlas = o.atlas ?? new Atlas(Math.max(160, wide), lh * 12 + 40, 1.5);
     this.strip = atlas.add(w, lh * 11, (c) => {
       c.fillStyle = '#FFFFFF'; c.font = font(fam, size); c.textBaseline = 'middle';
       for (let i = 0; i <= 10; i++) c.fillText(String(i % 10), 1, lh * i + lh * 0.54);
     }, { pad: 2, rim: 0 });
-    for (const ch of new Set(o.chars ?? ' :,.%MBGkx')) {
-      if (ch === ' ') continue;
+    for (const ch of chars) {
       const cw = Math.ceil(measure(ch, fam, size)) + 2;
       this.glyphs.set(ch, atlas.add(cw, lh, (c) => { c.fillStyle = '#FFFFFF'; c.font = font(fam, size); c.textBaseline = 'middle'; c.fillText(ch, 1, lh * 0.54); }, { pad: 2, rim: 0 }));
     }

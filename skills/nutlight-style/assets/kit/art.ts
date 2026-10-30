@@ -185,22 +185,6 @@ export function label(text: string, o: LabelOpts = {}, atlas?: Atlas): Art {
   return atlas ? atlas.add(w, h, draw, { pad: 4, rim: 0 }) : bake(w, h, draw, { pad: 4, res: o.res ?? 1.25, rim: 0 });
 }
 
-/** The film's honesty tags, spelt as the treatment writes them. */
-export const TAGS = {
-  experimento: 'experimento mental', analogia: 'analogia', exemplo: 'exemplo', ilustrativo: 'ilustrativo', semFonte: 'sem fonte',
-} as const;
-export type TagKind = keyof typeof TAGS;
-/** An honesty tag: a small, solid pill (paper on dark acts, ink on light ones) with a dot. Place it on or next to
- * what it qualifies, or in a corner inside the title-safe area (96 px sides, 54 px top/bottom). */
-export function tagArt(kind: TagKind, l: Look, o: { size?: number; dark?: boolean } = {}): Art {
-  const dark = o.dark ?? lum(l.hex.skyTop) < 0.35;
-  return label(TAGS[kind], {
-    size: o.size ?? 36, family: F.archivo(87.5, 600),
-    color: dark ? l.hex.ink : l.hex.paper, bg: dark ? l.hex.paper : l.hex.ink, bgAlpha: 0.92,
-    dot: l.hex.accents[0], tracking: 0.3,
-  });
-}
-const lum = (h: string) => { const c = lin(h); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 
 // ------------------------------------------------------------------------------------------------------------
 // Shape language for painters

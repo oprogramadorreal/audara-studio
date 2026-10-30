@@ -104,8 +104,6 @@ export const THREAD = {
   verify: '#FF3D2E', verifyInk: '#E1251B', link: '#8FE9FF', route: '#FFC35A', path: '#FFE9B8',
 } as const;
 
-/** Skin tones for the kit's people (varied, never one default). */
-export const SKIN = ['#F2C9A8', '#E0A983', '#B97D57', '#8C5A3B', '#5F3B27'] as const;
 
 // ==== The settings: one world under several lights ===================================================================
 // Deep navy and teal night, cyan light in machines and conduits, warm amber interiors and lamps, coral and orange

@@ -151,6 +151,8 @@ export class Stage implements ArtOwner {
   /** extra post overrides merged into end()'s result */
   post: Partial<PostParams> = {};
   out: THREE.WebGLRenderTarget | null = null;
+  /** begin()'s target, which target(null) returns to */
+  private frameOut: THREE.WebGLRenderTarget | null = null;
   private renderer: THREE.WebGLRenderer;
   private si = 0; private mi = 0; private ri = 0;
   private cur: { kind: 'sprite'; b: SpriteBatch; tex: THREE.Texture } | { kind: 'mark'; b: MarkBatch } | { kind: 'ribbon'; b: RibbonBatch } | null = null;
@@ -164,7 +166,7 @@ export class Stage implements ArtOwner {
   texels = 0;
   private disposed = false; private warned = false;
 
-  constructor(protected ctx: SceneCtx, act: ActKey | Look = 'III') {
+  constructor(protected ctx: SceneCtx, act: ActKey | Look) {
     this.renderer = ctx.renderer;
     this.look = typeof act === 'string' ? lookOf(act) : act;
     const prev = LIVE.get(ctx.id);
@@ -211,7 +213,7 @@ export class Stage implements ArtOwner {
   /** Start a frame into `out`. Set `cam` (and `look`, if it changes) before or right after. */
   begin(out: THREE.WebGLRenderTarget, l?: Look) {
     if (l) this.look = l;
-    this.out = out;
+    this.out = out; this.frameOut = out;
     setArtOwner(this); // art baked lazily in render() is this scene's too
     this.touch();
     this.si = 0; this.mi = 0; this.ri = 0; this.cur = null;
@@ -227,7 +229,7 @@ export class Stage implements ArtOwner {
   target(rt: THREE.WebGLRenderTarget | null, keep = false) {
     this.flush();
     if (rt && !keep) clearRT(this.renderer, rt, [0, 0, 0], 0);
-    this.out = rt ?? this.out;
+    this.out = rt ?? this.frameOut;
   }
   private prepare() {
     const r = this.cam.rot, L = this.look.L;
