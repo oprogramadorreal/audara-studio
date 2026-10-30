@@ -387,35 +387,40 @@ const v2 = () => ({ value: new THREE.Vector2() });
 const f1 = (x = 0) => ({ value: x });
 
 /** The sky: a vertical gradient (top → bottom between two screen ys), a horizon glow band, a sun's glow and an
- * optional nebula (two colours of soft fbm cloud). Opaque: it also clears the target (the post dithers). */
-export function skyPass() {
+ * optional nebula (two colours of soft fbm cloud). Opaque: it also clears the target (the post dithers). Under a
+ * clip (a lens drawing the world again) it blends instead, premultiplied, and keeps what the clip keeps. */
+export function skyPass(opaque = true) {
   return new QuadPass(/* glsl */ `
     in vec2 vPx; in vec2 vQ;
     uniform vec3 top, bot, hor, sunCol, neb1, neb2;
     uniform float yTop, invSpan, horY, horInvW, horK, sunInvR, sunK, nebK, nebScale, nebSeed;
     uniform vec2 sun, nebOff;
+    // the stage's magnifier (its centre, and 1/m: q is the sky's point shown at vPx) and its clip
+    uniform vec3 mag; uniform vec4 clip;
+    ${CLIP_GLSL}
     out vec4 fragColor;
     void main() {
-      float v = sat((vPx.y - yTop) * invSpan);
+      vec2 q = mag.xy + (vPx - mag.xy) * mag.z;
+      float v = sat((q.y - yTop) * invSpan);
       vec3 c = mix(top, bot, v * v * (3.0 - 2.0 * v)); // flat at both ends: no kink where the gradient meets its clamp
-      float dh = (vPx.y - horY) * horInvW;
+      float dh = (q.y - horY) * horInvW;
       c += hor * horK * exp(-dh * dh) ;
       if (sunK > 0.0) {
-        float sd = distance(vPx, sun) * sunInvR;
+        float sd = distance(q, sun) * sunInvR;
         c += sunCol * sunK * (exp(-sd * sd * 2.0) + 0.28 * exp(-sd * 0.9));
       }
       if (nebK > 0.0) {
-        vec2 p = (vPx + nebOff) * nebScale + nebSeed;
+        vec2 p = (q + nebOff) * nebScale + nebSeed;
         float n1 = fbm(p, 5), n2 = fbm(p * 1.7 + 19.3, 4);
         float m1 = smoothstep(-0.05, 0.6, n1), m2 = smoothstep(0.0, 0.7, n2) * smoothstep(-0.3, 0.4, n1);
         c += nebK * (neb1 * m1 * 0.6 + neb2 * m2 * 0.45);
       }
-      fragColor = vec4(max(c, 0.0), 1.0);
+      fragColor = vec4(max(c, 0.0), 1.0) * clipMask(vPx, clip);
     }`, {
     top: v3(), bot: v3(), hor: v3(), sunCol: v3(), neb1: v3(), neb2: v3(),
     yTop: f1(), invSpan: f1(1 / H), horY: f1(H), horInvW: f1(0.01), horK: f1(), sunInvR: f1(0.01), sunK: f1(), nebK: f1(), nebScale: f1(0.002), nebSeed: f1(),
-    sun: v2(), nebOff: v2(),
-  }, true);
+    sun: v2(), nebOff: v2(), mag: { value: new THREE.Vector3(0, 0, 1) }, clip: { value: new THREE.Vector4() },
+  }, opaque);
 }
 
 /** A planet: a shaded sphere (soft terminator toward the night colour, latitude bands, craters), a fresnel

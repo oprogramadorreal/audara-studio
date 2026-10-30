@@ -261,11 +261,16 @@ export function drawCrystal(st: Stage, cr: Crystal, x: number, y: number, t: num
   }
 }
 
-/** A magnifying lens, baked (its rim and handle). */
+/** A magnifying lens, baked (its rim and handle: `handle` long, at `angle`, down and to the left by default). */
 export interface Lens { rim: Art; r: number }
-export function makeLens(l: Look, r: number): Lens {
-  const pad = 12, cw = 2 * r + 20 + r * 1.1 + 40;
-  const rim = bake(cw, cw, (c) => paintLens(c, r, l), { pad, res: 1.25, anchor: [(r + 10) / cw, (r + 10) / cw] });
+export function makeLens(l: Look, r: number, o: { handle?: number; angle?: number } = {}): Lens {
+  // the bounds hold the rim and the handle's far end, on whichever side the handle points (paintLens puts the glass's
+  // centre at (r + 10, r + 10): it moves to the bounds' origin)
+  const hl = o.handle ?? r * 1.1, a = o.angle ?? Math.PI * 0.75, e = r + 6 + hl, hw = r * 0.14, R = r + 8, c0 = r + 10;
+  const x0 = Math.min(-R, Math.cos(a) * e - hw), x1 = Math.max(R, Math.cos(a) * e + hw);
+  const y0 = Math.min(-R, Math.sin(a) * e - hw), y1 = Math.max(R, Math.sin(a) * e + hw);
+  const w = x1 - x0, h = y1 - y0;
+  const rim = bake(w, h, (c) => { c.translate(-x0 - c0, -y0 - c0); paintLens(c, r, l, o); }, { pad: 12, res: 1.25, anchor: [-x0 / w, -y0 / h] });
   return { rim, r };
 }
 /**

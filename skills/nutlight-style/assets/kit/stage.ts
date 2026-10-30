@@ -129,7 +129,7 @@ export interface SkyOpts {
 }
 
 // Shared GPU pools: one scene renders at a time (a crossfade renders its scenes one after the other).
-type Pools = { sprites: SpriteBatch[]; marks: MarkBatch[]; ribs: RibbonBatch[]; sky?: QuadPass; planet?: QuadPass; poly?: QuadPass; under?: QuadPass };
+type Pools = { sprites: SpriteBatch[]; marks: MarkBatch[]; ribs: RibbonBatch[]; sky?: QuadPass; skyClip?: QuadPass; planet?: QuadPass; poly?: QuadPass; under?: QuadPass };
 const POOLS: Pools = { sprites: [], marks: [], ribs: [] };
 
 /** The stage of each timeline entry (by id): a stage made for an entry frees the textures of the one before it (a
@@ -155,7 +155,7 @@ export class Stage implements ArtOwner {
   private frameOut: THREE.WebGLRenderTarget | null = null;
   private renderer: THREE.WebGLRenderer;
   private si = 0; private mi = 0; private ri = 0;
-  private cur: { kind: 'sprite'; b: SpriteBatch; tex: THREE.Texture } | { kind: 'mark'; b: MarkBatch } | { kind: 'ribbon'; b: RibbonBatch } | null = null;
+  private cur: { kind: 'sprite'; b: SpriteBatch; tex: THREE.Texture } | { kind: 'mark'; b: MarkBatch; L: [number, number] } | { kind: 'ribbon'; b: RibbonBatch } | null = null;
   // derived from the camera's roll and the look's light (recomputed when either changes)
   private k0 = { rc: 1, rs: 0, Lx: 0, Ly: -1, rot: NaN, L: null as null | readonly number[] };
   /** a screen-space magnifier applied after projection (withMagnify) */
@@ -238,8 +238,11 @@ export class Stage implements ArtOwner {
     this.k0.rot = r; this.k0.L = L;
   }
   private sync() { if (this.cam.rot !== this.k0.rot || this.look.L !== this.k0.L) this.prepare(); }
-  /** Fill the target with one colour (instead of a sky). */
-  clear(col: Col) { this.flush(); clearRT(this.renderer, this.out, lin(col)); }
+  /** Fill the target with one colour (instead of a sky); under a clip, only what the clip keeps. */
+  clear(col: Col) {
+    if (this.clip) { this.sky({ top: col, bottom: col }); return; }
+    this.flush(); clearRT(this.renderer, this.out, lin(col));
+  }
 
   // ---- the camera ---------------------------------------------------------------------------------------------
   /** World point at depth d → screen px, and the scale there (screen px per world px). */
@@ -247,15 +250,17 @@ export class Stage implements ArtOwner {
     const p = this.proj(x, y, d, false);
     return { x: p[0], y: p[1], s: p[2] };
   }
-  /** Screen px → the world point at depth d under it. */
+  /** Screen px → the world point at depth d under it (inside withMagnify, the point shown there). */
   unproject(sx: number, sy: number, d = 1): { x: number; y: number } {
+    const g = this.mag;
+    if (g) { sx = g.x + (sx - g.x) / g.m; sy = g.y + (sy - g.y) / g.m; }
     const c = this.cam, k = d === Infinity ? 0 : 1 / Math.max(d, 0.02), s = this.scaleK(k, d);
     const dx = sx - W / 2, dy = sy - H / 2, rc = Math.cos(-c.rot), rs = Math.sin(-c.rot);
     const ux = (dx * rc - dy * rs) / s, uy = (dx * rs + dy * rc) / s;
     return { x: ux + W / 2 + (c.x - W / 2) * k, y: uy + H / 2 + (c.y - H / 2) * k };
   }
-  /** Scale (screen px per world px) of things at depth d. */
-  scaleAt(d = 1) { return this.scaleK(d === Infinity ? 0 : 1 / Math.max(d, 0.02), d); }
+  /** Scale (screen px per world px) of things at depth d (with withMagnify's, as project's s). */
+  scaleAt(d = 1) { return this.scaleK(d === Infinity ? 0 : 1 / Math.max(d, 0.02), d) * (this.mag?.m ?? 1); }
   /** zoom^(1/d), times the dolly's d / (d + back) */
   private scaleK(k: number, d: number) {
     const b = this.cam.back ?? 0;
@@ -314,7 +319,7 @@ export class Stage implements ArtOwner {
     const c = this.cur;
     if (!c || !this.out) { this.cur = null; return; }
     if (c.kind === 'sprite') { const l = this.look; c.b.setHaze(l.haze, l.haze, H); c.b.flush(this.renderer, this.out); }
-    else if (c.kind === 'mark') { c.b.setLight([this.k0.Lx, this.k0.Ly]); c.b.flush(this.renderer, this.out); }
+    else if (c.kind === 'mark') { c.b.setLight(c.L); c.b.flush(this.renderer, this.out); }
     else c.b.flush(this.renderer, this.out);
     this.cur = null;
   }
@@ -329,12 +334,15 @@ export class Stage implements ArtOwner {
     return b;
   }
   private markBatch(): MarkBatch {
-    const c = this.cur;
-    if (c && c.kind === 'mark' && !c.b.full) return c.b;
+    // (a batch has one light, set when it flushes: a camera's roll (withCam) or the look's light changing mid-frame
+    // starts a new batch, so every mark keeps the light it was drawn under)
+    this.sync();
+    const c = this.cur, L: [number, number] = [this.k0.Lx, this.k0.Ly];
+    if (c && c.kind === 'mark' && !c.b.full && c.L[0] === L[0] && c.L[1] === L[1]) return c.b;
     this.flush();
     const b = POOLS.marks[this.mi] ?? (POOLS.marks[this.mi] = new MarkBatch(4096));
     this.mi++;
-    this.cur = { kind: 'mark', b };
+    this.cur = { kind: 'mark', b, L };
     return b;
   }
   private ribbonBatch(nv: number): RibbonBatch {
@@ -543,10 +551,13 @@ export class Stage implements ArtOwner {
   }
 
   // ---- shader quads -------------------------------------------------------------------------------------------
-  /** The sky (opaque: it also clears). Colours default to the look's sky; positions are screen px. */
+  /** The sky (opaque: it also clears, except under a clip). Colours default to the look's sky; positions are screen
+   * px, magnified with everything else under withMagnify. */
   sky(o: SkyOpts = {}) {
     this.flush();
-    const p = POOLS.sky ?? (POOLS.sky = skyPass()), u = p.u, l = this.look;
+    const p = this.clip ? (POOLS.skyClip ??= skyPass(false)) : (POOLS.sky ??= skyPass()), u = p.u, l = this.look, m = this.mag;
+    const cl = this.clipOf({}); (u.clip!.value as THREE.Vector4).set(cl[0], cl[1], cl[2], cl[3]);
+    (u.mag!.value as THREE.Vector3).set(m?.x ?? 0, m?.y ?? 0, m ? 1 / m.m : 1);
     const set3 = (k: string, c: RGB) => (u[k]!.value as THREE.Vector3).set(c[0], c[1], c[2]);
     set3('top', lin(o.top ?? l.skyTop)); set3('bot', lin(o.bottom ?? l.skyBottom));
     const y0 = o.yTop ?? 0, y1 = o.yBottom ?? H;

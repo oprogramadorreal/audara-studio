@@ -276,6 +276,8 @@ const lerpArm = (a: ArmAngles, b: ArmAngles, k: number): ArmAngles => {
   if (r !== undefined && (ia > 0 || ib > 0)) o.idle = lerp(ia, ib, k);
   return o;
 };
+/** An arm's stretch in pose p: the near arm's reachK, the far arm's reachKF (default reachK). */
+const armK = (p: SqPose, arm: 'N' | 'F') => (arm === 'N' ? p.reachK ?? 1 : p.reachKF ?? p.reachK ?? 1);
 /** One arm's reach between two poses: a target both have moves between them; a target only one has stays where it is
  * while its weight (reachNw / reachFw) fades in or out, and solve() blends the arm from its angles to the reach. */
 const mixReach = (a: Pt | null | undefined, b: Pt | null | undefined, wa: number | undefined, wb: number | undefined, k: number): [Pt | null, number | undefined] => {
@@ -1822,8 +1824,7 @@ export class Squirrel {
    */
   reach(x: number, y: number, wx: number, wy: number, o: SqDrawOpts = {}, arm: 'N' | 'F' = 'N', p: SqPose = POSE.stand): Reach {
     const pt = this.local(x, y, wx, wy, o), R = this.solve(p, o.view ?? 'side'), sh = arm === 'N' ? R.armN.sh : R.armF.sh;
-    const k = arm === 'N' ? p.reachK ?? 1 : p.reachKF ?? p.reachK ?? 1;
-    const d = Math.hypot(pt[0] - sh[0], pt[1] - sh[1]), L1 = SK.upper * k, L2p = SK.fore * k + SK.paw;
+    const k = armK(p, arm), d = Math.hypot(pt[0] - sh[0], pt[1] - sh[1]), L1 = SK.upper * k, L2p = SK.fore * k + SK.paw;
     const short = Math.max(0, d - (L1 + L2p), Math.abs(L2p - L1) - d) * (o.scale ?? 1);
     return { pt, ok: short <= 0.5, short };
   }
@@ -1839,7 +1840,7 @@ export class Squirrel {
     // (from the side the paw always goes forward, as before; from the front toward the target's side)
     const side = (o.view ?? 'side') === 'front' && pt[0] < sh[0] ? -1 : 1;
     const rise = clamp(Math.atan2(sh[1] - pt[1], Math.max(1, side * (pt[0] - sh[0]))), -0.1, maxRise);
-    const L = ((SK.upper + SK.fore) * (p.reachK ?? 1) + SK.paw) * ext, d = Math.min(L, Math.hypot(pt[0] - sh[0], pt[1] - sh[1]));
+    const L = ((SK.upper + SK.fore) * armK(p, arm) + SK.paw) * ext, d = Math.min(L, Math.hypot(pt[0] - sh[0], pt[1] - sh[1]));
     return [sh[0] + side * Math.cos(rise) * d, sh[1] - Math.sin(rise) * d];
   }
   /** Where to stand (the x of the ground point, facing `o.face`) so the near paw reaches (wx, wy) with the arm
