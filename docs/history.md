@@ -25,6 +25,8 @@ Contents
 - Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
 - Photographic 3D from golden-temple (0.8.0, 2026-10-15)
 - Iteration time on a 13-minute video (0.8.1, 2026-10-21)
+- Five tested prompts, and what they showed (0.8.2, 2026-10-26)
+- A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
 
 ## Definition of done
 
@@ -2616,3 +2618,308 @@ seal (style-template already says a named style brings what defines it). Two tes
 prompt 5's brief stage (about 12 minutes) three to five times with the plugin as it was and as it is now, and
 count how often the lyric becomes the one thing; and build one treatment by a lead alone and by scene authors,
 concept and checks held fixed, judged blind.
+
+## A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
+
+The user made a 14.5-minute pt-BR explainer with 0.8.1 over five days (2026-10-26 to 30) and seven
+revisions, in Claude Code with Codex through Herdr. It shows squirrels in a programming world drawn in code,
+narrated in their own ElevenLabs voice and scored from their own music library. They then asked whether the
+plugin should hold that style as a small reusable skill, so that many videos could share it without a
+session ever reading the old project again. The skill had to keep the visual language, the motion, the
+musical sensibility and the editing, while subject, scenes, script and music stayed free. The work went in
+three steps: an investigation and a proposal first, then the user's approval, then the build. Codex
+(through Herdr) consulted and reviewed, and Claude implemented.
+
+What was read:
+- the director's 16 messages, extracted from the session's 210 MB transcript (seven briefs and rounds of
+  notes; the rest are context summaries), and the summaries' records of what went wrong and how it was fixed;
+- the project's style document (52 KB, revisions 3 to 7) and the lead's restyle spec;
+- the director's art-style folder: two texts and eight images, each with a text;
+- the music README (12 cues cut from 10 library tracks, "nobody has listened"), the library's catalogue
+  (39 tracks) and the sources file;
+- frames from the final cut.
+
+The 55 subagent transcripts weren't read. Nobody listened to the music: the director's approval in the last
+round is the only listening evidence.
+
+What recurred in the notes, and became the skill's craft:
+- **Explaining:** ideas acted out. Demonstrations differ at a glance and are framed large (a comparison too
+  small and too far right, a change too subtle; revision 3's notes). Words live in the world: a billboard, a
+  painted question. No category labels: "exemplo" and "experimento mental" were removed in revision 3,
+  "analogia" in revision 5. The source's own digits were kept and marked (revision 3), and a small overlay
+  was fine for a disclaimer (revision 7). The world varies as the story moves (the first briefs).
+- **Transitions:** no hard cuts, each one planned in both scenes (the first briefs).
+- **The cast:** a face toward us is one head turned; a profile mask on a turned skull read as a raccoon's.
+  An arm is one limb, not two tubes with a step at the elbow. Expressions are restrained and varied (all
+  revision 3). Customers who should have looked sad didn't (revision 7).
+- **Continuity:** pop-in during a camera move, lights detached from their source, and layering (revision 7);
+  a camera pause only to show off a sign (revision 5).
+- **Music:**
+  - two scores synthesized in code were turned down ("too repetitive, slow, and sad"; "sounds forced"), and
+    the director's library was approved ("Overall, I like the music selection", revision 7);
+  - audible, not buried ("Do not mix it so quietly", revision 5);
+  - a designed silence, and a louder, music-led outro;
+  - a big music change matched by a change in the picture (three notes in revision 7);
+  - entrances that came late, early, too loud or after a gap, and a harsh cut inside a track (revision 7).
+
+Left with that video:
+- its places and its game example;
+- its tracks and their order;
+- the marks it showed, the outro's length and its pronunciations;
+- the names the agent gave its two squirrels (the director asked what they were);
+- at first, its rig code (159 KB): the first real run reversed that (below);
+- its style document, which contradicts itself across revisions (flat cel shading in revision 3, soft
+  gradients in revision 6).
+
+The consultation (three rounds before the proposal):
+- **Where it lives.** Codex first preferred a style kit the user keeps outside the plugin. It accepted the
+  plugin once the argument became maintenance: the style names code-video's and soundtrack's steps, so one
+  commit and one eval run cover both, and one update reaches both tools on both of the user's machines.
+- **Rules it cut,** over-generalized from one video's repairs: a camera that never stops, a fixed ladder of
+  transitions, a cue per chapter, obligatory whooshes, no stretching, a fixed loudness under the voice, a
+  table of hex colours and a recipe for the rig.
+- **The Avoid list.** Brains, robots, circuit boards and code rain stay default items to avoid. They become
+  findings only when nobody asked for them and the subject doesn't need them.
+- **The rejected scores** go in this history, not in the skill: "library first; other sources when they
+  serve the brief" carries the lesson.
+
+The user's decisions:
+- the skill lives in the plugin;
+- the eight images are theirs, made with ChatGPT's image model, and ship under the plugin's license;
+- the music has no redistribution rights and doesn't ship, and generated music waits for their yes;
+- the squirrels are the cast, and each video casts its own;
+- the name is Nutlight. They chose "squirrels-style" first, then a word ordinary requests won't contain;
+- no plugin file names the reference project.
+
+What changed:
+- `skills/nutlight-style/`:
+  - SKILL.md, 6,673 bytes: what defines the style, what it asks of each step of code-video, ideas, and
+    later sessions;
+  - `references/look.md`, `motion.md` and `music.md`;
+  - `assets/references/`: the eight images and a README with the author's own description of the look and
+    the motion, and what each image guides. When the style is named, a project copies this folder into
+    `docs/style/nutlight/`.
+- No change to code-video's or soundtrack's SKILL.md: they had 6 and 11 bytes left, and nothing showed they
+  needed more.
+- init's AGENTS.md section names the skill.
+- README, AGENTS.md, both manifests and the marketplace list six skills, at 0.9.0.
+- design.md gains "A house style you can name: Nutlight".
+- The evals gain:
+  - a trigger set;
+  - `ns-new-subject`;
+  - fixtures: an article on how honeybee swarms choose a home, after Thomas Seeley's research, a Nutlight
+    STYLE.md and three synthetic library tracks;
+  - a `task.ts` that places a fixture inside a folder.
+- A `mix.py` cue list for scores cut from several tracks waits for evidence. That video's arranger was a
+  46 KB script in the project.
+
+### What 0.9.0 checked
+
+- **Spec checks:** skills-ref and both `quick_validate.py` scripts pass; SKILL.md is under 8,000 bytes,
+  with no byte-order mark.
+- **Images:**
+  - re-encoded from 16 MB of PNG to 2.5 MB of JPEG (quality 88, 4:2:0);
+  - mean absolute error 2.2 to 3.3 of 255 against the PNGs;
+  - no visible difference at 2x zoom beside the PNG and a 3.9 MB quality-90 4:4:4 encode.
+- **A number that didn't carry over.** That video's style document measured 22-32% of a night frame as
+  near-black, on its older references. On these images the dark ones measure 11-15% under 0.06 in sRGB
+  luma and 45-61% under 0.06 in linear luminance, so look.md asks to measure the reference and the still
+  the same way and keep them close, rather than giving a number.
+- **The cast's proportions.** The first draft took them from that video's design sheet ("the head is the
+  biggest mass"). Codex's review found that images 01 and 02 contradict it: the tail is as tall as the
+  figure and wider than the torso. look.md now describes the images.
+- **Trigger, Claude Code, Opus 5.5 at the user's effort, three runs:** 20/20. The skill loaded in all 30
+  runs of the ten named requests (ns-08, a note inside a project whose STYLE.md names the style, after two
+  commands that read the project) and in none of the 30 near-miss runs. code-video loaded for the
+  squirrel, cute-animal, Kurzgesagt-style and 3Blue1Brown-style requests; soundtrack for the mix; and
+  video-ideas for the coffee shop. Codex (GPT-6-Astra at its default effort, one run each): 20/20, the style loading beside code-video, soundtrack or video-ideas on every named request, and on no near-miss.
+- **Codex's review of the branch: eight findings, all taken.**
+  - The checks contradicted the overlay the words section allows.
+  - Techniques had hardened back into rules: a ranked transition list, joins only on downbeats,
+    30-60 ms crossfades with no stretching, pointing at eye level, a fixed seated view, digits always
+    circled.
+  - The proportions above.
+  - The cast sheet came before scenes while style frames already draw the cast.
+  - The task case said "nothing generated" next to a stand-in voice, and lacked the length and the
+    mechanism.
+  - An arrangement reading tracks from the library's absolute path wouldn't rebuild on another machine;
+    the tracks are now copied into the project.
+  - ns-08 only probes discovery.
+  - This entry was missing.
+- **The user's review.** SKILL.md named the references README only in its reading list, so it now says to
+  read it before the style frames and in every scene brief, and gives it to the critic.
+- **Not run yet:** ns-new-subject (three turns, hours), in either tool.
+
+### The first real run, and the kit
+
+The plan's real run was the prompt the user asked for in `docs/prompts.md`: a 40-second explainer of how a hash
+table finds a key, staged as a squirrels' nut warehouse, narrated with a free voice and scored from the user's
+own 39-track library. It ran through the task harness in Claude Code, Opus 5.5 at xhigh, from 2026-10-30 13:37.
+The skill did what it said:
+- the references were copied in;
+- the session measured 8 of the 39 tracks and built a score and a mix;
+- it rendered style frames and a cast sheet, a draft and a critic round.
+
+But the squirrel was its own. Without code to start from, it wrote a 22 KB squirrel module from the words and
+the two images, and it came out a different animal: a flat ring for a tail, a small body, half-lidded eyes,
+characters small in frames dominated by props. The user watched the preview: "the squirrels style are very
+different from the ones from the reference images and the ones from [the reference video]. Both squirrels face
+and body are different. This is not good. We need to create a visual identity for consecutive videos on my
+channel." The reference video's squirrel had taken seven revisions of notes; words and two stills can't carry
+that, and each run would land somewhere else.
+
+So the skill now ships the cast as code: `assets/kit/`, about 480 KB of TypeScript, copied into a project's
+`src/nutlight/`, as code-video ships its realism kit. It is that video's squirrel rig and the stage it draws
+on:
+- one design baked into parts and posed per frame, in profile, three-quarter, front and from behind;
+- breathing, blinks, ear twitches and the tail's sway;
+- ten expressions;
+- reaches that land on their target, held props and gear;
+- the light rigs per setting, props and structures;
+- the camera and its transitions (iris, rect, wipe, a matched zoom-through, a fade).
+
+The port was imports, the project's palette moved into the kit, comments cleaned of the project's and the
+old characters' names, the characters replaced by fur presets, and the film's places and framings left out.
+It runs on the template's engine unchanged: that project's engine differed only in a post-processing fix the
+kit doesn't need. In a fresh project:
+- typecheck: no errors;
+- `verify`: passes, 17 determinism probes with 0 mismatched;
+- the cast sheet, beside references 01 and 02, shows the same character as the reference video's.
+
+The skill's text now casts from the kit and extends it in its own construction, never drawing a squirrel anew.
+A project's kit is its own copy, so a newer skill never changes a finished video's look unless the director
+asks. The prompt runs again with the kit; its record goes in `docs/prompts.md`.
+
+Codex reviewed the kit with in-memory probes and found five defects in helpers the cast sheet doesn't exercise:
+- a reach reported success while the paw missed by about 17 px (the wrist was aimed along the shoulder's line,
+  the paw extends along the forearm);
+- from the front, a blend from a side pose to a posed arm jumped 20 to 130 units on its first frame;
+- `new Counter(R)` threw "Atlas full" at its defaults;
+- `target(null)` stayed on the offscreen buffer;
+- `camRect` gave a zero-width rect under a rolled camera.
+
+All five are fixed and measured: misses of 0.2 to 0.5 rig units, a jump of 0.000, and 141.4 by 141.4 for a
+100 px square at 45°. The category-label tags went too.
+
+Then the user asked that the kit keep the videos consistent without limiting the model: "If in a new video,
+user ask something completely different explicitly in its prompt, the kit we just added must not work against
+it." The text had three gaps:
+- "every character is the kit's squirrel" and "never a squirrel drawn anew" read as absolute, though they
+  were meant against the model's own drift;
+- nothing said code-video's other means stay available inside a Nutlight video;
+- in a Nutlight project, a new video in another look wasn't told to leave the kit alone, and an edit to
+  `src/nutlight/` for one video would reach them all.
+
+SKILL.md now has "When the director asks for something else" (7,792 bytes), and look.md, design.md and the
+README follow. ns-new-subject now tests both sides: its second turn adds a human beekeeper the kit doesn't
+draw, and a fourth turn, in a new session, asks for a second video in flat Swiss typography with nothing of the
+style, which must leave `src/nutlight/` and the first video's frames as they were.
+
+### The run with the kit
+
+The same prompt ran again from 2026-10-30 15:16, the same way, with the kit as it was before Codex's five
+fixes. The session copied the kit and the references in, cast Pip (amber, a cap, a lantern) and Maple (coral,
+glasses, a vest) from `CAST` and the gear, and rendered the cast sheet before the scenes. Of two style frames it
+kept a drawer hall reached through a lit doorway, over a hollow-oak vault with a dial that read as a phone.
+- **The squirrels are the references' animal.** Stills from the MP4 beside references 01 and 02 show the same
+  round head, big glossy eyes, cream muzzle and spiral tail. The run without the kit had a flat ring for a tail
+  and a cat's face.
+- **The kit's code was left alone.** Its copy of `palette.ts` gained four brass colours for the video's
+  machine, the extension SKILL.md asks for; no other file differs from the shipped kit.
+- **Music:** one of the 39 tracks, picked by measurement and cut at three places on downbeats (the intro, the
+  beat's entry, the last hit and its ring-out), copied into the video's `music/tracks/`. −16.0 LUFS, true
+  peak −1.1 dBTP. Nobody has listened to it.
+- **The critic's two rounds** caught a doorway that popped in, a number shown as "10" for 110, digits lost on
+  lit plates, faces that read as scowls or asleep, and a weak payoff for the short line. All were fixed; the
+  last fixes weren't reviewed again.
+- **verify** failed now and then by 1/255 in about 30 pixels at one probe. The session traced it to the lit
+  plates, flat shapes and glows drawn between sprites, and replaced them with one painted sprite each: 4 of 4
+  passes. Whether the Stage's flat shapes are the cause in general isn't known yet.
+- **Time:** 2 h 2 min to the hand-off, then 10 minutes for "Render it." (3.7 of them the render), against
+  1 h 47 min and 1 h 2 min without the kit. The MP4 is 39.0 s at 1920×1080 and 60 fps. Nothing was spent: the
+  voice is Kokoro (free), and the mock logged no requests.
+- **Left open at the hand-off:** the voice about 8 dB over the music, against the plan's 10, and the hall
+  lighter than the references (7% near-black against 15%).
+
+The kit's act palettes still carried the reference video's act names and its story in comments. They are now
+plain (cool day, blue night, warm day, dusk, space), and the kit still typechecks. The prompt and its record
+are entry 6 in `docs/prompts.md`. The user watched the final MP4 and judged it good.
+
+### Codex's third review of the kit
+
+After the run with the kit, Codex reviewed the branch again and found four defects, all in helpers no run had used
+yet:
+- a pose blending into a reach switched targets halfway, and the paw jumped 113 units;
+- a reach near the shoulder missed by 10 units while `reach()` reported success;
+- planets ignored the stage's clip, so `drawLens` spilled them outside the glass;
+- the README's example baked its plant outside the texture.
+
+The last three closed at once:
+- the forearm and the paw are now solved as one bone, so the paw lands from 14 units out, and `reach()` reports
+  targets too near as well as too far;
+- the planet shader takes the clip;
+- the example uses `bakeAt`.
+
+The blend took four rounds, each answering a counterexample from Codex or the probe:
+- **Lerping the joints' positions** let opposed forearms cancel halfway, and the paw's direction spun.
+- **Lerping the angles the short way round** flipped when the pose's own arm turned during the blend: stand → tap
+  jumped 114 units.
+- **A fixed cut on the upper arm's angle** flipped when the body moved 2 units across it. It also sat where close
+  targets below the shoulder put the upper arm, so those reaches swung over the head.
+- **The cause of the front-view trouble was a fix from the second review.** The front idle arm blended into a posed
+  one by lerping joint positions, the same collapse: that was the 37-unit jump in stand → point, which looked like
+  foreshortening.
+
+The design now:
+- A blend between two angles has to switch sides somewhere (there's no continuous mean on a circle), so the
+  switching set sits where a paw doesn't go.
+- A reach's upper arm is taken through its target's direction, cut straight into the torso in profile and from
+  behind, and over the head on the far side from the front.
+- From the front, `armBetween` turns the upper arm and bends the forearm. Its bend is cut at −30°, which none of
+  the 200 ordered pose pairs crosses.
+- A forearm projected to under 0.3 of its length hangs its paw down; every held pose is over 0.4.
+
+Measured as the paw's biggest step per 1/200 of a blend:
+- **From the front, without a reach:** stand → point 2.9 and stand → tap 3.1.
+- **The README's tap reaches:** 0.9 to 6.9.
+- **Reaches with the pose held:** 3.6 at most in profile and 5.1 from the front.
+- **Codex's case:** under 1.
+- **1,080 blends per view,** with the body moving and the pose changing: every step over 12 had its target inside
+  the torso or behind the back in profile and from behind, or at the cut over the head from the front.
+
+Held poses are unchanged and the cast sheet is pixel-identical, apart from two changes:
+- `startled`'s paws, from the front, follow its raised forearms;
+- the typing squirrel's reaching paws land exactly.
+
+`verify` passes. Codex accepted the result, with the two directions named in the kit README.
+
+### Codex's fourth review of the kit
+
+Codex then reviewed the whole branch against main and found five more defects, again in parts no run had drawn:
+- **`sky()` ignored the clip.** A lens that redraws the world inside its glass calls the scene's own draws, sky
+  first, and the opaque sky cleared the whole frame. `clear()` did the same.
+- **The lens's handle was cut off.** `makeLens` made room on the right while the handle points down-left: at
+  radius 100 its end fell about 31 px outside the texture.
+- **Marks took the light of the moment they flushed.** A lit disc drawn under `withCam`'s 90° roll got the restored
+  camera's light, and adding a flush inside the callback changed how it looked.
+- **`pointAt` with the far arm used the near arm's stretch.** In `point` (reachK 1.75, reachKF 1) its target lay
+  68 units out of the paw's reach.
+- **`unproject` ignored `withMagnify`.** Under a 2× magnifier, (600, 600) projected to (700, 700) and came back as
+  (700, 700).
+
+The fixes, measured on the old kit and the new:
+- The sky takes the stage's clip, blending under one, and its magnifier. `clear()` under a clip draws through it.
+  On the old kit, a second lens's `clear()` painted the whole frame magenta. Now the discs outside both lenses
+  survive, and the sun shows magnified inside the first. The magnifier also reaches the zoom-through transition,
+  whose incoming scene draws under `withMagnify`: its sky was the one draw not scaled into the opening.
+- `makeLens` bakes the box that holds the rim and the handle's end, whichever way the handle points.
+- A batch of marks keeps the light it was drawn under. A change of light, from a camera's roll or a look swapped
+  mid-frame, starts a new batch. The same lit disc, without and with a flush inside the callback, differed by up to
+  143 levels; now by 4, the frame-to-frame grain.
+- `reach()` and `pointAt()` share one rule for an arm's stretch. All nine far-arm targets are now in reach (they
+  missed by 37 to 68); the near arm's are unchanged.
+- `unproject` undoes the magnifier first, and `scaleAt` includes it, as `project` does. A rolled, zoomed camera at
+  depth 2 under a 1.6× magnifier round-trips exactly.
+
+The cast sheet's stills are byte-identical, `verify` passes and the kit typechecks. Codex reviewed the fixes and
+agreed all five are closed, with no new findings.

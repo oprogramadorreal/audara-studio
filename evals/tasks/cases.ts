@@ -367,6 +367,33 @@ const cases: Record<string, Case> = {
   // reaches code-video; a request that already asked for the video goes on without a second yes). Run them
   // --without too: the bar is the model brainstorming on its own (the other bar, code-video asked to plan
   // only, needs its own prompts: docs/research/video-ideas-skill-proposal.md).
+  // The Nutlight house style named on a subject its reference images don't show (0.9.0): the project carries the
+  // style (its references copied in, STYLE.md naming it), the cast is one squirrel design, the score is cut from
+  // the director's library, a director's note that departs from the style wins, and a later session keeps all
+  // of it from the project's files alone. The library is three synthetic tracks; nothing is paid.
+  'ns-new-subject': {
+    skill: 'nutlight-style', setup: { files: ['article.md', 'library-calm.mp3 => music/calm-documentary.mp3', 'library-bright.mp3 => music/bright-pizzicato.mp3', 'library-drive.mp3 => music/night-drive.mp3'], mock: 'elevenlabs', key: false }, timeoutMinutes: 240,
+    turns: [
+      { prompt: 'Make a 60-to-90-second explainer in the Nutlight style from article.md, narrated in English. The music comes from my library in music/. No paid voice for now.' },
+      { prompt: 'Looks good, go ahead. Two things: when the swarm lifts off, I want a hard cut straight to the new home, no transition there. And add a human beekeeper watching from the edge of the meadow.' },
+      { prompt: 'Make the piping moment bigger: the whole swarm should visibly warm up before it lifts off.', newSession: true },
+      { prompt: 'Now a second video in this project: a 10-second title card for my channel, "Field Notes", in flat black-and-white Swiss typography. No squirrels, nothing of the Nutlight look.', newSession: true },
+    ],
+    assertions: [
+      "Turn 1 shows a treatment before the first scene file (transcript order) whose Look names the Nutlight style and whose Sound gives a cue plan built from the tracks in music/ (which track where, and what its turns land on); it asks nothing the prompt answers, and nothing paid is generated (mock-requests.jsonl: no paid=true entries; the narration is a free stand-in such as standin.py's).",
+      "docs/style/nutlight/ holds the skill's eight reference images and its README.md, identical to skills/nutlight-style/assets/references/; docs/STYLE.md names the Nutlight style in its first lines, has a 'From: Nutlight style' line apart from Decisions, maps reference images to this video's kinds of scene, and its Avoid list doesn't count navy or teal worlds, glowing screens or luminous glass against the look.",
+      "The settings come from the article (a branch, hollows, a meadow, the swarm in the air, or the like): none of the reference images' own places (a computing observatory, lunar mission control, a server city, a golden laboratory) appears unless the treatment argues for it from the article (judged on a sheet at 2 fps).",
+      "src/nutlight/ holds the skill's kit and every character is its squirrel (Squirrel from src/nutlight, cast with its own name and fur; no squirrel drawn anew), and a cast sheet was rendered and looked at before scene authors started on the production scenes (transcript order); on full-size stills beside references 01 and 02 the head is big and round, the tail a big curled plume rising behind, the face and belly cream, with no outlines, and each character stays on model from scene to scene.",
+      "The video runs 60-90 s (ffprobe on the draft or render) and explains the article's mechanism, in order and correctly: scouts search, each dances for its site with more vigour for a better one and less each time, support for a weak site fades, a quorum at one site starts the piping, and the swarm warms up and lifts off to the new home with no leader choosing.",
+      "The look holds up beside the references on full-size stills at the treatment's key moments: three planes (a dark framing foreground, the action, hazier far layers), warm characters against a cooler or darker world, light from visible sources, and the article's ideas acted out by characters or things rather than shown as slides or captions; words on screen live in the world (a sign, a mark on a thing) or, where nothing in it could hold them, sit in a small overlay, and none announces a category ('example', 'analogy').",
+      "Every scene boundary but the lift-off is carried (a camera move through the world, an object carried over, a wipe by something in the picture, a zoom through an opening, or at worst a crossfade), with no fade to black (frames through each boundary); the lift-off is a hard cut to the new home after turn 2, and TREATMENT.md's Decisions record that note in the director's words.",
+      "After turn 2 a human beekeeper watches from the meadow's edge: a person, not a squirrel, drawn in the style's construction (geometry, no outlines, soft gradients, under the scene's light), whatever code it takes; the kit's squirrels are unchanged (the cast sheet before and after), and TREATMENT.md's Decisions record the note.",
+      "The music is cut from the tracks in music/: a script beside the audio (videos/<video>/music/ or the like) assembles it with times taken from word or picture anchors rather than typed seconds, mix.json takes its output as the music, assets/SOURCES.md has a line for every track used, and no music is generated or synthesized in its place.",
+      "The hand-off reply after turn 2 gives a ?t= link to every music entrance and join, says the music was chosen by measurement and that nobody has listened, and gives render.ts verify's result, which passes (run it).",
+      "Turn 3, a new session, reads docs/STYLE.md and docs/style/nutlight/ (its README or images) before its first edit (transcript order); the piping stretch now shows the swarm warming up (stills before and after), verify's changed stretches stay at or next to it, the lift-off is still a hard cut, and the cast is unchanged.",
+      "Turn 4, a new session, makes a second video that is flat black-and-white Swiss typography: no squirrel, nothing imported from src/nutlight/, no navy-teal palette or glow, its own treatment saying it departs from the project's Nutlight look; src/nutlight/ is unchanged by it (git diff), and the first video's frames are unchanged (render.ts verify on it names no changed stretch).",
+    ],
+  },
   'vi-ideas-only': {
     skill: 'video-ideas', setup: { files: [] }, timeoutMinutes: 20,
     turns: [

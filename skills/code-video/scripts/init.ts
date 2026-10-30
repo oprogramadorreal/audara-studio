@@ -443,7 +443,7 @@ function agentsSection(): string {
     '<!-- Written by audara init (the code-video skill). Running init again rewrites only this section; anything outside it is kept. -->',
     '## Video project (audara)',
     '',
-    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building; the video-repo skill puts the project in git so someone else can clone it, work on it and render it again; the youtube-package skill makes a finished video\'s thumbnails, title, description and tags, in `videos/<video>/youtube/`.',
+    'Videos made in code: an engine in `src/engine/` (WebGL/GLSL, three.js, Canvas2D) renders each video in `videos/<video>/`, previewed live in the browser and rendered to MP4. The code-video skill holds the method; the soundtrack skill makes audio and its timing data; the video-ideas skill helps choose what to make and writes a starting prompt, without building; the video-repo skill puts the project in git so someone else can clone it, work on it and render it again; the youtube-package skill makes a finished video\'s thumbnails, title, description and tags, in `videos/<video>/youtube/`; the nutlight-style skill directs the look, motion and music of a video in the Nutlight style when the director names it, with its references copied into `docs/style/nutlight/` and its code kit (the squirrels, the stage, the light) into `src/nutlight/`.',
     '',
     '| Video | Title | Treatment | Preview |',
     '|---|---|---|---|',
