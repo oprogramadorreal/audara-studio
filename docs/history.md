@@ -2843,7 +2843,7 @@ kept a drawer hall reached through a lit doorway, over a hollow-oak vault with a
 
 The kit's act palettes still carried the reference video's act names and its story in comments. They are now
 plain (cool day, blue night, warm day, dusk, space), and the kit still typechecks. The prompt and its record
-are entry 6 in `docs/prompts.md`; the user hasn't watched the final MP4 yet.
+are entry 6 in `docs/prompts.md`. The user watched the final MP4 and judged it good.
 
 ### Codex's third review of the kit
 
