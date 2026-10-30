@@ -25,6 +25,8 @@ Contents
 - Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
 - Photographic 3D from golden-temple (0.8.0, 2026-10-15)
 - Iteration time on a 13-minute video (0.8.1, 2026-10-21)
+- Five tested prompts, and what they showed (0.8.2, 2026-10-26)
+- A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
 
 ## Definition of done
 
@@ -2616,3 +2618,136 @@ seal (style-template already says a named style brings what defines it). Two tes
 prompt 5's brief stage (about 12 minutes) three to five times with the plugin as it was and as it is now, and
 count how often the lyric becomes the one thing; and build one treatment by a lead alone and by scene authors,
 concept and checks held fixed, judged blind.
+
+## A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
+
+The user made a 14.5-minute pt-BR explainer with 0.8.1 over five days (2026-10-26 to 30) and seven
+revisions, in Claude Code with Codex through Herdr. It shows squirrels in a programming world drawn in code,
+narrated in their own ElevenLabs voice and scored from their own music library. They then asked whether the
+plugin should hold that style as a small reusable skill, so that many videos could share it without a
+session ever reading the old project again. The skill had to keep the visual language, the motion, the
+musical sensibility and the editing, while subject, scenes, script and music stayed free. The work went in
+three steps: an investigation and a proposal first, then the user's approval, then the build. Codex
+(through Herdr) consulted and reviewed, and Claude implemented.
+
+What was read:
+- the director's 16 messages, extracted from the session's 210 MB transcript (seven briefs and rounds of
+  notes; the rest are context summaries), and the summaries' records of what went wrong and how it was fixed;
+- the project's style document (52 KB, revisions 3 to 7) and the lead's restyle spec;
+- the director's art-style folder: two texts and eight images, each with a text;
+- the music README (12 cues cut from 10 library tracks, "nobody has listened"), the library's catalogue
+  (39 tracks) and the sources file;
+- frames from the final cut.
+
+The 55 subagent transcripts weren't read. Nobody listened to the music: the director's approval in the last
+round is the only listening evidence.
+
+What recurred in the notes, and became the skill's craft:
+- **Explaining:** ideas acted out. Demonstrations differ at a glance and are framed large (a comparison too
+  small and too far right, a change too subtle; revision 3's notes). Words live in the world: a billboard, a
+  painted question. No category labels: "exemplo" and "experimento mental" were removed in revision 3,
+  "analogia" in revision 5. The source's own digits were kept and marked (revision 3), and a small overlay
+  was fine for a disclaimer (revision 7). The world varies as the story moves (the first briefs).
+- **Transitions:** no hard cuts, each one planned in both scenes (the first briefs).
+- **The cast:** a face toward us is one head turned; a profile mask on a turned skull read as a raccoon's.
+  An arm is one limb, not two tubes with a step at the elbow. Expressions are restrained and varied (all
+  revision 3). Customers who should have looked sad didn't (revision 7).
+- **Continuity:** pop-in during a camera move, lights detached from their source, and layering (revision 7);
+  a camera pause only to show off a sign (revision 5).
+- **Music:**
+  - two scores synthesized in code were turned down ("too repetitive, slow, and sad"; "sounds forced"), and
+    the director's library was approved ("Overall, I like the music selection", revision 7);
+  - audible, not buried ("Do not mix it so quietly", revision 5);
+  - a designed silence, and a louder, music-led outro;
+  - a big music change matched by a change in the picture (three notes in revision 7);
+  - entrances that came late, early, too loud or after a gap, and a harsh cut inside a track (revision 7).
+
+Left with that video:
+- its places and its game example;
+- its tracks and their order;
+- the marks it showed, the outro's length and its pronunciations;
+- the names the agent gave its two squirrels (the director asked what they were);
+- its rig code (159 KB, tied to one copy of the engine);
+- its style document, which contradicts itself across revisions (flat cel shading in revision 3, soft
+  gradients in revision 6).
+
+The consultation (three rounds before the proposal):
+- **Where it lives.** Codex first preferred a style kit the user keeps outside the plugin. It accepted the
+  plugin once the argument became maintenance: the style names code-video's and soundtrack's steps, so one
+  commit and one eval run cover both, and one update reaches both tools on both of the user's machines.
+- **Rules it cut,** over-generalized from one video's repairs: a camera that never stops, a fixed ladder of
+  transitions, a cue per chapter, obligatory whooshes, no stretching, a fixed loudness under the voice, a
+  table of hex colours and a recipe for the rig.
+- **The Avoid list.** Brains, robots, circuit boards and code rain stay default items to avoid. They become
+  findings only when nobody asked for them and the subject doesn't need them.
+- **The rejected scores** go in this history, not in the skill: "library first; other sources when they
+  serve the brief" carries the lesson.
+
+The user's decisions:
+- the skill lives in the plugin;
+- the eight images are theirs, made with ChatGPT's image model, and ship under the plugin's license;
+- the music has no redistribution rights and doesn't ship, and generated music waits for their yes;
+- the squirrels are the cast, and each video casts its own;
+- the name is Nutlight. They chose "squirrels-style" first, then a word ordinary requests won't contain;
+- no plugin file names the reference project.
+
+What changed:
+- `skills/nutlight-style/`:
+  - SKILL.md, 5,888 bytes: what defines the style, what it asks of each step of code-video, ideas, and
+    later sessions;
+  - `references/look.md`, `motion.md` and `music.md`;
+  - `assets/references/`: the eight images and a README with the author's own description of the look and
+    the motion, and what each image guides. When the style is named, a project copies this folder into
+    `docs/style/nutlight/`.
+- No change to code-video's or soundtrack's SKILL.md: they had 6 and 11 bytes left, and nothing showed they
+  needed more.
+- init's AGENTS.md section names the skill.
+- README, AGENTS.md, both manifests and the marketplace list six skills, at 0.9.0.
+- design.md gains "A house style you can name: Nutlight".
+- The evals gain:
+  - a trigger set;
+  - `ns-new-subject`;
+  - fixtures: an article on how honeybee swarms choose a home, after Thomas Seeley's research, a Nutlight
+    STYLE.md and three synthetic library tracks;
+  - a `task.ts` that places a fixture inside a folder.
+- A `mix.py` cue list for scores cut from several tracks waits for evidence. That video's arranger was a
+  46 KB script in the project.
+
+### What 0.9.0 checked
+
+- **Spec checks:** skills-ref and both `quick_validate.py` scripts pass; SKILL.md is under 8,000 bytes,
+  with no byte-order mark.
+- **Images:**
+  - re-encoded from 16 MB of PNG to 2.5 MB of JPEG (quality 88, 4:2:0);
+  - mean absolute error 2.2 to 3.3 of 255 against the PNGs;
+  - no visible difference at 2x zoom beside the PNG and a 3.9 MB quality-90 4:4:4 encode.
+- **A number that didn't carry over.** That video's style document measured 22-32% of a night frame as
+  near-black, on its older references. On these images the dark ones measure 11-15% under 0.06 in sRGB
+  luma and 45-61% under 0.06 in linear luminance, so look.md asks to measure the reference and the still
+  the same way and keep them close, rather than giving a number.
+- **The cast's proportions.** The first draft took them from that video's design sheet ("the head is the
+  biggest mass"). Codex's review found that images 01 and 02 contradict it: the tail is as tall as the
+  figure and wider than the torso. look.md now describes the images.
+- **Trigger, Claude Code, Opus 5.5 at the user's effort, three runs:** 20/20. The skill loaded in all 30
+  runs of the ten named requests (ns-08, a note inside a project whose STYLE.md names the style, after two
+  commands that read the project) and in none of the 30 near-miss runs. code-video loaded for the
+  squirrel, cute-animal, Kurzgesagt-style and 3Blue1Brown-style requests; soundtrack for the mix; and
+  video-ideas for the coffee shop. Codex (GPT-6-Astra at its default effort, one run each): 20/20, the style loading beside code-video, soundtrack or video-ideas on every named request, and on no near-miss.
+- **Codex's review of the branch: eight findings, all taken.**
+  - The checks contradicted the overlay the words section allows.
+  - Techniques had hardened back into rules: a ranked transition list, joins only on downbeats,
+    30-60 ms crossfades with no stretching, pointing at eye level, a fixed seated view, digits always
+    circled.
+  - The proportions above.
+  - The cast sheet came before scenes while style frames already draw the cast.
+  - The task case said "nothing generated" next to a stand-in voice, and lacked the length and the
+    mechanism.
+  - An arrangement reading tracks from the library's absolute path wouldn't rebuild on another machine;
+    the tracks are now copied into the project.
+  - ns-08 only probes discovery.
+  - This entry was missing.
+- **The user's review.** SKILL.md named the references README only in its reading list, so it now says to
+  read it before the style frames and in every scene brief, and gives it to the critic.
+- **docs/prompts.md's sixth prompt** (a 40-second hash-table explainer, the user's own 39-track library):
+  running as this entry is written; its record goes in the prompt's entry.
+- **Not run yet:** ns-new-subject (three turns, hours), in either tool.
