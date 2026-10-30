@@ -256,7 +256,7 @@ export function gradFill(c: CanvasRenderingContext2D, path: Path2D, base: Col, l
 }
 
 // ------------------------------------------------------------------------------------------------------------
-// Painters: land, sea, the town of pages
+// Painters: land, sea, a town
 // ------------------------------------------------------------------------------------------------------------
 /** The top edge of a range of rounded hills across w (y of the edge at each x): smooth, seeded. */
 export function hillEdge(w: number, h: number, seed: number, o: { bumps?: number; amp?: number; level?: number } = {}): Pt[] {

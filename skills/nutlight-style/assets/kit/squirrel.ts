@@ -1560,7 +1560,7 @@ function packHeight(width: number, sizes: [number, number, number][]): number {
 
 /** Which baked head shows at a turn (and the next one fading in over it): 0 the profile, 1-3 the turned heads (YAWS). */
 function headsAt(turn: number, front: boolean): { a: number; b: number; k: number } {
-  // a head's band, as the film has always read `turn`: the profile up to 0.46 (a small turn squashes it), the swap
+  // a head's band, as the rig has always read `turn`: the profile up to 0.46 (a small turn squashes it), the swap
   // inside 0.46-0.54, three-quarter from 0.54 to 1.5,
   // front beyond. The 60° head is the swap's in-between (alone at 0.475-0.525, with headTurn() a turn
   // lingers there for about three frames), so a turn passes profile → 60° → three-quarter and every held value from

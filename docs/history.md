@@ -2814,3 +2814,33 @@ SKILL.md now has "When the director asks for something else" (7,792 bytes), and 
 README follow. ns-new-subject now tests both sides: its second turn adds a human beekeeper the kit doesn't
 draw, and a fourth turn, in a new session, asks for a second video in flat Swiss typography with nothing of the
 style, which must leave `src/nutlight/` and the first video's frames as they were.
+
+### The run with the kit
+
+The same prompt ran again from 2026-10-30 15:16, the same way, with the kit as it was before Codex's five
+fixes. The session copied the kit and the references in, cast Pip (amber, a cap, a lantern) and Maple (coral,
+glasses, a vest) from `CAST` and the gear, and rendered the cast sheet before the scenes. Of two style frames it
+kept a drawer hall reached through a lit doorway, over a hollow-oak vault with a dial that read as a phone.
+- **The squirrels are the references' animal.** Stills from the MP4 beside references 01 and 02 show the same
+  round head, big glossy eyes, cream muzzle and spiral tail. The run without the kit had a flat ring for a tail
+  and a cat's face.
+- **The kit's code was left alone.** Its copy of `palette.ts` gained four brass colours for the video's
+  machine, the extension SKILL.md asks for; no other file differs from the shipped kit.
+- **Music:** one of the 39 tracks, picked by measurement and cut at three places on downbeats (the intro, the
+  beat's entry, the last hit and its ring-out), copied into the video's `music/tracks/`. −16.0 LUFS, true
+  peak −1.1 dBTP. Nobody has listened to it.
+- **The critic's two rounds** caught a doorway that popped in, a number shown as "10" for 110, digits lost on
+  lit plates, faces that read as scowls or asleep, and a weak payoff for the short line. All were fixed; the
+  last fixes weren't reviewed again.
+- **verify** failed now and then by 1/255 in about 30 pixels at one probe. The session traced it to the lit
+  plates, flat shapes and glows drawn between sprites, and replaced them with one painted sprite each: 4 of 4
+  passes. Whether the Stage's flat shapes are the cause in general isn't known yet.
+- **Time:** 2 h 2 min to the hand-off, then 10 minutes for "Render it." (3.7 of them the render), against
+  1 h 47 min and 1 h 2 min without the kit. The MP4 is 39.0 s at 1920×1080 and 60 fps. Nothing was spent: the
+  voice is Kokoro (free), and the mock logged no requests.
+- **Left open at the hand-off:** the voice about 8 dB over the music, against the plan's 10, and the hall
+  lighter than the references (7% near-black against 15%).
+
+The kit's act palettes still carried the reference video's act names and its story in comments. They are now
+plain (cool day, blue night, warm day, dusk, space), and the kit still typechecks. The prompt and its record
+are entry 6 in `docs/prompts.md`; the user hasn't watched the final MP4 yet.

@@ -6,7 +6,7 @@ back, how to change it for your own subject, and what it took. Paste one into an
 it names. If other video skills are installed, start it with `/audara-studio:code-video` in Claude Code or
 `$audara-studio:code-video` in Codex.
 
-What the five share: each names how the picture is made or what it computes (how ink behaves, which number
+What they share: each names how the picture is made or what it computes (how ink behaves, which number
 is measured, what changes in every section), and says what it leaves open. A single sentence or a style
 word works too and leaves more to the agent; the [README](../README.md#your-first-video) has some.
 
@@ -21,7 +21,7 @@ way a code-video session does: the video playing in the live preview, a draft MP
 critic's findings fixed or listed as open (the last fixes not yet reviewed), and the final render offered,
 with one more critic review before it. Add "then render it" to a prompt to get the MP4 in one go. None
 stopped to ask a question, and none spent money: the sound was synthesized in code, or was the user's own
-song. They haven't been run in Codex yet.
+song. They haven't been run in Codex yet. Entry 6 came later and was run its own way, as it says.
 
 The same evening the maintainer ran all five again with the plugin disabled. Those runs were faster: 51, 38
 and 27 minutes to a final MP4 for 1, 3 and 4, against 74, 65 and 83 minutes to the plugin's draft, and 65
@@ -38,6 +38,7 @@ For 5 the picture made without the plugin was preferred (its entry below). The c
 | 3 | 3D math with a number measured live | 30 s | 1 h 5 min | 1 |
 | 4 | An explainer whose argument you write | 40 s | 1 h 23 min | 2 |
 | 5 | A music video, one thing transformed | 46.5 s | 4 h 55 min | 2 |
+| 6 | An explainer in a house style: Nutlight | 39 s | 2 h 2 min | 2 |
 
 Times run from the prompt to the hand-off, as each session reported it, on one machine; yours will differ.
 The sessions estimated the final render at 5 to 20 minutes for 1 to 4 and 30 to 60 minutes for 5, after a
@@ -133,6 +134,35 @@ Make a music video for about 45 seconds of song.mp3, from the part you choose. O
   mind, name it. If you have a preference, say whether you want the lyrics on screen. Fewer sections or a shorter part keeps it lighter. For the words to be timed on screen,
   give `lyrics.txt` unless the file carries them; the first timing of sung words downloads about 3 GB of
   models, once.
+
+## 6. An explainer in a house style: Nutlight
+
+```text
+Make a 40-second explainer in the Nutlight style about how a hash table finds a key in one step. Stage it as a squirrels' nut warehouse: a nut's name is turned into a drawer number, so nobody searches the shelves, and when two names land on the same drawer they share it in a short line. Narrate it in English with a free voice, and cut the music from the tracks in music/. The places, the cast and how each moment is staged are yours.
+```
+
+- **How it was run:** unlike 1 to 5, on 2026-10-30, with audara-studio 0.9.0 in Claude Code 2.1.314, Opus
+  5.5 at effort xhigh, auto mode on, on Windows 11, through the eval harness (`evals/README.md`), in a folder
+  holding only `music/`: the maintainer's own library of 39 licensed tracks. After the hand-off, one more
+  message: "Render it." Nothing was spent.
+- **What it asks for:** the Nutlight style by name, which loads the nutlight-style skill: its squirrels and
+  the stage they live on, as code the project copies, its light and its sense of music. Then a mechanism
+  staged as a place where characters work, a free narration, and a score cut from the user's own tracks.
+- **Left open:** the places, the cast, how each moment is staged, the toy hash itself, which tracks and where
+  they are cut.
+- **In the test:** a moonlit aisle where Pip (amber, a cap, a lantern) lifts lid after lid, then, through a
+  lit doorway, a drawer hall where Maple (coral, glasses, a vest) runs a brass machine that adds up a name's
+  letters and keeps the last digit: ACORN makes 51, drawer 1, and WALNUT makes 91 and shares it. The squirrels
+  are the skill's, the same animal as its reference images, and the session added only four brass colours to
+  its copy of the kit. One track of the 39 was cut at three places, under a free Kokoro voice. The critic's
+  two rounds caught a doorway that popped in, faces that read as scowls and a weak payoff for the short line;
+  all were fixed. Left open: nobody had listened to the mix (the voice about 8 dB over the music, against the
+  plan's 10), and the hall came out lighter than the references.
+- **To adapt:** name the style, your subject and its mechanism as a place where characters work, and point
+  at your own tracks; leave the cast and the places open, since the style brings the squirrels. Without a
+  music folder the skill asks where your library is, and generates music only after a yes, with its cost.
+  The same prompt before the skill shipped its squirrels as code drew its own, a different animal
+  ([history.md](history.md), 0.9.0).
 
 ## Adding a prompt
 

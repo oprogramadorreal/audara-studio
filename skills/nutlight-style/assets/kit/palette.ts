@@ -23,7 +23,7 @@ export interface ActTokens {
  * Named materials every act defines in its own light, so a painter asks for `l.hex.mat.wood` and the same house,
  * town or planet is right at night, at dusk and at morning. Scenes take colours from these, the act's tokens and
  * accents, never from hex literals of their own (bun run check lints it).
- *   wall, wallAlt   facades and house walls (pages in the town); roof   roof tiles
+ *   wall, wallAlt   facades and house walls; roof   roof tiles
  *   wood            counters, tables, beams;  metal   appliances, steel, frames
  *   foliage, foliageDeep   trees and plants, their shade side;  land   fields seen from high above
  *   water           sea, river, ocean from orbit;  cloud, cloudShade   clouds and smoke, lit and shaded sides
@@ -35,9 +35,9 @@ export type MaterialKey = 'wall' | 'wallAlt' | 'roof' | 'wood' | 'metal' | 'foli
   'cloud' | 'cloudShade' | 'window' | 'lamp' | 'street' | 'traffic' | 'city' | 'moon';
 
 export const ACTS = {
-  /** II · Abrir: the glass lifts; slate and teal giving way to cool daylight from the side; full colour arrives. */
+  /** II · cool day: slate and teal in cool daylight from the side, full colour. */
   II: {
-    name: 'Abrir',
+    name: 'cool day',
     skyTop: '#3D6B7A', skyBottom: '#BCDCD5', horizon: '#F2E9CF',
     ground: '#4E7F79', key: '#F3FAF5', fill: '#7DA6B2', rim: '#F1FFF9', shadow: '#1C3842', haze: '#A6CCC8',
     ink: '#0F2129', paper: '#F4F7F5',
@@ -46,9 +46,9 @@ export const ACTS = {
     light: { angle: -150, elevation: 0.45, rim: 0.55, haze: 0.22 },
     post: { bloom: 0.22, bloomThreshold: 1.1, bloomRadius: 0.55, grain: 0.03, vignette: 0.24, ca: 0.6 },
   },
-  /** III · Relacionar: deep blue night, cyan light, white; the town of pages; a few stars. */
+  /** III · blue night: deep blue night, cyan light, white; a few stars. */
   III: {
-    name: 'Relacionar',
+    name: 'blue night',
     skyTop: '#030817', skyBottom: '#0E2350', horizon: '#2A5C9C',
     ground: '#0A1630', key: '#9FE4FF', fill: '#1C3768', rim: '#A9EEFF', shadow: '#02040D', haze: '#173462',
     ink: '#050B1A', paper: '#E6F0FF',
@@ -57,9 +57,9 @@ export const ACTS = {
     light: { angle: -55, elevation: 0.5, rim: 0.7, haze: 0.3 },
     post: { bloom: 0.45, bloomThreshold: 0.95, bloomRadius: 0.62, grain: 0.035, vignette: 0.34, ca: 0.8 },
   },
-  /** IV · Experimentar: warm yellow, cream and orange daylight; big objects, open compositions. */
+  /** IV · warm day: warm yellow, cream and orange daylight. */
   IV: {
-    name: 'Experimentar',
+    name: 'warm day',
     skyTop: '#86CBE6', skyBottom: '#FFE3A8', horizon: '#FFC46E',
     ground: '#E7A057', key: '#FFE6B0', fill: '#F2B391', rim: '#FFF5DA', shadow: '#8A4930', haze: '#FFDCB0',
     ink: '#3A2217', paper: '#FFF7E8',
@@ -68,9 +68,9 @@ export const ACTS = {
     light: { angle: -35, elevation: 0.55, rim: 0.6, haze: 0.2 },
     post: { bloom: 0.3, bloomThreshold: 1.05, bloomRadius: 0.6, grain: 0.03, vignette: 0.2, ca: 0.6 },
   },
-  /** V · Duvidar: dusk blue-violet to night; a study lamp; the town fogging over. */
+  /** V · dusk: blue-violet to night under a lamp's warm key. */
   V: {
-    name: 'Duvidar',
+    name: 'dusk',
     skyTop: '#14123A', skyBottom: '#5A4E8E', horizon: '#C98AA0',
     ground: '#221E46', key: '#FFC07A', fill: '#4B4E8E', rim: '#FFDAA8', shadow: '#0B0A20', haze: '#7C74AE',
     ink: '#0E0C22', paper: '#F1ECF6',
@@ -79,9 +79,9 @@ export const ACTS = {
     light: { angle: -120, elevation: 0.4, rim: 0.6, haze: 0.4 },
     post: { bloom: 0.4, bloomThreshold: 1.0, bloomRadius: 0.6, grain: 0.04, vignette: 0.4, ca: 0.8 },
   },
-  /** VI · Construir: night sky, then space; indigo, a warm sun on a planet's rim, blue shadows. */
+  /** VI · space: night sky and space; indigo, a warm sun on a planet's rim, blue shadows. */
   VI: {
-    name: 'Construir',
+    name: 'space',
     skyTop: '#01020A', skyBottom: '#0A1340', horizon: '#3A6EE0',
     ground: '#0C1A4A', key: '#FFD08A', fill: '#2A4DB0', rim: '#FFE3B2', shadow: '#040A26', haze: '#13245E',
     ink: '#03040C', paper: '#EAF0FF',
@@ -95,9 +95,9 @@ export const ACTS = {
 export type ActKey = keyof typeof ACTS;
 
 /**
- * The thread's colours (one luminous line through the film; its colour is its job). `verify` is the drafting red
+ * The thread's colours (a luminous line through a video; its colour is its job). `verify` is the drafting red
  * (PALETTE.red) as light, for a line drawn on a dark ground; on paper or a light ground use `verifyInk` (the red
- * itself). `link`: a hyperlink, a road between pages. `route`: a warm gold route.
+ * itself). `link`: a link, a road between places. `route`: a warm gold route.
  * `path`: a trajectory or an orbit drawn from a law.
  */
 export const THREAD = {
@@ -157,7 +157,7 @@ export interface SettingPalette {
   charRim: string;
 }
 
-/** Night: the film's constant (: reference 03, 05, 08 — the same world more LUMINOUS: the
+/** Night: the style's constant (references 03, 05, 08 — the same world more LUMINOUS: the
  * mid values saturated cobalt and indigo instead of murky navy, far layers sinking into a bright azure haze, a cream
  * moon; near-black kept for the foreground silhouettes: leafNear, leafTeal, rackGroove, structDeep, roofEdge, chair).
  * Its VALUE STRUCTURE (the grade): the atmosphere (sky*, haze, cloud*, towerFar, towerHaze, hubBg) stays
