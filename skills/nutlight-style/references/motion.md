@@ -17,7 +17,8 @@ own words on motion are in `assets/references/README.md`.
 ## Acting
 
 - Characters are always alive: breathing, blinks (seeded per character, so they don't blink together), ear
-  twitches, small shifts of gaze, the tail swaying as one rounded form. A frozen character reads as a cut-out.
+  twitches, small shifts of gaze, the tail swaying as one rounded form (the kit's `alive(pose, t, seed)`). A
+  frozen character reads as a cut-out.
 - A pose change starts and ends at rest, and its parts overlap: the head leads, then the arm. A head turn
   passes through its in-between view, revealing the face's volume.
 - Gestures are clear and economical: one point, one touch, one shrug, each meaning something.
@@ -55,8 +56,10 @@ worked:
   so inside and outside move as one; or an iris that opens from a lit thing, never a dark disc;
 - **a crossfade,** where nothing in the picture can carry it.
 
-Take the opening's position from the object's geometry under the outgoing camera, not from typed screen
-pixels, so it stays right when the camera changes. A big change in the music asks for a change in the
+The kit's camera does each of these: `worldUnder` (iris, rect, wipe, through, fade, and a zoom into a point),
+`handoff` for the shared move across a wipe. Take the opening's position from the object's geometry under the
+outgoing camera (`camProject`, `camRect`), not from typed screen pixels, so it stays right when the camera
+changes. A big change in the music asks for a change in the
 picture at the same moment (references/music.md).
 
 ## Checks

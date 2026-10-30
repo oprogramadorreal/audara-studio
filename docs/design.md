@@ -393,9 +393,9 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   animals that doesn't name it gets code-video's usual open look, and so does every other request.
   "Nutlight" is a made-up word so no ordinary request matches it. "squirrels-style" was considered first,
   but squirrels turn up in requests that aren't asking for this style.
-- **Direction, not a pipeline.** It says what the style asks of each step code-video and soundtrack already
-  take (brief, setup, style frames, STYLE.md, cast, sound, scene briefs, critic, notes) and does none of the
-  work. code-video's and soundtrack's SKILL.md didn't change: they had a few bytes left, and nothing showed
+- **Direction and a kit, not a pipeline.** It says what the style asks of each step code-video and soundtrack
+  already take (brief, setup, style frames, STYLE.md, cast, sound, scene briefs, critic, notes), and its kit
+  draws what a channel's identity can't leave to each run: the squirrels and the stage they live on. code-video's and soundtrack's SKILL.md didn't change: they had a few bytes left, and nothing showed
   they needed more.
   - It isn't a reference pack inside code-video, which would need a pointer in a full SKILL.md, leave the
     music out of soundtrack's sight, and load unreliably by name.
@@ -403,7 +403,8 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
     In the plugin, one commit and one eval run cover both, and one update reaches both tools on every
     machine.
 - **The project carries it.** Scene authors, critics, later sessions and a clone never see the skill.
-  When it's named, the lead copies the reference images and their README into `docs/style/nutlight/`, and
+  When it's named, the lead copies the kit into `src/nutlight/`, the reference images and their README into
+  `docs/style/nutlight/`, and
   writes `docs/STYLE.md` from the style template. STYLE.md opens by naming the style and what defines it,
   and says which reference guides which kind of scene. The music plan goes in the treatment's Sound. The
   style's defaults sit on a "From: Nutlight style" line, apart from the director's Decisions, so a later
@@ -414,12 +415,17 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   it, the style template's Avoid list steps aside for what defines it: navy and teal worlds, glowing screens,
   luminous glass. Brains, robots, circuit boards and code rain stay defaults to avoid unless the subject needs
   them. Each video keeps its own subject, story, settings, cast (names, furs, roles), length and tracks.
-- **The craft is the lessons, not the recipe.** The references keep what cost revisions: one head turned
-  rather than a profile mask on a turned skull, arms as one tapering limb, the tail's curl, contact that lands,
-  restrained expressions, the value ladder and the near-black share, a reach computed from its target, music
-  changes matched by picture changes, clean entrances and joins. They leave out that film's places, its cast's
-  names, its rig code (159 KB, tied to one copy of the engine) and its STYLE.md, which contradicts itself
-  across revisions.
+- **The cast is code; the rest is craft.** The kit (about 480 KB of TypeScript, like code-video's realism kit
+  copied into a project) is that film's squirrel rig and the stage it draws on: one design baked into parts and
+  posed per frame, with breathing, blinks, expressions, reaches that land, the rigs per setting, props,
+  structures and the transitions. A first version shipped words and images only, and its first real run drew a
+  different animal (a ring for a tail, half-lidded eyes): a design that took seven revisions of notes can't be
+  re-derived each time, and a channel needs the same characters in every video. A video casts from it (names,
+  furs, gear) and extends it in the kit's own construction. The references keep the lessons that aren't code: one
+  head turned, arms as one limb, the tail's curl, restrained expressions, the value ladder, music changes matched
+  by picture changes, clean entrances and joins. Left out: that film's places and framings, its cast's names and
+  its STYLE.md, which contradicts itself across revisions. A project's kit is its own copy, so a newer skill
+  never changes how a finished video looks unless the director asks.
 - **Music isn't bundled.** The tracks are licensed to the user, not for redistribution, and shipping them
   would make every video sound the same. The order is the director's library, then generated music after a
   yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses
@@ -952,8 +958,11 @@ audara-studio/
     ├── nutlight-style/               # a house style, loaded when named: direction for the other skills' steps
     │   ├── SKILL.md                  # what defines it, what it asks of each step of code-video, ideas, later
     │   ├── references/               # look.md, motion.md, music.md: the craft and the checks
-    │   └── assets/references/        # the author's eight reference images and README.md, copied into a
-    │                                 # project's docs/style/nutlight/
+    │   ├── assets/references/        # the author's eight reference images and README.md, copied into a
+    │   │                             # project's docs/style/nutlight/
+    │   ├── assets/kit/               # the code kit (squirrels, stage, light, props, camera), copied into a
+    │   │                             # project's src/nutlight/; README.md is its guide
+    │   └── assets/cast-sheet.ts      # a scene that renders a video's cast against references 01 and 02
     ├── youtube-package/              # publishing: three thumbnails with one title, the description, the tags
     │   ├── SKILL.md                  # the pair, the bar, the session's steps and its stop rules
     │   ├── references/art.md         # the pictures: ideas, plates, staging, photos, generation, type, critic

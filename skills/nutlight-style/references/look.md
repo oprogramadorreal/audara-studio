@@ -1,8 +1,9 @@
 # Nutlight: the look
 
 How to make the look in code, and what tends to go wrong. The images and the author's own description are in
-`assets/references/` (in a project, `docs/style/nutlight/`); this file adds the craft that drawing it in the
-engine taught, over seven revisions of a 14.5-minute explainer.
+`assets/references/` (in a project, `docs/style/nutlight/`); the code that draws it is the kit, `assets/kit/` (in
+a project, `src/nutlight/`, with its README). This file adds the craft that drawing it in the engine taught, over
+seven revisions of a 14.5-minute explainer.
 
 Contents: Construction · Light and value · Palette by setting · Depth and composition · The cast · Things and
 technology · Words in the world · STYLE.md for a Nutlight project · Checks
@@ -38,16 +39,17 @@ technology · Words in the world · STYLE.md for a Nutlight project · Checks
   of it. An interior is never an even fill.
 - Unlit is a colour (a dark teal for an LED that is off), never the lit colour times zero, which draws
   black. Shadows mix toward the setting's deep colour, never toward black.
-- One light rig per setting in `src/look.ts`: its key, rim, haze and post, and every named colour under that
-  light (a small `rig('dusk')` helper you write there, say). Scenes ask for colours by role and never type a
-  hex, so relighting a setting or a whole stretch is one change. Notes asked for relit stretches more than
-  once.
+- One light rig per setting: the kit's `rig('dusk')` gives its key, rim, haze and post, and every named colour
+  under that light. Scenes ask for colours by role (`R.c.wallLit`) and never type a hex, so relighting a setting
+  or a whole stretch is one change (`mixRig` between two). Notes asked for relit stretches more than once.
 
 ## Palette by setting
 
-Sample the colours from the reference that guides the setting, measured rather than remembered, and adjust
-on rendered stills (the tone shoulder softens saturated fields: references/style-template.md in code-video).
-The families: computing interiors in ink-navy, indigo, charcoal and teal with cyan light and amber activity;
+The kit's rigs cover the references' settings (night interiors and cities, a computing hall, morning, dusk, a
+dark sunset, golden hour, a golden hall, a vaulted archive). A new setting gets a palette in the kit's
+`palette.ts`, spread from the nearest and sampled from the reference that guides it, measured rather than
+remembered, and adjusted on rendered stills (the tone shoulder softens saturated fields:
+references/style-template.md in code-video). The families: computing interiors in ink-navy, indigo, charcoal and teal with cyan light and amber activity;
 warm domestic interiors in honey and wood under lamps; golden laboratories in champagne, amber, graphite and
 ivory; dusk in honey, orange, peach, pink and violet; blue cities in cyan, periwinkle, cobalt and midnight.
 A setting the references don't show gets its own palette in the same spirit: warm characters against a
@@ -72,15 +74,16 @@ colour to its meaning.
 
 ## The cast
 
-Every character is a squirrel of one design; each video casts its own names, fur, roles and gear. Distinct
-furs (amber, coral, tan, grey, chestnut) and gear (a cap, glasses, a suit) tell characters apart.
-Background characters can be silhouettes under the local light with a warm rim.
+Every character is the kit's squirrel (`src/nutlight/squirrel.ts`); each video casts its own names, fur, roles
+and gear. Distinct furs (`FUR`: amber, coral, tan, chestnut, grey, golden, or a new one) and gear (a cap,
+glasses, a suit) tell characters apart. Background characters can be silhouettes under the local light with a
+warm rim (`silhouette`). A squirrel drawn anew, even from these references, came out a different animal in the
+first run without the kit, and would differ again in the next video.
 
-The style frames already draw the cast, so build it from the first frame as one shared module the scenes
-pose (`scenes/_squirrel.ts` or `src/`). Before scene authors start, render its sheet: the turnaround, the
-expressions, the arms in the poses the scenes need, at the references' size and at a wide shot's. Judge each
-view first as a solid silhouette beside 01 and 02, then with light and detail. The qualities that keep it on
-model, and what went wrong without them:
+Before scene authors start, render the cast sheet (`assets/cast-sheet.ts`, with this video's cast) at the
+references' size and at a wide shot's. The kit already draws the qualities below. They are the checks for
+anything added to it (a fur, gear, a pose, a view) and for every critic round. Judge first as a solid
+silhouette beside 01 and 02, then with light and detail. What went wrong without each:
 
 - **Proportions,** as 01 and 02 show them: a big round head about as wide as the body, sitting low into the
   shoulders; a compact pear body with a long cream belly and broad hind paws; a tail plume about as tall as the
@@ -133,7 +136,7 @@ Write it with code-video's `references/style-template.md`, filled from this styl
 - A line "From: Nutlight style, <date>" for the defaults taken from here, kept apart from Decisions, which hold
   only the director's words.
 - The palette as rigs per setting, sampled from the references; glow keys by role; the value ladder.
-- The cast table for this video: name, fur, role, gear. Then the module that draws them.
+- The cast table for this video: name, fur, role, gear, all drawn by `src/nutlight/`.
 - The references mapped to this video's kinds of scene ("the archive: 03's depth and 06's light"), so each
   scene brief can name the image to hold its stills against.
 - Avoid: the template's list, with the style's own exceptions: navy, teal and amber worlds, glowing screens,
