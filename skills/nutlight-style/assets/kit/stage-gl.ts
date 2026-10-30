@@ -427,7 +427,8 @@ export function planetPass() {
     // direction, the AA widths
     uniform vec2 pc; uniform float invR, r, atm, invAtm, soft, invSoft2, bandK, craterK, seed, ringIn, ringOut, ringInvTilt, ringK, alpha, rimK, glowK, invAA, invAAr;
     uniform vec3 L3, cDay, cDay2, cNight, cAtm, cWarm, cRing; uniform vec2 ringCS, Lxy;
-    uniform float rimFloor, glowFloor, nightAtm;
+    uniform float rimFloor, glowFloor, nightAtm; uniform vec4 clip;
+    ${CLIP_GLSL}
     // the surface (surfK > 0): continents, oceans and clouds on the sphere (in its own frame, rotM), coastal city
     // lights on the night side, a hot cluster, the sun's glint on the oceans (glintH: the half vector, from the CPU)
     uniform float surfK, landLevel, surfScale, cloudK, cloudScale, cityK, cityScale, hotK, hotR2inv, glintK, pxCell;
@@ -541,8 +542,9 @@ export function planetPass() {
         body = vec4(col * cov, cov);
       }
       vec4 c = over(ringAt(p, 1.0), over(body, over(glow, ringAt(p, 0.0) * (1.0 - cov))));
-      fragColor = c * alpha;
+      fragColor = c * (alpha * clipMask(vPx, clip));
     }`, {
+    clip: { value: new THREE.Vector4() },
     rimFloor: f1(0.03), glowFloor: f1(0.05), nightAtm: f1(0.12),
     fieldK: f1(), fieldScale: f1(300), roadW: f1(0.02), riverK: f1(), riverW: f1(0.01), hotLand: f1(), speckK: f1(), cField: v3(), cRoad: v3(), cSpeck: v3(),
     surfK: f1(), landLevel: f1(0.05), surfScale: f1(1.6), cloudK: f1(), cloudScale: f1(2.2), cityK: f1(), cityScale: f1(60), hotK: f1(), hotR2inv: f1(400), glintK: f1(), pxCell: f1(10),

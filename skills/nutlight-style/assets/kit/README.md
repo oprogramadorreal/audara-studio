@@ -12,14 +12,14 @@ It runs on code-video's engine: scenes are the engine's `Scene`s and everything 
 ```ts
 import type * as THREE from 'three';
 import { Scene, type Frame } from '../../../src/engine/scene';
-import { Stage, rig, Squirrel, CAST, POSE, alive, typing, camKeys, cam, worldUnder, paintPottedPlant, bake } from '../../../src/nutlight';
+import { Stage, rig, Squirrel, CAST, POSE, alive, typing, camKeys, cam, worldUnder, paintPottedPlant, bakeAt } from '../../../src/nutlight';
 
 const R = rig('cabin');                           // the location's light: R.c.* colours, R.fur, R.gear
 export default class Desk extends Scene {
   override handlesTransition = true;              // when it composites the previous scene (worldUnder)
   st = new Stage(this.ctx, R);                    // FIRST field: what is baked from here on is this stage's
   pip = new Squirrel({ ...CAST.amber, name: 'Pip', gear: { cap: true } });
-  plant = bake(260, 420, (c) => paintPottedPlant(c, R, 1.2), { anchor: [0.5, 1] });   // painted once
+  plant = bakeAt(270, 260, 100, 250, (c) => paintPottedPlant(c, R, 1.2));   // painted once, its origin (the pot's foot) at 100, 250
   override dispose() { this.st.dispose(); }
   override render(f: Frame, out: THREE.WebGLRenderTarget) {
     const st = this.st, t = f.t, t0 = this.ctx.words.get('drawer').start;   // times from the words
@@ -62,11 +62,13 @@ export default class Desk extends Scene {
   `hop(p, t, t0)`, `typing(p, t, k)`.
 - `alive(p, t, seed)`: breathing, blinks, tail sway, ear twitches. Always: nothing on screen is frozen.
 - `withPose(p, {...})`, `mixPose(a, b, k)`, `poseKeys(t, [[t, pose], …], blend)`: a pose change starts and ends at
-  rest; `headTurn()` passes the head through its 60° in-between.
+  rest; `headTurn()` passes the head through its 60° in-between; a paw moves into and out of a reach along the way.
+  From the front, a forearm turned straight at us blends its paw's direction fast, so key a change of pose at
+  three-quarter or in profile when it's close and big.
 - `express(p, name, k)`, `exprKeys(t, [[t, name], …])`, `EXPR`: `neutral smile delighted surprised worried focused
   skeptical thinking sad determined`. Most moments need 0.4-0.8 of one, held, changing on a beat of the story.
-- Cause and effect: `sq.reach(x, y, wx, wy, o, 'N' | 'F', pose)` puts a paw on a target or warns that it falls
-  short; `sq.standFor(wx, wy, groundY, o, pose)` places the character so the paw arrives; `sq.pointAt(…)` aims an
+- Cause and effect: `sq.reach(x, y, wx, wy, o, 'N' | 'F', pose)` puts a paw on a target or says by how much it
+  misses (too far, or too close to the shoulder); `sq.standFor(wx, wy, groundY, o, pose)` places the character so the paw arrives; `sq.pointAt(…)` aims an
   arm at something out of reach; `sq.joints(…)` gives the head, eye, nose, paws, tail top; `hold` carries a prop.
 - Background characters: `silhouette: { color, rim, tailRim, k }`.
 

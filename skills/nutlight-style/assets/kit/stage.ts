@@ -572,9 +572,10 @@ export class Stage implements ArtOwner {
     const p = POOLS.planet ?? (POOLS.planet = planetPass()), u = p.u, l = this.look;
     const [px, py, s] = this.proj(x, y, o.depth ?? 1, o.screen);
     const R = r * s, atm = o.atm ?? 0.08, ext = R * Math.max(1 + atm * 5, o.ring ? o.ring.outer * 1.05 : 0);
-    if (px + ext < 0 || px - ext > W || py + ext < 0 || py - ext > H) return;
+    if (px + ext < 0 || px - ext > W || py + ext < 0 || py - ext > H || this.culledByClip(px, py, ext, o)) return;
     const set3 = (k: string, c: RGB) => (u[k]!.value as THREE.Vector3).set(c[0], c[1], c[2]);
     (u.pc!.value as THREE.Vector2).set(px, py); u.invR!.value = 1 / R; u.r!.value = R;
+    const cl = this.clipOf(o); (u.clip!.value as THREE.Vector4).set(cl[0], cl[1], cl[2], cl[3]);
     const soft = Math.max(1e-3, o.soft ?? 0.14);
     u.atm!.value = atm; u.invAtm!.value = 1 / Math.max(atm, 1e-4); u.soft!.value = soft; u.invSoft2!.value = 1 / (2 * soft);
     u.invAA!.value = R * SCALE; u.invAAr!.value = (R * SCALE) / 3; // one physical px (and 1.5 for the rings' two edges)
