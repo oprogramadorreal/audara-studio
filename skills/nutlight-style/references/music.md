@@ -54,15 +54,18 @@ labels in it stay provisional until someone has listened.
 - **A cue sheet first:** for each stretch of the story, the track, the bars used, where its turns land
   (anchored to words in `words.json` or to picture cues) and why. Put it in the treatment's Sound and show it
   to the director with the rest of the brief.
-- **Cuts** fall on the track's own downbeats with short equal-power crossfades (about 30-60 ms). Its bars play
-  as they are, without stretching. A cue ends on its own final hit or rings out with a tail rather than being
-  chopped mid-phrase. Within one track, a jump from one section to another is a cut like any other, on a
-  downbeat, with the phrase in mind.
-- **Entrances:** a new track comes in soft and rises, starting with its scene: neither leaving a gap after
-  the transition nor running ahead of the line it belongs to. Late, early, too loud and a gap were each a
-  separate note.
+- **Cuts and joins** follow the music's phrasing: a downbeat or a phrase end with a short equal-power
+  crossfade (30-60 ms worked) is the usual join, and a pickup, a prelap or a longer overlap is fine where the
+  phrase asks for it. A cue ends on its own final hit or rings out with a tail rather than being chopped
+  mid-phrase. A jump inside one track is a join like any other.
+- **Entrances** neither leave a gap after the transition nor run ahead of the line they belong to, and don't
+  arrive too loud; coming in soft and rising often works. Late, early, too loud and a gap were each a separate
+  note.
 - **Keep the arrangement as a script beside the audio** (`videos/<video>/music/arrange.py`, run with uv), with
   times taken from word and picture anchors and never typed. A re-paced voice then moves every cue with it.
+  Copy the tracks it uses into the project (`videos/<video>/music/tracks/`) and read them by relative paths, so
+  it rebuilds on another machine; whether they may go in a shared repository is the licence's question
+  (SOURCES.md says, and video-repo asks).
   It writes one music file, which `mix.py` takes as its music with `under_voice`. `beats.py` on that file
   gives the scenes its grid when the picture syncs to the music.
 - **Retime the picture to the music** where an action should land on a hit, not only the music to the picture.
@@ -84,7 +87,7 @@ listen to them in the preview, and plainly that nobody has listened yet when tha
 
 Before the hand-off:
 - every entrance: no gap, not early, not late, not too loud;
-- every join: on a downbeat, nothing chopped mid-phrase, no click;
+- every join: with the music's phrasing, nothing chopped mid-phrase, no click;
 - every big music change has a change in the picture;
 - the voice stays clear over the music;
 - the outro is music-led and resolves.

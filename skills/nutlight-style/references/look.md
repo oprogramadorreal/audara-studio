@@ -28,8 +28,9 @@ technology · Words in the world · STYLE.md for a Nutlight project · Checks
   before any glow. A lit edge is a thin line only where the light falls, never a halo round a silhouette.
 - A value ladder, darkest to brightest: near-black (foreground silhouettes, gaps, crevices); dark (shadow
   faces); mid (front faces in the light); light (top faces turned to the key); lights (lamps, screens, the
-  action's peak). Measured on the references, 22-32% of a night frame is near-black (luminance under 0.06).
-  A night frame without its near-black looks washed out, and one that is all near-black looks murky.
+  action's peak). To check how dark, measure the share of near-black pixels on the reference that guides the
+  setting and on a rendered still the same way, and keep them close. A dark frame without its near-blacks
+  looks washed out, and one that is all near-black looks murky.
 - The brightest light in the frame belongs to the action: the thing being explained, touched or changed.
   Secondary lights (conduits, distant windows, idle screens) stay a step under it. Matte things stay matte
   and under the bloom threshold, while screens, lamps and signals glow.
@@ -38,8 +39,9 @@ technology · Words in the world · STYLE.md for a Nutlight project · Checks
 - Unlit is a colour (a dark teal for an LED that is off), never the lit colour times zero, which draws
   black. Shadows mix toward the setting's deep colour, never toward black.
 - One light rig per setting in `src/look.ts`: its key, rim, haze and post, and every named colour under that
-  light. Scenes ask for colours by role (`rig('dusk').c.wallLit`) and never type a hex, so relighting a
-  setting or a whole stretch is one change. Revision notes asked for exactly that more than once.
+  light (a small `rig('dusk')` helper you write there, say). Scenes ask for colours by role and never type a
+  hex, so relighting a setting or a whole stretch is one change. Notes asked for relit stretches more than
+  once.
 
 ## Palette by setting
 
@@ -74,13 +76,15 @@ Every character is a squirrel of one design; each video casts its own names, fur
 furs (amber, coral, tan, grey, chestnut) and gear (a cap, glasses, a suit) tell characters apart.
 Background characters can be silhouettes under the local light with a warm rim.
 
-Build the cast once, as a shared module the scenes pose (`scenes/_squirrel.ts` or `src/`), before the
-scenes. Render a sheet first: the turnaround, the expressions, the arms in every pose the scenes need, at the
-references' size and at a wide shot's. Judge each view first as a solid silhouette beside 01 and 02, then
-with light and detail. The qualities that keep it on model, and what went wrong without them:
+The style frames already draw the cast, so build it from the first frame as one shared module the scenes
+pose (`scenes/_squirrel.ts` or `src/`). Before scene authors start, render its sheet: the turnaround, the
+expressions, the arms in the poses the scenes need, at the references' size and at a wide shot's. Judge each
+view first as a solid silhouette beside 01 and 02, then with light and detail. The qualities that keep it on
+model, and what went wrong without them:
 
-- **Proportions:** the head is the biggest mass, round and sitting low into the shoulders; the tail plume is a
-  little smaller than the head; the body is a chubby pear no wider than the head.
+- **Proportions,** as 01 and 02 show them: a big round head about as wide as the body, sitting low into the
+  shoulders; a compact pear body with a long cream belly and broad hind paws; a tail plume about as tall as the
+  whole figure and wider than the torso, rising behind one side.
 - **One head, turned.** Front, three-quarter and profile are one head seen from different angles, every
   feature at its place on the skull. A profile's mask pasted on a turned skull read as a raccoon. A head
   turn passes through an in-between view rather than snapping.
@@ -92,10 +96,10 @@ with light and detail. The qualities that keep it on model, and what went wrong 
   arm that acts: a stretched resting arm read as a third leg.
 - **Contact lands:** a paw rests on the keys, touches the node or holds the prop. Compute the reach from the
   target and place the character so it arrives. A reach that falls short, a paw pointing past its subject, or
-  a prop that moves by itself breaks the cause and effect. Pointing is one bent curve with the paw near eye
-  level, never a straight rod or an arm across the muzzle.
-- **Seated at work:** seen from behind at three-quarter, so body, arm and screen read together. The chair back
-  is low and no armrest crosses the working arm, so the furniture never hides the action.
+  a prop that moves by itself breaks the cause and effect. A point reads best as one bent curve aimed at its
+  subject; a straight rod, or an arm across the muzzle, read badly.
+- **Seated at work:** choose a view where body, arm and screen read together (from behind at three-quarter
+  worked), with furniture that never hides the action: a low chair back, no armrest across the working arm.
 - **Expressions:** the eyes, lids, brows and mouth act. Most moments need about half an expression, held and
   changing on a beat of the story. Varied and fitting the moment, never stuck on one smile: a sad crowd
   looks sad. In profile a worried lid arches; a straight slanted one reads as a glare.
@@ -113,8 +117,9 @@ director asks: the style's own images explain technology without them.
 Few words, and they live in the world: a sign, a screen, a label on the machine, a painting on an easel, a
 billboard. Leave out labels that announce a category ("example", "analogy", "thought experiment"): the
 staging should make that clear. A value the story depends on is shown large, on the thing it belongs to.
-When a source carries its own digits or type (a document, a plan, a screenshot), keep them as they are and
-mark them, circled or underlined in the world's pen, rather than setting them again. Where nothing in the
+When a source carries its own digits or type (a document, a plan, a screenshot), keep them as they are rather
+than setting them again, and mark them where the voice names them if that helps (a circle in the world's pen
+worked). Where nothing in the
 world can hold a line (a short disclaimer), a small overlay on a solid band is fine. Sizes and safe areas
 follow code-video's style template.
 
@@ -142,8 +147,9 @@ Write it with code-video's `references/style-template.md`, filled from this styl
 
 On stills beside the reference that guides each scene, before scenes go out and again in critic rounds:
 - each character's silhouette against 01 and 02; the same character on model in every view and scene;
-- night frames keep their near-black share; the peak light is on the action;
+- dark frames keep their reference's near-black share; the peak light is on the action;
 - three planes, three-quarter forms, gaps and overlaps; no flat ground under a subject;
 - every light sits on its source; nothing appears or vanishes during a camera move; layers overlap the way
   the space says they should;
-- words are in the world, large enough, and none announces a category.
+- words are in the world, or a small overlay where nothing in it can hold them; large enough; none announces
+  a category.

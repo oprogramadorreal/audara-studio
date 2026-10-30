@@ -80,6 +80,10 @@ Other ways in:
   It is lit like a photograph (a physical sky, sunlight and haze, a real lens), for places and things rather
   than people. Bring reference images to match (or ask for generated ones) and give it time: it compares
   its renders with them and iterates, and renders slower than a graphic piece.
+- **A house style:** "a 40-second explainer in the Nutlight style about how a hash table finds a key, music
+  from my tracks in music/". Squirrels act the idea out in a luminous, geometric world, scenes flow into each
+  other, and the score is cut from your own library (or generated, if you say yes to its cost). The style
+  applies only when you name it.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You

@@ -77,7 +77,8 @@ since a run stops at six turns.
 
 nutlight-style's set names the style in ten requests: two in Portuguese, ideas alone (ns-05), a prompt alone
 (ns-09), the music alone (ns-07) and a note inside a project whose `docs/STYLE.md` names it (ns-08, which a
-session learns only from the project's files). Its near-misses ask for squirrels, cute animals, a glowing
+session learns only from the project's files: a probe of discovery, since a run stops at the load and its
+fixture has no cast or references; ns-new-subject's third turn tests the later session's work). Its near-misses ask for squirrels, cute animals, a glowing
 night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
 

@@ -41,8 +41,9 @@ screens and machines. Nothing flips at half the frame rate: no strobes.
 
 ## Transitions: no hard cuts
 
-Plan every boundary in both scenes: the outgoing scene ends in the state the next one opens from. What
-carries it, roughly in order of preference:
+Plan every boundary in both scenes: the outgoing scene ends in the state the next one opens from. Choose
+what carries it by what the moment has, judged by how clearly the viewer follows where they are; some that
+worked:
 
 - **one camera through one world:** both scenes draw the same place, and the camera travels from one to the
   other;
@@ -52,7 +53,7 @@ carries it, roughly in order of preference:
   camera move;
 - **a matched zoom through an opening:** the next scene drawn inside a window, screen or drawer at its scale,
   so inside and outside move as one; or an iris that opens from a lit thing, never a dark disc;
-- **a crossfade,** only where nothing better carries it.
+- **a crossfade,** where nothing in the picture can carry it.
 
 Take the opening's position from the object's geometry under the outgoing camera, not from typed screen
 pixels, so it stays right when the camera changes. A big change in the music asks for a change in the

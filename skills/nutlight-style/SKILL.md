@@ -40,18 +40,22 @@ it). The rest of that list still applies.
 - **Setup.** After init, copy `assets/references/` (eight images and README.md) into the project's
   `docs/style/nutlight/`. Scene authors, critics, later sessions and anyone who clones the project then have
   them without this skill.
-- **Look.** Make two or three style frames of the key moment, all in this style, each a different idea of how
-  to stage it. Compare each side by side with the nearest reference before picking. Then write
+- **Look.** First read `docs/style/nutlight/README.md`, the author's own description of the look and the
+  motion, and look at the images that guide this video's settings. Then make two or three style frames of the
+  key moment, all in this style, each a different idea of how to stage it. Compare each side by side with the
+  nearest reference before picking. Then write
   `docs/STYLE.md` as references/look.md describes, and `src/look.ts` with a light rig for each setting.
-- **Cast.** Before any scene, build the cast as one shared module and render its sheet: turnaround,
-  expressions, arms in the poses the scenes need. Check it against references 01 and 02 (references/look.md,
-  "The cast").
+- **Cast.** The style frames already draw it, so build the cast from the first frame as one shared module.
+  Before scene authors start, render its sheet (turnaround, expressions, arms in the poses the scenes need)
+  and check it against references 01 and 02 (references/look.md, "The cast").
 - **Sound.** Use soundtrack, with references/music.md: library first; generated music only after a yes, with
   its cost.
-- **Build.** Each scene brief names its reference images and the cast module, and gives the full paths of
-  references/look.md and references/motion.md. Hold each scene's stills against its references.
-- **Critic.** Run it as code-video does, its first look as a stranger first. Add the checks at the end of
-  look.md, motion.md and music.md to its prompt.
+- **Build.** Each scene brief names its reference images, `docs/style/nutlight/README.md` and the cast module,
+  and gives the full paths of references/look.md and references/motion.md. Hold each scene's stills against
+  its references.
+- **Critic.** Run it as code-video does, its first look as a stranger first. Then it reads
+  `docs/style/nutlight/README.md` with the treatment and STYLE.md; add the checks at the end of look.md,
+  motion.md and music.md to its prompt.
 - **Direct.** A note that departs from the style wins and goes in Decisions in the director's words; the
   style's defaults never override a decision.
 
@@ -67,5 +71,6 @@ it). The rest of that list still applies.
 - references/motion.md: explaining by doing, acting, camera, transitions, checks.
 - references/music.md: where the music comes from, choosing tracks, building and mixing a score from
   several, checks.
-- assets/references/README.md: the eight images, the author's own description of the look and the motion,
-  and which kinds of scene each image guides.
+- assets/references/README.md (in a project, `docs/style/nutlight/README.md`): the author's own description
+  of the look and the motion, and which kinds of scene each of the eight images guides. Read it before the
+  style frames, and again whenever a scene's look is in doubt.
