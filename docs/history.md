@@ -2892,3 +2892,34 @@ Held poses are unchanged and the cast sheet is pixel-identical, apart from two c
 - the typing squirrel's reaching paws land exactly.
 
 `verify` passes. Codex accepted the result, with the two directions named in the kit README.
+
+### Codex's fourth review of the kit
+
+Codex then reviewed the whole branch against main and found five more defects, again in parts no run had drawn:
+- **`sky()` ignored the clip.** A lens that redraws the world inside its glass calls the scene's own draws, sky
+  first, and the opaque sky cleared the whole frame. `clear()` did the same.
+- **The lens's handle was cut off.** `makeLens` made room on the right while the handle points down-left: at
+  radius 100 its end fell about 31 px outside the texture.
+- **Marks took the light of the moment they flushed.** A lit disc drawn under `withCam`'s 90° roll got the restored
+  camera's light, and adding a flush inside the callback changed how it looked.
+- **`pointAt` with the far arm used the near arm's stretch.** In `point` (reachK 1.75, reachKF 1) its target lay
+  68 units out of the paw's reach.
+- **`unproject` ignored `withMagnify`.** Under a 2× magnifier, (600, 600) projected to (700, 700) and came back as
+  (700, 700).
+
+The fixes, measured on the old kit and the new:
+- The sky takes the stage's clip, blending under one, and its magnifier. `clear()` under a clip draws through it.
+  On the old kit, a second lens's `clear()` painted the whole frame magenta. Now the discs outside both lenses
+  survive, and the sun shows magnified inside the first. The magnifier also reaches the zoom-through transition,
+  whose incoming scene draws under `withMagnify`: its sky was the one draw not scaled into the opening.
+- `makeLens` bakes the box that holds the rim and the handle's end, whichever way the handle points.
+- A batch of marks keeps the light it was drawn under. A change of light, from a camera's roll or a look swapped
+  mid-frame, starts a new batch. The same lit disc, without and with a flush inside the callback, differed by up to
+  143 levels; now by 4, the frame-to-frame grain.
+- `reach()` and `pointAt()` share one rule for an arm's stretch. All nine far-arm targets are now in reach (they
+  missed by 37 to 68); the near arm's are unchanged.
+- `unproject` undoes the magnifier first, and `scaleAt` includes it, as `project` does. A rolled, zoomed camera at
+  depth 2 under a 1.6× magnifier round-trips exactly.
+
+The cast sheet's stills are byte-identical, `verify` passes and the kit typechecks. Codex reviewed the fixes and
+agreed all five are closed, with no new findings.
