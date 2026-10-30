@@ -1720,11 +1720,21 @@ export class Squirrel {
       };
       const w = reach ? clamp(rw) : 0;
       if (w > 0 && w < 1) {
-        // a blend into or out of a reach (mixPose): the arm as its angles put it, moved toward the reach
-        const A = arm(sh, a, null, k, out), B = reached(reach!);
-        const el = lerpP(A.elbow, B.elbow, w), wr = lerpP(A.wrist, B.wrist, w);
-        const a1 = Math.atan2(el[1] - sh[1], el[0] - sh[0]);
-        const a2 = Math.hypot(wr[0] - el[0], wr[1] - el[1]) > 4 * k ? Math.atan2(wr[1] - el[1], wr[0] - el[0]) : a1;
+        // a blend into or out of a reach (mixPose), in the arm's joints: the shoulder's swing, the elbow's bend and the
+        // two lengths (foreshortened from the front) go from where the pose puts them to the reach, so the arm turns
+        // like an arm and never folds to nothing between two opposed forearms. Angles from hanging down, + forward, as
+        // reached() solves them (m mirrors the −x arm from the front). Each is read from a fixed direction, not from
+        // the other end, which moves during the blend: the shoulder from −1.2 (back and down, into the body), so an arm
+        // swings forward and over the top to a reach behind the head; the bend from −2.9 (folded back on itself).
+        const A = arm(sh, a, null, k, out), B = reached(reach!), m = front && out < 0 ? -1 : 1;
+        const ang = (p: Pt, q: Pt) => Math.atan2(m * (q[0] - p[0]), q[1] - p[1]);
+        const from = (x: number, lo: number) => lo + ((((x - lo) % TAU) + TAU) % TAU);
+        const uA = front ? from(ang(sh, A.elbow), -1.2) : a.sh + lean, bA = front ? from(ang(A.elbow, A.wrist) - uA, -2.9) : a.el;
+        const uB = from(ang(sh, B.elbow), -1.2), bB = from(ang(B.elbow, B.wrist) - uB, -2.9);
+        const lA1 = Math.hypot(A.elbow[0] - sh[0], A.elbow[1] - sh[1]), lA2 = Math.hypot(A.wrist[0] - A.elbow[0], A.wrist[1] - A.elbow[1]);
+        const u = lerp(uA, uB, w), v = u + lerp(bA, bB, w), l1 = lerp(lA1, L1, w), l2 = lerp(lA2, L2, w);
+        const el = addP(sh, [m * Math.sin(u) * l1, Math.cos(u) * l1]), wr = addP(el, [m * Math.sin(v) * l2, Math.cos(v) * l2]);
+        const a1 = Math.atan2(Math.cos(u), m * Math.sin(u)), a2 = Math.atan2(Math.cos(v), m * Math.sin(v));
         const hw = lerp(A.hang, 0, w);
         return { sh, elbow: el, wrist: wr, a1, a2, aPaw: front ? lerpAng(a2, Math.PI / 2, hw * (1 - pk) * hangRoom(a2)) : a2, hang: hw, short: B.short };
       }
@@ -1827,7 +1837,8 @@ export class Squirrel {
     const W2 = (q: Pt): Pt => [x + face * q[0] * s, y + q[1] * s];
     // (the paws as drawn: from the front a resting paw hangs from its wrist)
     const aN = R.armN.aPaw;
-    const tipLen = lerp(38, 56, smootherstep(0.25, 0.75, p.pointN)), d = [Math.cos(aN), Math.sin(aN)], df = [Math.cos(R.armF.aPaw), Math.sin(R.armF.aPaw)];
+    // (the tip ends where the paw drawn ends, so it swaps with the art at pointN 0.5; the paw's angle doesn't jump)
+    const tipLen = p.pointN > 0.5 ? 56 : 38, d = [Math.cos(aN), Math.sin(aN)], df = [Math.cos(R.armF.aPaw), Math.sin(R.armF.aPaw)];
     const F = this.facePts(p, view, R), tv = view === 'back' ? 'back' : 'side';
     return {
       head: W2(R.onHead([20 * (view === 'front' ? 0 : 1), -100])), eye: W2(F.eye), nose: W2(F.nose), mouth: W2(F.mouth), neck: W2(R.neck),
