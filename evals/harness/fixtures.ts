@@ -14,6 +14,11 @@ const ff = (args: string[]) => {
 
 // A 24 s "song" at 120 BPM: kick on 1 and 3, a hat on every eighth, a bass note per bar.
 const SONG = "aevalsrc='0.5*sin(2*PI*(55+30*exp(-30*mod(t,1)))*t)*exp(-8*mod(t,1))+0.12*(random(0)-0.5)*exp(-60*mod(t,0.25))+0.25*sin(2*PI*110*t)*exp(-2*mod(t,2))':s=44100:d=24";
+// A "library track" at a given tempo: the song above, slower or faster, with its own bass note.
+const SONG_AT = (bpm: number, sec: number, bass: number) => {
+  const b = 60 / bpm;
+  return `aevalsrc='0.5*sin(2*PI*(55+30*exp(-30*mod(t,${2 * b})))*t)*exp(-8*mod(t,${2 * b}))+0.12*(random(0)-0.5)*exp(-60*mod(t,${b / 2}))+0.25*sin(2*PI*${bass}*t)*exp(-2*mod(t,${4 * b}))':s=44100:d=${sec}`;
+};
 const TONE = (sec: number) => `aevalsrc='0.3*sin(2*PI*220*t)*(0.6+0.4*sin(2*PI*0.5*t))':s=44100:d=${sec}`;
 const VOICE = (sec: number) => `aevalsrc='0.4*sin(2*PI*180*t)*sin(2*PI*3*t)*gt(sin(2*PI*0.4*t),-0.3)':s=24000:d=${sec}`;
 
@@ -32,6 +37,10 @@ const TEXT: Record<string, string> = {
   // A finished audara-studio project's video settings, for trigger requests made inside one (placed with "=>"
   // in videos/promo/, beside init's AGENTS.md and CLAUDE.md, below); task cases copy a real project instead.
   'video.json': '{ "title": "Promo", "size": [1920, 1080], "fps": 60, "audio": "audio/song.mp3" }\n',
+  // A short article outside computing (honeybee swarms, after Thomas Seeley's research) and a Nutlight project's
+  // STYLE.md, for nutlight-style's trigger set and its task case.
+  'article.md': '# How a swarm of bees chooses a home\n\nIn late spring a crowded colony splits. The old queen leaves with thousands of workers, and the swarm hangs from a branch in a cluster while a few hundred scouts search the countryside for a new home.\n\nA good home is a hollow of about 40 litres, high off the ground, with a small entrance. Each scout that finds a candidate flies back and dances on the surface of the cluster. The waggle dance points to the site, and a better site gets a longer, livelier dance, so more scouts go to see it. Every scout dances a little less each time it returns, so support for a mediocre site fades on its own, and scouts for one site head-butt dancers for another.\n\nNo bee compares the sites. The choice is made at the sites themselves: when about twenty or thirty scouts are at the same hollow at once, they fly back and start piping, a high buzz that tells the swarm to warm its flight muscles. Within an hour the whole cloud lifts off and follows the scouts to its new home.\n\nThe swarm almost always picks the best site on offer, and it does it without a leader: a quorum of independent scouts, each of them a little forgetful.\n',
+  'nutlight-STYLE.md': '# Style: Nutlight (squirrel characters in luminous geometric worlds), references in `docs/style/nutlight/`\n\nFrom: Nutlight style, 2026-10-30.\n\n## Cast\n| Name | Fur | Role |\n|---|---|---|\n| Pip | amber | the scout who finds the hollow |\n| Rue | coral | the one who counts the scouts |\n\nThe cast is drawn by `scenes/_squirrel.ts`.\n\n## Decisions\n- 2026-10-30: "Keep the meadow at dusk."\n',
   'logo.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="70" fill="none" stroke="#222" stroke-width="12"/><path d="M60 130 L100 60 L140 130 Z" fill="#222"/></svg>\n',
 };
 
@@ -78,6 +87,9 @@ const MEDIA: Record<string, string[]> = {
   'interview.mp4': ['-f', 'lavfi', '-i', 'testsrc2=s=1280x720:r=30:d=20', '-f', 'lavfi', '-i', VOICE(20), '-shortest', '-pix_fmt', 'yuv420p'],
   'vlog.mp4': ['-f', 'lavfi', '-i', 'testsrc2=s=1280x720:r=30:d=8', '-f', 'lavfi', '-i', TONE(8), '-shortest', '-pix_fmt', 'yuv420p'],
   'wedding.mp4': ['-f', 'lavfi', '-i', 'testsrc2=s=1280x720:r=30:d=30', '-f', 'lavfi', '-i', TONE(30), '-shortest', '-pix_fmt', 'yuv420p'],
+  'library-calm.mp3': ['-f', 'lavfi', '-i', SONG_AT(84, 90, 98), '-c:a', 'libmp3lame', '-b:a', '192k'],
+  'library-bright.mp3': ['-f', 'lavfi', '-i', SONG_AT(112, 90, 131), '-c:a', 'libmp3lame', '-b:a', '192k'],
+  'library-drive.mp3': ['-f', 'lavfi', '-i', SONG_AT(128, 80, 110), '-c:a', 'libmp3lame', '-b:a', '192k'],
   'clip.mov': ['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=30:d=6', '-pix_fmt', 'yuv420p'],
   'brand.png': ['-f', 'lavfi', '-i', 'color=c=0x1d3557:s=600x200,drawbox=x=400:y=0:w=200:h=200:color=0xe63946:t=fill,drawbox=x=200:y=0:w=200:h=200:color=0xf1faee:t=fill', '-frames:v', '1'],
 };

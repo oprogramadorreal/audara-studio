@@ -189,6 +189,8 @@ what a later session needs:
 
 - the videos in the project, and where each one's treatment is;
 - the shared style and the engine guide;
+- which skill does what, the Nutlight style's included: the director names it, and its references sit in
+  `docs/style/nutlight/`;
 - the preview and render commands;
 - the f(t) rule, in one line;
 - when the project has copied the realism kit (`src/realism/`), that it is there and the rules in its
@@ -379,6 +381,55 @@ word timings, offered rather than made; and a second image script for Google's N
 cheaper per image, better at keeping one face across three options, but a new script and key, while
 `imagegen.py`'s GPT Image 2.5 led Artificial Analysis's rankings for generating and editing in October 2026).
 
+### A house style you can name: Nutlight
+
+The user's channel settled on a look over seven revisions of a 14.5-minute explainer. Squirrels act out the
+ideas in luminous geometric worlds, scenes flow into each other with no hard cuts, and the music is cut
+from the user's own library. They wanted it repeatable across many videos without a session reading the old
+project (history.md, 0.9.0). `nutlight-style` holds it:
+
+- **A skill that loads when named, not a default.** Its description asks for the style by name ("in the
+  Nutlight style", "estilo Nutlight", or a project whose STYLE.md names it). A video about squirrels or cute
+  animals that doesn't name it gets code-video's usual open look, and so does every other request.
+  "Nutlight" is a made-up word so no ordinary request matches it. "squirrels-style" was considered first,
+  but squirrels turn up in requests that aren't asking for this style.
+- **Direction, not a pipeline.** It says what the style asks of each step code-video and soundtrack already
+  take (brief, setup, style frames, STYLE.md, cast, sound, scene briefs, critic, notes) and does none of the
+  work. code-video's and soundtrack's SKILL.md didn't change: they had a few bytes left, and nothing showed
+  they needed more.
+  - It isn't a reference pack inside code-video, which would need a pointer in a full SKILL.md, leave the
+    music out of soundtrack's sight, and load unreliably by name.
+  - It isn't a personal skill outside the plugin, which works but drifts when the steps it names change.
+    In the plugin, one commit and one eval run cover both, and one update reaches both tools on every
+    machine.
+- **The project carries it.** Scene authors, critics, later sessions and a clone never see the skill.
+  When it's named, the lead copies the reference images and their README into `docs/style/nutlight/`, and
+  writes `docs/STYLE.md` from the style template. STYLE.md opens by naming the style and what defines it,
+  and says which reference guides which kind of scene. The music plan goes in the treatment's Sound. The
+  style's defaults sit on a "From: Nutlight style" line, apart from the director's Decisions, so a later
+  note can overrule a default but never the other way round.
+- **What defines it, and what stays open.** Fixed by the style: the construction (geometry, no outlines,
+  soft gradients), the squirrels' design, light with a source and three planes, ideas acted out, words in the
+  world, living motion, transitions through the world, and a library-first score. Since the director named
+  it, the style template's Avoid list steps aside for what defines it: navy and teal worlds, glowing screens,
+  luminous glass. Brains, robots, circuit boards and code rain stay defaults to avoid unless the subject needs
+  them. Each video keeps its own subject, story, settings, cast (names, furs, roles), length and tracks.
+- **The craft is the lessons, not the recipe.** The references keep what cost revisions: one head turned
+  rather than a profile mask on a turned skull, arms as one tapering limb, the tail's curl, contact that lands,
+  restrained expressions, the value ladder and the near-black share, a reach computed from its target, music
+  changes matched by picture changes, clean entrances and joins. They leave out that film's places, its cast's
+  names, its rig code (159 KB, tied to one copy of the engine) and its STYLE.md, which contradicts itself
+  across revisions.
+- **Music isn't bundled.** The tracks are licensed to the user, not for redistribution, and shipping them
+  would make every video sound the same. The order is the director's library, then generated music after a
+  yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses
+  when asked to, says it chose by measurement and offers a `?t=` link to every join. `mix.py` takes one music
+  file, so a score cut from several tracks is assembled by a script in the project. A cue list in `mix.py`
+  waits until runs show how much that assembly costs.
+- **The images are the author's own,** made with ChatGPT's image model and shipped under the plugin's MIT
+  license. They were re-encoded from 16 MB of PNG to 2.5 MB of JPEG, with no difference visible at 2x zoom.
+  They guide the code and never appear in a video.
+
 ## The decision
 
 Build audara-studio as **one repo of Agent Skills around one engine: the pdoom-video engine as a starter
@@ -394,9 +445,10 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has five skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
-for deciding what to make, **`video-repo`** for handing a finished project on and **`youtube-package`** for
-publishing a finished video. `soundtrack` turns a song
+It has six skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
+for deciding what to make, **`video-repo`** for handing a finished project on, **`youtube-package`** for
+publishing a finished video and **`nutlight-style`**, a house style the director can name (see "A house
+style you can name: Nutlight"). `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads, and does the sound of a video made
 elsewhere too (filmed, or from AI video clips). When the user provides an ElevenLabs API
 key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs"). `video-ideas` is
@@ -431,6 +483,8 @@ How the skills could still limit it, and what prevents that:
   pdoom-video palette, tone or motifs. The example's words are placeholders, and the f(t) rule is marked as
   the code's: its sentence once became a showreel's message. Tested example prompts are for people:
   `docs/prompts.md` keeps them, linked from the README, and no skill reads it (history.md, 0.5.0 and 0.8.2).
+  A house style is one look on purpose, so `nutlight-style` loads only when the director names it, and its
+  reference images guide the videos that ask for it and no others (history.md, 0.9.0).
 - **Process overhead on small requests.** The brief scales with the piece: a ten-second loop needs a few
   lines, a music video a full treatment. The lead works the whole piece out before it writes the treatment:
   a showreel's concept was once fixed after 2–3.5K tokens of thought, where the model alone spent 88–118K.
@@ -750,7 +804,7 @@ in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-All five skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All six skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -759,7 +813,7 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - All five stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+  - All six stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own. `video-repo` was the one in question,
     since Anthropic advises manual invocation for workflows with side effects (`/commit`, `/deploy`). It
     stays model-invoked because a repository is something the user asks for in words ("put this in git"),
@@ -769,7 +823,8 @@ they differ, follow the stricter rule. What that means here:
     for Claude Code (a key both `quick_validate.py` scripts reject) and `policy.allow_implicit_invocation:
     false` in `agents/openai.yaml` for Codex.
 - **`name`:** lowercase letters, digits and hyphens; at most 64 characters; the same as the folder name; no
-  "claude" or "anthropic". `code-video`, `soundtrack`, `video-ideas`, `video-repo` and `youtube-package` pass.
+  "claude" or "anthropic". `code-video`, `soundtrack`, `video-ideas`, `video-repo`, `youtube-package` and
+  `nutlight-style` pass.
 - **`description`:** at most 1,024 characters, in the third person.
   - **Content:** what the skill does and when to use it, the main use case first, in the words users
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
@@ -894,6 +949,11 @@ audara-studio/
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
     │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, e-mail addresses
+    ├── nutlight-style/               # a house style, loaded when named: direction for the other skills' steps
+    │   ├── SKILL.md                  # what defines it, what it asks of each step of code-video, ideas, later
+    │   ├── references/               # look.md, motion.md, music.md: the craft and the checks
+    │   └── assets/references/        # the author's eight reference images and README.md, copied into a
+    │                                 # project's docs/style/nutlight/
     ├── youtube-package/              # publishing: three thumbnails with one title, the description, the tags
     │   ├── SKILL.md                  # the pair, the bar, the session's steps and its stop rules
     │   ├── references/art.md         # the pictures: ideas, plates, staging, photos, generation, type, critic
@@ -945,7 +1005,8 @@ the formats the engine's `audio.ts` and `words.ts` read.
 ├── scripts/font-instances.py    # static instances of a variable font, for a typeface a project adds
 ├── public/fonts/                # the shared fonts, with their licenses
 ├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look;
-│                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package
+│                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package;
+│                                # docs/style/nutlight/, the style's references, when a video names it
 ├── videos/<name>/
 │   ├── video.json               # title, size, fps, and its audio (or a duration)
 │   ├── TREATMENT.md             # this video's idea, storyboard, scene briefs and Decisions

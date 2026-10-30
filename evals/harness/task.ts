@@ -87,6 +87,7 @@ if (CASE.setup?.from) cpSync(path.resolve(CASE_DIR, expand(CASE.setup.from)), WO
 for (const f of CASE.setup?.files ?? []) {
   const [src, as] = f.includes('=>') ? f.split('=>').map((x) => x.trim()) as [string, string] : [f, path.basename(f)];
   const from = expand(src);
+  mkdirSync(path.dirname(path.join(WORK, as)), { recursive: true }); // (a fixture placed in a folder, music/ say)
   copyFileSync(path.isAbsolute(from) ? from : existsSync(path.join(CASE_DIR, from)) ? path.join(CASE_DIR, from) : path.join(fixtures, from), path.join(WORK, as));
 }
 if (CASE.setup?.project === 'init') {

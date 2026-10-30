@@ -5,7 +5,7 @@ a script or nothing at all: what you decide is followed exactly, and what you le
 aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
 ("at 0:23 the title should land on the snare") and renders the MP4.
 
-audara-studio is a plugin for Claude Code and Codex with five skills:
+audara-studio is a plugin for Claude Code and Codex with six skills:
 
 - **code-video**: music videos, lyric videos, motion graphics, explainers, title cards and loops, drawn
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
@@ -24,6 +24,9 @@ audara-studio is a plugin for Claude Code and Codex with five skills:
   YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail; one option
   borrows the layout of a video on the same subject that did unusually well. Each option is judged small, in a
   mock of YouTube's feed, beside the title.
+- **nutlight-style**: a house style you can name, for explainers: squirrels acting out the ideas in luminous
+  geometric worlds, scenes that flow into each other and music cut from your own library. Ask for a video
+  "in the Nutlight style" and the other skills make it in that look; it stays out of everything else.
 
 ## Install
 

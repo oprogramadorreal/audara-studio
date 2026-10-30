@@ -1,0 +1,38 @@
+{
+  "id": "ns-new-subject",
+  "skill": "nutlight-style",
+  "setup": {
+    "files": [
+      "article.md",
+      "library-calm.mp3 => music/calm-documentary.mp3",
+      "library-bright.mp3 => music/bright-pizzicato.mp3",
+      "library-drive.mp3 => music/night-drive.mp3"
+    ],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 240,
+  "turns": [
+    {
+      "prompt": "Make a 60-to-90-second explainer in the Nutlight style from article.md, narrated in English. The music comes from my library in music/. No paid voice for now."
+    },
+    {
+      "prompt": "Looks good, go ahead. One thing: when the swarm lifts off, I want a hard cut straight to the new home, no transition there."
+    },
+    {
+      "prompt": "Make the piping moment bigger: the whole swarm should visibly warm up before it lifts off.",
+      "newSession": true
+    }
+  ],
+  "assertions": [
+    "Turn 1 shows a treatment before the first scene file (transcript order) whose Look names the Nutlight style and whose Sound gives a cue plan built from the tracks in music/ (which track where, and what its turns land on); it asks nothing the prompt answers, and nothing is generated or paid (mock-requests.jsonl: no paid=true entries; the narration is a free stand-in such as standin.py's).",
+    "docs/style/nutlight/ holds the skill's eight reference images and its README.md, identical to skills/nutlight-style/assets/references/; docs/STYLE.md names the Nutlight style in its first lines, has a 'From: Nutlight style' line apart from Decisions, maps reference images to this video's kinds of scene, and its Avoid list doesn't count navy or teal worlds, glowing screens or luminous glass against the look.",
+    "The settings come from the article (a branch, hollows, a meadow, the swarm in the air, or the like): none of the reference images' own places (a computing observatory, lunar mission control, a server city, a golden laboratory) appears unless the treatment argues for it from the article (judged on a sheet at 2 fps).",
+    "Every character is a squirrel of one design drawn by one shared module that the scenes import, with a cast sheet still rendered before the scenes (file times); on full-size stills beside references 01 and 02 the head is the biggest mass, the tail a big curled plume, the face and belly cream, with no outlines, and each character stays on model from scene to scene.",
+    "The look holds up beside the references on full-size stills at the treatment's key moments: three planes (a dark framing foreground, the action, hazier far layers), warm characters against a cooler or darker world, light from visible sources, and the article's ideas acted out by characters or things rather than shown as slides or captions; any words on screen live in the world (a sign, a mark on a thing) and none announces a category ('example', 'analogy').",
+    "Every scene boundary but the lift-off is carried (a camera move through the world, an object carried over, a wipe by something in the picture, a zoom through an opening, or at worst a crossfade), with no fade to black (frames through each boundary); the lift-off is a hard cut to the new home after turn 2, and TREATMENT.md's Decisions record that note in the director's words.",
+    "The music is cut from the tracks in music/: a script beside the audio (videos/<video>/music/ or the like) assembles it with times taken from word or picture anchors rather than typed seconds, mix.json takes its output as the music, assets/SOURCES.md has a line for every track used, and no music is generated or synthesized in its place.",
+    "The hand-off reply after turn 2 gives a ?t= link to every music entrance and join, says the music was chosen by measurement and that nobody has listened, and gives render.ts verify's result, which passes (run it).",
+    "Turn 3, a new session, reads docs/STYLE.md and docs/style/nutlight/ (its README or images) before its first edit (transcript order); the piping stretch now shows the swarm warming up (stills before and after), verify's changed stretches stay at or next to it, the lift-off is still a hard cut, and the cast is unchanged."
+  ]
+}
