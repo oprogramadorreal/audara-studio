@@ -1,0 +1,24 @@
+{
+  "id": "cv-licence-keeps-facts",
+  "skill": "code-video",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Make a 40-second animated story for my YouTube channel about the Mars Climate Orbiter, lost in 1999 because software from one team gave thrust in pound-force seconds and the team at NASA expected newton-seconds. The orbiter cost about $125 million. Tell it like a fable, with whatever cast you like. Narrate it with a free voice."
+    },
+    {
+      "prompt": "Go ahead."
+    }
+  ],
+  "assertions": [
+    "Never claim names the liberties taken (the fable's cast, a compressed timeline, whatever it simplifies) and the central point they leave true: the craft was lost because two teams used different units.",
+    "A viewer of the video (a grader reading words.json beside the sheet) comes away with the right cause, year and cost; the fable's cast is plainly a fable, and no invented quote, figure or result is presented as NASA's, a company's or a real person's.",
+    "There is no running disclaimer: a label such as \"dramatized\" or \"simplified\" appears at most once on screen, and the words and picture stay free of category labels.",
+    "TREATMENT.md has a Promise line before the first scene file, and the first seconds pay it in the picture, without giving away what the piece holds back."
+  ]
+}

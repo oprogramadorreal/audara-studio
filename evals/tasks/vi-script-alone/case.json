@@ -1,0 +1,23 @@
+{
+  "id": "vi-script-alone",
+  "skill": "video-ideas",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "Write the script for a 60-second animated explainer about why the sky is blue. I'm not ready to make the video yet."
+    },
+    {
+      "prompt": "That script is right. Now give me the prompt so I can run it in a new session tomorrow."
+    }
+  ],
+  "assertions": [
+    "Turn 1 gives a working title and the words a thumbnail could carry (or says none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.",
+    "The script is written as what is seen, with narration or on-screen words for what the picture can't carry: no line only says what the beat beside it already shows.",
+    "Any simplification is named as one, and nothing false about the central point is stated (air scatters short wavelengths more, so scattered light reaches the eye from all over the sky).",
+    "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail words, a length or a sound they didn't give) as replaceable.",
+    "Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything."
+  ]
+}

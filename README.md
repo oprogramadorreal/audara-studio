@@ -14,7 +14,7 @@ audara-studio is a plugin for Claude Code and Codex with six skills:
   word timings, narration and music (with ElevenLabs, asking before spending credits), effects and the mix,
   also for a video made elsewhere (filmed, or from AI video clips).
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
-  one and writes it up as a prompt, without building anything until you ask.
+  one and writes it up as a prompt or a script, without building anything until you ask.
 - **video-repo**: for when you want a project in git, finished or not started yet. It keeps what someone
   else needs to clone it and render the video again, leaves renders and files too big for GitHub out (and
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is

@@ -136,6 +136,7 @@ const cases: Record<string, Case> = {
       'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
       'No cliché from the style template\'s avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.',
       'For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.',
+      'A stream loop needs no promise: the treatment has no Promise line, or says in a line why this one does, and nothing was added to teach a lesson.',
     ],
   },
   // The short-prompt lyric video, word for word as a user typed it in the 2026-10-03 tests (whose videos had
@@ -165,7 +166,7 @@ const cases: Record<string, Case> = {
     assertions: [
       'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
       'With the skills, turn 1 ends in the preview, its reply offering the render, and no full render (not a --draft) runs before turn 2 asks for the MP4 (the transcripts).',
-      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
+      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails, the working title and thumbnail words its prompt gives aside), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
       'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
       'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',
@@ -317,6 +318,37 @@ const cases: Record<string, Case> = {
       'The unfolding starts at 5.0 +/- 0.2 s and the last segment settles at 18.0 +/- 0.2 s (stills every 0.5 s), as given, not moved to a beat.',
       "Only one monospace family is used; 'Eighteen mirrors, one eye.' appears verbatim in the last scene.",
       'The music is low strings (the synthesized score\'s script or the music plan says so), and nothing in the picture contradicts a direction without the reply saying why.',
+    ],
+  },
+  // What a video is for (0.10.0): an open explainer whose subject has a surprising result. The promise comes
+  // before the outline and decides the opening; the action carries what it can; the number stays true.
+  'cv-promise-opening': {
+    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 90,
+    turns: [
+      { prompt: 'Make a 45-second animated explainer for my YouTube channel: in a room of just 23 people, two of them probably share a birthday. Narrate it with a free voice.' },
+      { prompt: 'Go ahead.' },
+    ],
+    assertions: [
+      'TREATMENT.md has a Promise line (a working title, thumbnail words or "none", what someone who clicked expects, and what the first seconds show), written before the first scene file (transcript order), and the message showing the treatment includes it.',
+      'The storyboard\'s first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.',
+      'Reading data/words.json beside the stills at the same times, no line of narration only repeats what the picture already shows at that moment; lines add what the picture can\'t carry.',
+      'What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.',
+      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). If a full-cut critic ran, its prompt gave it the working title and thumbnail words, and first-look.md says what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
+    ],
+  },
+  // The limit of licence, on real events the director invites being told freely: the fable is fair, and the cause,
+  // the figure and who did what stay true, with no invented quote and no running disclaimer.
+  'cv-licence-keeps-facts': {
+    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 90,
+    turns: [
+      { prompt: 'Make a 40-second animated story for my YouTube channel about the Mars Climate Orbiter, lost in 1999 because software from one team gave thrust in pound-force seconds and the team at NASA expected newton-seconds. The orbiter cost about $125 million. Tell it like a fable, with whatever cast you like. Narrate it with a free voice.' },
+      { prompt: 'Go ahead.' },
+    ],
+    assertions: [
+      'Never claim names the liberties taken (the fable\'s cast, a compressed timeline, whatever it simplifies) and the central point they leave true: the craft was lost because two teams used different units.',
+      'A viewer of the video (a grader reading words.json beside the sheet) comes away with the right cause, year and cost; the fable\'s cast is plainly a fable, and no invented quote, figure or result is presented as NASA\'s, a company\'s or a real person\'s.',
+      'There is no running disclaimer: a label such as "dramatized" or "simplified" appears at most once on screen, and the words and picture stay free of category labels.',
+      'TREATMENT.md has a Promise line before the first scene file, and the first seconds pay it in the picture, without giving away what the piece holds back.',
     ],
   },
   // Image generation, offered: the piece would gain from painted imagery and a key is set, but the prompt doesn't
@@ -498,6 +530,22 @@ const cases: Record<string, Case> = {
   },
   // In a project made earlier (run-tasks.sh gives it the same project as the later-session case): code-video
   // loads in any folder with videos/*/video.json, and init's AGENTS.md speaks of building on.
+  // A script alone: the same weighing as an idea, for a video made here. It stops at text, and a script the user
+  // accepts goes into the prompt word for word, while the working title they never confirmed stays replaceable.
+  'vi-script-alone': {
+    skill: 'video-ideas', setup: { files: [] }, timeoutMinutes: 20,
+    turns: [
+      { prompt: "Write the script for a 60-second animated explainer about why the sky is blue. I'm not ready to make the video yet." },
+      { prompt: "That script is right. Now give me the prompt so I can run it in a new session tomorrow." },
+    ],
+    assertions: [
+      'Turn 1 gives a working title and the words a thumbnail could carry (or says none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.',
+      "The script is written as what is seen, with narration or on-screen words for what the picture can't carry: no line only says what the beat beside it already shows.",
+      'Any simplification is named as one, and nothing false about the central point is stated (air scatters short wavelengths more, so scattered light reaches the eye from all over the sky).',
+      "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail words, a length or a sound they didn't give) as replaceable.",
+      'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything.',
+    ],
+  },
   'vi-existing-project': {
     skill: 'video-ideas', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 20,
     turns: [

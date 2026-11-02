@@ -1,0 +1,25 @@
+{
+  "id": "cv-promise-opening",
+  "skill": "code-video",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 90,
+  "turns": [
+    {
+      "prompt": "Make a 45-second animated explainer for my YouTube channel: in a room of just 23 people, two of them probably share a birthday. Narrate it with a free voice."
+    },
+    {
+      "prompt": "Go ahead."
+    }
+  ],
+  "assertions": [
+    "TREATMENT.md has a Promise line (a working title, thumbnail words or \"none\", what someone who clicked expects, and what the first seconds show), written before the first scene file (transcript order), and the message showing the treatment includes it.",
+    "The storyboard's first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.",
+    "Reading data/words.json beside the stills at the same times, no line of narration only repeats what the picture already shows at that moment; lines add what the picture can't carry.",
+    "What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.",
+    "If several scene authors worked, the opening scene's brief carried the Promise (\"Keeps true\"). If a full-cut critic ran, its prompt gave it the working title and thumbnail words, and first-look.md says what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md."
+  ]
+}
