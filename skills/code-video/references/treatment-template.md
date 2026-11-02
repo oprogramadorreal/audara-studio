@@ -59,8 +59,9 @@ the picture, since those seconds also play muted on hover and in phone feeds. So
 what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
 happens next. A twist the piece depends on is promised as a question, not given away. A video a feed plays on
 its own (Shorts, Reels) has no click to answer, so its first seconds make the promise themselves. A loop, a
-sting, a slot ad or a stream background needs no promise; a song's opening is the song's. It stays a working
-promise: the youtube-package skill makes the final title and thumbnails from the finished video.
+sting, a slot ad or a stream background needs no promise; a song's opening is the song's. A later cut that takes
+out what was promised says so and offers the version that keeps it. It stays a working promise: the
+youtube-package skill makes the final title and thumbnails from the finished video.
 
 ## Decide what's open, ask only what isn't yours
 

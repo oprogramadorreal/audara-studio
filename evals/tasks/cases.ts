@@ -323,17 +323,19 @@ const cases: Record<string, Case> = {
   // What a video is for (0.10.0): an open explainer whose subject has a surprising result. The promise comes
   // before the outline and decides the opening; the action carries what it can; the number stays true.
   'cv-promise-opening': {
-    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 90,
+    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 120,
     turns: [
       { prompt: 'Make a 45-second animated explainer for my YouTube channel: in a room of just 23 people, two of them probably share a birthday. Narrate it with a free voice.' },
       { prompt: 'Go ahead.' },
+      { prompt: 'Take out the moment where the two people with the same birthday are found. It drags.' },
     ],
     assertions: [
-      'TREATMENT.md has a Promise line (a working title, thumbnail words or "none", what someone who clicked expects, and what the first seconds show), written before the first scene file (transcript order), and the message showing the treatment includes it.',
+      'In the transcript, the working title, thumbnail words or "none" and their promise appear before the first script or storyboard is shown or written, including above it in the same first treatment; adding the Promise after an outline already exists fails. TREATMENT.md keeps it as its Promise line, with what the first seconds show.',
       'The storyboard\'s first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.',
-      'Reading data/words.json beside the stills at the same times, no line of narration only repeats what the picture already shows at that moment; lines add what the picture can\'t carry.',
+      'The picture carries the explanation through visible action or change, and narration adds what viewers still need (data/words.json beside the stills at the same times). Repetition that helps comprehension, rhythm or accessibility is fine; narration standing in for a demonstration the picture could carry fails.',
       'What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.',
-      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). If a full-cut critic ran, its prompt gave it the working title and thumbnail words, and first-look.md says what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
+      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). With the skills, a full-cut critic ran, its prompt gave it the working title and thumbnail words, and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
+      'Turn 3 takes out the moment the note names, as asked, and goes in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It runs no critic round for this note.',
     ],
   },
   // The limit of licence, on real events the director invites being told freely: the fable is fair, and the cause,
@@ -341,14 +343,14 @@ const cases: Record<string, Case> = {
   'cv-licence-keeps-facts': {
     skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 90,
     turns: [
-      { prompt: 'Make a 40-second animated story for my YouTube channel about the Mars Climate Orbiter, lost in 1999 because software from one team gave thrust in pound-force seconds and the team at NASA expected newton-seconds. The orbiter cost about $125 million. Tell it like a fable, with whatever cast you like. Narrate it with a free voice.' },
+      { prompt: 'Make a 40-second animated story for my YouTube channel about the Mars Climate Orbiter, lost in 1999 because one team\'s ground software reported thruster impulse in pound-force seconds while NASA\'s navigation software expected newton-seconds. The orbiter cost about $125 million. Tell it like a fable, with whatever cast you like. Narrate it with a free voice.' },
       { prompt: 'Go ahead.' },
     ],
     assertions: [
       'Never claim names the liberties taken (the fable\'s cast, a compressed timeline, whatever it simplifies) and the central point they leave true: the craft was lost because two teams used different units.',
       'A viewer of the video (a grader reading words.json beside the sheet) comes away with the right cause, year and cost; the fable\'s cast is plainly a fable, and no invented quote, figure or result is presented as NASA\'s, a company\'s or a real person\'s.',
-      'There is no running disclaimer: a label such as "dramatized" or "simplified" appears at most once on screen, and the words and picture stay free of category labels.',
-      'TREATMENT.md has a Promise line before the first scene file, and the first seconds pay it in the picture, without giving away what the piece holds back.',
+      'There is no running disclaimer. A label appears only where a viewer could take the fable for the real event; a single "dramatized" or "simplified" label is allowed when it resolves that ambiguity.',
+      'The working title, thumbnail words or "none" and their promise come before the first script or storyboard (above it in the same first treatment counts), and the first seconds pay it in the picture, without giving away what the piece holds back.',
     ],
   },
   // Image generation, offered: the piece would gain from painted imagery and a key is set, but the prompt doesn't
@@ -540,7 +542,7 @@ const cases: Record<string, Case> = {
     ],
     assertions: [
       'Turn 1 gives a working title and the words a thumbnail could carry (or says none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.',
-      "The script is written as what is seen, with narration or on-screen words for what the picture can't carry: no line only says what the beat beside it already shows.",
+      'The script is written as what is seen, with narration or on-screen words for what the viewer still needs: the explanation rests on visible action or change, not on narration standing in for a demonstration the picture could carry.',
       'Any simplification is named as one, and nothing false about the central point is stated (air scatters short wavelengths more, so scattered light reaches the eye from all over the sky).',
       "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail words, a length or a sound they didn't give) as replaceable.",
       'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything.',

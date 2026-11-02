@@ -2947,7 +2947,7 @@ What the trace found:
 - **Three things pulled the other way.** The storyboard critic's "every claim, number and diagram true or labelled"
   read as a demand for literal accuracy. Nutlight's "what the voice says, a character does" put narration first. A
   required thumbnail word would have contradicted `youtube.md`'s pair with a picture that has no words.
-- **Almost no room.** code-video had 6 bytes left, soundtrack 11, youtube-package 4; video-ideas 1,291.
+- **Almost no room.** code-video sat 6 bytes below 8,000, soundtrack 11, youtube-package 4; video-ideas 1,291.
 
 YouTube's own pages, read 2026-11-02, support the link and not the order. "Ensure your intro delivers on the promise
 made by your thumbnail and title" and "Keep your intro concise and get straight to providing that value" (answer

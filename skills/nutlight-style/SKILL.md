@@ -23,8 +23,8 @@ project's.
 - **Light with a source and depth in three planes:** warm characters against cooler or darker worlds, a
   palette for each setting, deep near-blacks, the brightest light on the action, a dark framing foreground
   and hazy far layers.
-- **Ideas acted out:** a character or a thing does it, with a visible result, and the voice says what's
-  left; words live in the world, on signs and screens.
+- **Ideas acted out:** a character or a thing does it, with a visible result, and the voice adds what the
+  viewer still needs; words live in the world, on signs and screens.
 - **Measured, living motion:** characters that breathe and blink, a camera that drifts and settles, and no
   hard cuts.
 - **Music:** produced instrumental tracks, mostly from the director's library, cut to the story's turns,

@@ -85,8 +85,9 @@ check go in `.audara-cache/`, never `out/`.
   is theirs to watch: check motion with clips, not by driving their browser or desktop (a background tab
   skips frames). Say which you used.
 
-**A round of notes** (one note or forty) is answered from this loop, not by a critic round (Cadence). Check
-each note where the viewer meets it: its moment as rendered (a still, a sheet through the change, a clip
+**A round of notes** (one note or forty) is answered from this loop, not by a critic round (Cadence). A note
+that cuts or moves a setup or a payoff is read against the treatment's Promise: the cut still pays what it
+promised, or the reply says it doesn't. Check each note where the viewer meets it: its moment as rendered (a still, a sheet through the change, a clip
 for motion), not in the code, since a change can be made and not show; on one video a critic found star
 dust too faint to see after the encode, music stopping where the director had said not to, and a line
 promised to the director and never drawn, each one after the code said done. Rebuild the mix when its

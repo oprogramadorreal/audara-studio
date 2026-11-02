@@ -152,6 +152,9 @@ believing. And a video people choose to click makes one clear promise before it 
 the words a thumbnail could carry), which decides how it opens. The words themselves are in
 `skills/code-video/references/treatment-template.md`.
 
+- **Show doesn't ban words that match the picture.** Words carry what the viewer still needs, which can repeat
+  what's on screen: seeing 23 figures isn't counting them. A finding is narration standing in for a demonstration
+  the picture could carry.
 - **Two kinds of guidance, reaching the agent differently.** The order and its limit are a judgment, wanted at
   every decision. The promise is one commitment, made before the outline and checked afterwards.
 - **Where it lives.** In full in the treatment template, since every Brief reads it. In a short section of
@@ -160,7 +163,8 @@ the words a thumbnail could carry), which decides how it opens. The words themse
 - **Each video's decisions travel in its treatment:** the Promise line, and the liberties in Never claim, which
   the description's credits already read. Scene authors read "not the rest of the treatment", so their briefs
   carry "Keeps true"; a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
-  (history.md, 0.8.2: clips cut too short for qc).
+  (history.md, 0.8.2: clips cut too short for qc). A round of notes runs no critic, so the lead reads a cut
+  against the Promise itself, and says so when the cut no longer pays it.
 - **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
   before it opens the treatment, now records what it believes because of the video, and whether the first seconds
   pay the title and thumbnail words it is given, as a viewer has them. A false belief about the central point, or
@@ -189,10 +193,10 @@ files with no room).
 A sentence is enough to start a video. When its premise is left open, code-video's lead develops one in the
 treatment, then builds while the user can redirect. `video-ideas` offers a separate opportunity to compare
 directions before production: the user asks for ideas, sees two or three that differ in what the viewer
-would see, picks or refines one, and leaves with a starting prompt. It never stands in front of a request
+would see, picks or refines one, and leaves with a starting prompt or a script. It never stands in front of a request
 just to make a video, which still goes straight to code-video.
 
-- **It stops at the prompt.** When production hasn't already been requested, ideas, a prompt or "I like
+- **It stops at the prompt or script.** When production hasn't already been requested, ideas, a prompt or "I like
   the second one" start nothing: no project, no preview, nothing generated, and no file unless the user
   asks to save the prompt. "Make it" continues with code-video in the same session, with the prompt and the
   user's earlier instructions, under its usual production and render rules; a request that already asked
@@ -200,7 +204,7 @@ just to make a video, which still goes straight to code-video.
   direction so the user can redirect; the prompt also works pasted into another session.
 - **It weighs ideas as a video is weighed** ("What a video is for", above) and gives each direction its
   promise. It also takes a script alone, which no description named: the promise first, then the picture's
-  beats, with words only for what they can't carry, and it stops there; one the user accepts goes into the
+  beats, with words for what the viewer still needs, and it stops there; one the user accepts goes into the
   prompt word for word. A script for filmed content stays out, as ideas for it do.
 - **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
   facts, length, sound, what they ruled out); the idea they chose; and what the assistant only suggested
@@ -511,7 +515,7 @@ style you can name: Nutlight"). `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads, and does the sound of a video made
 elsewhere too (filmed, or from AI video clips). When the user provides an ElevenLabs API
 key, it can also generate narration, music and sound effects (see "Sound and ElevenLabs"). `video-ideas` is
-text only and ends with a starting prompt (see "Before the brief"). `video-repo` puts the project in git so
+text only and ends with a starting prompt or a script (see "Before the brief"). `video-repo` puts the project in git so
 someone else can clone it and render it again (see "Handing it on: a repository"). `youtube-package` makes a
 finished video's thumbnails, title, description and tags (see "Publishing it: the YouTube package").
 
@@ -889,10 +893,10 @@ they differ, follow the stricter rule. What that means here:
     actually type ("video", "music video", "lyric video", "motion graphics", "animation", "explainer",
     "render").
   - **Near-misses** (OpenAI): name what it is not for. `code-video` is not for editing camera footage, for
-    generating AI video clips, or for ideas and a prompt alone, and that exclusion says `soundtrack` still
+    generating AI video clips, or for ideas, a prompt or a script alone, and that exclusion says `soundtrack` still
     does the sound of such a film, so ruling out the picture doesn't rule out the plugin; `soundtrack` is
     not for making a voice clone (narrating in one the user has is fine); `video-ideas` is not for making a
-    video, for prompts for other generators, or for ideas for filmed content; `video-repo` is not for
+    video, for prompts for other generators, or for ideas or scripts for filmed content; `video-repo` is not for
     everyday commits, branches or pull requests, or for projects that aren't videos; `youtube-package` is not
     for making or changing the video (title cards and text inside it included), for choosing what to make, or
     for images unrelated to a video.
@@ -1002,7 +1006,7 @@ audara-studio/
     │   │                             # example video with one scene per way of drawing; pdoom specifics
     │   │                             # removed
     │   └── assets/realism/           # the realism kit, copied into a project's src/realism/ on demand
-    ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt out
+    ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt or script out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
