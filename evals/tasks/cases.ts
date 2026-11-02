@@ -321,21 +321,25 @@ const cases: Record<string, Case> = {
     ],
   },
   // What a video is for (0.10.0): an open explainer whose subject has a surprising result. The promise comes
-  // before the outline and decides the opening; the action carries what it can; the number stays true.
+  // before the outline and decides the opening; the action carries what it can; the number stays true. Turn 3 is a
+  // later session, so only what the project and the skills carry can tell it what was promised, and its note removes
+  // the payoff: the turns before it are judged on the cut as it stood then.
   'cv-promise-opening': {
     skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 120,
     turns: [
       { prompt: 'Make a 45-second animated explainer for my YouTube channel: in a room of just 23 people, two of them probably share a birthday. Narrate it with a free voice.' },
       { prompt: 'Go ahead.' },
-      { prompt: 'Take out the moment where the two people with the same birthday are found. It drags.' },
+      { prompt: 'Take out the moment where the two people with the same birthday are found. It drags.', newSession: true },
     ],
     assertions: [
+      'The next five are judged on the cut at the end of turn 2, not the final folder, since turn 3 is asked to remove part of it: the transcripts through turn 2, the stills and sheets they show, and out/<name>/critique/r<N>/. A note doesn\'t redraw those.',
       'In the transcript, the working title, thumbnail words or "none" and their promise appear before the first script or storyboard is shown or written, including above it in the same first treatment; adding the Promise after an outline already exists fails. TREATMENT.md keeps it as its Promise line, with what the first seconds show.',
       'The storyboard\'s first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.',
       'The picture carries the explanation through visible action or change, and narration adds what viewers still need (data/words.json beside the stills at the same times). Repetition that helps comprehension, rhythm or accessibility is fine; narration standing in for a demonstration the picture could carry fails.',
       'What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.',
       'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). With the skills, a full-cut critic ran, its prompt gave it the working title and thumbnail words, and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
-      'Turn 3 takes out the moment the note names, as asked, and goes in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It runs no critic round for this note.',
+      'Turn 3, a new session, reads the video\'s Decisions, Promise and Never claim before its first edit (the transcript), and assesses the requested cut against that recorded promise.',
+      'Compared with the cut at the end of turn 2, turn 3 takes out the moment the note names, as asked, and writes it in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It keeps a note\'s local checks: no critic round and no full render.',
     ],
   },
   // The limit of licence, on real events the director invites being told freely: the fable is fair, and the cause,

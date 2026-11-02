@@ -2964,21 +2964,23 @@ What changed:
 - **critique.md:** the storyboard critic asks what a reasonable viewer would believe. The full-cut first look gets
   the working title and thumbnail words a viewer would have and records what it now believes and whether the first
   seconds pay it, with findings ranked in the guidance's order and a false belief above them all.
-- **code-video's SKILL.md:** the order in a short section and "its promise first" in the Brief, 7,999 bytes, paid for
-  by shorter wording in the reading list, a shorter heading and the engine's list (which the description and
-  `docs/ENGINE.md` keep). "Watch twice" moved into the new section.
+- **code-video's SKILL.md:** the order in a short section and "its promise first" in the Brief, with the Promise and Never claim
+  read before every change; 7,990 bytes, paid for by shorter wording in the reading list and the commands, a shorter
+  heading and the engine's list (which the description and `docs/ENGINE.md` keep). "Watch twice" moved into the new
+  section.
 - **video-ideas:** weighs ideas in the same order, each direction with its promise; a working title and a liberty are
-  suggestions until confirmed; a script alone (7,734 bytes). A script had no home in any description.
-- **The rest:** soundtrack points to the template for a script it writes itself (7,997 bytes); Nutlight's action leads
-  and the voice says what's left; `youtube.md` treats the Promise as where title ideas start; init's AGENTS.md carries
+  suggestions until confirmed; a script alone (7,757 bytes). A script had no home in any description.
+- **The rest:** soundtrack points to the template for words it writes and story choices in the sound (7,996 bytes);
+  Nutlight's action leads and the voice adds what the viewer still needs; `youtube.md` treats the Promise as where title ideas start; init's AGENTS.md carries
   a line, for a later session that loads no skill.
 - **Evals:** vi-24, vi-25 and cv-27 for a script alone; `cv-promise-opening`, `cv-licence-keeps-facts`,
-  `vi-script-alone`; `cv-range-loop` asserts a stream loop gets no promise and no lesson.
+  `vi-script-alone`; `cv-range-loop` asserts a stream loop gets no promise and no lesson. `cv-promise-opening`'s third
+  turn is a new session asked to cut the payoff, for what a later edit has to carry.
 
 Where the wording departs from the user's, and why:
 
 - "Every video" became a default with named exceptions: a loop, a sting, a slot ad or a stream background needs no
-  promise, and a form with nothing to teach goes without a lesson. Their own idea-range rule says not every piece
+  promise, and a form with nothing to teach goes without a lesson. video-ideas' Range line says not every piece
   needs a story arc either.
 - The limit reaches past the central point to anything that matters if repeated or acted on (a number, a cause, who
   did what, an instruction, what a product does), and rules out an invented quote, result or figure presented as a
