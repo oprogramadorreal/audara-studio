@@ -5,7 +5,8 @@ own words on motion are in `assets/references/README.md`.
 
 ## Explain by doing
 
-- What the voice says, a character or an object does, timed to the words (`ctx.words`). A squirrel takes the
+- A character or an object does the idea, timed to the words (`ctx.words`), and the voice says what the
+  action can't. A squirrel takes the
   copy from the tray and carries it to the board. A light runs along a conduit and a drawer lights up. Every
   action has a visible result in the world.
 - A demonstration that compares things differs at a glance, and is framed large enough, near the centre, to

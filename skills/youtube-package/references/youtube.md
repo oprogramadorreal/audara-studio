@@ -50,6 +50,8 @@ where they show · Policy and disclosure · Sources
   uploads vidIQ studied. An association, not a rule: a question often sits better in the picture, with the title
   around it. These studies observe, they don't prove; a channel's own results outrank them.
 - **The YouTube title is not the project's working title:** `video.json`'s title and the treatment's heading stay.
+  The treatment's Promise, when it has one, is where the ideas start and what the opening was built to pay;
+  unless the director's words made it a decision, the finished video can earn a better one.
 
 ## Description
 
