@@ -38,7 +38,7 @@ Does a fresh session load the skill for a realistic request, and leave near-miss
 requests per skill, half near-misses, three runs each. Every skill in `skills/` is linked into each run, so
 they compete as they do once the plugin is installed (an installed audara-studio is turned off for the run,
 in both tools, so each skill is there once, with the description under test); code-video's set ends with
-two requests for ideas only, which belong to video-ideas, and one to put a project in git, which belongs to video-repo (on Codex,
+two requests for ideas only, which belong to video-ideas, a script alone (cv-27), also video-ideas', and one to put a project in git, which belongs to video-repo (on Codex,
 read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
 `scripts/render.ts`, which video-repo's own work can do). A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
@@ -139,14 +139,15 @@ video in the same project with a look of its own, which must leave the first one
 session, in `baseline/` beside `work/`, for the grader to compare with), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
-a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and a photographic 3D shot asked
+a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
+`cv-licence-keeps-facts`), a photographic 3D shot asked
 for by its subject and its move (`cv-photoreal-shot`: the realism kit, judged blind with `--without` on how
 photographic its frames read, and like the showreels not in `run-tasks.sh`'s default list; `cv-title-card` checks the
 kit stays out of a piece that doesn't ask for it). The `vi-` cases stand
 for someone choosing what to make: ideas only, from nothing or from product screens, in an empty folder or
 an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project`), a prompt to improve or
 one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and
-the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
+a script alone (`vi-script-alone`), and the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
 together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas-and-make`). Most are text
 only and take minutes. The `vr-` cases stand for someone handing a finished project on: its first
 repository, asked for in the user's own words, then a name and a commit e-mail (`vr-first-repo`), and a

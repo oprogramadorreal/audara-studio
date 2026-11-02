@@ -27,6 +27,7 @@ Contents
 - Iteration time on a 13-minute video (0.8.1, 2026-10-21)
 - Five tested prompts, and what they showed (0.8.2, 2026-10-26)
 - A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
+- What a video is for: standing editorial guidance (0.10.0, 2026-11-02)
 
 ## Definition of done
 
@@ -2923,3 +2924,106 @@ The fixes, measured on the old kit and the new:
 
 The cast sheet's stills are byte-identical, `verify` passes and the kit typechecks. Codex reviewed the fixes and
 agreed all five are closed, with no new findings.
+
+## What a video is for: standing editorial guidance (0.10.0, 2026-11-02)
+
+The user gave the same editorial brief whenever they asked for a script or an editing decision, and asked to make
+it a standing part of the plugin: entertain, show and teach, in that order; poetic licence, bounded by what a
+reasonable viewer comes away believing; and a working title and thumbnail words before the outline, deciding the
+opening. They suspected video-ideas was the home, weren't sure it reached every decision, and asked for each
+principle to be traced from the idea through the script to the edit.
+
+What the trace found:
+
+- **video-ideas can't be the only home.** It is optional by design (0.5.0: a stop before building added nothing), so
+  "make a video" never loads it. code-video's Brief writes the narration when nobody gives one
+  (`cv-visual-direction-no-script`), and a note by time never touches video-ideas.
+- **Fresh agents don't inherit the lead's guidance.** Scene authors read "not the rest of the treatment"; critics
+  get their prompt. 0.8.2 recorded the cost of this: a clip-padding rule in the lead's paragraph cost a lead-author
+  round and a whole draft, because scene authors weren't sent there.
+- **Much was half there, scoped too narrowly.** "Watch twice" sat under "When the look is yours", not the script.
+  The treatment's "feel or understand by the end" was teaching without a rank. youtube-package already asked that
+  the pair promise what the video delivers early, but only reported on an opening already built.
+- **Three things pulled the other way.** The storyboard critic's "every claim, number and diagram true or labelled"
+  read as a demand for literal accuracy. Nutlight's "what the voice says, a character does" put narration first. A
+  required thumbnail word would have contradicted `youtube.md`'s pair with a picture that has no words.
+- **Almost no room.** code-video sat 6 bytes below 8,000, soundtrack 11, youtube-package 4; video-ideas 1,291.
+
+YouTube's own pages, read 2026-11-02, support the link and not the order. "Ensure your intro delivers on the promise
+made by your thumbnail and title" and "Keep your intro concise and get straight to providing that value" (answer
+16559650); a high Intro figure could mean "the content in the first 30 seconds matched the viewer's expectation of
+the video's thumbnail and title" (answer 9314415); "If your CTR is high but your retention is low, your thumbnail may
+be making a promise the video doesn't deliver on" (YouTube Blog, 2025-09-03). None of them says to write the title
+and thumbnail before the script: that is the user's rule, and design.md says so.
+
+What changed:
+
+- **treatment-template.md:** a section, "What a video is for", with the user's text adapted; a Promise line first in
+  the skeleton; the liberties in Never claim; the first row pays the Promise; scene briefs carry "Keeps true"; an
+  opening that doesn't pay is raised on a script the director brought, not rewritten.
+- **critique.md:** the storyboard critic asks what a reasonable viewer would believe. The full-cut first look gets
+  the working title and thumbnail words a viewer would have and records what it now believes and whether the first
+  seconds pay it, with findings ranked in the guidance's order and a false belief above them all.
+- **code-video's SKILL.md:** the order in a short section and "its promise first" in the Brief, with the Promise and Never claim
+  read before every change; 7,990 bytes, paid for by shorter wording in the reading list and the commands, a shorter
+  heading and the engine's list (which the description and `docs/ENGINE.md` keep). "Watch twice" moved into the new
+  section.
+- **video-ideas:** weighs ideas in the same order, each direction with its promise; a working title and a liberty are
+  suggestions until confirmed; a script alone (7,757 bytes). A script had no home in any description.
+- **The rest:** soundtrack points to the template for words it writes and story choices in the sound (7,996 bytes);
+  Nutlight's action leads and the voice adds what the viewer still needs; `youtube.md` treats the Promise as where title ideas start; init's AGENTS.md carries
+  a line, for a later session that loads no skill.
+- **Evals:** vi-24, vi-25 and cv-27 for a script alone; `cv-promise-opening`, `cv-licence-keeps-facts`,
+  `vi-script-alone`; `cv-range-loop` asserts a stream loop gets no promise and no lesson. `cv-promise-opening`'s third
+  turn is a new session asked to cut the payoff, for what a later edit has to carry.
+
+Where the wording departs from the user's, and why:
+
+- "Every video" became a default with named exceptions: a loop, a sting, a slot ad or a stream background needs no
+  promise, and a form with nothing to teach goes without a lesson. video-ideas' Range line says not every piece
+  needs a story arc either.
+- The limit reaches past the central point to anything that matters if repeated or acted on (a number, a cause, who
+  did what, an instruction, what a product does), and rules out an invented quote, result or figure presented as a
+  real person's, company's or study's. Their "reasonable viewer" test asks for this: a viewer repeats the figure.
+- The thumbnail may carry no words; a twist is promised as a question; a label appears once, since about 25 honesty
+  captions once piled up until they said "remove them all" (0.7.1).
+
+What the checks showed:
+
+- **Trigger, Claude Code, Opus 5.5 at low effort, one run each:** video-ideas 25/25, code-video 27/27. vi-24 and vi-25
+  loaded video-ideas, cv-27 left code-video alone, and vi-17, a script for filmed content, stayed out.
+- **Trigger, Codex, GPT-6-Astra at low effort, one run each:** many runs got no reply from the model: the transcript holds
+  `thread.started` and `turn.started` and nothing else, and ends at the harness's 240-second timeout. No routing decision
+  was made in them, yet the harness scores one as a miss on a request that should load and as a pass on a near-miss. The
+  first pass's 21/25 and 19/27 are therefore not routing results: 12 requests that should load and 17 near-misses were
+  silent. Every request that should load returned when repeated, and loaded (cv-02 took four tries, cv-03 five). So far
+  18 of 25 and 17 of 27 are observed passes, and the other 17 near-misses, cv-27 and vi-17 among them, are unresolved. As
+  a control, cv-02 and cv-03 ran on untouched `main` in a temporary worktree: both loaded at once, then, side by side with
+  this branch at the same moment, `main` got no reply on either while the branch got one. So the hang also occurs on `main`.
+- **`vi-script-alone`, Claude Code, Opus 5.5, one run, 3 minutes:** all five assertions met, as read by the author of
+  this change rather than a separate grader. It gave a working title, the thumbnail words ("Same Sun.") and the promise
+  before the script; the opening drains the air from a noon sky until it goes black, in the picture, before the voice
+  explains anything; it named six liberties; the accepted script went into the prompt word for word, with the title
+  and thumbnail marked replaceable; and nothing was built.
+- **Spec checks:** all six skills pass the three validators, stay under 8,000 bytes and have no byte-order mark.
+- **Not run:** `cv-promise-opening`, `cv-licence-keeps-facts` and the changed `cv-range-loop`, which take hours and wait
+  for the user's yes. What this wording does to a built video, to scene authors and to critics is still unmeasured.
+
+Codex (GPT-6-Astra) brainstormed the question on its own through Herdr, then reviewed the branch; the Claude Code
+session decided and made the edits.
+
+- **The brainstorm** reached the same shape independently: shared guidance, and a script alone in video-ideas. It found
+  Nutlight's voice-first line, the thumbnail with no words, and the 0.8.2 record of guidance lost between agents. It
+  wanted a new `references/editorial.md` with read instructions in several SKILL.md files; the template section stayed,
+  since every Brief already reads it and those files had no room for the pointers.
+- **First review, nine findings, all taken.** "Show" had hardened into a ban on words that match the picture ("words
+  only for what the picture can't carry", against the user's "what the viewer still needs"). The short limit contradicted
+  the licence, since "stop where a viewer would believe something false" covers every harmless inference. A later cut
+  could break the promise with the opening untouched, and a round of notes runs no critic. soundtrack's pointer missed
+  story choices in the sound. The images line had lost "images given or asked for", which 0.8.0's trim kept on purpose.
+  The evals tested "before the first scene file" rather than before outlining, let a run with no critic pass, forbade
+  the label they allowed, and called impulse "thrust". video-ideas' summaries still ended at the prompt alone.
+- **Second review, three findings, all taken.** The skill text held and the trims lost nothing. `cv-promise-opening`
+  could fail a correct run, since turn 3 removes the payoff the earlier assertions read in the final folder, and turn 3
+  could pass by remembering, so it is now a new session judged against the cut at the end of turn 2. This entry still
+  gave the first implementation's sizes.

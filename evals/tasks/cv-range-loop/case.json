@@ -21,6 +21,7 @@
     "The final message reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.",
     "If a critic round ran, it was a fresh subagent given the user's words and the render, not the builder's reasoning, and its verdict appears in the final message; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.",
     "No cliché from the style template's avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.",
-    "For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer."
+    "For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.",
+    "A stream loop needs no promise: the treatment has no Promise line, or says in a line why this one does, and nothing was added to teach a lesson."
   ]
 }

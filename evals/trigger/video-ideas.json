@@ -23,6 +23,8 @@
     { "id": "vi-20", "should_trigger": false, "files": [], "query": "in two sentences, what makes a good prompt for an image generator?" },
     { "id": "vi-21", "should_trigger": true, "files": [], "query": "Improve this starting prompt and make the video: a 12-second vertical loop for Still Water, with only the words \"Breathe in. Stay a while.\" No music or voice." },
     { "id": "vi-22", "should_trigger": true, "files": [], "query": "Give me three ideas for a 10-second loop for Blue Hours, pick the strongest and make it." },
-    { "id": "vi-23", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "the video is finished. its working title is boring: give me a better title for YouTube, and the description" }
+    { "id": "vi-23", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "the video is finished. its working title is boring: give me a better title for YouTube, and the description" },
+    { "id": "vi-24", "should_trigger": true, "files": [], "query": "write the script for a 60-second animated explainer about why the sky is blue. I'm not ready to make the video yet" },
+    { "id": "vi-25", "should_trigger": true, "files": [], "query": "escreve o roteiro de um vídeo animado de dois minutos sobre como uma vacina treina o corpo, ainda não quero produzir nada" }
   ]
 }
