@@ -5,7 +5,7 @@ a script or nothing at all: what you decide is followed exactly, and what you le
 aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
 ("at 0:23 the title should land on the snare") and renders the MP4.
 
-audara-studio is a plugin for Claude Code and Codex with five skills:
+audara-studio is a plugin for Claude Code and Codex with six skills:
 
 - **code-video**: music videos, lyric videos, motion graphics, explainers, title cards and loops, drawn
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
@@ -24,6 +24,9 @@ audara-studio is a plugin for Claude Code and Codex with five skills:
   YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail; one option
   borrows the layout of a video on the same subject that did unusually well. Each option is judged small, in a
   mock of YouTube's feed, beside the title.
+- **nutlight-style**: a house style you can name, for explainers: squirrels acting out the ideas in luminous
+  geometric worlds, scenes that flow into each other and music cut from your own library. Ask for a video
+  "in the Nutlight style" and the other skills make it in that look; it stays out of everything else.
 
 ## Install
 
@@ -77,6 +80,11 @@ Other ways in:
   It is lit like a photograph (a physical sky, sunlight and haze, a real lens), for places and things rather
   than people. Bring reference images to match (or ask for generated ones) and give it time: it compares
   its renders with them and iterates, and renders slower than a graphic piece.
+- **A house style:** "a 40-second explainer in the Nutlight style about how a hash table finds a key, music
+  from my tracks in music/". Squirrels act the idea out in a luminous, geometric world, with the same characters'
+  design in every video; scenes flow into each other, and the score is cut from your own library (or generated,
+  if you say yes to its cost). The style applies only when you name it, and anything you ask for differently
+  wins over it.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You

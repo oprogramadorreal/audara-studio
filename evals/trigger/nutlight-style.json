@@ -1,0 +1,25 @@
+{
+  "skill": "nutlight-style",
+  "queries": [
+    { "id": "ns-01", "should_trigger": true, "files": [], "query": "Make a 3-minute explainer in the Nutlight style about how vaccines train the immune system." },
+    { "id": "ns-02", "should_trigger": true, "files": ["article.md", "library-calm.mp3 => music/calm-documentary.mp3", "library-bright.mp3 => music/bright-pizzicato.mp3"], "query": "Turn article.md into a 90-second video in the Nutlight style. Use the tracks in music/ for the background music." },
+    { "id": "ns-03", "should_trigger": true, "files": [], "query": "faz um vídeo explicativo de 2 minutos no estilo Nutlight sobre como funciona o DNS, narrado em português" },
+    { "id": "ns-04", "should_trigger": true, "files": ["script.txt"], "query": "Animate script.txt in the Nutlight style. Keep the words exactly as written." },
+    { "id": "ns-05", "should_trigger": true, "files": [], "query": "Give me three ideas for a Nutlight-style video about how compilers work. Just ideas for now." },
+    { "id": "ns-06", "should_trigger": true, "files": [], "query": "Adapt the argument of this YouTube video into a 4-minute explainer in the Nutlight style: https://www.youtube.com/watch?v=Xq7bL2mR9sE" },
+    { "id": "ns-07", "should_trigger": true, "files": ["song.mp3 => music/track-a.mp3", "library-drive.mp3 => music/night-drive.mp3", "narration.wav"], "query": "I need the background music for my Nutlight video on photosynthesis, cut from the tracks in music/ under narration.wav" },
+    { "id": "ns-08", "should_trigger": true, "files": ["video.json => videos/bees/video.json", "nutlight-STYLE.md => docs/STYLE.md", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "at 0:12 have Pip point at the hollow tree instead of waving" },
+    { "id": "ns-09", "should_trigger": true, "files": [], "query": "Write me a prompt for a Nutlight video about the history of the printing press. I'll run it in another session later." },
+    { "id": "ns-10", "should_trigger": true, "files": [], "query": "quero um vídeo no estilo Nutlight explicando juros compostos, com os esquilos, uns 2 minutos" },
+    { "id": "ns-11", "should_trigger": false, "files": [], "query": "Make a short nature video about how squirrels bury acorns for the winter." },
+    { "id": "ns-12", "should_trigger": false, "files": [], "query": "Make a 2-minute Kurzgesagt-style explainer about black holes." },
+    { "id": "ns-13", "should_trigger": false, "files": [], "query": "make a cute animated explainer with cartoon animals about why recycling matters, for kids" },
+    { "id": "ns-14", "should_trigger": false, "files": [], "query": "Make a 60-second animated explainer about how hash maps work. Clean and minimal." },
+    { "id": "ns-15", "should_trigger": false, "files": [], "query": "make a 10-second squirrel mascot animation for my nut butter brand's Instagram" },
+    { "id": "ns-16", "should_trigger": false, "files": ["narration.wav", "music.mp3"], "query": "mix music.mp3 under narration.wav so the voice stays clear, and give me the word timings" },
+    { "id": "ns-17", "should_trigger": false, "files": [], "query": "give me some ideas for a video about my coffee shop, I don't know what to make yet" },
+    { "id": "ns-18", "should_trigger": false, "files": [], "query": "faz um vídeo de 30 segundos com um esquilo animado comendo nozes, estilo fofo" },
+    { "id": "ns-19", "should_trigger": false, "files": ["song.mp3"], "query": "Make a lyric video for song.mp3 with warm, glowing night-city visuals." },
+    { "id": "ns-20", "should_trigger": false, "files": [], "query": "Make an animated explainer about Fourier series in a 3Blue1Brown style." }
+  ]
+}

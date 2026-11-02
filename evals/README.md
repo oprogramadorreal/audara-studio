@@ -52,6 +52,7 @@ bun evals/harness/trigger.ts --tool codex                 --set evals/trigger/co
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-ideas.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-repo.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/youtube-package.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/nutlight-style.json
 ```
 
 `--effort` sets the reasoning effort the user's settings would otherwise pick, as in `task.ts` below. Every run
@@ -73,6 +74,13 @@ soundtrack (`docs/history.md`, 0.7.2): keys, links and brand swapped, a short te
 PDF. On Opus 5.5 it loaded soundtrack in 7 of 10 runs, code-video first in the rest; a run that loads
 code-video first and soundtrack only when the sound starts would be fine in a real session but fails here,
 since a run stops at six turns.
+
+nutlight-style's set names the style in ten requests: two in Portuguese, ideas alone (ns-05), a prompt alone
+(ns-09), the music alone (ns-07) and a note inside a project whose `docs/STYLE.md` names it (ns-08, which a
+session learns only from the project's files: a probe of discovery, since a run stops at the load and its
+fixture has no cast or references; ns-new-subject's third turn tests the later session's work). Its near-misses ask for squirrels, cute animals, a glowing
+night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
+its use can't be seen on Codex and its Codex near-misses fail on the load.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
@@ -156,7 +164,12 @@ video, on `EVAL_PACKAGE_PROJECT`: the user's own thumbnail prompt with its words
 channel's type applied in a new session (`yp-given-words`); nothing given (`yp-nothing-given`); a title alone,
 where no picture should be made (`yp-title-only`); and generated images within a budget, on the image mock
 (`yp-images-budget`). They aren't in run-tasks.sh's default list, since they need that project; run them with
-`--without` too, judging the thumbnails blind, small and beside their title, against the model alone. The `vi-` cases are graded on the conversation, preservation of constraints,
+`--without` too, judging the thumbnails blind, small and beside their title, against the model alone.
+`ns-new-subject` stands for someone who names the Nutlight house style for a subject its reference images
+don't show (a swarm of bees choosing a home, from `article.md`), with a music library of three synthetic
+tracks in `music/`, a note that departs from the style (a hard cut, and a human the kit doesn't draw), a later
+session that has only the project's files, and a second video in another look that the kit must not touch;
+with its four turns it takes hours, so it isn't in run-tasks.sh's default list. The `vi-` cases are graded on the conversation, preservation of constraints,
 faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
 judging with and `--without` the skills: they are the check that the skills make the picture better than
 the model alone, not just correct.
@@ -245,6 +258,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo` and `skills/youtube-package`. Two checks no
+UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo`, `skills/youtube-package` and `skills/nutlight-style`. Two checks no
 validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
 a byte-order mark.
