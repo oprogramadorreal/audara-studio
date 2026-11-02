@@ -2992,14 +2992,14 @@ What the checks showed:
 
 - **Trigger, Claude Code, Opus 5.5 at low effort, one run each:** video-ideas 25/25, code-video 27/27. vi-24 and vi-25
   loaded video-ideas, cv-27 left code-video alone, and vi-17, a script for filmed content, stayed out.
-- **Trigger, Codex, GPT-6-Astra at low effort, one run each:** video-ideas 25/25, code-video 27/27, once every request
-  got an answer. The first pass scored 21/25 and 19/27, but all twelve failures were runs where the model never replied:
-  each transcript holds `thread.started` and `turn.started` and nothing else, and ends at the harness's 240-second
-  timeout, which it reports as a miss (`load 0.00`). No routing decision was made in them. They were repeated until they
-  returned; cv-02 took four tries and cv-03 five. As a control, cv-02 and cv-03 ran on untouched `main` in a temporary
-  worktree: both loaded at once, then, side by side with this branch at the same moment, `main` got no reply on either
-  while the branch got one. So the hang comes and goes on both, and isn't from these descriptions. vi-24, vi-25 and
-  cv-27 behaved correctly on the first pass.
+- **Trigger, Codex, GPT-6-Astra at low effort, one run each:** many runs got no reply from the model: the transcript holds
+  `thread.started` and `turn.started` and nothing else, and ends at the harness's 240-second timeout. No routing decision
+  was made in them, yet the harness scores one as a miss on a request that should load and as a pass on a near-miss. The
+  first pass's 21/25 and 19/27 are therefore not routing results: 12 requests that should load and 17 near-misses were
+  silent. Every request that should load returned when repeated, and loaded (cv-02 took four tries, cv-03 five). So far
+  18 of 25 and 17 of 27 are observed passes, and the other 17 near-misses, cv-27 and vi-17 among them, are unresolved. As
+  a control, cv-02 and cv-03 ran on untouched `main` in a temporary worktree: both loaded at once, then, side by side with
+  this branch at the same moment, `main` got no reply on either while the branch got one. So the hang also occurs on `main`.
 - **`vi-script-alone`, Claude Code, Opus 5.5, one run, 3 minutes:** all five assertions met, as read by the author of
   this change rather than a separate grader. It gave a working title, the thumbnail words ("Same Sun.") and the promise
   before the script; the opening drains the air from a noon sky until it goes black, in the picture, before the voice
