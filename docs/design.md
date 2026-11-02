@@ -143,6 +143,47 @@ What the agent owes the director:
 It doesn't ask for approval of every step in between, and nothing waits on a missing screen but the moment
 that shows it.
 
+### What a video is for
+
+The user gave the same editorial brief with every script and cut, so it is a standing default, and their words
+still outrank it. A video entertains, then shows, then teaches, in that order: the order settles what stays when
+they compete. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
+believing. And a video people choose to click makes one clear promise before it is outlined (a working title and
+the words a thumbnail could carry), which decides how it opens. The words themselves are in
+`skills/code-video/references/treatment-template.md`.
+
+- **Two kinds of guidance, reaching the agent differently.** The order and its limit are a judgment, wanted at
+  every decision. The promise is one commitment, made before the outline and checked afterwards.
+- **Where it lives.** In full in the treatment template, since every Brief reads it. In a short section of
+  code-video's SKILL.md, for a note or a cut in any session. In video-ideas' SKILL.md, which is text only and
+  reads no reference. In a line of the AGENTS.md `init` writes, for a later session that loads no skill.
+- **Each video's decisions travel in its treatment:** the Promise line, and the liberties in Never claim, which
+  the description's credits already read. Scene authors read "not the rest of the treatment", so their briefs
+  carry "Keeps true"; a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
+  (history.md, 0.8.2: clips cut too short for qc).
+- **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
+  before it opens the treatment, now records what it believes because of the video, and whether the first seconds
+  pay the title and thumbnail words it is given, as a viewer has them. A false belief about the central point, or
+  about anything that matters if repeated or acted on, outranks every other finding; a simplification that leaves
+  those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
+  read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
+- **Labels once.** About 25 honesty captions once piled up on one video until the user said "remove them all".
+- **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; a form with nothing to
+  teach goes without a lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
+  answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
+  A script the director gives stays locked: an opening that doesn't pay is raised with a fix, not rewritten.
+- **"Before outlining" is the user's rule, not YouTube's.** YouTube asks that the intro deliver on the promise
+  made by the thumbnail and title; none of its pages checked (2026-11-02) says to write them first.
+- **The package still decides the title.** The Promise is a working one, where the title ideas start; the finished
+  video can earn a better one, and an opening that doesn't pay the best promise is reported, as before.
+
+Considered and left out: all of it in video-ideas (optional by design: "make a video" skips it, the Brief writes
+the scripts it never sees, and a note by time never loads it); a video-script skill (it wouldn't load on a note by
+time or reach critics and scene authors, so code-video would need the same changes anyway, with one more
+description competing for the same requests, when about 250 bytes in video-ideas gives a script alone a home); a
+reference file of its own (the template is already read at every Brief, and a new file needs pointers in SKILL.md
+files with no room).
+
 ### Before the brief: choosing what to make
 
 A sentence is enough to start a video. When its premise is left open, code-video's lead develops one in the
@@ -157,6 +198,10 @@ just to make a video, which still goes straight to code-video.
   user's earlier instructions, under its usual production and render rules; a request that already asked
   for the video ("pick the strongest and make it") goes on without a second yes, after showing the chosen
   direction so the user can redirect; the prompt also works pasted into another session.
+- **It weighs ideas as a video is weighed** ("What a video is for", above) and gives each direction its
+  promise. It also takes a script alone, which no description named: the promise first, then the picture's
+  beats, with words only for what they can't carry, and it stops there; one the user accepts goes into the
+  prompt word for word. A script for filmed content stays out, as ideas for it do.
 - **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
   facts, length, sound, what they ruled out); the idea they chose; and what the assistant only suggested
   (copy, a length, a staging), marked as replaceable. code-video follows the first exactly, develops the
@@ -197,7 +242,8 @@ what a later session needs:
   README that keep the shared renderer and the frames stable;
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
-- what the agent owes the director, including that a request for ideas or a prompt alone gets those and
+- what a video is for, in a line, and where each one's Promise and Never claim are;
+- what the agent owes the director, including that a request for ideas, a prompt or a script alone gets those and
   nothing built, and a request for a thumbnail, a title, a description or tags gets the YouTube package with the
   video left as it is.
 
@@ -342,7 +388,8 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   viewers still watching at 30 s, helps assess that, and YouTube removes thumbnails that misrepresent). Those
   seconds are packaging too: on a computer, pointing at a thumbnail plays the video in its place, and phone feeds
   play it inline. An opening that doesn't pay off the best promise is reported, with the change offered through
-  code-video; the skill never changes the video. YouTube's own Studio has generated thumbnails since July 2026;
+  code-video; the skill never changes the video. The treatment's Promise, made before the outline, is where the
+  title ideas start, not a decision unless the user's words made it one. YouTube's own Studio has generated thumbnails since July 2026;
   what this skill adds is art that fits this video and this channel.
 
 Its script, `youtube.ts`, has four modes and no dependencies: Bun serves the project, Chrome renders headless,
@@ -1066,6 +1113,8 @@ YouTube's own pages, for the youtube-package skill (checked 2026-10-12):
 - [YouTube Help: Thumbnails policy](https://support.google.com/youtube/answer/9229980)
 - [YouTube Help: Disclosing use of GenAI content](https://support.google.com/youtube/answer/14328491)
 - [YouTube Help: Audience retention (the Intro measure)](https://support.google.com/youtube/answer/9314415)
+- [YouTube Help: Content performance (an intro that delivers on the promise)](https://support.google.com/youtube/answer/16559650)
+- [YouTube Blog: 4 metrics (a promise the video doesn't deliver)](https://blog.youtube/creator-and-artist-stories/master-these-4-metrics/)
 - [YouTube Data API: videos resource (the tags count)](https://developers.google.com/youtube/v3/docs/videos)
 
 Everything else:
