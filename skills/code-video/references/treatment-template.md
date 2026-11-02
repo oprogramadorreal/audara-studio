@@ -10,8 +10,8 @@ Everything here is a default. Drop what the piece doesn't need, add what it does
 a default that matters (a cut off the beat, a long hold, another format), say why in a line. `references/…`
 and `<skill>/…` are this skill's files; every other path is in the project, where commands run.
 
-Contents: Size it to the piece · Decide what's open, ask only what isn't yours · When the director brings
-the plan · The skeleton · Choosing the song window · The storyboard · The sync map · Words on screen · Scene
+Contents: Size it to the piece · What a video is for · Decide what's open, ask only what isn't yours · When
+the director brings the plan · The skeleton · Choosing the song window · The storyboard · The sync map · Words on screen · Scene
 briefs for scene authors · The commercial preset · Deliverables · Example: a 15-second pool reopening teaser
 
 ## Size it to the piece
@@ -24,14 +24,43 @@ The treatment grows with the piece, not with this template:
   250 words, the questions included, with Also considered in one line at most.
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and
-  its transition out (a hard cut says so), the moments that must land, and "never claim" when it states
-  facts or shows a product.
+  its transition out (a hard cut says so), the moments that must land, the promise when people choose to
+  click it, and "never claim" when it states facts or shows a product.
 - **A whole-song music video, a long explainer, or anything several scene authors make at once: the
   whole skeleton,** with scene briefs. Length decides, not the kind of video: a 30-s cut of a song is a
   spot.
 
 A short treatment goes into the message whole; for a long one, the idea, the song window and the storyboard
 with its rows whole, transitions out included. Analysis numbers, file lists and status stay out of it.
+
+## What a video is for
+
+The director's words outrank all of this, and a script they give stays locked. Where the piece is yours,
+it does three things well, in this order; the order settles what stays when they compete.
+
+1. **Entertain.** A reason to keep watching to the end: a story, a picture, a well-timed reveal. This
+   outranks completeness: a video can get every detail right and still lose its audience.
+2. **Show.** What the viewer can see happen, they see: the action, the change, the result. Work out the
+   picture first; narration and on-screen text then carry what the viewer still needs.
+3. **Teach.** An insight to take away, part of why the video felt worth their time. A form with nothing to
+   teach (a loop, a music video, a mood piece) goes without rather than gaining a lesson.
+
+**Licence, and its limit.** A video is an artistic work: it can simplify, leave things out or change how
+events unfold for a better story, without every qualification. The limit is what a reasonable viewer comes
+away believing. The central point stays true, and so does anything that matters if they repeat it or act on
+it: a number, a cause, who did what, an instruction, what a product does. No invented quote, result or figure
+is presented as a real person's, company's or study's. The liberties go in Never claim; a label appears once,
+where the picture could mislead, never as a running disclaimer.
+
+**The promise comes first.** For a video people choose to click, before outlining, write a working title and
+the words a thumbnail could carry (or none, when the picture says it). Together they make one clear promise,
+and it decides the opening: a surprising result is shown, or starts to be revealed, in the first seconds, in
+the picture, since those seconds also play muted on hover and in phone feeds. Someone who clicked recognizes
+what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
+happens next. A twist the piece depends on is promised as a question, not given away. A video a feed plays on
+its own (Shorts, Reels) has no click to answer, so its first seconds make the promise themselves. A loop, a
+sting, a slot ad or a stream background needs no promise; a song's opening is the song's. It stays a working
+promise: the youtube-package skill makes the final title and thumbnails from the finished video.
 
 ## Decide what's open, ask only what isn't yours
 
@@ -66,7 +95,7 @@ A script, a shot list, a two-column A/V script or timecodes are the director's s
 words, order and times, a row per shot, and fill only what they leave open. A timecode they give as exact
 (a client's cut, a broadcast slot) stays exact; a note by time ("at 0:23, on the snare") finds the event it
 means (`references/motion.md`). A script too long for its length, a word the voice will stumble on, a shot
-that can't work: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
+that can't work, an opening that doesn't pay what the title promises: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
 skill without the notes.
 
 ## The skeleton
@@ -74,12 +103,14 @@ skill without the notes.
 ```markdown
 # <Title>
 
-<The idea in one paragraph: what the viewer should feel or understand by the end, and the image that
-carries it. Tie a song's image to its words sideways rather than illustrating each line (the literal picture
+<The idea in one paragraph: what keeps the viewer watching, what they should feel or understand by the
+end, and the image that carries it. Tie a song's image to its words sideways rather than illustrating each line (the literal picture
 is the one every video of the song shows); an explainer shows its mechanism, staged so it surprises. If it rests on a transformation or two, name them without effect
 names ("the receipt becomes the city map", not "a morph transition"); name the persistent actor if any.>
 <Also considered: the style frames you didn't pick, a line each, when the look was yours.>
 
+- **Promise:** <working title> · <thumbnail words, or none>: <what someone who clicked expects>. Opening:
+  <what the first seconds show to pay it>. (When people choose to click it.)
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.
 - **Sound:** <the song window below | narration | music and effects synthesized in code | none: no audio track>.
@@ -88,9 +119,10 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
   lines, two colours>.
 - **Never claim:** <what would be false or unprovable here, for a product a feature, result or figure it
-  doesn't have, shown as its own (a concept the director asked for is marked as one); how illustrative
-  values are labelled: once, where a viewer would take them for fact; the rest in the description>. (When
-  the piece states facts or shows a product.)
+  doesn't have, shown as its own (a concept the director asked for is marked as one); the liberties taken
+  (simplified, merged, reordered) and the central point they leave true; how illustrative values are
+  labelled: once, where a viewer would take them for fact; the rest in the description>. (When the piece
+  states facts or shows a product.)
 - **Preset:** commercial. (Only when the director chose it.)
 - **Deliver:** <the standard set, plus what this video needs beyond it>.
 
@@ -167,7 +199,8 @@ several rows.
   (`bpm` in `video.json`), and music added later then fits the timeline. Times read as written: `1.5 s`
   or `0:01.50`, never `1:30` for 1.5 s.
 - **What the viewer sees,** concretely: what is where, how big, what moves.
-- **The moment's job:** what it tells, sets up or pays off. A row without one is filler.
+- **The moment's job:** what it tells, sets up or pays off. A row without one is filler. The first row
+  pays the Promise, when there is one.
 - **Transition out:** how it hands over: a hard cut (a montage's usual one, on the beat), or what crosses
   the cut: an object, a shape, a colour, a direction of motion, a word. Name what crosses, because the
   scene on the far side has to pick it up (a shared pose, `references/motion.md`).
@@ -243,6 +276,7 @@ go in `.audara-cache/<owner>/`, never `out/`.
 Files: `scenes/<id>.ts` and `scenes/<id>-*.ts`. <What it shows, row by row.> Must land: <its sync points>.
 Receives: <what carries in, and the shared helper it comes from>. Hands over: <what carries out>.
 The director's decisions that touch it: <quoted from Decisions, rejections included>.
+Keeps true: <for the opening scene, the Promise; any Never claim it touches>.
 ```
 
 The lead owns `timeline.ts`, `video.json`, `src/` and the helpers scenes share (`scenes/_<name>.ts`, named

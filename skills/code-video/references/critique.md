@@ -217,10 +217,14 @@ Check:
 - Has every row its own composition and job? Which rows are filler?
 - What carries across each cut, or is it a cut the piece means (a montage's, on the beat)? Does any row
   start or end on an empty frame, the first and last included?
-- Is every claim, number and diagram true or labelled (once, where a viewer would take it for fact: a
-  diagram that reads as one needs no label, and sources can go in the description), is every product
-  screen the product's real one or a concept the director asked for, marked as one (assets/SOURCES.md says
-  which), and is nothing claimed that the treatment rules out?
+- What would a reasonable viewer come away believing? Simplifying, leaving out or reordering is fair while
+  the central point stays true (Never claim names the liberties). Is anything that matters if they repeat it
+  or act on it true or labelled (once, where a viewer would take it for fact: a diagram that reads as one
+  needs no label, and sources can go in the description), is every product screen the product's real one or
+  a concept the director asked for, marked as one (assets/SOURCES.md says which), and is nothing claimed
+  that the treatment rules out?
+- Where the treatment has a Promise, does the first row pay it, in the picture, and leave a reason to stay?
+  Which rows say in words what the picture could show?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
@@ -259,11 +263,14 @@ and measured numbers, not intentions. Artifact: <project>/out/<video>/<file>.mp4
 <W>x<H>, <fps> fps, <with sound | silent>), for <where it plays: the platform, or "not said">. The
 director's words, which bind: "<verbatim>".
 <tools>
-First look, as a stranger: before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say what
-its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
+First look, as a stranger. <When the treatment has a Promise: You clicked a video titled "<working title>",
+its thumbnail saying "<words>".> Before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say
+what its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
 second; a frame per bar for a long one) and, if you like, a clip. Write out/<video>/critique/r<N>/first-look.md
-in three to five lines: what the video shows and says, in your words; whether it would hold a stranger
-to the end, and why; its weakest stretch, with the time. Don't revise it afterwards: the treatment can
+in about six lines: what the video shows and says, in your words (what it says is in
+videos/<video>/data/words.json, if it has one); what you now believe is true because of it; whether its
+first seconds, sound off, show what you came for and give you a reason to stay; whether it would hold a
+stranger to the end, and why; its weakest stretch, with the time. Don't revise it afterwards: the treatment can
 explain a choice, not change what a viewer sees.
 Then read the treatment and the look, and review the whole video: sheets (about five frames a second for
 a piece under a minute, a frame per beat or bar for a longer one), every frame through each cut and
@@ -291,6 +298,10 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
+   Rank what you find in this order: what loses the viewer, what is told that could be shown, what is
+   left unlearned. A belief in your first look that is false about the central point, or about anything
+   that matters if repeated or acted on, outranks them all; a simplification that leaves those true is
+   not a finding. Where the treatment has a Promise, say whether the opening pays it.
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)?
