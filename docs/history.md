@@ -2987,3 +2987,35 @@ Where the wording departs from the user's, and why:
   real person's, company's or study's. Their "reasonable viewer" test asks for this: a viewer repeats the figure.
 - The thumbnail may carry no words; a twist is promised as a question; a label appears once, since about 25 honesty
   captions once piled up until they said "remove them all" (0.7.1).
+
+What the checks showed:
+
+- **Trigger, Claude Code, Opus 5.5 at low effort, one run each:** video-ideas 25/25, code-video 27/27. vi-24 and vi-25
+  loaded video-ideas, cv-27 left code-video alone, and vi-17, a script for filmed content, stayed out.
+- **`vi-script-alone`, Claude Code, Opus 5.5, one run, 3 minutes:** all five assertions met, as read by the author of
+  this change rather than a separate grader. It gave a working title, the thumbnail words ("Same Sun.") and the promise
+  before the script; the opening drains the air from a noon sky until it goes black, in the picture, before the voice
+  explains anything; it named six liberties; the accepted script went into the prompt word for word, with the title
+  and thumbnail marked replaceable; and nothing was built.
+- **Spec checks:** all six skills pass the three validators, stay under 8,000 bytes and have no byte-order mark.
+- **Not run:** `cv-promise-opening`, `cv-licence-keeps-facts` and the changed `cv-range-loop`, which take hours and wait
+  for the user's yes. What this wording does to a built video, to scene authors and to critics is still unmeasured.
+
+Codex (GPT-6-Astra) brainstormed the question on its own through Herdr, then reviewed the branch; the Claude Code
+session decided and made the edits.
+
+- **The brainstorm** reached the same shape independently: shared guidance, and a script alone in video-ideas. It found
+  Nutlight's voice-first line, the thumbnail with no words, and the 0.8.2 record of guidance lost between agents. It
+  wanted a new `references/editorial.md` with read instructions in several SKILL.md files; the template section stayed,
+  since every Brief already reads it and those files had no room for the pointers.
+- **First review, nine findings, all taken.** "Show" had hardened into a ban on words that match the picture ("words
+  only for what the picture can't carry", against the user's "what the viewer still needs"). The short limit contradicted
+  the licence, since "stop where a viewer would believe something false" covers every harmless inference. A later cut
+  could break the promise with the opening untouched, and a round of notes runs no critic. soundtrack's pointer missed
+  story choices in the sound. The images line had lost "images given or asked for", which 0.8.0's trim kept on purpose.
+  The evals tested "before the first scene file" rather than before outlining, let a run with no critic pass, forbade
+  the label they allowed, and called impulse "thrust". video-ideas' summaries still ended at the prompt alone.
+- **Second review, three findings, all taken.** The skill text held and the trims lost nothing. `cv-promise-opening`
+  could fail a correct run, since turn 3 removes the payoff the earlier assertions read in the final folder, and turn 3
+  could pass by remembering, so it is now a new session judged against the cut at the end of turn 2. This entry still
+  gave the first implementation's sizes.
