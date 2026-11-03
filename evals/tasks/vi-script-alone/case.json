@@ -14,10 +14,10 @@
     }
   ],
   "assertions": [
-    "Turn 1 gives a working title and the words a thumbnail could carry (or says none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.",
+    "Turn 1 gives a working title and a thumbnail idea (what it shows, and its words or none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.",
     "The script is written as what is seen, with narration or on-screen words for what the viewer still needs: the explanation rests on visible action or change, not on narration standing in for a demonstration the picture could carry.",
     "Any simplification is named as one, and nothing false about the central point is stated (air scatters short wavelengths more, so scattered light reaches the eye from all over the sky).",
-    "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail words, a length or a sound they didn't give) as replaceable.",
+    "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail idea, a length or a sound they didn't give) as replaceable.",
     "Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything."
   ]
 }

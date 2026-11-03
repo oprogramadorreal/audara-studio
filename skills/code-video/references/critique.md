@@ -13,6 +13,7 @@ Contents
 - Measured checks: `render.ts verify` and `qc.py`
 - Hand-off
 - Delivery
+- Disk
 
 ## The director's loop
 
@@ -29,7 +30,7 @@ approved (the length, a cut on a word, a hold the treatment promises) says so, o
 keeps it, and says what else you retimed to make room.
 
 A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
-when the director asks for the file (Delivery).
+when the director says yes to a version they've previewed, or says not to wait (Delivery).
 
 ## Your stills loop
 
@@ -66,7 +67,7 @@ choose:
   yet (a new session on a fresh copy: `out/` isn't committed), run verify before you change anything.
 
 **Keep the evidence and show it.** Sheets and stills stay in `out/<video>/`, which isn't committed and
-costs little (whole-video drafts and frame folders don't: one project's reached 36 GB; see Delivery).
+costs little (whole-video drafts and frame folders don't: one project's reached 36 GB; see Disk).
 Name them per check (`--out out/<video>/sheets/intro-r2.png`) so the next one doesn't overwrite them,
 put their paths in your reply, and don't clear them out at the end: they are the director's view of what
 you checked, and without them a reply is only claims. Scripts and data you write to
@@ -144,7 +145,8 @@ session that built the video passed it after looking at one frame and an eight-f
   or a review the director asks for, holds at most a full-cut round and one verification). After SHIP, what's left goes to the director as open findings, not into
   the picture: a change after the last round is reviewed at delivery, before the render (Delivery,
   step 2). The director outranks the critic: a finding that goes against their words is reported, not
-  acted on. A choice only the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
+  acted on. A choice only the treatment argues for (a hold for "reading time", a plain look, a label kept
+  because "it teaches the term") still has to work on screen.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
@@ -152,7 +154,8 @@ session that built the video passed it after looking at one frame and an eight-f
   - a full-cut round on a `--draft` render of the whole video before you call the build done, then, past
     about 30 s, one verification round after its fixes. Then the director gets the sheets and the
     findings still open (they have had the preview link since setup, and watch while the critics work).
-    The build then ends in the preview (Hand-off); a render waits for their word (Delivery);
+    The build then ends in the preview (Hand-off); a render waits for their yes to what they've previewed
+    (Delivery);
   - after the build, a round when the director asks for one, and the one before the render (Delivery,
     step 2). Asking for one means asking for a critic or a review of the whole video; "check this part
     carefully" is a note, answered from your stills loop on that part (or one critic on a clip of it). A
@@ -265,7 +268,7 @@ and measured numbers, not intentions. Artifact: <project>/out/<video>/<file>.mp4
 director's words, which bind: "<verbatim>".
 <tools>
 First look, as a stranger. <When the treatment has a Promise: You clicked a video titled "<working title>",
-its thumbnail saying "<words>".> Before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say
+its thumbnail showing <what it shows><, with the words "<words>">.> Before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say
 what its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
 second; a frame per bar for a long one) and, if you like, a clip. Write out/<video>/critique/r<N>/first-look.md
 in about six lines: what the video shows and says, in your words (what it says is in
@@ -299,8 +302,10 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
-   Rank what you find in this order: what loses the viewer, what is told that could be shown, what is
-   left unlearned. A belief in your first look that is false about the central point, or about anything
+   Rank what you find in this order: what loses the viewer (a lesson that stops the story without
+   earning it, or repeats what it showed, counts: it feels like a class), then what is told that could
+   be shown. A missing lesson is no finding unless the director asked for one; an explanation is judged
+   by what it gives this moment, not by the term it teaches. A belief in your first look that is false about the central point, or about anything
    that matters if repeated or acted on, outranks them all; a simplification that leaves those true is
    not a finding. Where the treatment has a Promise, say whether the opening pays it.
 1. Per scene: time range, what's on screen, its problems ranked.
@@ -332,7 +337,8 @@ For every finding in the earlier reports, give FIXED / PARTLY / STILL PRESENT, w
 image or number that shows it. Then hunt for new defects in every stretch that changed, first around the
 earlier findings, then in the stretches no finding named, where a fix reached what it wasn't meant to:
 glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment matters most: Check
-<the hit, the word> at <time>.> A finding the treatment argues for stays a note, not a defect.
+<the hit, the word> at <time>.> A choice only the treatment argues for still has to work on screen: it stays
+a finding.
 Report, under 500 words, to out/<video>/critique/r<N>/verify.md, ending with SHIP or ONE MORE PASS (at
 most three fixes, ranked).
 ```
@@ -371,10 +377,11 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 
 ## Hand-off
 
-A build ends in the preview: "make a video" asks for the video, and the preview plays it. The final render
-takes minutes and the director's first notes usually change the picture, so it waits until they ask for
-the file (a render, an export, the MP4), in their request or later (Delivery). The reply gives the
-director, every time:
+A build ends in the preview: asking for the video asks for what the preview plays, even when the request
+names a render or the MP4. The final render takes minutes and the director's first notes usually change the
+picture, so it waits for their yes to a version they've previewed ("approved", "render it", "I want the
+MP4"), or their word not to wait ("render it, no review"). Drafts for the critic aren't that render. The
+reply gives the director, every time:
 
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
 - the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
@@ -385,12 +392,14 @@ director, every time:
 - the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
   if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
   costs), the review it gets first when the picture changed since the last critic round (Delivery, step
-  2) and that review's time, and what it brings: the MP4 with motion blur, sheets, a poster and the QC
-  report; and that the project's `README.md` has the commands to watch and render it without an agent.
+  2) and that review's time, and that its fixes come back to the preview before the render; what it brings:
+  the MP4 with motion blur, sheets, a poster and the QC report; and that the project's `README.md` has the
+  commands to watch and render it without an agent;
+- when the round left a lot on disk, the line on what could go and what the next round needs (Disk).
 
 ## Delivery
 
-When the director asks for a render, in their request or later:
+When the director says yes to a version they've previewed, or says not to wait:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. The review, before the render. A picture changed since the last critic round gets one full-cut round
@@ -398,7 +407,10 @@ When the director asks for a render, in their request or later:
    this request already ran its rounds, in however many turns (a full-cut round and its verification, or
    the full-cut round alone for a short piece or when the director asked for speed). That is delivery's only round: fixes made after it are listed as
    not yet reviewed, not sent through another round and another render. A render made before its review
-   is thrown away when the review finds anything, and each costs minutes.
+   is thrown away when the review finds anything, and each costs minutes. Its fixes change what they said
+   yes to, so they go back to the preview with a `?t=` link each, and the render waits for a new yes, which
+   renders without another round. When they said not to wait, render with the fixes listed as not yet
+   reviewed.
 3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
    change, and wait for it before you reply: it takes minutes, often past a tool's time limit for one
    command (then run it in the background and check on it until it ends), the reply needs its result,
@@ -420,9 +432,9 @@ When the director asks for a render, in their request or later:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
 
 A defect only the render shows (a one-frame double image where a scene steps on `t` inside the shutter,
-which no single-sample check can show: contract.md) is fixed in the scene, but when that means rendering
-a long video again, ask first: the director gets the frame, how far it reaches and what another render
-costs, and picks. One final render showed such frames, rated minor and seen only frame by frame, and their
+which no single-sample check can show: contract.md) is fixed in the scene, and rendering again waits for
+the director's yes, unless they said not to wait: they get the frame, how far it reaches, what another
+render costs and the preview link at the fixed moment, and pick. One final render showed such frames, rated minor and seen only frame by frame, and their
 repair took 8 hours overnight without asking.
 
 A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
@@ -440,15 +452,40 @@ left open; and what wasn't checked ("measured, not listened to"; "sampled frames
 Every claim in it comes from a check that ran: "lands on the beat" means someone looked at the frame on
 the beat. For a video headed to YouTube, one line offers its package: three thumbnails with a title, the
 description with chapters and the tags (the youtube-package skill); the poster is a frame, not a thumbnail.
-And it offers to free the disk, in groups the director can pick from, each with its size and why
-it's safe: the drafts, frame folders and critic rounds in `out/<video>/`, the scratch in `.audara-cache/`,
-and your session's temporary folder when it's large (one thumbnail session left 14.8 GB there). Never in
-it: each format's delivery, its reports (`verify.json`, `qc.json`, the mix's), the sheets and the poster;
-the only render of a video that has no final; pictures still awaiting a pick; `.audara-cache/preview.log`
-and `.audara-cache/uv/`; and anything the project names as a source: search `videos/`, `src/`, `scripts/`
-and `docs/` for each path first (one project's `mix.json` and textures were made by scripts in
-`.audara-cache/tools/`, named in its files). Delete only after the director's yes, and not while a render,
-the preview or another session is using the project.
+And when the work left a lot on disk, it offers to free it in groups the director can pick from, each with
+its size and why it's safe (Disk).
+
+## Disk
+
+A production's working files pile up: drafts, frame folders and critic rounds reached 36 GB in one
+project's `out/`, and one cleanup freed about 130 GB, most of it review outputs and session scratch.
+Removing them is the director's call, and a round ending, or passing verify, doesn't make its files
+useless: the next round compares with them, resumes them, or spends minutes to hours making them again.
+
+- **When a round ends** having left a lot (several GB), or the disk is already a concern, one line of the
+  reply says what could go on request and what the next round still needs ("about 3 GB of r1's frames can
+  go; r2's and the comparison cut stay until you've picked"). Nothing is deleted then.
+- **On a request to clean up,** remove only what you inspected and know no continuing work needs: the
+  frames, sheets and clips of a round whose findings a later round has closed, drafts nobody will compare
+  with again, one-off probes and test renders, your own session's scratch. Being old, in `out/` or
+  `.audara-cache/`, or ignored by git doesn't make a file disposable.
+- **Kept unless the director names it** (a request for "temporary files" covers none of it): what git tracks
+  and what the director gave; sources and the scripts that make them, wherever they are (search `videos/`,
+  `src/`, `scripts/` and `docs/` for each path first: one project's `mix.json` and textures were made by
+  scripts in `.audara-cache/tools/`); every paid take, chosen or not, with its record; each format's
+  delivery with its reports, sheets and poster, and the only render of a video that has no final; the cut
+  under review, any version the director may compare with, and pictures awaiting a pick; the records the
+  next round reads (`verify.json`, critic, QC and mix reports, the treatment); an interrupted render's
+  pieces and resume records (`<out>.pieces/`), and any `.part` awaiting recovery; and what is slow or costly to remake: timing data,
+  split stems, decoded music, downloaded models, uv's cache (`.audara-cache/uv/`, or wherever
+  `UV_CACHE_DIR` points), `node_modules`, `.audara-cache/preview.log`.
+- **How:** measure the candidates. Delete literal, inspected paths inside the project or your own
+  session's temporary folder (one thumbnail session left 14.8 GB there), a folder only when all it holds
+  qualifies; never by pattern or extension across the project, with `git clean`, or through a link out of
+  it; and not while a render, the preview or another session uses them. A request to clean up is the yes
+  for what qualifies; one for a list first waits for its answer. When unsure, keep it.
+- **The reply** says what went, its size and what making it again would take; what stayed for the next
+  round, and why; and what could go after a decision ("the 60 fps test clips, once you've picked").
 
 ---
 

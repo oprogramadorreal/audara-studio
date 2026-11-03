@@ -36,14 +36,22 @@ with its rows whole, transitions out included. Analysis numbers, file lists and 
 ## What a video is for
 
 The director's words outrank all of this, and a script they give stays locked. Where the piece is yours,
-it does three things well, in this order; the order settles what stays when they compete.
+two things come first, in this order; the order settles what stays when they compete.
 
 1. **Entertain.** A reason to keep watching to the end: a story, a picture, a well-timed reveal. This
    outranks completeness: a video can get every detail right and still lose its audience.
 2. **Show.** What the viewer can see happen, they see: the action, the change, the result. Work out the
    picture first; narration and on-screen text then carry what the viewer still needs.
-3. **Teach.** An insight to take away, part of why the video felt worth their time. A form with nothing to
-   teach (a loop, a music video, a mood piece) goes without rather than gaining a lesson.
+
+**Teaching is a bonus, not a duty.** What a viewer learns is best carried by the story: its own events and
+figures, a mistake and what it costs, an explanation that answers a question the story made them ask (the
+wrong numbers on the copy, then how the copier made them). Explicit teaching (a definition, an analogy, a
+worked example, a question to the viewer, a recap) fits where the piece wants it at that moment, or where the
+director asks for it. An invented example can earn its place, but where the story's own facts make the
+point, they make it better. A lesson that stops the story to make a point it already made, or only because
+a video should teach, is cut, shortened or turned into something that happens; being in a source or a draft
+the director didn't lock doesn't earn it a place. Unless the director asked for a lesson, a piece without one
+lacks nothing; one forced in makes it feel like a class, and viewers leave.
 
 **Licence, and its limit.** A video is an artistic work: it can simplify, leave things out or change how
 events unfold for a better story, without every qualification. The limit is what a reasonable viewer comes
@@ -53,7 +61,7 @@ is presented as a real person's, company's or study's. The liberties go in Never
 where the picture could mislead, never as a running disclaimer.
 
 **The promise comes first.** For a video people choose to click, before outlining, write a working title and
-the words a thumbnail could carry (or none, when the picture says it). Together they make one clear promise,
+a thumbnail idea: what it shows, and the words it could carry (or none, when the picture says it). Together they make one clear promise,
 and it decides the opening: a surprising result is shown, or starts to be revealed, in the first seconds, in
 the picture, since those seconds also play muted on hover and in phone feeds. Someone who clicked recognizes
 what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
@@ -96,7 +104,7 @@ A script, a shot list, a two-column A/V script or timecodes are the director's s
 words, order and times, a row per shot, and fill only what they leave open. A timecode they give as exact
 (a client's cut, a broadcast slot) stays exact; a note by time ("at 0:23, on the snare") finds the event it
 means (`references/motion.md`). A script too long for its length, a word the voice will stumble on, a shot
-that can't work, an opening that doesn't pay what the title promises: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
+that can't work, an opening that doesn't pay what the title promises, an explanation that stops the story or repeats what it already made clear: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
 skill without the notes.
 
 ## The skeleton
@@ -110,7 +118,7 @@ is the one every video of the song shows); an explainer shows its mechanism, sta
 names ("the receipt becomes the city map", not "a morph transition"); name the persistent actor if any.>
 <Also considered: the style frames you didn't pick, a line each, when the look was yours.>
 
-- **Promise:** <working title> · <thumbnail words, or none>: <what someone who clicked expects>. Opening:
+- **Promise:** <working title> · <what the thumbnail shows>, <its words, or no words>: <what someone who clicked expects>. Opening:
   <what the first seconds show to pay it>. (When people choose to click it.)
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.

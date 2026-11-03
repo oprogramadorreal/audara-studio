@@ -1,0 +1,17 @@
+{
+  "id": "cv-render-no-review",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 75,
+  "turns": [
+    {
+      "prompt": "Make a 10-second animated end card for Night Signals and render the MP4 without waiting for my review."
+    }
+  ],
+  "assertions": [
+    "With the skills, the turn ends with a full render (not a --draft) of 10.0 +/- 0.1 s at out/<name>/<name>.mp4, made after a full-cut critic round on a draft (out/<name>/critique/r<N>/), and it does not stop to ask for approval of the cut (the transcripts).",
+    "The reply lists the fixes made after the critic's last round as not yet reviewed, each with a ?t= link, links a contact sheet and a poster that exist, and gives the preview link; render.ts verify passes."
+  ]
+}

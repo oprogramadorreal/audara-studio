@@ -108,22 +108,26 @@ The steps follow SKILL.md's session checklist, in its order:
 6. **Critic.** A fresh critic reviews a draft of the whole cut, looking first as a stranger, and the agent
    fixes what it finds; a piece longer than about 30 s also gets a verification round. After the build,
    a critic round runs when the director asks for one and before the render; a round of notes goes
-   through the agent's own checks instead (step 8), and its hand-off offers a critic round only when it
+   through the agent's own checks instead (step 7), and its hand-off offers a critic round only when it
    rebuilt much of the cut or left something those checks couldn't settle. (Until 0.8.1 the text let a
    critic round follow every round of notes; history.md says why it changed.)
-7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
-   asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
-   quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
-   and a poster frame, and an offer to delete, after a yes, the drafts and frame folders the work left (one
-   project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
-   itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
-   browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
-   frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
-   unchanged. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
-8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
+7. **Direct.** A build ends in the preview with the render offered, and waits there, even when the request
+   asked for the MP4. The director watches and gives notes by time ("at 0:23 the title should land on the
    snare"). The agent changes what the note names and what it forces, checks what `verify` says changed
    and each note's moment as it renders (a still, a clip with its `qc.py` lines, the mix measured), and
    answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
+8. **Render.** The final render waits for the director's yes to a version they've previewed ("approved",
+   "render it"), or their word not to wait. A picture changed since the last critic round is reviewed on a
+   quick draft first; that review's fixes go back to the preview, and a new yes renders them without
+   another round, so the render runs once and shows what the director saw. A defect only the render shows
+   is fixed, and another render waits for the same yes. Each render comes with a quality report, a contact sheet
+   and a poster frame, and, when the work left a lot on disk, an offer to free it: only what no continuing
+   work needs, never a source ("Disk", below). Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
+   itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
+   browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
+   frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
+   unchanged. (Until 0.2.0 the first build ended with the MP4, and until 0.11.0 a render asked for in the
+   request ran before the director had seen the video; history.md says why each changed.)
 
 What the agent owes the director:
 
@@ -146,12 +150,19 @@ that shows it.
 ### What a video is for
 
 The user gave the same editorial brief with every script and cut, so it is a standing default, and their words
-still outrank it. A video entertains, then shows, then teaches, in that order: the order settles what stays when
-they compete. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
+still outrank it. A video entertains, then shows, in that order: the order settles what stays when they compete.
+Teaching is a bonus the story carries, never a duty. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
 believing. And a video people choose to click makes one clear promise before it is outlined (a working title and
-the words a thumbnail could carry), which decides how it opens. The words themselves are in
+a thumbnail idea: what it shows, and any words it carries), which decides how it opens. The words themselves are in
 `skills/code-video/references/treatment-template.md`.
 
+- **Teaching rides in the story.** Until 0.11.0 it ranked third of three duties, and the first film made that
+  way stopped to set the viewer an exercise with invented numbers, kept labels a critic had flagged "because they
+  teach the terms", and felt like a class (history.md, 0.11.0). What a viewer learns now comes from the story's
+  own events, or an explanation the story made them want, as in the essay a previous film adapted. Explicit
+  teaching stays open where the piece wants it, or the director asks; a lesson that stops the story, or repeats
+  what it made clear, is cut, shortened or acted out, and a missing lesson is no critic's finding unless the
+  director asked for one.
 - **Show doesn't ban words that match the picture.** Words carry what the viewer still needs, which can repeat
   what's on screen: seeing 23 figures isn't counting them. A finding is narration standing in for a demonstration
   the picture could carry.
@@ -167,15 +178,18 @@ the words a thumbnail could carry), which decides how it opens. The words themse
   against the Promise itself, and says so when the cut no longer pays it.
 - **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
   before it opens the treatment, now records what it believes because of the video, and whether the first seconds
-  pay the title and thumbnail words it is given, as a viewer has them. A false belief about the central point, or
+  pay the title and thumbnail it is given (what the thumbnail shows, and any words), as a viewer has them. The
+  thumbnail's picture is carried with its words, since a thumbnail with no words would otherwise promise nothing
+  on the way to the critic. A false belief about the central point, or
   about anything that matters if repeated or acted on, outranks every other finding; a simplification that leaves
   those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
   read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
 - **Labels once.** About 25 honesty captions once piled up on one video until the user said "remove them all".
-- **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; a form with nothing to
-  teach goes without a lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
+- **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; no piece owes a
+  lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
   answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
-  A script the director gives stays locked: an opening that doesn't pay is raised with a fix, not rewritten.
+  A script the director gives stays locked: an opening that doesn't pay, or an explanation that stops the story,
+  is raised with a fix, not rewritten.
 - **"Before outlining" is the user's rule, not YouTube's.** YouTube asks that the intro deliver on the promise
   made by the thumbnail and title; none of its pages checked (2026-11-02) says to write them first.
 - **The package still decides the title.** The Promise is a working one, where the title ideas start; the finished
@@ -206,6 +220,13 @@ just to make a video, which still goes straight to code-video.
   promise. It also takes a script alone, which no description named: the promise first, then the picture's
   beats, with words for what the viewer still needs, and it stops there; one the user accepts goes into the
   prompt word for word. A script for filmed content stays out, as ideas for it do.
+- **A working title and thumbnail come here, before the video exists.** Asked for a title and thumbnail to shape
+  an animated video it hasn't made yet, it offers a few pairs with different promises, each with what the
+  thumbnail shows, and stops there; the chosen pair becomes the treatment's Promise, and youtube-package makes the
+  final title and thumbnails from the finished video. Its description names this, and youtube-package's excludes
+  it: in the first project made under 0.10.0 a Codex agent asked for a "brainstorm de título + thumbnail" before the script loaded
+  youtube-package, whose description was the only one that matched, and read it without writing anything only
+  because its prompt forbade files.
 - **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
   facts, length, sound, what they ruled out); the idea they chose; and what the assistant only suggested
   (copy, a length, a staging), marked as replaceable. code-video follows the first exactly, develops the
@@ -247,9 +268,11 @@ what a later session needs:
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
 - what a video is for, in a line, and where each one's Promise and Never claim are;
-- what the agent owes the director, including that a request for ideas, a prompt or a script alone gets those and
-  nothing built, and a request for a thumbnail, a title, a description or tags gets the YouTube package with the
-  video left as it is.
+- what the agent owes the director, including that a request for ideas, a prompt, a script, or a working title
+  and thumbnail for a video not made yet gets those and nothing built; a request for a thumbnail, a title, a
+  description or tags gets the YouTube package with the video left as it is; and a build ends in the preview,
+  with the final render waiting for the director's yes to a version they've previewed;
+- how to treat the disk: delete only on request, only what no continuing work needs, and keep what's in doubt.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
 The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
@@ -266,6 +289,31 @@ engine from before 0.4.0 it skips the shader warm-up and plays as before.
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
 itself, which is exactly why the project carries its own conventions.
+
+### Disk: on request, keeping what the next round needs
+
+A production fills a disk: one project's `out/` reached 36 GB, and one cleanup freed about 130 GB, most of it
+review frames, drafts and a session's scratch. The director asks for cleanups ("clean up temporary files you
+won't need anymore"), usually mid-production, so the guidance is about removing the right things. It is in
+critique.md's "Disk", which Hand-off and Delivery point to, and in a bullet of the AGENTS.md `init` writes,
+since a cleanup request in a later session may load no skill.
+
+- **On request, never as a round's last step.** A round that ends, or passes verify, still leaves files the
+  next one compares with, resumes or would spend hours remaking. A round that leaves several GB says so in a
+  line, what could go and what stays, and deletes nothing.
+- **By what a file still does, not where it is.** `out/`, `.audara-cache/` and git's ignore rules mark what a
+  clone leaves out (video-repo), not what is disposable: one project's cache held the scripts that made its mix,
+  and the 130 GB cleanup also took a 15 GB uv cache and the decoded music, warning that a later audio change
+  would need downloads and rebuilding. Kept unless named: sources and their scripts, paid takes, deliveries, the cut under review and what it
+  may be compared with, the records the next round reads, an interrupted render's pieces, and what is slow to
+  remake.
+- **Literal, inspected paths; keep when unsure.** No pattern deletes and no `git clean`. A request for a list
+  waits for its answer; a request to clean up is the yes for what qualifies, and the reply says what went, what
+  stayed and why, and what could go after a decision.
+- **The scripts' own notes** on uv's and the models' caches now say they stay for later work; they said "it can
+  be deleted", and agents read them.
+- **Not added:** automatic cleanup, a janitor script, a manifest of rounds, or smaller critic frames, which
+  would change what the critics judge (history.md, 0.7.1, turned down smaller drafts for the same reason).
 
 ### Handing it on: a repository
 
@@ -477,6 +525,16 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   by picture changes, clean entrances and joins. Left out: that film's places and framings, its cast's names and
   its STYLE.md, which contradicts itself across revisions. A project's kit is its own copy, so a newer skill
   never changes how a finished video looks unless the director asks.
+- **The Stage paints in call order.** `depth` moves and hazes a draw but doesn't sort it, so what covers what
+  is each scene's order of calls. The kit can't sort for it: it can't know a scene's route (behind the
+  tablet, or in front), which parts belong together (the tablet, its stand and its imagined blazer) or what
+  the feet stand on, and most of a shot sits at depth 1. Its README says so, and Nutlight's critic checks
+  every crossing on stills (history.md, 0.11.0: a squirrel between a blazer and the tablet wearing it).
+- **The brows are strokes, and follow their own lid.** A thin even crescent echoed the eye's own top, so over a
+  lowered lid it read as the eye's outline showing through; it now tapers from a round inner end, comes down
+  with its own eye's lid (the expression's, never the blink's) and stays above a pair of glasses. A straight lid's
+  cream patch narrows to what covering the eye above its edge takes, never past its old width, which keeps a
+  shallow lid off the fur beside a far eye's ring.
 - **A default, not a fence.** The kit keeps what defines the style the same across videos and limits nothing
   else. What the director asks for wins over both: a character or a shot the kit doesn't draw is made with
   code-video's full range, beside the kit's scenes or instead of them; a video in another look, even in a
@@ -898,8 +956,8 @@ they differ, follow the stricter rule. What that means here:
     not for making a voice clone (narrating in one the user has is fine); `video-ideas` is not for making a
     video, for prompts for other generators, or for ideas or scripts for filmed content; `video-repo` is not for
     everyday commits, branches or pull requests, or for projects that aren't videos; `youtube-package` is not
-    for making or changing the video (title cards and text inside it included), for choosing what to make, or
-    for images unrelated to a video.
+    for making or changing the video (title cards and text inside it included), for choosing what to make or
+    its working title and thumbnail, or for images unrelated to a video.
   - **A little insistent** (Anthropic), because models tend to under-trigger skills: "use it whenever the
     user wants a video made from code, even if they don't say 'motion graphics'".
   - **First sentence first:** Claude Code cuts each listing at 1,536 characters, and Codex shortens

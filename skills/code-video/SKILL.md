@@ -8,7 +8,7 @@ description: "Makes videos from code: music videos, lyric videos, motion graphic
 The user directs; you make the rest. A video's parts: idea, words (script or lyrics), voice, music and effects, look, pacing, length and format. What the director decides, follow exactly and write down; what they leave open is yours, and should impress, not just work. They never touch code and can take back any part. Their words outrank this skill; only where the result would break (sound off the picture, a failed render) say what breaks, offer a fix, and do what they pick. Paths are this skill's, except `videos/`, `src/`, `docs/`, `scripts/`, `out/`.
 
 ## What it's for
-In a script or a cut: entertain first (a piece people would watch twice), then show (words for what the viewer still needs), then teach, where the form can. Take liberties, but a reasonable viewer leaves believing nothing false that matters.
+In a script or a cut: entertain first (a piece people would watch twice), then show (words for what the viewer still needs); lessons ride the story; explain when it fits. Take liberties, but a reasonable viewer leaves believing nothing false that matters.
 
 ## When the look is yours
 Start from an image that carries the idea: for a song, tied to its words sideways rather than illustrating each line; for an explainer, the mechanism itself, staged so it surprises; for a named form or style (a showreel, psychedelic), what defines it. Pick the means that image needs, not the habitual one: light and depth, one flat field, a treated photograph or type alone can each be the bold choice. The picture changes most where the sound does. A frame that could be a slide isn't done. What the director pins down (the look, a shot), even to something plain, make exactly that, well.
@@ -29,19 +29,20 @@ Keep this checklist in your notes.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for, with a free stand-in meanwhile (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: a subagent per scene, on your own model (Scene briefs, references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before the build is done: a fresh full-cut critic (references/critique.md), waited for, and past 30 s its verification; later, when the director asks, and before a render. A plain picture nobody asked for is a finding, not taste.
-- [ ] **Render** when the director asks for the file (render, export, the MP4); "make a video" alone ends in the preview, offering the render. Replies give the critic's verdict and qc.py's `motion`, `glance` and `blank` lines (on drafts until a render) with a `?t=` link to each hold the treatment doesn't mark; a render adds the MP4, sheets and poster. Don't end your turn while a render or critic runs: both die with it.
+- [ ] **Hand-off.** A build ends in the preview, even if a render was asked for: offer it and wait. Replies give the critic's verdict, qc.py's `motion`, `glance` and `blank` lines and a `?t=` link to each hold the treatment doesn't mark.
 - [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, check the frames around it and what verify says changed, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision and rejection goes, in the director's words, into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them, the Promise and Never claim before every change.
+- [ ] **Final render** on their yes to a version they previewed, or their word not to wait, adding MP4, sheets, poster. Don't end your turn while a render or critic runs: both die with it.
 
 Also owed: a status line in long work, with the time left; stills, sheets, numbers.
 
 ## Commands
-In the project folder (`<skill>`: this skill's folder); all options: the header of `scripts/render.ts`.
+In the project folder (`<skill>`: this skill's folder); all options: `scripts/render.ts`'s header.
 
 | Step | Command |
 |---|---|
 | New project, video | `bun <skill>/scripts/init.ts . --video <video>` |
 | Preview | `bun scripts/render.ts preview --video <video> --t 12.5` (starts it if needed; it outlives your turn) |
-| Stills | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <entry id>]` |
+| Stills | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <id>]` |
 | Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0 and every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` |
 | Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |

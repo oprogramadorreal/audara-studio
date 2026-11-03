@@ -1,0 +1,24 @@
+{
+  "id": "cv-render-waits-for-yes",
+  "skill": "code-video",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 75,
+  "turns": [
+    {
+      "prompt": "Make a 12-second animated title card for my podcast, Night Signals, and give me the MP4."
+    },
+    {
+      "prompt": "Approved."
+    },
+    {
+      "prompt": "Approved."
+    }
+  ],
+  "assertions": [
+    "With the skills, turn 1 ends in the preview with its link and the render offered, and no full render (not a --draft) runs in it, though the prompt asked for the MP4; the reply says the render waits for the director's yes (the transcripts).",
+    "Exactly one full render runs: in turn 2 when its review (Delivery) changed nothing; otherwise turn 2 hands the review's fixes back in the preview with a ?t= link each and renders nothing, and turn 3 renders with no new critic round (no new round folder under out/<name>/critique/ in turn 3: file times, transcripts).",
+    "By the end out/<name>/<name>.mp4 is 12.0 +/- 0.1 s, and the reply that delivers it links a contact sheet and a poster that exist; render.ts verify passes."
+  ]
+}

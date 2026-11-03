@@ -155,6 +155,8 @@ On stills beside the reference that guides each scene, before scenes go out and 
 - dark frames keep their reference's near-black share; the peak light is on the action;
 - three planes, three-quarter forms, gaps and overlaps; no flat ground under a subject;
 - every light sits on its source; nothing appears or vanishes during a camera move; layers overlap the way
-  the space says they should;
+  the space says they should, checked at every crossing (a character passing a thing) on stills before, during
+  and after it: the character, every part of the thing (a stand, a costume, a held prop) and their feet,
+  contacts and shadows agree on who is in front (the kit's README, "The Stage");
 - words are in the world, or a small overlay where nothing in it can hold them; large enough; none announces
   a category.

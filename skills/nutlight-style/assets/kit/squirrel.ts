@@ -6,8 +6,8 @@
 // THE DESIGN
 //   A big round head about as wide as the body, sitting low into the shoulders; a short snub muzzle; big eyes: white
 //   eyeballs with a dark brown iris toward the nose, a lighter lower ring, a large cream glint up and toward the look
-//   and a small one low, a thick dark upper lid line, a lash flick at the outer corner and small brows once the head
-//   turns; the cream "spectacles" round the eyes with the forehead's fur coming down between them, into the muzzle,
+//   and a small one low, a thick dark upper lid line, a lash flick at the outer corner and small tapered brows once
+//   the head turns; the cream "spectacles" round the eyes with the forehead's fur coming down between them, into the muzzle,
 //   chin, chest and a long cream belly; a tiny dark oval nose with a glint, a thin smile with upturned ends; tall
 //   upright ears with a slightly pointed tip, a small tuft, a light rim and a darker rust inner ear; fur tufts at the
 //   cheeks' edges and on the crown. A compact pear body, short thick arms (each ONE tapering tube from the shoulder
@@ -811,10 +811,13 @@ function paintLash(c: C2, f: FurPalette) {
   p.moveTo(-3.5, -1.9); p.quadraticCurveTo(4.5, -2.4, 9.6, -8.4); p.quadraticCurveTo(6.8, -1.2, -2.5, 2.2); p.closePath();
   c.fillStyle = f.lid; c.fill(p);
 }
-/** A brow (reference 02, 05, 07, 08: a small dark arc above the eye's cream ring), origin its middle, ±15 long. */
+/** A brow (reference 02, 05, 07, 08: a short dark stroke above the eye's cream ring), origin its middle, ±15 long: round
+ * and thickest at its inner end (−x, toward the nose), arching and tapering to the outer end. (A thin even crescent
+ * echoed the eye's own top, so over a lowered lid it read as the eye's outline showing through.) */
 function paintBrow(c: C2, f: FurPalette) {
   const p = new Path2D();
-  p.moveTo(-15, 2.4); p.quadraticCurveTo(0, -9.6, 15, 1.2); p.quadraticCurveTo(0, -1.4, -15, 2.4); p.closePath();
+  p.moveTo(-12.5, 3.4); p.quadraticCurveTo(-16.5, 1.2, -14.2, -2.2); p.quadraticCurveTo(-2, -9.6, 15, 0.6);
+  p.quadraticCurveTo(-1, -2.6, -12.5, 3.4); p.closePath();
   c.fillStyle = mixs(f.lid, f.deep, 0.3); c.fill(p);
 }
 /** An upper lid, its origin the middle of its lower edge: the top half of a disc (radius 30) in the ring's cream; the
@@ -1369,6 +1372,26 @@ function chordE(dy: number, rot: number, a: number, b: number) {
   if (C >= 0) return 0;
   const D = Math.sqrt(B * B - 4 * A * C);
   return Math.max(0, Math.min((B + D) / (2 * A), (-B + D) / (2 * A)));
+}
+/** The half-width a straight upper lid's patch needs (a half-ellipse standing `H` tall on its edge line, which runs
+ * through (0, dy) from the socket at angle `rot`) to cover the part of the eye above that line: the eye an ellipse of
+ * half-axes a, b centred at `o` from the socket (the gaze moves the eye, not the lid). It samples that arc from one
+ * crossing of the edge to the other, both included, so the width moves smoothly as the lid does (samples spaced round
+ * the whole eye entered the arc one by one, and the width jumped). As the patch gets too short to cover it, the width
+ * grows until the caller's cap takes over. */
+function lidCoverW(dy: number, rot: number, a: number, b: number, o: Pt, H: number) {
+  const c = Math.cos(rot), s = Math.sin(rot);
+  // the outline's height above the edge, in the lid's frame: y(t) = A cos t + B sin t + C (−y is up)
+  const A = -s * a, B = c * b, C = -s * o[0] + c * (o[1] - dy), Rr = Math.hypot(A, B), phi = Math.atan2(B, A);
+  if (C >= Rr) return 0; // the eye is all below the edge
+  const al = C <= -Rr ? 0 : Math.acos(-C / Rr), n = 32;
+  let w = 0;
+  for (let i = 0; i <= n; i++) {
+    const t = phi + al + ((TAU - 2 * al) * i) / n, px = o[0] + a * Math.cos(t), py = o[1] + b * Math.sin(t) - dy;
+    const x = c * px + s * py, y = -s * px + c * py;
+    w = Math.max(w, Math.abs(x) / Math.sqrt(Math.max(1e-4, 1 - (y / H) ** 2)));
+  }
+  return w;
 }
 function chordInLens(dy: number, rot: number, h0: number, r: number, sx: number) {
   const c = Math.cos(rot), s = Math.sin(rot), rx = r * sx;
@@ -2063,8 +2086,9 @@ export class Squirrel {
     const overLens: [Pt, number, { sx: number; scale?: number; sy: number; alpha: number }][] = [];
     const lensR = (turned: boolean) => (turned ? LENS_T_IN : LENS_P_IN) - 1.6;
     // c: the eye's socket (head units); rx, ry: the eye's half-size there (head units, before hk); sx its squash across
-    // (a far eye, a squashed profile); sq the profile eye's own blink squash (its rest corner comes down with it)
-    const lids = (c: Pt, rx: number, ry: number, sx: number, inner: 1 | -1, near: boolean, turned: boolean, sq = 1, lashK = 1) => {
+    // (a far eye, a squashed profile); sq the profile eye's own blink squash (its rest corner comes down with it); o
+    // where the gaze has moved the eye from the socket
+    const lids = (c: Pt, rx: number, ry: number, sx: number, inner: 1 | -1, near: boolean, turned: boolean, sq = 1, lashK = 1, o: Pt = [0, 0]) => {
       const lidUP = turned ? P2.lidUT : P2.lidU, lidLA = turned ? P2.lidLT : P2.lidL;
       const lu = Math.max(clamp(ex.lidU + (near ? 0.35 : -0.35) * ex.asym, 0, 1), turned ? 0.94 * shut : 0);
       const lidL = Math.max(lidL0, turned ? 0.24 * shut : 0);
@@ -2076,18 +2100,24 @@ export class Squirrel {
       if (lu > 0.004) {
         const top = c[1] - ry - (turned ? 6 : 4), edge = c[1] - ry + 2 * ry * (lu + 0.16 * wA) + 1.2 * Math.abs(ex.slant) * 3;
         edgeDy = edge - c[1];
-        const kL = smootherstep(0, 0.06, lu);
+        // (the line comes in at once: half-faded on a patch that has already covered the top of the eye's own thick
+        // line, it was a grey bar there)
+        const kL = smootherstep(0, 0.02, lu);
         const q0 = R.onHead([c[0], edge]), SX = ((rx + 5) / 30) * sx * hk;
         const H = Math.min(ARCH_H * wA, 0.6 * (edge - top)); // the arch's height (head units)
         if (H < 0.05) {
-          put(lidUP, q0, th, { sx: SX, sy: ((edge - top) / 30) * hk, alpha: al });
+          // the patch narrows to what covering the eye above its edge takes (its outline included), never past its
+          // old width: at that width a shallow lid hung past the eye's narrow top onto the fur beside a far eye's ring,
+          // a cream band with a hard edge (a skeptical look's far eye). It stays opaque: faded, it was a grey film.
+          const wH = Math.min((rx + 5) * sx, lidCoverW(edgeDy, rot, rx * sx + 1.2, ry + 1.2, o, edge - top) + 1.5), kE = al * kL;
+          put(lidUP, q0, th, { sx: (wH / 30) * hk, sy: ((edge - top) / 30) * hk, alpha: al });
           // the lid's line is the eye's thick upper lid line carried down: it spans the eye as it is at the
           // lid's edge (its chord), never past the eye's outline onto the cream
           const hl = Math.min((rx + 1) * sx, chordE(edgeDy, rot, rx * sx, ry) + 1.4);
-          if (hl > 0.6) put(P2.lidLine, q0, th, { sx: (hl / 29) * hk, scale: 1, sy: hk, alpha: al * kL });
+          if (hl > 0.6) put(P2.lidLine, q0, th, { sx: (hl / 29) * hk, scale: 1, sy: hk, alpha: kE });
           if (g.glasses) {
             const h = chordInLens(edgeDy, rot, hl, lensR(turned), sx);
-            if (h > 1.5) overLens.push([q0, th, { sx: (h / 29) * hk, scale: 1, sy: hk * OVER_LENS.w, alpha: al * kL * OVER_LENS.a }]);
+            if (h > 1.5) overLens.push([q0, th, { sx: (h / 29) * hk, scale: 1, sy: hk * OVER_LENS.w, alpha: kE * OVER_LENS.a }]);
           }
         } else {
           // the straight lid down to the arch's top, the horns under it, the line along the arch in short pieces (so it
@@ -2121,15 +2151,17 @@ export class Squirrel {
         put(P2.lash, R.onHead([c[0] + out * (rx * xk * sx + 0.6), c[1] + dy]), th, { sx: out * hk * k * Math.max(0.55, sx), sy: hk * k, alpha: al * lashK });
       }
     };
-    // a brow above each eye (reference 02, 05, 07, 08: a small dark arc on the cream ring's top edge, never
+    // a brow above each eye (reference 02, 05, 07, 08: a short dark stroke on the cream ring's top edge, never
     // on the full front, reference 01): it acts with the face, up with wide eyes and a worry (its inner end up with the
-    // lids' slant), down with lowered lids and a frown, one up and one down when skeptical
+    // lids' slant), down with a frown, one up and one down when skeptical. It comes down with its own eye's lowered lid
+    // (that eye's lu from the expression, as lids() has it, not the blink) and flattens a little: left where it was,
+    // it floated high over a heavy lid. Over glasses it stays above the frame: lower, the lens tints it into a ghost
     const brow = (c: Pt, rx: number, ry: number, sx: number, inner: 1 | -1, near: boolean, kA: number) => {
       if (!P2.brow || kA <= 0.01) return;
-      const asy = (near ? 1 : -1) * ex.asym;
-      const lift = 6 * clamp(ex.wide, 0, 1) + 2.5 * Math.max(0, ex.slant) - 3.5 * Math.max(0, -ex.slant) - 4 * clamp(ex.lidU, 0, 1) - 4 * asy - 2.5 * Math.min(0, ex.lookY) + (g.glasses ? 6 : 0);
+      const asy = (near ? 1 : -1) * ex.asym, lu = clamp(ex.lidU + (near ? 0.35 : -0.35) * ex.asym, 0, 1);
+      const lift = 6 * clamp(ex.wide, 0, 1) + 2.5 * Math.max(0, ex.slant) - 3.5 * Math.max(0, -ex.slant) - (g.glasses ? 5 : 24) * lu - 4 * asy - 2.5 * Math.min(0, ex.lookY) + (g.glasses ? 6 : 0);
       const rotB = -0.3 * clamp(ex.slant, -1.2, 1.2) * inner;
-      put(P2.brow, R.onHead([c[0] - inner * 0.16 * rx * sx, c[1] - ry - 8.5 - lift]), R.headA + rotB, { sx: -inner * hk * Math.max(0.45, sx) * ((0.72 * rx) / 15), sy: hk, alpha: al * kA });
+      put(P2.brow, R.onHead([c[0] - inner * 0.16 * rx * sx, c[1] - ry - 8.5 - lift]), R.headA + rotB, { sx: -inner * hk * Math.max(0.45, sx) * ((0.72 * rx) / 15), sy: hk * (1 - 0.35 * lu), alpha: al * kA });
     };
     // the mouth: the closed shapes by weight, the open one over them
     const wS = Math.max(0, ex.smile), wF = Math.max(0, -ex.smile), wFl = clamp(ex.flat), wW = clamp(ex.wavy);
@@ -2145,7 +2177,7 @@ export class Squirrel {
       put(P2.head, R.neck, R.headA, { scale: hk, sx: sxP, alpha: al });
       const look: Pt = [5 * clamp(ex.lookX, -1, 1), 5 * clamp(ex.lookY, -1, 1)];
       put(P2.eye, R.onHead([(SK.eye[0] + look[0]) * sxP, SK.eye[1] + look[1]]), R.headA, { sy: eyeSy, sx: eyeSx * sxP, alpha: al });
-      lids([SK.eye[0] * sxP, SK.eye[1]], EYE_P.rx * wideK * big, EYE_P.ry * wideK * big, sxP, 1, true, false, Math.min(1, Math.max(0.07, eyeOpen)));
+      lids([SK.eye[0] * sxP, SK.eye[1]], EYE_P.rx * wideK * big, EYE_P.ry * wideK * big, sxP, 1, true, false, Math.min(1, Math.max(0.07, eyeOpen)), 1, [look[0] * sxP, look[1]]);
       brow([SK.eye[0] * sxP, SK.eye[1]], EYE_P.rx * wideK * big, EYE_P.ry * wideK * big, sxP, 1, true, 1);
       for (const [k, w] of mw) if (w > 0.01) put(P2.mouthP?.[k], R.onHead([SK.lip[0] * sxP + mx * 0.5, SK.lip[1]]), R.headA + mrot * 0.5, { scale: hk, sx: sxP, alpha: al * (w / mwSum) });
       if (open > 0.02) {
@@ -2181,7 +2213,7 @@ export class Squirrel {
       const ex0 = e.x + look[0] * e.sx, ey0 = e.y + look[1], sY = Math.max(eyeSy, hk * wideK);
       put(P2.eyeT, R.onHead([ex0, ey0]), R.headA, { sx: eyeSx * e.sx * e.inner, sy: sY, alpha: al * e.vis });
       put(P2.glintT, R.onHead([ex0 + e.inner * IRIS_T.dx * (eyeSx / hk) * e.sx, ey0 + IRIS_T.dy * (sY / hk)]), R.headA, { sx: eyeSx * Math.max(0.5, e.sx), sy: sY, alpha: al * e.vis });
-      lids([e.x, e.y], FM.eye.rx * wideK * big, FM.eye.ry * wideK * big, e.sx, e.inner, j === 0, true, 1, browK);
+      lids([e.x, e.y], FM.eye.rx * wideK * big, FM.eye.ry * wideK * big, e.sx, e.inner, j === 0, true, 1, browK, [look[0] * e.sx, look[1]]);
       brow([e.x, e.y], FM.eye.rx * wideK * big, FM.eye.ry * wideK * big, e.sx, e.inner, j === 0, browK * e.vis);
       if (ex.cheek > 0.02 && G.blush[j]!.vis > 0.02) put(P2.blush, R.onHead([G.blush[j]!.x, G.blush[j]!.y]), R.headA, { scale: hk, sx: G.blush[j]!.sx, alpha: al * 0.5 * clamp(ex.cheek) * G.blush[j]!.vis });
     }

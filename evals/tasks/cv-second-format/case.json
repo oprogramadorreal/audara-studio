@@ -12,10 +12,13 @@
     },
     {
       "prompt": "Render it."
+    },
+    {
+      "prompt": "Approved."
     }
   ],
   "assertions": [
-    "After turn 2 a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), and no full render (not a --draft) ran before turn 2.",
+    "By the end a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), rendered in turn 2, or in turn 3 when turn 2's review changed the picture, and no full render (not a --draft) ran before turn 2.",
     "The vertical version is recomposed, not cropped, letterboxed or scaled down: on full-size stills at the treatment's beat times, nothing the 16:9 frame shows is cut off at the sides, there are no bars, and the title is laid out for the tall frame (its size and place differ from a centre crop of the 16:9 frame).",
     "Text meant to be read is at 44 px or more and inside the Reels safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size 1080x1920 frames.",
     "The two formats share one timeline: the vertical one is the same video at --size 1080x1920 (render.ts's out/<video>/1080x1920/ holds its verify.json and MP4), or the reply says why it needed another edit; its entries start and end at the 16:9 version's times (verify.json timelines).",

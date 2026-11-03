@@ -136,18 +136,23 @@ which must survive a new session (`cv-direction-rejection`, `cv-visual-direction
 `st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), a second
 video in the same project with a look of its own, which must leave the first one's frames as they were
 (`cv-second-video-own-look`: the plant `first-video-baseline` verifies the first video twice before the
-session, in `baseline/` beside `work/`, for the grader to compare with), a product film
+session, in `baseline/` beside `work/`, for the grader to compare with), a cleanup asked for mid-production
+that must leave what the next round needs (`cv-cleanup-keeps-next-round`: the plant `disk-cleanup` adds a
+production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
 a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
-`cv-licence-keeps-facts`), a photographic 3D shot asked
+`cv-licence-keeps-facts`), a director who asks for the MP4 up front and gets the preview first, the render
+waiting for their yes to what they watched, or who says not to wait (`cv-render-waits-for-yes`,
+`cv-render-no-review`), a photographic 3D shot asked
 for by its subject and its move (`cv-photoreal-shot`: the realism kit, judged blind with `--without` on how
 photographic its frames read, and like the showreels not in `run-tasks.sh`'s default list; `cv-title-card` checks the
 kit stays out of a piece that doesn't ask for it). The `vi-` cases stand
 for someone choosing what to make: ideas only, from nothing or from product screens, in an empty folder or
 an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project`), a prompt to improve or
 one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and
-a script alone (`vi-script-alone`), and the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
+a script alone (`vi-script-alone`), one whose lesson the story should carry and one that asks for the lesson
+(`vi-teach-in-story`, `vi-teach-asked`), and the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
 together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas-and-make`). Most are text
 only and take minutes. The `vr-` cases stand for someone handing a finished project on: its first
 repository, asked for in the user's own words, then a name and a commit e-mail (`vr-first-repo`), and a
