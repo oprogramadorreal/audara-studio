@@ -150,12 +150,19 @@ that shows it.
 ### What a video is for
 
 The user gave the same editorial brief with every script and cut, so it is a standing default, and their words
-still outrank it. A video entertains, then shows, then teaches, in that order: the order settles what stays when
-they compete. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
+still outrank it. A video entertains, then shows, in that order: the order settles what stays when they compete.
+Teaching is a bonus the story carries, never a duty. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
 believing. And a video people choose to click makes one clear promise before it is outlined (a working title and
 a thumbnail idea: what it shows, and any words it carries), which decides how it opens. The words themselves are in
 `skills/code-video/references/treatment-template.md`.
 
+- **Teaching rides in the story.** Until 0.11.0 it ranked third of three duties, and the first film made that
+  way stopped to set the viewer an exercise with invented numbers, kept labels a critic had flagged "because they
+  teach the terms", and felt like a class (history.md, 0.11.0). What a viewer learns now comes from the story's
+  own events, or an explanation the story made them want, as in the essay a previous film adapted. Explicit
+  teaching stays open where the piece wants it, or the director asks; a lesson that stops the story, or repeats
+  what it made clear, is cut, shortened or acted out, and a missing lesson is no critic's finding unless the
+  director asked for one.
 - **Show doesn't ban words that match the picture.** Words carry what the viewer still needs, which can repeat
   what's on screen: seeing 23 figures isn't counting them. A finding is narration standing in for a demonstration
   the picture could carry.
@@ -178,10 +185,11 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
   read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
 - **Labels once.** About 25 honesty captions once piled up on one video until the user said "remove them all".
-- **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; a form with nothing to
-  teach goes without a lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
+- **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; no piece owes a
+  lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
   answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
-  A script the director gives stays locked: an opening that doesn't pay is raised with a fix, not rewritten.
+  A script the director gives stays locked: an opening that doesn't pay, or an explanation that stops the story,
+  is raised with a fix, not rewritten.
 - **"Before outlining" is the user's rule, not YouTube's.** YouTube asks that the intro deliver on the promise
   made by the thumbnail and title; none of its pages checked (2026-11-02) says to write them first.
 - **The package still decides the title.** The Promise is a working one, where the title ideas start; the finished
@@ -491,6 +499,16 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   by picture changes, clean entrances and joins. Left out: that film's places and framings, its cast's names and
   its STYLE.md, which contradicts itself across revisions. A project's kit is its own copy, so a newer skill
   never changes how a finished video looks unless the director asks.
+- **The Stage paints in call order.** `depth` moves and hazes a draw but doesn't sort it, so what covers what
+  is each scene's order of calls. The kit can't sort for it: it can't know a scene's route (behind the
+  tablet, or in front), which parts belong together (the tablet, its stand and its imagined blazer) or what
+  the feet stand on, and most of a shot sits at depth 1. Its README says so, and Nutlight's critic checks
+  every crossing on stills (history.md, 0.11.0: a squirrel between a blazer and the tablet wearing it).
+- **The brows are strokes, and follow their own lid.** A thin even crescent echoed the eye's own top, so over a
+  lowered lid it read as the eye's outline showing through; it now tapers from a round inner end, comes down
+  with its own eye's lid (the expression's, never the blink's) and stays above a pair of glasses. A straight lid's
+  cream patch narrows to what covering the eye above its edge takes, never past its old width, which keeps a
+  shallow lid off the fur beside a far eye's ring.
 - **A default, not a fence.** The kit keeps what defines the style the same across videos and limits nothing
   else. What the director asks for wins over both: a character or a shot the kit doesn't draw is made with
   code-video's full range, beside the kit's scenes or instead of them; a video in another look, even in a

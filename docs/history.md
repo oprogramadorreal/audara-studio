@@ -28,6 +28,8 @@ Contents
 - Five tested prompts, and what they showed (0.8.2, 2026-10-26)
 - A house style from a finished video: nutlight-style (0.9.0, 2026-10-30)
 - What a video is for: standing editorial guidance (0.10.0, 2026-11-02)
+- The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
+- Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
 
 ## Definition of done
 
@@ -3125,3 +3127,147 @@ What was checked:
   during this work), and every task case. `cv-render-waits-for-yes`, `cv-render-no-review` and the twelve changed
   ones take an hour or more each per tool and wait for the user's yes, so what the new wording does to a build is
   still unmeasured.
+
+## Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
+
+More notes on the last two films, in the same release. oprog-7 (Project Vend, made under 0.10.0) felt like a class
+around 148 s; oprog-6 (Ted Chiang's "blurry JPEG" essay, made before 0.10.0) taught better. The user's caveat:
+oprog-6's script came from the source article, not from the agent. In oprog-7, around 12 s, a squirrel seemed to
+walk behind the computer screen. And at 13.99 s, when the squirrel on the right lowers one eyelid, its brows looked
+like geometry showing through from behind the lids. (The user wrote "the previous video". At 13.99 s oprog-6 shows
+one hard-hat squirrel, its visible eye open; oprog-7 shows Caju lowering one lid.) Both projects were read, not
+changed.
+
+Teaching:
+
+- **What oprog-7 did.**
+  - At 2:26.6 its narration stops the story for an exercise: "Vamos fazer um teste rápido, com números inventados...
+    Você daria?" A chocolate box bought for R$ 8 and sold for R$ 10 takes 25% off, and the treatment holds the
+    question for 2.2 s "so the viewer can think". A callback comes later ("No nosso chocolate...").
+  - There is also a named framework ("três perguntas... Informação, autoridade, verificação"), repeated in the
+    close, and a stated moral ("Uma IA revisando outra não resolve sozinha").
+  - The real story had already made the chocolate's point: 25% off for employees, who were 99% of the customers.
+- **Where it came from.** The project's `docs/idea.md` and draft script were written by another AI from the user's
+  own guideline ("Your teach, entertain, and show guideline is particularly useful here... a short pricing puzzle
+  that the viewer solves"). Claude, with video-ideas, kept "the chocolate puzzle and three questions" among the
+  defaults the user accepted, and the treatment called the puzzle "The main 'show'". The full-cut critic flagged the
+  AGENTE sign as "a category label repeating the voice" and the question tags as "category labels", and asked for
+  AGENTE's removal. The lead kept both "(they teach the terms)". Nutlight's own check already banned labels that
+  announce a category; the third duty outranked it.
+- **What 0.10.0 said.** "Then teach, where the form can" (code-video), "it does three things well... 3. Teach"
+  (the treatment), "do they leave with an insight" (video-ideas), and a critic ranking whose third item was "what is
+  left unlearned", so a missing lesson was a finding.
+- **The caveat, applied.** oprog-6 doesn't show that the older skill wrote better scripts, since no skill wrote that
+  one. It shows how its author taught. The copy's numbers are wrong first; how a copier made them comes after, as
+  the answer. The lost-internet thought experiment is itself a story. It is openly instructional in places (the
+  compression paragraph), and that works because the story raised the question first. What carries over is the
+  test: does the explanation answer something the viewer now wants, or stop the story to make a point?
+- **What changed.**
+  - The treatment template has two priorities, entertain and show, then "Teaching is a bonus, not a duty".
+    Learning is carried by the story's events and figures, or by an explanation the story made the viewer want.
+    Explicit teaching (a definition, an analogy, a worked example, a question to the viewer, a recap) fits where
+    the piece wants it or the director asks. An invented example can earn its place, but the story's own facts do
+    it better. A lesson that stops the story, or only exists because a video should teach, is cut, shortened or
+    acted out, and being in an unlocked source or draft doesn't earn it a place.
+  - "When the director brings the plan" raises such an explanation with a fix, as it does an opening that doesn't
+    pay.
+  - code-video's SKILL.md says "lessons ride the story; explain when it fits"; video-ideas and init's AGENTS.md add
+    "never to tick a box". The treatment keeps the user's reason: a lesson forced in makes a video feel like a
+    class, and viewers leave.
+  - The full-cut critic counts a lesson that stops the story as losing the viewer. A missing lesson is no finding
+    unless asked for.
+  - "A label kept because it teaches the term" joins the examples of choices that still have to work on screen.
+  - The verification prompt's "A finding the treatment argues for stays a note, not a defect" now matches that rule.
+    Round 4 found the same escape in the critic ("a choice the treatment argues for is reported, not acted on")
+    and closed it for the full cut; the verification prompt kept its own version.
+- **Evals.** `vi-teach-in-story` is a Xerox draft with a made-up exercise that the story's own facts already
+  cover; its second turn puts the exercise back word for word. `vi-teach-asked` is a fractions script for kids
+  with a guess the user asked for, which has to survive. Both are text only.
+
+Layering, around 12 s of oprog-7:
+
+- **The cause is in the video's code, not the kit.**
+  - `abertura.ts` draws the imagined blazer (the tablet's body, translucent), then the counter, then Caju, then the
+    tablet. So while the blazer shows, Caju walks in front of its chest and behind its head.
+  - Afterwards the stand's pole crosses his tail while his feet sit on the counter's line, 4 units nearer than the
+    stand's foot (766 against 762).
+  - The walk behind is on purpose ("walking along the counter, behind the tablet").
+- **The kit drew what it was told.** The Stage paints in call order, and `depth` scales, shifts and hazes a draw
+  without sorting it. Nutlight's look.md already said "nothing standing in front of what it is behind".
+- **The critics caught two other draw-order bugs in the same film** (Pitanga behind the counter's objects while
+  walking in front of it, 498-500 s; the fridge's inside over two squirrels, 506.9-508.2 s), but not this one.
+- **No kit sorter.** It couldn't know a scene's route, which parts belong together or what the feet stand on, and
+  most of a shot is at depth 1.
+- **What changed.** The kit's README says what call order means: a passer-by is drawn before or after all of a
+  thing, its stand, clothes and held props included; the feet still need a surface. look.md's check now names
+  every crossing, checked on stills before, during and after it.
+- **The video itself wasn't edited.** Its fix, for the director: keep the walk behind only with the whole
+  tablet, blazer and stand over Caju and a visible rear countertop under his feet, or restage it in front. Drawing
+  him before the counter alone would hide his feet.
+
+The brows, at 13.99 s of oprog-7 (Caju in side view with the three-quarter head, `turn: 1.1`, `skeptical` at
+0.6), reproduced at 4K in a scratch project made by init:
+
+- **The far eye.** Its lid was at 0.04, barely lowered. It still got the full-width cream patch (`(rx + 5)·sx`)
+  where its top is narrow, so a cream band with a hard edge hung over the fur between the rings. Its edge line,
+  half faded (`smootherstep(0, 0.06)` = 0.72), was a grey stub on it, and the brow sat just above.
+- **The near brow.** It was a thin even crescent 8.5 units above where the eye's top had been. It came down 3.4
+  units while the lid's edge came down 26, so it floated, echoing the old outline. Reference 02's brows are short,
+  tapered strokes.
+- **What changed in `squirrel.ts`.**
+  - The brow tapers from a round inner end, toward the nose.
+  - It comes down with its own eye's lid from the expression (24 × lu, never the blink) and flattens a little.
+    With glasses it comes down 5 × lu, since lower the lens tinted it into a ghost.
+  - A straight lid's patch narrows to what covering the eye above its edge takes, never past its old width.
+    `lidCoverW` samples the arc above the edge, from one crossing to the other, at the gaze-shifted eye, which
+    `lids()` now gets. Where even the old width can't cover the eye (a deep tilted lid mid-blink), it stays as it
+    was.
+  - The lid's line comes in at once (`smootherstep(0, 0.02)`). The over-lens line matches it.
+- **Tried and dropped.** Narrowing the patch by `chordE`: Codex found its shorter half-chord leaves the eye
+  uncovered on a tilted lid's longer side (worried at full strength, by 7.7 units). Fading the patch in with its
+  depth: held between, it is a grey film (worried at 0.5, thinking's far eye).
+- **Checked.** 26 faces before and after: the reported pose, skeptical, deadpan, worried and sad (turned, and in
+  profile, whose arched-lid construction is unchanged though its line now comes in faster), thinking with its
+  gaze, three with glasses, mirrored asymmetry, the 60° turn, a lid starting to lower, a blink. On the cast sheet
+  only the brows moved. Typecheck passes; verify PASS.
+- **oprog-7 keeps its own copy of the kit;** a project takes the new one when its director asks (nutlight-style,
+  "A later session").
+
+Codex (GPT-6-Astra, Herdr tab 2) reviewed the diagnosis, then the diff; the Claude Code session decided and made the
+edits.
+
+- **First review, on the diagnosis.**
+  - It asked for two priorities instead of a rewritten third duty, and for "in the source" not to exempt a lesson.
+  - It wanted invented examples and definitions kept as forms to judge.
+  - It corrected the attribution: the critic had flagged the labels, and the lead kept them.
+  - It found the verification prompt's leftover escape, and asked for the two eval cases.
+  - On layering: "draw order is depth" conflated overlap with the `depth` parameter, and drawing Caju before the
+    counter would hide his feet.
+  - On the lids: `chordE`'s shorter half-chord couldn't size a tilted lid's patch, the gaze moves the eye and not
+    the lid, and the over-lens line kept the old fade.
+  - All taken, except that the fade was later dropped altogether.
+- **Second review, on the diff.**
+  - Sampling round the whole eye made the width jump as a sample entered the cap: 2.18 units between skeptical at
+    0.5621 and 0.5622. Sampled along the arc between its two crossings, the largest step over a 0.3-1.0 ramp is
+    0.0008.
+  - The short lines ("never a class") were stricter than the full rule. They now say "lessons ride the story;
+    explain when it fits" (code-video) and "explain outright where it fits, never to tick a box" (video-ideas, whose
+    readers never open the treatment).
+  - The story case's "Xerox patched it in 2014" contradicts oprog-6's own record (the first patch, 22 August 2013),
+    so that sentence is gone.
+  - "Only as wide as covering takes" promised more than a capped width gives, so the wording now says it narrows.
+- **Third: `VERDICT: AGREE`,** with four wording corrections to this entry and a comment, all taken. Its one
+  numerical caveat stands: the width isn't continuous for every control. Where the cap vanishes under a sideways
+  gaze (a near eye at `lidU` 0.05 and `lookX` 0.5, `lookY` passing 0.7333), it drops from about 4.9 units to the
+  margin, over the ring's own cream. The measured claim is the ramp above, not continuity everywhere.
+
+What was checked:
+
+- **Spec checks:** code-video, video-ideas and nutlight-style pass the three validators, at 7,997, 7,977 and 7,822
+  bytes, with no byte-order mark.
+- **Tests:** `test_init_gitignore` 3/3; `bun evals/tasks/cases.ts` writes every `case.json`. A project init writes
+  carries the new AGENTS.md line.
+- **The kit:** in a scratch project, typecheck passes and verify PASS (0 of 66 determinism renders mismatched);
+  the 26 faces and the cast sheet are as above.
+- **Not run:** the two new cases (text only, minutes each), every other task case, and routing, since no
+  description changed. What the new teaching wording does to a script is still unmeasured.
