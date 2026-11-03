@@ -3027,3 +3027,101 @@ session decided and made the edits.
   could fail a correct run, since turn 3 removes the payoff the earlier assertions read in the final folder, and turn 3
   could pass by remembering, so it is now a new session judged against the cut at the end of turn 2. This entry still
   gave the first implementation's sizes.
+
+## The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
+
+The user reviewed oprog-7, the first project made under 0.10.0 (Opus 5.5 in Claude Code, with Codex GPT-6-Astra in a
+second Herdr tab), and raised two things. `youtube-package` loaded near the start, before any script. And after
+"approved. let's work on the video", the session's plan sounded as if it would go straight from making the video
+to a full-quality render. What they want: make the video, offer a working browser preview and wait for their review;
+on notes, revise it and offer the updated preview; start the final render only after they explicitly approve the
+version they previewed. "Start working on the video" authorizes the preview.
+
+What the sessions showed. Both transcripts were read; neither session nor the project was touched. Times are local.
+
+- **youtube-package was Codex's, not Claude's.** No Skill call or file read in Claude's session or its 19 subagents
+  touched youtube-package. Claude loaded video-ideas, as the brief asked. It then asked Codex, in tab 2, for a
+  "brainstorm independente de título + thumbnail" and forbade files, but named no skill. Codex wrote "Vou usar a skill
+  de embalagem para YouTube", read that SKILL.md only, and wrote nothing. youtube-package's description matched ("a
+  thumbnail, a YouTube title"); video-ideas' never named a title or a thumbnail, and youtube-package's exclusion,
+  "choosing what video to make", didn't cover it. Only the prompt's ban on files kept its checklist (`title.txt`,
+  three thumbnails, a sheet of a video that didn't exist) from running.
+- **Claude's own path matched 0.10.0.** The chosen pair became the treatment's Promise ("O gerente da loja era uma
+  IA. E prometeu vir de blazer. · EM PESSOA"), and the first narration block and the opening scene pay it. The
+  thumbnail's picture (a tablet in a blazer) didn't travel: the Promise line and the critic's prompt carried only
+  its words.
+- **The render was stated, never run.** At 10:44 the director wrote "approved. let's work on the video. use nutlight
+  style." The first mention of a render came at 12:56 ("add sound effects, run an independent critic over the full
+  cut, and render"), then "before the final render" three times between 13:42 and 14:24, and at 15:09 "whether I go
+  straight to the final render". At 15:34 the director wrote "I do not want a render in full quality. I want a preview
+  in the browser to approve." All 11 `render.ts video` commands in the session and its subagents were `--draft`;
+  there was no full render and no poster.
+- **The cause, inferred, since the session never said why.** The first brief named "`audara-studio:code-video` for
+  animation and rendering", and 0.2.0's rule let a render asked for "in their request" run before anyone had seen the
+  video. Claude read critique.md at 13:26, which said so, and kept the plan. The checklist ran Critic, Render, Direct,
+  the order of the 12:56 sentence. Two more gaps sat beside it: Delivery's review could change the picture after the
+  yes, so the MP4 could differ from what was seen, and "approved" wasn't a trigger at all. The last hand-off said "no
+  full-quality render unless you ask for one" and "tell me it's approved" in the same reply.
+- **Seen and not changed:** the preview ran from about 10:46 and its link was first posted at 12:19, the delay
+  design.md's Setup step already records (`render.ts preview` had printed its reminder).
+
+What changed:
+
+- **code-video.** The checklist runs Hand-off ("A build ends in the preview, even if a render was asked for: offer it
+  and wait"), Direct, then Final render ("on their yes to a version they previewed, or their word not to wait").
+  critique.md: the hand-off waits even when the request names a render or the MP4; the render waits for a yes
+  ("approved", "render it", "I want the MP4") or a word not to wait ("render it, no review"); drafts for the critic
+  aren't that render. Delivery's review stays its only round, but its fixes go back to the preview with a link each,
+  and a new yes renders them without another round; with a waiver they are listed as not yet reviewed, as before. A
+  re-render after a defect only the render shows waits for the same yes. init's AGENTS.md, the README, design.md
+  (Direct is now step 7, Render step 8) and `docs/prompts.md`'s advice say the same.
+- **video-ideas and youtube-package.** video-ideas' description now reads "wants a script, a working title or a
+  thumbnail for an animated video before making it", and its body has a stop rule (a few pairs with different
+  promises, then stop). youtube-package's excludes
+  "choosing a video to make or its working title and thumbnail". Publishing assets for a video that exists still go
+  to youtube-package. To fit, its description dropped "or anything at hand" and "written into", both from its first
+  draft (`9a7c144`) with no recorded reason.
+- **The thumbnail's picture travels.** video-ideas, the treatment template's Promise line and the full-cut critic's
+  first look carry what the thumbnail shows with its words, so a thumbnail without words still promises something
+  on the way to the critic.
+- **When youtube-package comes in:** on request, once the cut is approved, best before the final render. It works
+  from the video's frames and timing, not the MP4 (`youtube.ts` reads a render's duration only when one exists), and
+  if it finds the opening doesn't pay the best promise, the change costs no second render. No automatic step was
+  added.
+
+The trade-off: a short piece (about 30 s or less) gets its verification at delivery, so it now often needs two yeses,
+one that starts delivery and one after its review's fixes. That follows "the version I've previewed"; a critic round
+in every hand-off was rejected again, for the cost 0.8.1 measured.
+
+Codex (GPT-6-Astra, Herdr tab 2) reviewed the diagnosis and the plan before any edit; the Claude Code session decided
+and made the edits. Two of its turns stopped on "Selected model is at capacity" and were resumed.
+
+- **First review, five findings, all taken.** The waiver wasn't stated the same way everywhere, and the "new yes"
+  sentence cancelled it. "A video not made yet" in youtube-package would have turned away filmed work and assets
+  wanted during production, so the exclusion names the working title and thumbnail instead. The thumbnail's picture
+  didn't reach the Promise or the critic. critique.md's note section, the re-render after a render-only defect and
+  `docs/prompts.md` still bypassed the yes. The evals rewarded a render on "Go ahead" plus a change; checking them
+  found more than it listed: twelve cases whose render turn can meet delivery's review now end with "Approved.".
+- **Second review, two findings, both taken.** The re-render rule lacked the waiver and a preview link, and the new
+  case tested a weaker request than "give me the MP4". There are now two cases, `cv-render-waits-for-yes` and
+  `cv-render-no-review`.
+- **Third: `VERDICT: AGREE`.**
+
+What was checked:
+
+- **Spec checks:** code-video, video-ideas and youtube-package pass the three validators, at 7,994, 7,942 and 7,996
+  bytes, with no byte-order mark.
+- **Tests:** `test_init_gitignore` 3/3, `test_audit` 26/26, `test_youtube` 51/51; `bun evals/tasks/cases.ts` writes
+  every `case.json`.
+- **Routing on Claude Code** (Opus 5.5, low effort, one run each): youtube-package 24/24, with `yp-24`, the
+  title-and-thumbnail request, left alone; video-ideas 25/26, with `vi-26` loading and `vi-23` (a finished video's
+  title) left alone. The miss is `vi-10`, an ideas request in Portuguese for an Instagram shop video, which answered
+  without loading anything. It is borderline on `main` too: with 0.10.0's description it loaded 2 of 8 times. The
+  first wording of the new clause ("wants a working title or thumbnail for one not made yet", added beside the
+  script clause) loaded it 0 of 9 times, so the clause was merged into the script clause instead ("wants a script,
+  a working title or a thumbnail for an animated video before making it"): 1 of 6 on `vi-10`, 3 of 3 on `vi-24` and
+  `vi-26`, 0 of 3 on `vi-23`.
+- **Not run:** routing on Codex (0.10.0's silent runs in its harness aren't fixed, and its model was at capacity
+  during this work), and every task case. `cv-render-waits-for-yes`, `cv-render-no-review` and the twelve changed
+  ones take an hour or more each per tool and wait for the user's yes, so what the new wording does to a build is
+  still unmeasured.
