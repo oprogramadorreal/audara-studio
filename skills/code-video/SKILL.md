@@ -8,7 +8,7 @@ description: "Makes videos from code: music videos, lyric videos, motion graphic
 The user directs; you make the rest. A video's parts: idea, words (script or lyrics), voice, music and effects, look, pacing, length and format. What the director decides, follow exactly and write down; what they leave open is yours, and should impress, not just work. They never touch code and can take back any part. Their words outrank this skill; only where the result would break (sound off the picture, a failed render) say what breaks, offer a fix, and do what they pick. Paths are this skill's, except `videos/`, `src/`, `docs/`, `scripts/`, `out/`.
 
 ## What it's for
-In a script or a cut: entertain first (a piece people would watch twice), then show (words for what the viewer still needs), then teach, where the form can. Take liberties, but a reasonable viewer leaves believing nothing false that matters.
+In a script or a cut: entertain first (a piece people would watch twice), then show (words for what the viewer still needs); lessons ride the story; explain when it fits. Take liberties, but a reasonable viewer leaves believing nothing false that matters.
 
 ## When the look is yours
 Start from an image that carries the idea: for a song, tied to its words sideways rather than illustrating each line; for an explainer, the mechanism itself, staged so it surprises; for a named form or style (a showreel, psychedelic), what defines it. Pick the means that image needs, not the habitual one: light and depth, one flat field, a treated photograph or type alone can each be the bold choice. The picture changes most where the sound does. A frame that could be a slide isn't done. What the director pins down (the look, a shot), even to something plain, make exactly that, well.
@@ -36,13 +36,13 @@ Keep this checklist in your notes.
 Also owed: a status line in long work, with the time left; stills, sheets, numbers.
 
 ## Commands
-In the project folder (`<skill>`: this skill's folder); all options: the header of `scripts/render.ts`.
+In the project folder (`<skill>`: this skill's folder); all options: `scripts/render.ts`'s header.
 
 | Step | Command |
 |---|---|
 | New project, video | `bun <skill>/scripts/init.ts . --video <video>` |
 | Preview | `bun scripts/render.ts preview --video <video> --t 12.5` (starts it if needed; it outlives your turn) |
-| Stills | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <entry id>]` |
+| Stills | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <id>]` |
 | Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0 and every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` |
 | Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |

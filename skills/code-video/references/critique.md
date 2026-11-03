@@ -144,7 +144,8 @@ session that built the video passed it after looking at one frame and an eight-f
   or a review the director asks for, holds at most a full-cut round and one verification). After SHIP, what's left goes to the director as open findings, not into
   the picture: a change after the last round is reviewed at delivery, before the render (Delivery,
   step 2). The director outranks the critic: a finding that goes against their words is reported, not
-  acted on. A choice only the treatment argues for (a hold for "reading time", a plain look) still has to work on screen.
+  acted on. A choice only the treatment argues for (a hold for "reading time", a plain look, a label kept
+  because "it teaches the term") still has to work on screen.
 - **Cadence,** scaled to the piece rather than to its number of scenes:
   - a storyboard round before building, for a long piece or one several scene authors build at once,
     when changing the plan is cheapest;
@@ -300,8 +301,10 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
-   Rank what you find in this order: what loses the viewer, what is told that could be shown, what is
-   left unlearned. A belief in your first look that is false about the central point, or about anything
+   Rank what you find in this order: what loses the viewer (a lesson that stops the story without
+   earning it, or repeats what it showed, counts: it feels like a class), then what is told that could
+   be shown. A missing lesson is no finding unless the director asked for one; an explanation is judged
+   by what it gives this moment, not by the term it teaches. A belief in your first look that is false about the central point, or about anything
    that matters if repeated or acted on, outranks them all; a simplification that leaves those true is
    not a finding. Where the treatment has a Promise, say whether the opening pays it.
 1. Per scene: time range, what's on screen, its problems ranked.
@@ -333,7 +336,8 @@ For every finding in the earlier reports, give FIXED / PARTLY / STILL PRESENT, w
 image or number that shows it. Then hunt for new defects in every stretch that changed, first around the
 earlier findings, then in the stretches no finding named, where a fix reached what it wasn't meant to:
 glitch frames, overlaps, clipped text, empty frames at cuts, sync drift. <If a moment matters most: Check
-<the hit, the word> at <time>.> A finding the treatment argues for stays a note, not a defect.
+<the hit, the word> at <time>.> A choice only the treatment argues for still has to work on screen: it stays
+a finding.
 Report, under 500 words, to out/<video>/critique/r<N>/verify.md, ending with SHIP or ONE MORE PASS (at
 most three fixes, ranked).
 ```
