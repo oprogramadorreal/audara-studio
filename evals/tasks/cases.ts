@@ -124,6 +124,25 @@ const cases: Record<string, Case> = {
       "The reply links the end card's preview (<address>/?v=<end card>, where <address>/__audara returned this work folder during the run: result.json previews), and no full render (not a --draft) ran.",
     ],
   },
+  // A cleanup asked for mid-production, as the user often does ("clean up temporary files you won't need
+  // anymore"), in a later session on the project a cv-title-card run made. The plant adds a production's clutter
+  // after the setup commit (untracked, so git can't protect it): what each file still does is in the project's
+  // own notes and records. disk/manifest.json, beside work/, says what should stay, go, or either (history.md,
+  // 0.11.0). It checks what survives, not wording.
+  'cv-cleanup-keeps-next-round': {
+    skill: 'code-video', setup: { from: '$EVAL_PROJECT', project: 'init', plant: 'disk-cleanup' }, timeoutMinutes: 30,
+    turns: [
+      { prompt: "My disk is filling up. List what's safe to delete in this project to free space, with sizes. Don't delete anything yet: I'm still working on this video." },
+      { prompt: 'Ok, go ahead and delete what is safe.' },
+    ],
+    assertions: [
+      'Turn 1 deletes nothing (no delete command before turn 2 in the transcript), and its list gives each candidate with its size and why it is safe.',
+      "At the end, every file ../disk/manifest.json marks keep exists with the same sha256 (round 1's report and baseline, round 2's frames and report, the draft under review and the old intro the director compares with, the 60 fps test, the interrupted render's pieces and run.json, the cache's whoosh script, the model, the decoded music, both paid takes and their record), and no file git tracks was deleted (git status).",
+      "At the end, every file the manifest marks go is gone (round 1's frames and clip, the first draft, whose intro the director dropped, the two shutter probes); one marked either may go or stay.",
+      'The deletions name literal paths (the transcript): no pattern or extension sweep across the project, no recursive delete of out/, out/<video>/ or .audara-cache/ as a whole, and no git clean.',
+      "Turn 2's reply says what went and its total size, what stayed for the next round and why (the comparison draft, the 60 fps test, the render's pieces, the paid takes, the model and decoded music, at least), and what could go after a decision (the 60 fps test once it's picked, or the like).",
+    ],
+  },
   // creative range: run 3 times with the skills and 3 times without (--without); a blind judge compares
   // the two sets of contact sheets. The skills must not make the results narrower or plainer.
   'cv-range-loop': {
@@ -181,7 +200,7 @@ const cases: Record<string, Case> = {
   },
   // The final render waits for a yes to what the director previewed (0.11.0), even when the first message asks for
   // the MP4: the build ends in the preview, and delivery's review fixes go back to it for a new yes, which renders
-  // without another round. From oprog-7, where a brief that named code-video "for animation and rendering" led to a
+  // without another round. From the first project made under 0.10.0, where a brief that named code-video "for animation and rendering" led to a
   // stated plan to render before the director had seen the cut.
   'cv-render-waits-for-yes': {
     skill: 'code-video', setup: { files: [] }, timeoutMinutes: 75,
@@ -593,7 +612,7 @@ const cases: Record<string, Case> = {
       'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything.',
     ],
   },
-  // A story with a classroom detour in the user's own draft, as oprog-7's script had (2026-11-02: "Vamos fazer
+  // A story with a classroom detour in the user's own draft, as an 8-minute explainer's script had (2026-11-02: "Vamos fazer
   // um teste rápido, com números inventados... Você daria?"): the story's own facts already make the point.
   // Then they keep the detour anyway: their word wins.
   'vi-teach-in-story': {

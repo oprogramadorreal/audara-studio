@@ -136,7 +136,9 @@ which must survive a new session (`cv-direction-rejection`, `cv-visual-direction
 `st-voiceover-no-key`), a finished video asked for in a second format (`cv-second-format`), a second
 video in the same project with a look of its own, which must leave the first one's frames as they were
 (`cv-second-video-own-look`: the plant `first-video-baseline` verifies the first video twice before the
-session, in `baseline/` beside `work/`, for the grader to compare with), a product film
+session, in `baseline/` beside `work/`, for the grader to compare with), a cleanup asked for mid-production
+that must leave what the next round needs (`cv-cleanup-keeps-next-round`: the plant `disk-cleanup` adds a
+production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
 a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
