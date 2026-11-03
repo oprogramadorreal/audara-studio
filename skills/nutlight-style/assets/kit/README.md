@@ -114,6 +114,11 @@ their own depth) · `poly` · `planet` · `project` · `unproject` · `withClip`
 rig's post). Depth: 1 the subject, above 1 farther (parallax, haze), below 1 the foreground. `bake(w, h, paint,
 { res, anchor, rim })` and `Atlas` paint once, never in `render()`.
 
+The order of the calls is what covers what: `depth` scales, shifts and hazes a draw but never sorts it. A
+character passing behind something is drawn before all of it (its stand, its clothes, what it holds), and one
+passing in front, after all of it, unless the staging plainly puts it between two parts (an arm reaching
+through). Its feet still need something to stand on: drawn before a counter, a squirrel loses its feet to it.
+
 ## Budget and rules
 
 About 12 megatexels baked per scene (the Stage warns), about 10 ms a frame in the live preview, no Canvas2D in
