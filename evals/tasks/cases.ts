@@ -17,19 +17,20 @@ const cases: Record<string, Case> = {
       { prompt: 'Make a 15-second animated title card for my podcast, Night Signals. Minimal and elegant.' },
       { prompt: 'Looks good. 16:9 for YouTube, no tagline, just the name. Go ahead.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       'Turn 1 shows the brief in a message before the first scene file for this video is written (transcript order), then goes on building in the same turn unless it names something only the director can decide and waits for that alone.',
       'The brief message is about 15 non-blank lines (16 passes; a table\'s rule line is not counted) and about 250 words (275 passes; table pipes are not words), questions included, with a time-coded beat list covering 0-15 s and the look naming its colours (a hex value or a colour name for each; a muted palette names none) and its typeface by family (Cormorant Garamond, say; an elegant serif names none). Times read as written (1.25 s or 0:01.25, never 1:25), in the reply and in TREATMENT.md when the reply points to it. Any on-screen text beyond "Night Signals", or any restyling of the name (capitals, a split over lines, two colours), is listed as an assumption.',
       'The brief asks at most 3 questions, each with a default, and states the format and where the card will be shown, as a question with its default or in the Assumed line.',
       "By the end of the turn that builds it, the folder is an audara project (src/engine/, videos/<name>/video.json, AGENTS.md, CLAUDE.md); a message (progress messages count) gives this project's preview URL with ?v=<name> before the first scene file for this video is written (transcript order), and one before that turn ends gives at least one &t= link at a time other than 0 (the address served this work folder during the run: result.json previews).",
-      'After turn 3, ffprobe on out/<name>/<name>.mp4 reports 15.00 +/- 0.04 s, 1920x1080, and color_primaries, color_transfer and color_space all bt709; an audio stream only if the brief listed its sound (music or effects synthesized in code, or none) as an assumption, and nothing paid; any other size made beside it (a 4K master, say) has the same length, color tags and audio, at 16:9.',
+      'After the turn that renders it (turn 3, or turn 4 when turn 3\'s review changed the picture), ffprobe on out/<name>/<name>.mp4 reports 15.00 +/- 0.04 s, 1920x1080, and color_primaries, color_transfer and color_space all bt709; an audio stream only if the brief listed its sound (music or effects synthesized in code, or none) as an assumption, and nothing paid; any other size made beside it (a 4K master, say) has the same length, color tags and audio, at 16:9.',
       'The video shows the words Night Signals (any case) and no other words, unless the brief listed them as an assumption.',
-      "The final reply itself (turn 3, even when an earlier turn named them) links a contact sheet PNG and a poster PNG, and gives qc.py's numbers from its motion and blank lines: the frozen and the nearly frozen totals, the longest hold of each, and the blank frames (near-black or near-empty, even when there are none); every linked file exists (a path, or a file name under a folder the reply names, counts as a link).",
+      "The reply that delivers the render itself (turn 3 or 4, even when an earlier turn named them) links a contact sheet PNG and a poster PNG, and gives qc.py's numbers from its motion and blank lines: the frozen and the nearly frozen totals, the longest hold of each, and the blank frames (near-black or near-empty, even when there are none); every linked file exists (a path, or a file name under a folder the reply names, counts as a link).",
       "src/look.ts no longer holds the template's test-card palette, and the look is none of the archetypes on the style template's Avoid list unless the brief names it and says why. A navy or near-black ground of any tint with ivory or bone type and one warm accent (amber, orange or red, glowing or not) is the list's dark-ground archetype, whatever the brief calls the ground.",
       'render.ts verify passes for the video (run it).',
       "No script, log or measurement data the session wrote (.py, .ts, .log, .npy, .npz and the like; init's files aside) sits in out/ or at the project's top level: out/ holds only renders (draft clips included), stills, sheets, other check images (anywhere under out/<name>/) and reports (verify.json, qc.json, a critic's report); any cache is in the git-ignored .audara-cache/, and no npm folder or check image sits outside git-ignored paths.",
-      "Turn 1's build ends in the preview, its reply offering the render, with no full render (not a --draft) in that turn. Since 0.2.0 that offer can make turn 2's \"Go ahead\" a yes to it: a full render in turn 2 passes when the reply says it took the words that way, and otherwise none runs before turn 3 asks for one. Turn 2's notes are applied and checked in the preview and stills before any render (the transcripts).",
+      "Turn 1's build ends in the preview, its reply offering the render, with no full render (not a --draft) in that turn. Turn 2's \"Go ahead\" comes with notes, so it isn't a yes to a version the director has previewed: no full render runs before turn 3 asks for one, and turn 2's notes are applied and checked in the preview and stills first. Turn 3 reviews the picture before rendering (Delivery); when that review's fixes change it, turn 3 hands them back in the preview with a ?t= link each and renders nothing, and turn 4's \"Approved.\" renders once with no new critic round (the transcripts).",
       'The brief honours "Minimal and elegant": a restrained piece, made well (judged on stills: deliberate type and spacing, no clutter), not a plain default; the Decisions section of TREATMENT.md records turn 2\'s "no tagline, just the name" in the director\'s words.',
       "The realism kit stays out: no src/realism/ and no photographic 3D lighting (a physical sky, haze, a shadowed sun), since nothing in the prompt asks for a photographed look; a title card that chooses depth and light on purpose says why in the treatment's Look.",
     ],
@@ -53,16 +54,17 @@ const cases: Record<string, Case> = {
       { prompt: 'Make a 20-second vertical explainer animation (for YouTube Shorts) showing how a hash map stores and finds a key.' },
       { prompt: 'Sounds good, go ahead. No sound for now.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       'Turn 1 shows a brief with timed beats covering 0-20 s, the 1080x1920 format, and sound stated as a question or an explicit assumption, before the first scene file is written.',
       "A message (progress messages count) gives the director this project's preview link written out in full with ?v=<name> before the first scene file for this video is written (transcript order), and one before turn 2 ends gives at least one full &t= link within 0.5 s of a beat time the brief lists (the address served this work folder during the run: result.json previews).",
-      'The MP4 delivered after turn 3 is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (turn 2 said no sound, so any sound made in turn 1 is gone), and turn 2 changed nothing else it didn\'t name (stills at the brief\'s beat times match before and after, but for the sound).',
+      'The MP4 delivered by the end (turn 3, or turn 4 when turn 3\'s review changed the picture) is 1080x1920, 20.0 +/- 0.1 s, with no audio stream (turn 2 said no sound, so any sound made in turn 1 is gone), and turn 2 changed nothing else it didn\'t name (stills at the brief\'s beat times match before and after, but for the sound).',
       "Values shown on screen (hashes, bucket indices) are computed in code from the keys by a hash function the scene runs, and the copy and comparisons read them from there: a bucket typed into the code ('bucket 3', i === 3) fails.",
       "Text meant to be read is set at 44 px or more (1080 wide) and stays inside the Shorts safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size frames.",
       "No near-empty or near-black frame at t=0 or at a cut, counting the brief's beat times as cuts (a one-scene video has none in verify.json, so check those frames yourself), unless the reply explains a deliberate one; and every hold of about 1.5 s or more that qc.py reports is marked in the treatment or named in the final reply with its time (a ?t= link) and what is read during it; a label such as 'intentional reading holds' doesn't count.",
-      'The final reply links a contact sheet, a poster and QC numbers, and the files exist (a path, or a file name under a folder the reply names, counts as a link).',
-      'A full render (not a --draft) runs only when a turn asks for one (turn 3); the builds before it end in the preview, offering the render, and notes are answered there (the transcripts).',
+      'The reply that delivers the render links a contact sheet, a poster and QC numbers, and the files exist (a path, or a file name under a folder the reply names, counts as a link).',
+      "A full render (not a --draft) runs once, after a turn says yes to a version the director had in the preview: turn 3, or turn 4 when turn 3's review changed the picture and handed it back without rendering; the builds before it end in the preview, offering the render, and notes are answered there (the transcripts).",
     ],
   },
   // A later session in a project made earlier (run-tasks.sh gives both tools the same one): init runs again
@@ -90,9 +92,10 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'I also need this title card as a vertical video for Instagram Reels.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
-      "After turn 2 a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), and no full render (not a --draft) ran before turn 2.",
+      "By the end a 1080x1920 MP4 exists with the 16:9 video's length to the frame and the same audio (ffprobe), rendered in turn 2, or in turn 3 when turn 2's review changed the picture, and no full render (not a --draft) ran before turn 2.",
       'The vertical version is recomposed, not cropped, letterboxed or scaled down: on full-size stills at the treatment\'s beat times, nothing the 16:9 frame shows is cut off at the sides, there are no bars, and the title is laid out for the tall frame (its size and place differ from a centre crop of the 16:9 frame).',
       "Text meant to be read is at 44 px or more and inside the Reels safe area (about 250 px top, 400 px bottom, 200 px right, 60 px left: the style template's Layout table), measured on full-size 1080x1920 frames.",
       "The two formats share one timeline: the vertical one is the same video at --size 1080x1920 (render.ts's out/<video>/1080x1920/ holds its verify.json and MP4), or the reply says why it needed another edit; its entries start and end at the 16:9 version's times (verify.json timelines).",
@@ -129,11 +132,12 @@ const cases: Record<string, Case> = {
       { prompt: 'can you make a 10 second loop for my late night jazz stream, Blue Hours? something classy I can leave running behind the chat' },
       { prompt: 'Go with that.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       'An MP4 of 10.00 +/- 0.04 s exists, and the loop seam is clean: the mean absolute difference between the first and the last frame is at most about 1 level (8-bit).',
-      'The final message reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.',
-      'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the final message; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
+      'The message that delivers the render reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.',
+      'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the message that delivers the render; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
       'No cliché from the style template\'s avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.',
       'For the set: across the runs with the skills, the looks differ from each other at least as much as across the runs without (a blind judge comparing contact sheets and dominant colours), and the skill set is not judged plainer.',
       'A stream loop needs no promise: the treatment has no Promise line, or says in a line why this one does, and nothing was added to teach a lesson.',
@@ -147,6 +151,7 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'faz um lyric video de uns 30 segundos com o refrão da minha música pdoom-pt-BR.mp3, com a letra aparecendo sincronizada com o canto. A letra completa tá em lyrics.txt' },
       { prompt: 'Pode seguir. Quero o MP4 e ver os arquivos gerados.' },
+      { prompt: 'Aprovado.' },
     ],
     assertions: [
       'An MP4 of 25-35 s at 16:9 or 9:16 exists by the end, cut from the chorus of pdoom-pt-BR.mp3 (the window holds the sung line "Aumento meu P(doom)"), with the song as its audio.',
@@ -162,15 +167,45 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'make a 20-second video showing why the sky is blue, with music and sound effects' },
       { prompt: 'Go ahead. I want the MP4 and to see the files.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       'An MP4 of 18-22 s exists by the end, with an audio stream that carries music and at least two effects placed on picture events (stills at each effect onset show the event it belongs to); the music and effects were made without spending (mock-requests.jsonl has no paid request).',
       'With the skills, turn 1 ends in the preview, its reply offering the render, and no full render (not a --draft) runs before turn 2 asks for the MP4 (the transcripts).',
-      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails, the working title and thumbnail words its prompt gives aside), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
+      "With the skills, the full-cut critic wrote out/<name>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads, in the transcripts or Codex's session files; where those don't show a subagent's reads, a first look that quotes or paraphrases the treatment fails, the working title and thumbnail its prompt gives aside), and full.md's item 0 quotes it; a stretch the first look calls weakest is either changed afterwards (stills before and after) or named in the hand-off as left open.",
       'What the video says about the sky is true: shorter (blue) wavelengths scatter more off air molecules (Rayleigh scattering), and nothing on screen claims otherwise.',
       'Before something could be watched (a preview link or a video), the session stopped for the user at most once, and only for something the prompt left open that the user had to decide; a stop that only asks to approve a plan the defaults already settled fails.',
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece fades in on purpose.',
       'For the set (judged blind against the --without runs, from contact sheets at 4 fps and the MP4s with sound): the picture is judged more striking and better made, not plainer, and the sound is judged to fit the picture.',
+    ],
+  },
+  // The final render waits for a yes to what the director previewed (0.11.0), even when the first message asks for
+  // the MP4: the build ends in the preview, and delivery's review fixes go back to it for a new yes, which renders
+  // without another round. From oprog-7, where a brief that named code-video "for animation and rendering" led to a
+  // stated plan to render before the director had seen the cut.
+  'cv-render-waits-for-yes': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 75,
+    turns: [
+      { prompt: 'Make a 12-second animated title card for my podcast, Night Signals, and give me the MP4.' },
+      { prompt: 'Approved.' },
+      { prompt: 'Approved.' },
+    ],
+    assertions: [
+      "With the skills, turn 1 ends in the preview with its link and the render offered, and no full render (not a --draft) runs in it, though the prompt asked for the MP4; the reply says the render waits for the director's yes (the transcripts).",
+      "Exactly one full render runs: in turn 2 when its review (Delivery) changed nothing; otherwise turn 2 hands the review's fixes back in the preview with a ?t= link each and renders nothing, and turn 3 renders with no new critic round (no new round folder under out/<name>/critique/ in turn 3: file times, transcripts).",
+      'By the end out/<name>/<name>.mp4 is 12.0 +/- 0.1 s, and the reply that delivers it links a contact sheet and a poster that exist; render.ts verify passes.',
+    ],
+  },
+  // The waiver: a director who says not to wait gets the render in the same turn, after the build's own critic
+  // round, with the fixes made after it listed as not yet reviewed.
+  'cv-render-no-review': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 75,
+    turns: [
+      { prompt: 'Make a 10-second animated end card for Night Signals and render the MP4 without waiting for my review.' },
+    ],
+    assertions: [
+      'With the skills, the turn ends with a full render (not a --draft) of 10.0 +/- 0.1 s at out/<name>/<name>.mp4, made after a full-cut critic round on a draft (out/<name>/critique/r<N>/), and it does not stop to ask for approval of the cut (the transcripts).',
+      "The reply lists the fixes made after the critic's last round as not yet reviewed, each with a ?t= link, links a contact sheet and a poster that exist, and gives the preview link; render.ts verify passes.",
     ],
   },
   // The 2026-10-06 showreel experiment's two prompts, word for word: a form the director names (a showreel for a
@@ -183,11 +218,12 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: "make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are, like it's your showreel for a résumé. go all out" },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
-      'After turn 2 an MP4 of 15.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
+      'By the end (turn 2, or turn 3 when turn 2\'s review changed the picture) an MP4 of 15.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
       'With the skills, turn 1 ends in the preview with the render offered, and no full render (not a --draft) runs before turn 2 asks for it (the transcripts).',
-      "With the skills, turn 1 ran one full-cut critic round and no verification round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery).",
+      "With the skills, turn 1 ran one full-cut critic round and no verification round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery); when that review changed the picture, turn 2 handed its fixes back in the preview without rendering, and turn 3 rendered with no new critic round.",
       'It is made as a showreel: at least four visibly different chapters or techniques (judged on a sheet at 2 fps), and nothing that defines a reel (chapter labels, timecodes, a fast montage of contrasting looks) is ruled out or removed for being on the Avoid list: TREATMENT.md, docs/STYLE.md and the critic reports never cite the list against one.',
       "No on-screen text comes from the skill or its example video: the f(t) rule in any wording ('every frame is a function of time'), 'f(t)', 'Lorem ipsum' (stills every 0.5 s, read by eye).",
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece flashes or wipes there on purpose.',
@@ -200,11 +236,12 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'make a dynamic 20-second motion graphics video that shows what an incredible motion designer you are, psychedelic and hypnotic. make it feel like a showreel piece. go all out.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
-      'After turn 2 an MP4 of 20.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
+      'By the end (turn 2, or turn 3 when turn 2\'s review changed the picture) an MP4 of 20.0 +/- 0.1 s exists at 16:9 (1920x1080 or larger), with sound, rendered with motion blur: with the skills, render.ts\'s full render (not a --draft); without them, the run\'s own final.',
       'With the skills, turn 1 ends in the preview with the render offered, and no full render (not a --draft) runs before turn 2 asks for it (the transcripts).',
-      "With the skills, turn 1 ran one full-cut critic round and no verification round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery).",
+      "With the skills, turn 1 ran one full-cut critic round and no verification round (out/<name>/critique/ before turn 2), and turn 2 reviewed the picture again before rendering, unless nothing changed after that round (Delivery); when that review changed the picture, turn 2 handed its fixes back in the preview without rendering, and turn 3 rendered with no new critic round.",
       'It is psychedelic and a showreel piece: saturated full-spectrum colour or colour splitting, hypnotic repetition (tunnels, op-art, kaleidoscopes, moiré) and more than one technique (judged on a sheet at 2 fps); none of these is ruled out or removed for being on the Avoid list (TREATMENT.md, docs/STYLE.md and the critic reports never cite the list against them).',
       "No on-screen text comes from the skill or its example video: the f(t) rule in any wording ('every frame is a function of time'), 'f(t)', 'Lorem ipsum' (stills every 0.5 s, read by eye).",
       'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline); no frame at t=0 or at a cut is near-black or near-empty unless the piece flashes or wipes there on purpose.',
@@ -221,6 +258,7 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'make a 15-second photoreal shot of a stone lantern in a Japanese garden at dusk: open on a macro of its flame, then pull back to reveal the garden. Everything made in code, no stock images.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       "With the skills, turn 1 reads references/realism.md before the first scene file is written, and the project's scenes either use the kit (src/realism/, copied whole with its LICENSE) or the treatment says why it builds its own lighting instead (the transcripts).",
@@ -228,13 +266,13 @@ const cases: Record<string, Case> = {
       "The picture is lit and shaded as a photograph (the frames, and the scene code): a sun with shadows, light from a sky, aerial haze on distant things, surfaces with procedural detail. With the skills, in three's MeshStandardMaterial or MeshPhysicalMaterial, with no MeshBasicMaterial or MeshLambertMaterial on the lantern, the ground or the garden.",
       "With the skills, every setting a scene changes on the shared renderer (shadowMap.enabled, type, autoUpdate, autoClear, toneMapping) is restored before render() returns, also when a draw throws: inside withRenderer or a try/finally (the scene code). Binding render targets to draw into, `out` included, is ordinary and not counted.",
       "With the skills, per-sub-frame jitter, if any, comes from the engine's SUBFRAME index, never from frameIdx(t), t or Math.random, and render.ts verify passes; without them, the MP4 plays and its frames match its own timeline.",
-      "With the skills, the render of turn 2 renders the photographic stretch at one fixed sub-frame count (render.ts's report: one count for it), from the kit scene's refine = true or from --samples. Either way, before a render of more than a few minutes starts, a reply says about how long it will take.",
+      "With the skills, the full render (turn 2, or turn 3 when turn 2's review changed the picture) renders the photographic stretch at one fixed sub-frame count (render.ts's report: one count for it), from the kit scene's refine = true or from --samples. Either way, before a render of more than a few minutes starts, a reply says about how long it will take.",
       "It opens on the flame up close with a shallow depth of field (a still at 0.3 s: the flame sharp, the background visibly blurred) and ends wider on the garden (a still 0.3 s before the end shows the lantern whole and the garden around it); no person, face or animal appears in any frame.",
-      'After turn 2 an MP4 of 15.0 +/- 0.1 s exists at 16:9, tagged BT.709; no frame at t=0 or at a cut is near-black unless it fades in on purpose; no paid request is made.',
+      'By the end an MP4 of 15.0 +/- 0.1 s exists at 16:9, tagged BT.709; no frame at t=0 or at a cut is near-black unless it fades in on purpose; no paid request is made.',
       'For the set (judged blind against the --without runs, from full-size stills at 0.3 s, 7.5 s and 14.7 s and the MP4s): the skill runs are judged at least as photographic (light with a source, surfaces with wear, haze with distance, a lens), and no more shimmering or crawling in motion (mcflicker-style residual or by eye at 1:1).',
     ],
   },
-  // Detailed direction over several turns, a rejection that must survive a new session (turn 5 starts one), and
+  // Detailed direction over several turns, a rejection that must survive a new session (turn 6 starts one), and
   // a small note that must change only what it names. Rounds of notes go through the lead's own checks, not a
   // critic (0.8.1: on a 13-minute video, critic rounds after six of seven rounds of notes took, with their fixes,
   // about half those rounds' time),
@@ -246,15 +284,16 @@ const cases: Record<string, Case> = {
       { prompt: 'No serif type, I hate serif for this. And no leaves or plant icons, too literal. Keep going.' },
       { prompt: 'Land the title at 0:06 exactly, not later, and mute the green, it is too saturated.' },
       { prompt: 'Render it.' },
+      { prompt: 'Approved.' },
       { prompt: 'Make a 10-second end card for Field Notes in the same style.', newSession: true },
     ],
     assertions: [
       'After turn 2 no serif face is loaded for this video (font files and font calls in src/look.ts and the scenes) and no still at the brief\'s beat times shows leaves or plants.',
       "Before turn 2 ends, both rejections are written in the director's words where a later session reads them: TREATMENT.md's Decisions or docs/STYLE.md's Decisions or Avoid.",
       "After turn 3 the title's first visible frame is at 6.00 +/- 0.05 s (the timecode kept as given, not moved to a beat), the key green's HSV saturation is lower than after turn 2 at the same pixel and time, and nothing else moved: stills at the brief's other beat times match turn 2's.",
-      "With the skills, turns 2 and 3 run no critic round after the build's hand-off (no fresh critic subagent, no new round folder under out/<name>/critique/: the transcripts, file times; the build's own round in turn 2 passes when turn 1 ended before its hand-off); each answers its notes with stills of the moments they name and ?t= links, and its reply doesn't ask whether to run a critic round unless it says why (much of the cut rebuilt, or something its own checks couldn't settle) and about how long one takes. Turn 4 reviews the picture with a full-cut critic round on a draft before its render (Delivery), since turns 2 and 3 changed it.",
-      'After turn 4 the MP4 is 20.00 +/- 0.04 s, 1920x1080; render.ts verify passes.',
-      'Turn 5 (a new session, not resumed) uses no serif and no leaf or plant imagery, reuses the project\'s palette from src/look.ts, and its message cites the recorded decisions.',
+      "With the skills, turns 2 and 3 run no critic round after the build's hand-off (no fresh critic subagent, no new round folder under out/<name>/critique/: the transcripts, file times; the build's own round in turn 2 passes when turn 1 ended before its hand-off); each answers its notes with stills of the moments they name and ?t= links, and its reply doesn't ask whether to run a critic round unless it says why (much of the cut rebuilt, or something its own checks couldn't settle) and about how long one takes. Turn 4 reviews the picture with a full-cut critic round on a draft before its render (Delivery), since turns 2 and 3 changed it; when its fixes change the picture, turn 4 hands them back in the preview with a ?t= link each and renders nothing, and turn 5's \"Approved.\" renders once with no new critic round.",
+      'By the end of turn 5 the MP4 is 20.00 +/- 0.04 s, 1920x1080; render.ts verify passes.',
+      'Turn 6 (a new session, not resumed) uses no serif and no leaf or plant imagery, reuses the project\'s palette from src/look.ts, and its message cites the recorded decisions.',
     ],
   },
   // A script the director brings, with visual and timing notes: its words are locked, its notes are the storyboard.
@@ -285,7 +324,7 @@ const cases: Record<string, Case> = {
       "tally-home.png and tally-scan.png are used as files (copied into videos/<name>/assets/ and loaded by a scene), not redrawn: on a still where a screen is shown flat and at rest, its interior matches the file's pixels within about 4 levels once scaled to the size shown; each has a line in assets/SOURCES.md naming the director as its source.",
       "No frame shows an app screen the two files don't (a budget or expense screen drawn to look like Tally's) unless it is plainly marked as a placeholder, judged on stills every 0.5 s of the last MP4; after turn 2, the expense landing is told without one (the home screen's own elements, type, a graphic).",
       "No figure or claim about Tally appears beyond the prompt's and the screens' own (no speed, accuracy, user count or savings); TREATMENT.md has a Never claim line; a value the scenes change over a real screen (a new total) agrees with the screens' own figures ($1,240 + $42.80) or is labelled as illustrative.",
-      "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and a full render in turn 2 passes only when turn 1 offered it and the reply says it took \"Go ahead\" as the yes.",
+      "Its last MP4 (draft or final) is 15 +/- 0.5 s, and render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and turn 2's \"Go ahead\" comes with a change (the budget screen isn't designed), so it isn't a yes to a version the director has previewed: no full render runs in turn 2 either.",
     ],
   },
   // The exception to the case above: a concept screen the director asks for, of a feature that isn't built. The
@@ -296,13 +335,14 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: "Make a 15-second teaser for Budget Goals, the feature our app Tally ships next month. It isn't built yet, so design a concept screen for it in the style of our home screen (tally-home.png) and label it 'Concept'." },
       { prompt: 'Looks good. I want the MP4.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       "The video shows a Budget Goals screen made for it, in the style of tally-home.png (its palette, type and card layout, judged on stills beside the file), marked 'Concept' on screen whenever it shows (stills every 0.5 s of the MP4); the session made it, rather than asking for a screenshot of a feature that isn't built or putting a placeholder in its place.",
       "assets/SOURCES.md records the concept screen as made for this video at the director's request (not as supplied or captured), and tally-home.png or tally-scan.png, wherever they appear, as supplied by the director.",
       "A full-cut critic round ran on a draft before the MP4 (out/<name>/critique/r<N>/full.md), and no report lists the requested, marked concept screen as a lookalike or a fabrication to fix; the final cut still shows it, marked.",
       "No figure or claim about Tally or Budget Goals is presented as a fact beyond the prompt's and the two screens' own (no savings, user counts, accuracy or dates past 'next month'); values inside the concept screen read as sample data (under the 'Concept' mark, or labelled as sample).",
-      'After turn 2, a full render (not a --draft) of 15 +/- 0.5 s exists, made after turn 2 asked for it, and render.ts verify passes.',
+      "By the end, a full render (not a --draft) of 15 +/- 0.5 s exists, made after turn 2's yes (in turn 2, or in turn 3 when turn 2's review changed the picture), and render.ts verify passes.",
     ],
   },
   // Detailed visual direction and no script: every instruction followed and measurable; what is left open is the model's.
@@ -333,11 +373,11 @@ const cases: Record<string, Case> = {
     ],
     assertions: [
       'The next five are judged on the cut at the end of turn 2, not the final folder, since turn 3 is asked to remove part of it: the transcripts through turn 2, the stills and sheets they show, and out/<name>/critique/r<N>/. A note doesn\'t redraw those.',
-      'In the transcript, the working title, thumbnail words or "none" and their promise appear before the first script or storyboard is shown or written, including above it in the same first treatment; adding the Promise after an outline already exists fails. TREATMENT.md keeps it as its Promise line, with what the first seconds show.',
+      'In the transcript, the working title, what the thumbnail shows with its words or "no words", and their promise appear before the first script or storyboard is shown or written, including above it in the same first treatment; adding the Promise after an outline already exists fails. TREATMENT.md keeps it as its Promise line, with what the first seconds show.',
       'The storyboard\'s first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.',
       'The picture carries the explanation through visible action or change, and narration adds what viewers still need (data/words.json beside the stills at the same times). Repetition that helps comprehension, rhythm or accessibility is fine; narration standing in for a demonstration the picture could carry fails.',
       'What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.',
-      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). With the skills, a full-cut critic ran, its prompt gave it the working title and thumbnail words, and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
+      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). With the skills, a full-cut critic ran, its prompt gave it the working title and the thumbnail (what it shows, and its words), and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
       'Turn 3, a new session, reads the video\'s Decisions, Promise and Never claim before its first edit (the transcript), and assesses the requested cut against that recorded promise.',
       'Compared with the cut at the end of turn 2, turn 3 takes out the moment the note names, as asked, and writes it in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It keeps a note\'s local checks: no critic round and no full render.',
     ],
@@ -354,7 +394,7 @@ const cases: Record<string, Case> = {
       'Never claim names the liberties taken (the fable\'s cast, a compressed timeline, whatever it simplifies) and the central point they leave true: the craft was lost because two teams used different units.',
       'A viewer of the video (a grader reading words.json beside the sheet) comes away with the right cause, year and cost; the fable\'s cast is plainly a fable, and no invented quote, figure or result is presented as NASA\'s, a company\'s or a real person\'s.',
       'There is no running disclaimer. A label appears only where a viewer could take the fable for the real event; a single "dramatized" or "simplified" label is allowed when it resolves that ambiguity.',
-      'The working title, thumbnail words or "none" and their promise come before the first script or storyboard (above it in the same first treatment counts), and the first seconds pay it in the picture, without giving away what the piece holds back.',
+      'The working title, what the thumbnail shows with its words or "no words", and their promise come before the first script or storyboard (above it in the same first treatment counts), and the first seconds pay it in the picture, without giving away what the piece holds back.',
     ],
   },
   // Image generation, offered: the piece would gain from painted imagery and a key is set, but the prompt doesn't
@@ -378,13 +418,14 @@ const cases: Record<string, Case> = {
     turns: [
       { prompt: 'make a 15-second opening for a bedtime story app: a fox who collects moonlight in jars, painterly, like a picture book. Generate whatever images you need, you can spend up to $1.' },
       { prompt: 'Render it at 4K.' },
+      { prompt: 'Approved.' },
     ],
     assertions: [
       'In Claude Code, turn 1 generates images with skills/code-video/scripts/imagegen.py (mock-images.jsonl), and each generated image in videos/<name>/assets/ has its .request.json beside it. In Codex, turn 1 uses built-in image generation (the transcripts and codex-sessions/), copies the generated images into videos/<name>/assets/, and keeps their provenance (tool/model, prompt and date); this path does not require a mock request or an API .request.json.',
       "Every generated image has a line in assets/SOURCES.md. In Claude Code, the estimated total stays within $1 and the reply states it. In Codex, the reply says that built-in generation uses the ChatGPT plan's limits and no separate API spend was made; any separately billed generation must still stay within the $1 budget and be reported.",
-      'The 4K render in turn 2 makes no image request, through either the API (mock-images.jsonl) or built-in generation (the transcripts and codex-sessions/); it reuses the saved assets, and the plates are large enough for it or the reply says how they were scaled.',
+      'The 4K render (turn 2, or turn 3 when turn 2\'s review changed the picture) makes no image request, through either the API (mock-images.jsonl) or built-in generation (the transcripts and codex-sessions/); it reuses the saved assets, and the plates are large enough for it or the reply says how they were scaled.',
       'The images are material, not slides: a scene loads the generated files as textures and treats them in code (layers moving at different rates, code-drawn light or particles over or behind them, a shader treatment), and no stretch is a Ken Burns pan over one still. (The mock returns placeholder pictures, gradients and shapes: a reply that keeps them off screen for that reason, and says so, passes on the code path alone.)',
-      'render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and after turn 2 a 3840x2160 render of 15 +/- 0.5 s exists.',
+      'render.ts verify passes; turn 1 ends in the preview with no full render (not a --draft), and by the end a 3840x2160 render of 15 +/- 0.5 s exists.',
     ],
   },
   // The same open toolbox with no key: nothing is generated, the piece is drawn in code, and one line says what a key adds.
@@ -545,10 +586,10 @@ const cases: Record<string, Case> = {
       { prompt: "That script is right. Now give me the prompt so I can run it in a new session tomorrow." },
     ],
     assertions: [
-      'Turn 1 gives a working title and the words a thumbnail could carry (or says none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.',
+      'Turn 1 gives a working title and a thumbnail idea (what it shows, and its words or none), before the script, and says what the opening shows to pay them; the first beat of the script shows that in the picture.',
       'The script is written as what is seen, with narration or on-screen words for what the viewer still needs: the explanation rests on visible action or change, not on narration standing in for a demonstration the picture could carry.',
       'Any simplification is named as one, and nothing false about the central point is stated (air scatters short wavelengths more, so scattered light reaches the eye from all over the sky).',
-      "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail words, a length or a sound they didn't give) as replaceable.",
+      "Turn 2's prompt stands alone, carries the accepted script word for word, and marks what the user never confirmed (the working title and thumbnail idea, a length or a sound they didn't give) as replaceable.",
       'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything.',
     ],
   },
