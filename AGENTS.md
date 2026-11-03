@@ -21,6 +21,8 @@ them for the topic before changing a behavior, since most choices answer somethi
 - Skill text says what and why, in plain words, never MUST; the director's words outrank its defaults.
 - Ask the user plain questions about what they will see or pay for; make technical calls yourself and say
   what you chose.
+- Don't name the user's other projects (their folders, videos, titles or characters) in skills, docs, evals,
+  commit messages or PR text: say what they were ("an 8-minute explainer").
 
 ## Checks
 - Each SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there), has no byte-order mark, and
