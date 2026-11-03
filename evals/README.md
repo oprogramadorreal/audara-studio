@@ -149,7 +149,8 @@ kit stays out of a piece that doesn't ask for it). The `vi-` cases stand
 for someone choosing what to make: ideas only, from nothing or from product screens, in an empty folder or
 an existing project (`vi-ideas-only`, `vi-product-screens`, `vi-existing-project`), a prompt to improve or
 one found online to adapt (`vi-refine-keeps-constraints`, `vi-adapt-found-prompt`, `vi-silent-long`), and
-a script alone (`vi-script-alone`), and the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
+a script alone (`vi-script-alone`), one whose lesson the story should carry and one that asks for the lesson
+(`vi-teach-in-story`, `vi-teach-asked`), and the ways on to the video: a "make it" after choosing, and a better prompt or a choice of ideas asked for
 together with the video (`vi-select-then-make`, `vi-improve-and-make`, `vi-ideas-and-make`). Most are text
 only and take minutes. The `vr-` cases stand for someone handing a finished project on: its first
 repository, asked for in the user's own words, then a name and a commit e-mail (`vr-first-repo`), and a

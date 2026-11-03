@@ -1,0 +1,19 @@
+{
+  "id": "vi-teach-asked",
+  "skill": "video-ideas",
+  "setup": {
+    "files": []
+  },
+  "timeoutMinutes": 20,
+  "turns": [
+    {
+      "prompt": "Write the script for a 60-second animated video that teaches kids what a fraction is. I want a moment where it asks the viewer to guess, then shows the answer. Don't make anything yet."
+    }
+  ],
+  "assertions": [
+    "The script teaches what a fraction is, and has the asked-for moment: a question to the viewer, a beat to guess, then the answer shown in the picture.",
+    "The lesson happens in a story or an action the viewer can see (something shared, cut or filled), with the words carrying what the picture still needs, and the question comes where that story raises it.",
+    "Nothing false about fractions is stated or shown (the parts of one whole are equal; the bottom number counts them, the top how many are taken), and the user's request for the guess isn't dropped or argued with.",
+    "Nothing is produced: no audara script runs, no preview, no generation, and the work folder ends as it started (git status)."
+  ]
+}

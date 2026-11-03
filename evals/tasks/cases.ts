@@ -593,6 +593,35 @@ const cases: Record<string, Case> = {
       'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status), since nobody asked to save anything.',
     ],
   },
+  // A story with a classroom detour in the user's own draft, as oprog-7's script had (2026-11-02: "Vamos fazer
+  // um teste rápido, com números inventados... Você daria?"): the story's own facts already make the point.
+  // Then they keep the detour anyway: their word wins.
+  'vi-teach-in-story': {
+    skill: 'video-ideas', setup: { files: [] }, timeoutMinutes: 20,
+    turns: [
+      { prompt: "Improve the script for my 2-minute animated video, I'm not making it yet. Keep it fun. My draft: \"In 2013 a German builder noticed that a photocopy of a house plan showed three rooms with the same area, 14.13 m2. On the original they were all different. The numbers were perfectly sharp. They were just wrong. Let's pause for a quick exercise with made-up numbers: say you scan a page with the numbers 6, 8 and 9, and your scanner can only store one of them to save space. Which would you keep? Think about it. Right: any choice loses two numbers. That's lossy compression. The copier stored one patch of pixels for every patch that looked alike, and reused it. Here's the lesson: a copy can look perfect and still be wrong.\"" },
+      { prompt: "Actually, put the exercise back exactly as I wrote it. Then give me the final script." },
+    ],
+    assertions: [
+      "Turn 1's script carries the explanation in the story's own events (the same 14.13 on three rooms, the investigation, the copier reusing one patch), and the made-up exercise is cut, shortened or turned into something that happens on screen, with a line saying why; nothing is added to teach a lesson the story didn't ask for.",
+      "Turn 1 keeps the draft's facts (2013, a German builder, 14.13 m2 on three rooms that differ on the original) and names any liberty it takes; no figure, date or quote is invented.",
+      "Turn 2's script has the exercise back word for word, from \"Let's pause\" to \"That's lossy compression.\", with at most one line of concern, not a renewed argument.",
+      'Nothing is produced in either turn: no audara script runs, no preview, no generation, and the work folder ends as it started (git status).',
+    ],
+  },
+  // The other side: the user asks for the lesson and the question to the viewer, so they stay, and are made fun.
+  'vi-teach-asked': {
+    skill: 'video-ideas', setup: { files: [] }, timeoutMinutes: 20,
+    turns: [
+      { prompt: "Write the script for a 60-second animated video that teaches kids what a fraction is. I want a moment where it asks the viewer to guess, then shows the answer. Don't make anything yet." },
+    ],
+    assertions: [
+      'The script teaches what a fraction is, and has the asked-for moment: a question to the viewer, a beat to guess, then the answer shown in the picture.',
+      'The lesson happens in a story or an action the viewer can see (something shared, cut or filled), with the words carrying what the picture still needs, and the question comes where that story raises it.',
+      "Nothing false about fractions is stated or shown (the parts of one whole are equal; the bottom number counts them, the top how many are taken), and the user's request for the guess isn't dropped or argued with.",
+      'Nothing is produced: no audara script runs, no preview, no generation, and the work folder ends as it started (git status).',
+    ],
+  },
   'vi-existing-project': {
     skill: 'video-ideas', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 20,
     turns: [
