@@ -108,22 +108,26 @@ The steps follow SKILL.md's session checklist, in its order:
 6. **Critic.** A fresh critic reviews a draft of the whole cut, looking first as a stranger, and the agent
    fixes what it finds; a piece longer than about 30 s also gets a verification round. After the build,
    a critic round runs when the director asks for one and before the render; a round of notes goes
-   through the agent's own checks instead (step 8), and its hand-off offers a critic round only when it
+   through the agent's own checks instead (step 7), and its hand-off offers a critic round only when it
    rebuilt much of the cut or left something those checks couldn't settle. (Until 0.8.1 the text let a
    critic round follow every round of notes; history.md says why it changed.)
-7. **Render.** A build ends in the preview with the render offered; the director says "render it" (or
-   asked for the MP4 in the request). A picture changed since the last critic round is reviewed on a
-   quick draft first, so the render runs once. Each render comes with a quality report, a contact sheet
+7. **Direct.** A build ends in the preview with the render offered, and waits there, even when the request
+   asked for the MP4. The director watches and gives notes by time ("at 0:23 the title should land on the
+   snare"). The agent changes what the note names and what it forces, checks what `verify` says changed
+   and each note's moment as it renders (a still, a clip with its `qc.py` lines, the mix measured), and
+   answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
+8. **Render.** The final render waits for the director's yes to a version they've previewed ("approved",
+   "render it"), or their word not to wait. A picture changed since the last critic round is reviewed on a
+   quick draft first; that review's fixes go back to the preview, and a new yes renders them without
+   another round, so the render runs once and shows what the director saw. A defect only the render shows
+   is fixed, and another render waits for the same yes. Each render comes with a quality report, a contact sheet
    and a poster frame, and an offer to delete, after a yes, the drafts and frame folders the work left (one
    project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
    itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
    browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
    frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
-   unchanged. (Until 0.2.0 the first build ended with the MP4; history.md says why it changed.)
-8. **Direct.** The director watches and gives notes by time ("at 0:23 the title should land on the
-   snare"). The agent changes what the note names and what it forces, checks what `verify` says changed
-   and each note's moment as it renders (a still, a clip with its `qc.py` lines, the mix measured), and
-   answers with a `?t=` link and what moved. This loop repeats for as long as the director wants.
+   unchanged. (Until 0.2.0 the first build ended with the MP4, and until 0.11.0 a render asked for in the
+   request ran before the director had seen the video; history.md says why each changed.)
 
 What the agent owes the director:
 

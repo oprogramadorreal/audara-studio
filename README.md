@@ -47,8 +47,9 @@ Open an empty folder and ask:
 
 The agent shows a short plan, gives you a preview link and builds while you watch; redirect it whenever you
 like. It ends with the video in the preview and a critic's review, and offers to render. Give notes by time
-(ask for another critic's review whenever you want one), and say "render it" when you want the MP4, which comes with a contact sheet, a poster frame and a quality
-report (or ask for the MP4 in your first message to get it in one go). The project's own README has the
+(ask for another critic's review whenever you want one), and once you've watched the version you want, say
+"approved" or "render it" for the MP4, which comes with a contact sheet, a poster frame and a quality report
+(or say "render it without waiting for my review" in your first message to get it in one go). The project's own README has the
 two commands to watch and render it yourself.
 
 Bring a song and it cuts the picture to it:

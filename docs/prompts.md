@@ -19,7 +19,8 @@ On 2026-10-26, with audara-studio 0.8.1 in Claude Code 2.1.310, Opus 5.5 at effo
 no waiting on permission prompts), on Windows 11. One message each, and no notes afterwards. Each ended the
 way a code-video session does: the video playing in the live preview, a draft MP4 without motion blur, the
 critic's findings fixed or listed as open (the last fixes not yet reviewed), and the final render offered,
-with one more critic review before it. Add "then render it" to a prompt to get the MP4 in one go. None
+with one more critic review before it. Since 0.11.0 a render waits for your yes to what you've watched; add
+"then render it without waiting for my review" to a prompt to get the MP4 in one go. None
 stopped to ask a question, and none spent money: the sound was synthesized in code, or was the user's own
 song. They haven't been run in Codex yet. Entry 6 came later and was run its own way, as it says.
 

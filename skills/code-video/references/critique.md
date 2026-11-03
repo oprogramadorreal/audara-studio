@@ -29,7 +29,7 @@ approved (the length, a cut on a word, a hold the treatment promises) says so, o
 keeps it, and says what else you retimed to make room.
 
 A note doesn't need a render: the preview is the answer, and a render costs minutes of waiting. Render
-when the director asks for the file (Delivery).
+when the director says yes to a version they've previewed, or says not to wait (Delivery).
 
 ## Your stills loop
 
@@ -152,7 +152,8 @@ session that built the video passed it after looking at one frame and an eight-f
   - a full-cut round on a `--draft` render of the whole video before you call the build done, then, past
     about 30 s, one verification round after its fixes. Then the director gets the sheets and the
     findings still open (they have had the preview link since setup, and watch while the critics work).
-    The build then ends in the preview (Hand-off); a render waits for their word (Delivery);
+    The build then ends in the preview (Hand-off); a render waits for their yes to what they've previewed
+    (Delivery);
   - after the build, a round when the director asks for one, and the one before the render (Delivery,
     step 2). Asking for one means asking for a critic or a review of the whole video; "check this part
     carefully" is a note, answered from your stills loop on that part (or one critic on a clip of it). A
@@ -371,10 +372,11 @@ the breath before the drop"). The last line of the report, `look at`, lists time
 
 ## Hand-off
 
-A build ends in the preview: "make a video" asks for the video, and the preview plays it. The final render
-takes minutes and the director's first notes usually change the picture, so it waits until they ask for
-the file (a render, an export, the MP4), in their request or later (Delivery). The reply gives the
-director, every time:
+A build ends in the preview: asking for the video asks for what the preview plays, even when the request
+names a render or the MP4. The final render takes minutes and the director's first notes usually change the
+picture, so it waits for their yes to a version they've previewed ("approved", "render it", "I want the
+MP4"), or their word not to wait ("render it, no review"). Drafts for the critic aren't that render. The
+reply gives the director, every time:
 
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
 - the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
@@ -385,12 +387,13 @@ director, every time:
 - the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
   if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
   costs), the review it gets first when the picture changed since the last critic round (Delivery, step
-  2) and that review's time, and what it brings: the MP4 with motion blur, sheets, a poster and the QC
-  report; and that the project's `README.md` has the commands to watch and render it without an agent.
+  2) and that review's time, and that its fixes come back to the preview before the render; what it brings:
+  the MP4 with motion blur, sheets, a poster and the QC report; and that the project's `README.md` has the
+  commands to watch and render it without an agent.
 
 ## Delivery
 
-When the director asks for a render, in their request or later:
+When the director says yes to a version they've previewed, or says not to wait:
 
 1. `bun scripts/render.ts verify --video <video>`, passing.
 2. The review, before the render. A picture changed since the last critic round gets one full-cut round
@@ -398,7 +401,10 @@ When the director asks for a render, in their request or later:
    this request already ran its rounds, in however many turns (a full-cut round and its verification, or
    the full-cut round alone for a short piece or when the director asked for speed). That is delivery's only round: fixes made after it are listed as
    not yet reviewed, not sent through another round and another render. A render made before its review
-   is thrown away when the review finds anything, and each costs minutes.
+   is thrown away when the review finds anything, and each costs minutes. Its fixes change what they said
+   yes to, so they go back to the preview with a `?t=` link each, and the render waits for a new yes, which
+   renders without another round. When they said not to wait, render with the fixes listed as not yet
+   reviewed.
 3. `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, once, after the last
    change, and wait for it before you reply: it takes minutes, often past a tool's time limit for one
    command (then run it in the background and check on it until it ends), the reply needs its result,
@@ -420,9 +426,9 @@ When the director asks for a render, in their request or later:
    `bun scripts/render.ts poster --video <video> --t <t>` → `out/<video>/poster.png`
 
 A defect only the render shows (a one-frame double image where a scene steps on `t` inside the shutter,
-which no single-sample check can show: contract.md) is fixed in the scene, but when that means rendering
-a long video again, ask first: the director gets the frame, how far it reaches and what another render
-costs, and picks. One final render showed such frames, rated minor and seen only frame by frame, and their
+which no single-sample check can show: contract.md) is fixed in the scene, and rendering again waits for
+the director's yes, unless they said not to wait: they get the frame, how far it reaches, what another
+render costs and the preview link at the fixed moment, and pick. One final render showed such frames, rated minor and seen only frame by frame, and their
 repair took 8 hours overnight without asking.
 
 A second format the treatment's Deliver line names (`--size 1080x1920`, say) goes through the same steps
