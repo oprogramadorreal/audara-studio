@@ -491,8 +491,8 @@ def uv_cache() -> dict | None:
     return {"path": str(d), "bytes": n, "counted": done,
             "note": f"uv's cache (UV_CACHE_DIR): {d}, {size if done else 'over ' + size} on disk"
                     + ("" if done else f" (counting stopped after {SIZE_BUDGET_S:g} s)")
-                    + ", each file counted once (its environments share their files with its downloads); it can be "
-                      "deleted once no script is running, and uv downloads what it needs again"}
+                    + ", each file counted once (its environments share their files with its downloads); it stays for "
+                      "later work: removed when asked, with no script using it, uv downloads what it needs again"}
 
 
 def use_cache(root: Path) -> None:

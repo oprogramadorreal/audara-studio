@@ -525,8 +525,8 @@ def uv_cache() -> dict | None:
     return {"path": str(d), "bytes": n, "counted": done,
             "note": f"uv's cache (UV_CACHE_DIR): {d}, {size if done else 'over ' + size} on disk"
                     + ("" if done else f" (counting stopped after {SIZE_BUDGET_S:g} s)")
-                    + ", each file counted once (its environments share their files with its downloads); it can be "
-                      "deleted once no script is running, and uv downloads what it needs again"}
+                    + ", each file counted once (its environments share their files with its downloads); it stays for "
+                      "later work: removed when asked, with no script using it, uv downloads what it needs again"}
 
 
 def human_bytes(n: float) -> str:
@@ -2181,7 +2181,7 @@ def report_cache(out: Out, root: Path, files: dict[str, Path | None], fetched: l
             repo = next((d for d in p.parents if d.name.startswith("models--")), p.parent)
             folders.setdefault(repo, []).append(name)
     rows = []
-    out("Cached (each can be deleted: standin.py fetches it again when it next needs it):")
+    out("Cached, and kept for the next run (deleted, standin.py fetches it again when it next needs it):")
     for d, names in folders.items():
         size = folder_bytes(d)
         how = "downloaded now" if any(x in fetched for x in names) else "already there"
