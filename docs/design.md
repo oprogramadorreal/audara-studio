@@ -121,8 +121,8 @@ The steps follow SKILL.md's session checklist, in its order:
    quick draft first; that review's fixes go back to the preview, and a new yes renders them without
    another round, so the render runs once and shows what the director saw. A defect only the render shows
    is fixed, and another render waits for the same yes. Each render comes with a quality report, a contact sheet
-   and a poster frame, and an offer to delete, after a yes, the drafts and frame folders the work left (one
-   project's reached 36 GB), never what the project names as a source. Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
+   and a poster frame, and, when the work left a lot on disk, an offer to free it: only what no continuing
+   work needs, never a source ("Disk", below). Chrome renders on a laptop's discrete GPU (`--force_high_performance_gpu`): left to
    itself it sometimes took the integrated one. A long video renders for hours, and one render uses one
    browser's thread: `video --jobs N` renders it in pieces on N browsers at once and joins them, the same
    frames, and `--resume` picks up an interrupted one while its inputs, including compiler settings, are
@@ -224,7 +224,7 @@ just to make a video, which still goes straight to code-video.
   an animated video it hasn't made yet, it offers a few pairs with different promises, each with what the
   thumbnail shows, and stops there; the chosen pair becomes the treatment's Promise, and youtube-package makes the
   final title and thumbnails from the finished video. Its description names this, and youtube-package's excludes
-  it: in oprog-7 a Codex agent asked for a "brainstorm de título + thumbnail" before the script loaded
+  it: in the first project made under 0.10.0 a Codex agent asked for a "brainstorm de título + thumbnail" before the script loaded
   youtube-package, whose description was the only one that matched, and read it without writing anything only
   because its prompt forbade files.
 - **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
@@ -271,7 +271,8 @@ what a later session needs:
 - what the agent owes the director, including that a request for ideas, a prompt, a script, or a working title
   and thumbnail for a video not made yet gets those and nothing built; a request for a thumbnail, a title, a
   description or tags gets the YouTube package with the video left as it is; and a build ends in the preview,
-  with the final render waiting for the director's yes to a version they've previewed.
+  with the final render waiting for the director's yes to a version they've previewed;
+- how to treat the disk: delete only on request, only what no continuing work needs, and keep what's in doubt.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
 The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
@@ -288,6 +289,31 @@ engine from before 0.4.0 it skips the shader warm-up and plays as before.
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
 itself, which is exactly why the project carries its own conventions.
+
+### Disk: on request, keeping what the next round needs
+
+A production fills a disk: one project's `out/` reached 36 GB, and one cleanup freed about 130 GB, most of it
+review frames, drafts and a session's scratch. The director asks for cleanups ("clean up temporary files you
+won't need anymore"), usually mid-production, so the guidance is about removing the right things. It is in
+critique.md's "Disk", which Hand-off and Delivery point to, and in a bullet of the AGENTS.md `init` writes,
+since a cleanup request in a later session may load no skill.
+
+- **On request, never as a round's last step.** A round that ends, or passes verify, still leaves files the
+  next one compares with, resumes or would spend hours remaking. A round that leaves several GB says so in a
+  line, what could go and what stays, and deletes nothing.
+- **By what a file still does, not where it is.** `out/`, `.audara-cache/` and git's ignore rules mark what a
+  clone leaves out (video-repo), not what is disposable: one project's cache held the scripts that made its mix,
+  and the 130 GB cleanup also took a 15 GB uv cache and the decoded music, warning that a later audio change
+  would need downloads and rebuilding. Kept unless named: sources and their scripts, paid takes, deliveries, the cut under review and what it
+  may be compared with, the records the next round reads, an interrupted render's pieces, and what is slow to
+  remake.
+- **Literal, inspected paths; keep when unsure.** No pattern deletes and no `git clean`. A request for a list
+  waits for its answer; a request to clean up is the yes for what qualifies, and the reply says what went, what
+  stayed and why, and what could go after a decision.
+- **The scripts' own notes** on uv's and the models' caches now say they stay for later work; they said "it can
+  be deleted", and agents read them.
+- **Not added:** automatic cleanup, a janitor script, a manifest of rounds, or smaller critic frames, which
+  would change what the critics judge (history.md, 0.7.1, turned down smaller drafts for the same reason).
 
 ### Handing it on: a repository
 

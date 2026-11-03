@@ -30,6 +30,7 @@ Contents
 - What a video is for: standing editorial guidance (0.10.0, 2026-11-02)
 - The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
 - Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
+- Disk: clean up on request, keep what the next round needs (0.11.0, 2026-11-03)
 
 ## Definition of done
 
@@ -3032,12 +3033,12 @@ session decided and made the edits.
 
 ## The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
 
-The user reviewed oprog-7, the first project made under 0.10.0 (Opus 5.5 in Claude Code, with Codex GPT-6-Astra in a
-second Herdr tab), and raised two things. `youtube-package` loaded near the start, before any script. And after
-"approved. let's work on the video", the session's plan sounded as if it would go straight from making the video
-to a full-quality render. What they want: make the video, offer a working browser preview and wait for their review;
-on notes, revise it and offer the updated preview; start the final render only after they explicitly approve the
-version they previewed. "Start working on the video" authorizes the preview.
+The user reviewed the first project made under 0.10.0, an 8-minute explainer (Opus 5.5 in Claude Code, with Codex
+GPT-6-Astra in a second Herdr tab), and raised two things. `youtube-package` loaded near the start, before any
+script. And after "approved. let's work on the video", the session's plan sounded as if it would go straight from
+making the video to a full-quality render. What they want: make the video, offer a working browser preview and wait
+for their review; on notes, revise it and offer the updated preview; start the final render only after they
+explicitly approve the version they previewed. "Start working on the video" authorizes the preview.
 
 What the sessions showed. Both transcripts were read; neither session nor the project was touched. Times are local.
 
@@ -3048,8 +3049,8 @@ What the sessions showed. Both transcripts were read; neither session nor the pr
   thumbnail, a YouTube title"); video-ideas' never named a title or a thumbnail, and youtube-package's exclusion,
   "choosing what video to make", didn't cover it. Only the prompt's ban on files kept its checklist (`title.txt`,
   three thumbnails, a sheet of a video that didn't exist) from running.
-- **Claude's own path matched 0.10.0.** The chosen pair became the treatment's Promise ("O gerente da loja era uma
-  IA. E prometeu vir de blazer. · EM PESSOA"), and the first narration block and the opening scene pay it. The
+- **Claude's own path matched 0.10.0.** The chosen pair became the treatment's Promise (a title, and two words for
+  the thumbnail), and the first narration block and the opening scene pay it. The
   thumbnail's picture (a tablet in a blazer) didn't travel: the Promise line and the critic's prompt carried only
   its words.
 - **The render was stated, never run.** At 10:44 the director wrote "approved. let's work on the video. use nutlight
@@ -3130,17 +3131,19 @@ What was checked:
 
 ## Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
 
-More notes on the last two films, in the same release. oprog-7 (Project Vend, made under 0.10.0) felt like a class
-around 148 s; oprog-6 (Ted Chiang's "blurry JPEG" essay, made before 0.10.0) taught better. The user's caveat:
-oprog-6's script came from the source article, not from the agent. In oprog-7, around 12 s, a squirrel seemed to
+More notes on the last two films, in the same release. The newer one (an explainer about an AI running an office
+shop, made under 0.10.0) felt like a class around 148 s; the one before it (an essay comparing language models to
+lossy compression, made before 0.10.0) taught better. The user's caveat: the earlier film's script came from the
+source article, not from the agent. In the newer one, around 12 s, a squirrel seemed to
 walk behind the computer screen. And at 13.99 s, when the squirrel on the right lowers one eyelid, its brows looked
-like geometry showing through from behind the lids. (The user wrote "the previous video". At 13.99 s oprog-6 shows
-one hard-hat squirrel, its visible eye open; oprog-7 shows Caju lowering one lid.) Both projects were read, not
+like geometry showing through from behind the lids. (The user wrote "the previous video". At 13.99 s the earlier film
+shows one hard-hat squirrel, its visible eye open; the newer one shows its lead squirrel lowering one lid.) Both
+projects were read, not
 changed.
 
 Teaching:
 
-- **What oprog-7 did.**
+- **What the newer film did.**
   - At 2:26.6 its narration stops the story for an exercise: "Vamos fazer um teste rápido, com números inventados...
     Você daria?" A chocolate box bought for R$ 8 and sold for R$ 10 takes 25% off, and the treatment holds the
     question for 2.2 s "so the viewer can think". A callback comes later ("No nosso chocolate...").
@@ -3157,10 +3160,10 @@ Teaching:
 - **What 0.10.0 said.** "Then teach, where the form can" (code-video), "it does three things well... 3. Teach"
   (the treatment), "do they leave with an insight" (video-ideas), and a critic ranking whose third item was "what is
   left unlearned", so a missing lesson was a finding.
-- **The caveat, applied.** oprog-6 doesn't show that the older skill wrote better scripts, since no skill wrote that
-  one. It shows how its author taught. The copy's numbers are wrong first; how a copier made them comes after, as
-  the answer. The lost-internet thought experiment is itself a story. It is openly instructional in places (the
-  compression paragraph), and that works because the story raised the question first. What carries over is the
+- **The caveat, applied.** The earlier film doesn't show that the older skill wrote better scripts, since no skill
+  wrote that one. It shows how its author taught. The copy's numbers are wrong first; how a copier made them comes
+  after, as the answer. The lost-internet thought experiment is itself a story. It is openly instructional in places
+  (the compression paragraph), and that works because the story raised the question first. What carries over is the
   test: does the explanation answer something the viewer now wants, or stop the story to make a point?
 - **What changed.**
   - The treatment template has two priorities, entertain and show, then "Teaching is a bonus, not a duty".
@@ -3184,17 +3187,18 @@ Teaching:
   cover; its second turn puts the exercise back word for word. `vi-teach-asked` is a fractions script for kids
   with a guess the user asked for, which has to survive. Both are text only.
 
-Layering, around 12 s of oprog-7:
+Layering, around 12 s of the newer film:
 
 - **The cause is in the video's code, not the kit.**
-  - `abertura.ts` draws the imagined blazer (the tablet's body, translucent), then the counter, then Caju, then the
-    tablet. So while the blazer shows, Caju walks in front of its chest and behind its head.
-  - Afterwards the stand's pole crosses his tail while his feet sit on the counter's line, 4 units nearer than the
+  - The opening scene draws the imagined blazer (the tablet's body, translucent), then the counter, then the
+    squirrel, then the tablet. So while the blazer shows, the squirrel walks in front of its chest and behind its
+    head.
+  - Afterwards the stand's pole crosses its tail while its feet sit on the counter's line, 4 units nearer than the
     stand's foot (766 against 762).
   - The walk behind is on purpose ("walking along the counter, behind the tablet").
 - **The kit drew what it was told.** The Stage paints in call order, and `depth` scales, shifts and hazes a draw
   without sorting it. Nutlight's look.md already said "nothing standing in front of what it is behind".
-- **The critics caught two other draw-order bugs in the same film** (Pitanga behind the counter's objects while
+- **The critics caught two other draw-order bugs in the same film** (a customer behind the counter's objects while
   walking in front of it, 498-500 s; the fridge's inside over two squirrels, 506.9-508.2 s), but not this one.
 - **No kit sorter.** It couldn't know a scene's route, which parts belong together or what the feet stand on, and
   most of a shot is at depth 1.
@@ -3202,11 +3206,11 @@ Layering, around 12 s of oprog-7:
   thing, its stand, clothes and held props included; the feet still need a surface. look.md's check now names
   every crossing, checked on stills before, during and after it.
 - **The video itself wasn't edited.** Its fix, for the director: keep the walk behind only with the whole
-  tablet, blazer and stand over Caju and a visible rear countertop under his feet, or restage it in front. Drawing
-  him before the counter alone would hide his feet.
+  tablet, blazer and stand over the squirrel and a visible rear countertop under its feet, or restage it in
+  front. Drawing it before the counter alone would hide its feet.
 
-The brows, at 13.99 s of oprog-7 (Caju in side view with the three-quarter head, `turn: 1.1`, `skeptical` at
-0.6), reproduced at 4K in a scratch project made by init:
+The brows, at 13.99 s of the newer film (its lead squirrel in side view with the three-quarter head, `turn: 1.1`,
+`skeptical` at 0.6), reproduced at 4K in a scratch project made by init:
 
 - **The far eye.** Its lid was at 0.04, barely lowered. It still got the full-width cream patch (`(rx + 5)·sx`)
   where its top is narrow, so a cream band with a hard edge hung over the fur between the rings. Its edge line,
@@ -3230,7 +3234,7 @@ The brows, at 13.99 s of oprog-7 (Caju in side view with the three-quarter head,
   profile, whose arched-lid construction is unchanged though its line now comes in faster), thinking with its
   gaze, three with glasses, mirrored asymmetry, the 60° turn, a lid starting to lower, a blink. On the cast sheet
   only the brows moved. Typecheck passes; verify PASS.
-- **oprog-7 keeps its own copy of the kit;** a project takes the new one when its director asks (nutlight-style,
+- **The project keeps its own copy of the kit;** a project takes the new one when its director asks (nutlight-style,
   "A later session").
 
 Codex (GPT-6-Astra, Herdr tab 2) reviewed the diagnosis, then the diff; the Claude Code session decided and made the
@@ -3241,8 +3245,8 @@ edits.
   - It wanted invented examples and definitions kept as forms to judge.
   - It corrected the attribution: the critic had flagged the labels, and the lead kept them.
   - It found the verification prompt's leftover escape, and asked for the two eval cases.
-  - On layering: "draw order is depth" conflated overlap with the `depth` parameter, and drawing Caju before the
-    counter would hide his feet.
+  - On layering: "draw order is depth" conflated overlap with the `depth` parameter, and drawing the squirrel
+    before the counter would hide its feet.
   - On the lids: `chordE`'s shorter half-chord couldn't size a tilted lid's patch, the gaze moves the eye and not
     the lid, and the over-lens line kept the old fade.
   - All taken, except that the fade was later dropped altogether.
@@ -3253,8 +3257,8 @@ edits.
   - The short lines ("never a class") were stricter than the full rule. They now say "lessons ride the story;
     explain when it fits" (code-video) and "explain outright where it fits, never to tick a box" (video-ideas, whose
     readers never open the treatment).
-  - The story case's "Xerox patched it in 2014" contradicts oprog-6's own record (the first patch, 22 August 2013),
-    so that sentence is gone.
+  - The story case's "Xerox patched it in 2014" contradicts the earlier film's own record (the first patch, 22
+    August 2013), so that sentence is gone.
   - "Only as wide as covering takes" promised more than a capped width gives, so the wording now says it narrows.
 - **Third: `VERDICT: AGREE`,** with four wording corrections to this entry and a comment, all taken. Its one
   numerical caveat stands: the width isn't continuous for every control. Where the cap vanishes under a sideways
@@ -3271,3 +3275,112 @@ What was checked:
   the 26 faces and the cast sheet are as above.
 - **Not run:** the two new cases (text only, minutes each), every other task case, and routing, since no
   description changed. What the new teaching wording does to a script is still unmeasured.
+
+## Disk: clean up on request, keep what the next round needs (0.11.0, 2026-11-03)
+
+The user often asks the agent to "clean up temporary files you won't need anymore", because productions fill the
+disk. They asked whether the skills cover it, and for a small addition only if it earns its place. Cleanup has to
+stay safe: nothing unintended, and nothing one round made that the next will need, since remaking it can be much
+slower. A round ending doesn't make its files useless; the distinction should be clear when a round ends, and
+when in doubt, keep.
+
+What the sessions showed (Claude Code transcripts of the user's video projects; none was touched):
+
+- **Two big cleanups, both on request.**
+  - **Across five projects, 2026-10-13: about 120 GB.** The user asked for a list first, then "Go ahead and
+    delete the files you consider safe" (0.7.1 records it).
+  - **One 13-minute explainer, 2026-10-30, mid-production: about 134 GB.** The request: "delete every temp file
+    that you created working here that is not necessary anymore ... delete tmp and aux files that are using disk
+    space but can be easily generated later. keep it safe". What went:
+    - review frames, contact sheets, test clips and old drafts in `out/<video>/`, about 87 GB;
+    - the session's own temporary folder, 29 GB;
+    - uv's cache (`C:\uvc`, the one soundtrack's SKILL.md suggests for a long path), 15 GB;
+    - the decoded music and old scratch in `.audara-cache/`, 2.4 GB;
+    - the audio intermediates (`mix.wav`, `voice.wav` and others), 0.9 GB.
+
+    It kept the final, two 60 fps test clips "you may still be comparing", every report and `verify.json`, the
+    paid image takes, the split stems and the models. It said the next audio change would be slower: uv
+    downloads again and the WAVs are rebuilt.
+- **Most of the space was review output and scratch:** about 116 GB of the 134, by the reply's own figures. The
+  other 18 GB were the package cache, decoded music, old scratch and audio intermediates. The reply warned that a
+  later audio change would need downloads and rebuilding; the transcript doesn't show what a later round remade.
+- **What the plugin said.** Since 0.7.1, Delivery's reply offered to free the disk, in groups with sizes and
+  reasons, and named what never goes. That offer comes only at the final render, while the requests came
+  mid-production. A later session asked to clean up reads the AGENTS.md init writes, which said nothing. The
+  never-delete list didn't name what the next round needs: the versions being compared, an interrupted render's
+  pieces (`render.ts` keeps them for `--resume`, and a finished encode can be left as `.part` when its rename
+  fails), paid takes, models, decoded music, or a uv cache outside `.audara-cache/`.
+- **The scripts invited deletion.** Four soundtrack scripts closed their cache note with "it can be deleted once no
+  script is running", and the stand-in voice's with "each can be deleted".
+
+What changed:
+
+- **critique.md has a "Disk" section,** which Hand-off and Delivery point to:
+  - **When a round ends.** If it left several GB, or the disk is a concern, one line says what could go on request
+    and what the next round needs. Nothing is deleted.
+  - **What can go, on request.** Only inspected files no continuing work needs: a closed round's frames and clips,
+    drafts nobody will compare with, probes, the session's own scratch. Being old, in `out/` or `.audara-cache/`,
+    or git-ignored doesn't make a file disposable.
+  - **The kept list** grew from Delivery's: paid takes, the cut under review and what it may be compared with, the
+    records the next round reads, an interrupted render's pieces, and what is slow to remake, uv's cache wherever
+    it is.
+  - **How:** literal paths, never a pattern or `git clean`, nothing in use. A list asked for first waits; a
+    request to clean up is the yes. When unsure, keep.
+  - **The reply** says what went (size, and what remaking it takes), what stayed and why, and what could go after
+    a decision.
+- **init's AGENTS.md** carries the rule in one bullet, for a later session that loads no skill. Projects get it
+  when init next runs in them.
+- **The cache notes** now say the cache stays for later work, and that removed when asked, with no script using
+  it, uv downloads what it needs again.
+- **An eval,** `cv-cleanup-keeps-next-round`: a later session on a planted mid-production project, its clutter
+  untracked so git can't protect it. Turn 1 asks for a list, turn 2 says go ahead. `disk/manifest.json`, beside
+  `work/`, holds each file's hash and whether it should stay, go, or either. The grader checks what survives.
+- **The naming rule.** The user added a standing rule: their other projects are never named in the plugin's
+  skills, docs, evals or PR text. This release's entries, its eval comments and two trigger queries were
+  reworded. `vi-26` and `yp-24` now describe their subject; rerun on Claude Code (Opus 5.5, low effort, 3 runs
+  each), `vi-26` loads video-ideas 3 of 3 and `yp-24` leaves youtube-package alone 3 of 3. The rule is in the
+  repository's AGENTS.md. Older entries on `main` still name projects, in history entries, eval comments and the
+  research notes; rewriting dated entries and attribution notices waits for the user's word. This branch's commit
+  messages name them too.
+
+Codex (GPT-6-Astra, Herdr tab 2) reviewed the plan, then the diff; the Claude Code session decided and made the
+edits.
+
+- **First review, on the plan.**
+  - A policy already existed: Delivery's offer, since 0.7.1. It became the one "Disk" section, not a second
+    policy beside it.
+  - "Can go" became candidates judged by what a file still does, not by its age or folder.
+  - Its other points were taken:
+    - an interrupted render's pieces and a `.part` are kept;
+    - the scripts' notes are qualified;
+    - the eval has untracked clutter and a manifest outside `work/`;
+    - a request for a list waits, and a request to clean up is the yes.
+  - It argued against JPEG frames and automatic cleanup, and found the naming rule's scope: identifying details
+    in this release, with older ones reported.
+- **Second review, on the diff: three corrections, all taken.**
+  - The later rebuild was the cleanup's warning, not something the transcript shows.
+  - A `.part` awaits recovery; `--resume` uses the pieces.
+  - uv downloads what it needs again, not the whole cache.
+  - Two eval refinements were taken too: the first draft's dropped intro is recorded, and the 60 fps test is
+    60 fps.
+  - It found no project name left in the additions.
+- **Third: `VERDICT: AGREE`.** Its two standing limits: the interrupted render is a fixture for retention, not a
+  resumable run, and a with/without run can't isolate the AGENTS.md bullet, since both arms get the current init.
+
+What was checked:
+
+- **Spec checks:** code-video and soundtrack pass the three validators (7,997 and 7,996 bytes), with no byte-order
+  mark; the four scripts parse.
+- **Tests:** `test_init_gitignore` 3/3; a project init writes carries the Disk bullet; `bun evals/tasks/cases.ts`
+  writes every `case.json`.
+- **The plant**, run by hand on a scratch project: 19 keep, 10 go, 1 either; the test clip probes at 60/1.
+- **Not run:** the case itself, which needs a finished project (`$EVAL_PROJECT`) and waits for the user's yes, and
+  nothing measures the end-of-round line yet.
+
+Considered and left out:
+- **Automatic cleanup** at a round's end, or a later round deleting the previous one's frames. Neither settles
+  the director's comparisons.
+- **A janitor script, a manifest of rounds, or a disk budget.**
+- **Smaller critic frames** (JPEG or a lower size): they would change what the critics judge, as smaller drafts
+  would have (0.7.1).
+- **A README line:** the README states no disk behavior.
