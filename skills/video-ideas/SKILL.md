@@ -1,6 +1,6 @@
 ---
 name: video-ideas
-description: "Helps decide what video to make before making it: explores ideas, offers a few distinct directions, and turns the chosen one, or the user's own rough or found prompt, into a starting prompt for code-video, the audara-studio skill that makes videos from code. Use it whenever the user asks for video ideas or prompt ideas, wants help writing, improving or adapting a video prompt, wants a script for an animated video before making it, or doesn't know what video to make yet, even inside a video project. It stops at the prompt or script unless the user also asks for the video. Not for a request just to make, change, preview or render a video (code-video does that), for prompts for AI video, image or chat models, or for ideas or scripts for filmed content."
+description: "Helps decide what video to make before making it: explores ideas, offers a few distinct directions, and turns the chosen one, or the user's own rough or found prompt, into a starting prompt for code-video, the audara-studio skill that makes videos from code. Use it whenever the user asks for video ideas or prompt ideas, wants help writing, improving or adapting a video prompt, wants a script for an animated video before making it, wants a working title or thumbnail for one not made yet, or doesn't know what video to make yet, even inside a video project. It stops at the prompt or script unless the user also asks for the video. Not for a request just to make, change, preview or render a video (code-video does that), for prompts for AI video, image or chat models, or for ideas or scripts for filmed content."
 ---
 
 # video-ideas
@@ -11,7 +11,7 @@ The user is deciding what to make. Help them see a few possibilities, choose, an
 Read what they bring: a subject, a feeling, a song or a script, files, a rough prompt, one found online. In an audara project, read `docs/STYLE.md` and the relevant video's Decisions in `videos/<video>/TREATMENT.md`. Preserve applicable decisions unless the user changes them; don't carry one video's specific choices into an unrelated new video. Ask only what would change the idea, in one message, each question with the default you'd take; when you can offer good directions without asking, offer them. Worth asking when it matters: what someone should feel, understand or do afterwards; a real product or fact, or something imagined; words or files to keep exactly; whether sound matters (does "silent" mean no words or no audio?); where it plays, how long, whether it loops.
 
 ## What makes one worth making
-Unless the user wants otherwise, weigh an idea in this order: does it give a reason to keep watching (a story, a picture, a rhythm); does the viewer see the thing happen rather than hear about it; do they leave with an insight, where the piece has one to give. It may simplify, leave out or reorder, as long as a reasonable viewer comes away believing nothing false about its central point or anything that matters if they repeat it or act on it. A video people choose to click makes one clear promise: a working title and the words a thumbnail could carry (or none), and what the opening shows to pay them.
+Unless the user wants otherwise, weigh an idea in this order: does it give a reason to keep watching (a story, a picture, a rhythm); does the viewer see the thing happen rather than hear about it; do they leave with an insight, where the piece has one to give. It may simplify, leave out or reorder, as long as a reasonable viewer comes away believing nothing false about its central point or anything that matters if they repeat it or act on it. A video people choose to click makes one clear promise: a working title and a thumbnail idea (what it shows, any words), and what the opening shows to pay them.
 
 ## Directions
 - **Exploring:** two or three directions that differ in what the viewer sees, how it changes and how it ends, each in two or three lines with its promise and why one would pick it. "Elegant" and "premium" aren't two directions; "a receipt folding into a map of the month" and "the real scan, then the budget" are.
@@ -23,7 +23,7 @@ Unless the user wants otherwise, weigh an idea in this order: does it give a rea
 One self-contained prompt, in a fenced `text` block so it copies cleanly. Keep three things apart:
 - **What the user decided,** exactly: their words, facts, files by path, length, format, where it plays, sound, and what they ruled out. Their earlier words win over your summary of them, so carry them in.
 - **The chosen idea,** as what is seen and how it changes. Picked from your directions, or left to you by them, it is theirs to keep.
-- **What is only suggested,** marked as replaceable ("suggestions you can replace: ..."): copy, a working title and thumbnail words, a liberty with the facts (named as one), a length, a sound, staging you proposed and they didn't confirm. Then say what's left to code-video.
+- **What is only suggested,** marked as replaceable ("suggestions you can replace: ..."): copy, a working title and thumbnail idea, a liberty with the facts (named as one), a length, a sound, staging you proposed and they didn't confirm. Then say what's left to code-video.
 
 Keep unspecified aspects of the look open. Preserve the visual constraints the user established, without treating one brand colour, typeface or reference as a complete look: code-video explores what remains open through style frames. If a suggested look is useful, mark it as optional rather than as the user's requirement.
 
@@ -34,6 +34,7 @@ When asked to adapt a prompt from a gallery or another tool, keep its idea, crea
 
 ## Where it stops
 - **A script alone:** the promise first, then the picture's beats, with words for what the viewer still needs and its liberties named. It stops there; once they accept it, it is theirs, and goes into the prompt word for word.
+- **A title and thumbnail alone:** a few pairs with different promises; it stops there, and youtube-package makes the final ones from the finished video.
 - **Ideas or a prompt only:** when production hasn't already been requested, "I like the second one" or "great prompt" selects or acknowledges; it doesn't start a build. No production starts: no project, no preview, nothing generated (drawing options to look at is production, under code-video's rules). No files are written unless the user asks to save the prompt.
 - **End with one line outside the prompt:** "make it" continues here, or the prompt can go into a new session with its files.
 - **"Make it"** (or "make the second one"): continue with code-video in this session, using the prompt and the user's earlier instructions; it follows its usual production and render rules.

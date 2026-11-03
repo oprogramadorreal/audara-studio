@@ -53,7 +53,7 @@ is presented as a real person's, company's or study's. The liberties go in Never
 where the picture could mislead, never as a running disclaimer.
 
 **The promise comes first.** For a video people choose to click, before outlining, write a working title and
-the words a thumbnail could carry (or none, when the picture says it). Together they make one clear promise,
+a thumbnail idea: what it shows, and the words it could carry (or none, when the picture says it). Together they make one clear promise,
 and it decides the opening: a surprising result is shown, or starts to be revealed, in the first seconds, in
 the picture, since those seconds also play muted on hover and in phone feeds. Someone who clicked recognizes
 what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
@@ -110,7 +110,7 @@ is the one every video of the song shows); an explainer shows its mechanism, sta
 names ("the receipt becomes the city map", not "a morph transition"); name the persistent actor if any.>
 <Also considered: the style frames you didn't pick, a line each, when the look was yours.>
 
-- **Promise:** <working title> · <thumbnail words, or none>: <what someone who clicked expects>. Opening:
+- **Promise:** <working title> · <what the thumbnail shows>, <its words, or no words>: <what someone who clicked expects>. Opening:
   <what the first seconds show to pay it>. (When people choose to click it.)
 - **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
   `docs/STYLE.md`.

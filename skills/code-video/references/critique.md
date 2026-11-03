@@ -266,7 +266,7 @@ and measured numbers, not intentions. Artifact: <project>/out/<video>/<file>.mp4
 director's words, which bind: "<verbatim>".
 <tools>
 First look, as a stranger. <When the treatment has a Promise: You clicked a video titled "<working title>",
-its thumbnail saying "<words>".> Before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say
+its thumbnail showing <what it shows><, with the words "<words>">.> Before you open videos/<video>/TREATMENT.md or docs/STYLE.md, which say
 what its makers meant, run qc.py on the MP4 and look at a sheet of the whole video (about two frames a
 second; a frame per bar for a long one) and, if you like, a clip. Write out/<video>/critique/r<N>/first-look.md
 in about six lines: what the video shows and says, in your words (what it says is in

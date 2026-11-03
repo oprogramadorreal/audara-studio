@@ -153,7 +153,7 @@ The user gave the same editorial brief with every script and cut, so it is a sta
 still outrank it. A video entertains, then shows, then teaches, in that order: the order settles what stays when
 they compete. It can simplify, leave out or change how events unfold, up to what a reasonable viewer comes away
 believing. And a video people choose to click makes one clear promise before it is outlined (a working title and
-the words a thumbnail could carry), which decides how it opens. The words themselves are in
+a thumbnail idea: what it shows, and any words it carries), which decides how it opens. The words themselves are in
 `skills/code-video/references/treatment-template.md`.
 
 - **Show doesn't ban words that match the picture.** Words carry what the viewer still needs, which can repeat
@@ -171,7 +171,9 @@ the words a thumbnail could carry), which decides how it opens. The words themse
   against the Promise itself, and says so when the cut no longer pays it.
 - **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
   before it opens the treatment, now records what it believes because of the video, and whether the first seconds
-  pay the title and thumbnail words it is given, as a viewer has them. A false belief about the central point, or
+  pay the title and thumbnail it is given (what the thumbnail shows, and any words), as a viewer has them. The
+  thumbnail's picture is carried with its words, since a thumbnail with no words would otherwise promise nothing
+  on the way to the critic. A false belief about the central point, or
   about anything that matters if repeated or acted on, outranks every other finding; a simplification that leaves
   those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
   read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
@@ -210,6 +212,13 @@ just to make a video, which still goes straight to code-video.
   promise. It also takes a script alone, which no description named: the promise first, then the picture's
   beats, with words for what the viewer still needs, and it stops there; one the user accepts goes into the
   prompt word for word. A script for filmed content stays out, as ideas for it do.
+- **A working title and thumbnail come here, before the video exists.** Asked for a title and thumbnail to shape
+  an animated video it hasn't made yet, it offers a few pairs with different promises, each with what the
+  thumbnail shows, and stops there; the chosen pair becomes the treatment's Promise, and youtube-package makes the
+  final title and thumbnails from the finished video. Its description names this, and youtube-package's excludes
+  it: in oprog-7 a Codex agent asked for a "brainstorm de título + thumbnail" before the script loaded
+  youtube-package, whose description was the only one that matched, and read it without writing anything only
+  because its prompt forbade files.
 - **The prompt keeps three things apart:** what the user decided, exactly (their words, files by path,
   facts, length, sound, what they ruled out); the idea they chose; and what the assistant only suggested
   (copy, a length, a staging), marked as replaceable. code-video follows the first exactly, develops the
@@ -251,9 +260,10 @@ what a later session needs:
 - where the director's decisions are (each treatment's Decisions, and `docs/STYLE.md` for the project's),
   to read before every change;
 - what a video is for, in a line, and where each one's Promise and Never claim are;
-- what the agent owes the director, including that a request for ideas, a prompt or a script alone gets those and
-  nothing built, and a request for a thumbnail, a title, a description or tags gets the YouTube package with the
-  video left as it is.
+- what the agent owes the director, including that a request for ideas, a prompt, a script, or a working title
+  and thumbnail for a video not made yet gets those and nothing built; a request for a thumbnail, a title, a
+  description or tags gets the YouTube package with the video left as it is; and a build ends in the preview,
+  with the final render waiting for the director's yes to a version they've previewed.
 
 It also writes a one-line `CLAUDE.md` that imports it (`@AGENTS.md`); Codex reads `AGENTS.md` on its own.
 The agent keeps `AGENTS.md` current as videos are added. `init` never replaces a project's own scripts, so
@@ -902,8 +912,8 @@ they differ, follow the stricter rule. What that means here:
     not for making a voice clone (narrating in one the user has is fine); `video-ideas` is not for making a
     video, for prompts for other generators, or for ideas or scripts for filmed content; `video-repo` is not for
     everyday commits, branches or pull requests, or for projects that aren't videos; `youtube-package` is not
-    for making or changing the video (title cards and text inside it included), for choosing what to make, or
-    for images unrelated to a video.
+    for making or changing the video (title cards and text inside it included), for choosing what to make or
+    its working title and thumbnail, or for images unrelated to a video.
   - **A little insistent** (Anthropic), because models tend to under-trigger skills: "use it whenever the
     user wants a video made from code, even if they don't say 'motion graphics'".
   - **First sentence first:** Claude Code cuts each listing at 1,536 characters, and Codex shortens
