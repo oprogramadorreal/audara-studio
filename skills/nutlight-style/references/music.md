@@ -1,9 +1,10 @@
 # Nutlight: music
 
 The style's sound is real, produced music that is cut to the story and stays clearly audible under the voice.
-soundtrack does the audio work (analysis, generation, the mix); this file is the taste and the method for a
-score built from several tracks. It names no tracks, and none ship with the plugin: each video's music
-comes from the director.
+soundtrack does the audio work (analysis, generation, the mix), and its references/score.md is the method
+for a score built from several tracks: the cue sheet, joins, entrances, the arrangement script, the voice over
+the bed, licences at intake and the checks. This file is the style's taste and what it adds to that method. It
+names no tracks, and none ship with the plugin: each video's music comes from the director.
 
 ## The sensibility
 
@@ -26,68 +27,27 @@ comes from the director.
 ## Where the music comes from
 
 1. **The director's own library** (first choice): tracks they hold licences for and have used on their
-   channel. Ask once where it is if they haven't said; it's a fact only they have. Note the folder in the
-   treatment's Sound for later sessions. Each track used gets a line in `videos/<video>/assets/SOURCES.md`
-   with the licence the director names. Say when redistribution isn't known, and when a track is a cover or
-   remake of a famous song, which can draw a Content ID claim even when licensed.
+   channel. Ask once where it is if they haven't said; it's a fact only they have. Its source and licence lines
+   follow soundtrack's score.md.
 2. **Generated music,** when nothing in the library fits a stretch or the director asks: soundtrack's
    `eleven.py music plan` (free; `--from-narration` sizes sections to the chapters) prints the cost, and
    nothing is composed before the director's yes (references/elevenlabs.md in soundtrack).
 3. **Anything else that serves the brief:** a track the director names, music synthesized in code as a free
    stand-in or when asked, or silence.
 
-## Choosing tracks
+## Choosing tracks and building the score
 
-When the director leaves the choice to you, make it. Measure the candidates (`beats.py <track> --out
-.audara-cache/music/<name>` gives tempo, downbeats, sections and energy, outside the video's data) and read
-their names and any notes the director keeps. You can't listen, so
-say that the picks are by measurement and the director's ear decides. When the director keeps the choice,
-offer two or three candidates for each stretch, each with what it brings. Reusing a track across videos is
-fine, but each video's score is its own, chosen for that story.
-
-With the director's OK, keep a short catalogue note in the library folder: one line per track with its tempo,
-key, length, energy and where it was used, drafted from measurements and corrected by the director's ear. Mood
-labels in it stay provisional until someone has listened.
-
-## Building the score
-
-- **A cue sheet first:** for each stretch of the story, the track, the bars used, where its turns land
-  (anchored to words in `words.json` or to picture cues) and why. Put it in the treatment's Sound and show it
-  to the director with the rest of the brief.
-- **Cuts and joins** follow the music's phrasing: a downbeat or a phrase end with a short equal-power
-  crossfade (30-60 ms worked) is the usual join, and a pickup, a prelap or a longer overlap is fine where the
-  phrase asks for it. A cue ends on its own final hit or rings out with a tail rather than being chopped
-  mid-phrase. A jump inside one track is a join like any other.
-- **Entrances** neither leave a gap after the transition nor run ahead of the line they belong to, and don't
-  arrive too loud; coming in soft and rising often works. Late, early, too loud and a gap were each a separate
-  note.
-- **Keep the arrangement as a script beside the audio** (`videos/<video>/music/arrange.py`, run with uv), with
-  times taken from word and picture anchors and never typed. A re-paced voice then moves every cue with it.
-  Copy the tracks it uses into the project (`videos/<video>/music/tracks/`) and read them by relative paths, so
-  it rebuilds on another machine; whether they may go in a shared repository is the licence's question
-  (SOURCES.md says, and video-repo asks).
-  It writes one music file, which `mix.py` takes as its music with `under_voice`. `beats.py` on that file
-  gives the scenes its grid when the picture syncs to the music.
-- **Retime the picture to the music** where an action should land on a hit, not only the music to the picture.
-
-## Under the voice
-
-`mix.py` keeps the music under the voice by `under_voice` (12 LU by default) and ducks it while words play.
-A dark voice under bright tracks can still lose its consonants. Check the voice's presence band (about 1-4 kHz)
-against the music on `mix.wav`, with `mix.py measure`'s phone check too. Where it is masked, dip that band in
-the music under the words, from the arrangement. Hold those dips through short breaths so the music doesn't
-pump between sentences.
-
-## What to report
-
-The cue sheet, the measured levels and joins, a `?t=` link to every entrance and join so the director can
-listen to them in the preview, and plainly that nobody has listened yet when that is the case.
+soundtrack's references/score.md: measured candidates when the choice is left to you, two or three per stretch
+when the director keeps it, the cue sheet in the treatment's Sound, joins on the phrasing, soft entrances, chosen
+stops, the arrangement as a script, and the voice checked against the bed line by line. In this style, reusing a
+track across videos is fine, but each video's score is its own, chosen for that story. With the director's OK,
+keep a short catalogue note in the library folder: one line per track with its tempo, key, length, energy and
+where it was used, drafted from measurements and corrected by the director's ear; mood labels in it stay
+provisional until someone has listened.
 
 ## Checks
 
-Before the hand-off:
-- every entrance: no gap, not early, not late, not too loud;
-- every join: with the music's phrasing, nothing chopped mid-phrase, no click;
+Before the hand-off, score.md's checks (entrances, joins, stops, the voice over the bed, licences), and:
 - every big music change has a change in the picture;
-- the voice stays clear over the music;
+- where the voice speaks, nothing sung competes with it;
 - the outro is music-led and resolves.
