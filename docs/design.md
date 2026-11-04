@@ -802,11 +802,15 @@ it (`src/engine/footage.ts`):
   frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.
   render.ts waits for it before every frame it renders, with the next half second of the range loading
   alongside; a failure there is left to the frame's own prepare, so a missing frame past the range is no
-  error. The preview asks two seconds ahead without waiting and shows the nearest frame it has meanwhile.
+  error. The preview asks two seconds ahead without waiting and shows the nearest frame it has meanwhile;
+  a frame it refines at rest waits for its footage frame first.
 - One memory budget over every shot lets the least recently asked frames go, never one asked since a prepare
   render.ts waits for began, until it settles and for a few prepares after, nor those of the latest rounds.
   A scene may ask for its clips one after another, each once the last has loaded, while the look-ahead asks
-  for more: the frames about to be drawn still stay.
+  for more: the frames about to be drawn still stay. The frame on a shot's texture stays only while that shot
+  is in use (asked for or drawn in the kept rounds): the engine keeps every scene loaded, so a shot that has
+  played lets its last frame and its GPU copy go, and is prepared again before it is drawn again (in the
+  preview it shows black until its frame is back).
 - In the render, a frame nobody prepared throws and one that fails to load stops the video, so a stale frame
   never reaches the file; verify fails on either.
 - The frame is picked at `frameTime(t)`, as for frames decoded at boot, so every sub-frame of a frame shows
@@ -995,8 +999,8 @@ than spelled out; generate the key lines several times and keep the most natural
 built, it also lists moments to listen to, each with its time for a `?t=` link. They are measurements, never a
 verdict on how it sounds, and never a failure:
 
-- **Voice over the bed, per narration line** (each `data/words.json` line timed to the voice, else each stretch of
-  speech): the voice layer as mixed against everything else in the mix, K-weighted, in 100 ms windows. A line is
+- **Voice over the bed, per narration line** (each `data/words.json` line timed to the voice, and each stretch of
+  speech no line reaches, such as a second voice file, which the report names as measured by region): the voice layer as mixed against everything else in the mix, K-weighted, in 100 ms windows. A line is
   listed in three cases:
   - the bed sits under 10 LU below the voice on median. Torcoli et al. (AES 2019) recommend at least 10 LU
     between commentary and music; `under_voice`'s 12 is that plus a margin.
@@ -1012,7 +1016,7 @@ verdict on how it sounds, and never a failure:
   in 100 ms windows over ±1.5 s (dBFS RMS, not LUFS). Listed: a hole, a surge, a stop under the voice. Only the
   arrangement knows where a spliced score's joins are, so the agent lists them, placed by the same anchors as an
   effect. `"intended": "<why>"` on a join lists what is found there as intended, not as a candidate; on a join
-  anywhere inside a silence, it covers the stop and the return. The music's own entrance and end take
+  anywhere inside a silence, it covers the stop and the return, a join listed at the return included. The music's own entrance and end take
   `intended_start` and `intended_end`, apart, so excusing a hard entrance doesn't hide a stop at the end.
 
 Why: in two devlogs (one 16 minutes long, one 13) the director raised about a dozen music notes each. The music

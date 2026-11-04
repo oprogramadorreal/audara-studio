@@ -31,6 +31,8 @@ Contents
 - The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
 - Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
 - Disk: clean up on request, keep what the next round needs (0.11.0, 2026-11-03)
+- Devlogs: building first, and what two of them taught (0.12.0, 2026-11-04)
+- Streamed footage in the template (0.12.0, 2026-11-04)
 - The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
 
 ## Definition of done
@@ -3386,6 +3388,200 @@ Considered and left out:
   would have (0.7.1).
 - **A README line:** the README states no disk behavior.
 
+## Devlogs: building first, and what two of them taught (0.12.0, 2026-11-04)
+
+The user made two pt-BR devlogs with audara-studio, both narrated by their ElevenLabs clone: a 13-minute one in
+which the agent built a browser clone of a block-world sandbox game and then the video about it (2026-10-13 to
+10-21, plugin 0.7.1), and a 16-minute one in which it built a 3D remake of a 16-bit platformer's first levels
+and world map in the browser, with no engine, then the video (2026-10-21 to 11-04, plugin 0.8.1). They were
+happy with both, but each took many rounds of their notes, and they are considering devlogs as a recurring
+format. They asked what made the videos good, where they had to steer repeatedly, whether a dedicated devlog
+skill would get a result they accept in fewer interactions, and for every change to keep the plugin's range
+(other formats, the Nutlight style, other styles) and the model's freedom where its judgment works. Their
+starting hypothesis: "I want to make a devlog, and I want to start by building the game".
+
+How it was read. Both projects were read, not changed: every document in the second one's `docs/` (its
+development log is 322 KB, six stage designs 490 KB), both projects' treatments, notes, critiques, scripts and
+dev logs, both sessions' transcripts (517 MB, still open in Herdr; 373 MB), parsed into the director's own
+messages (37 in each), the agent's hand-off before each, and the sessions' compaction summaries (28 and 6), with
+API keys found in one opening prompt redacted before any reader saw them. Fifteen read-only readers took a
+slice each (the dev log in five stage ranges, the stage designs, the sessions, the script against the cut, the
+first project's build and its video rounds, the plugin's current text, the user's channel); a synthesis merged
+their reports into 34 patterns and a skeptic re-checked each against the director's own words (33 held with
+corrected counts, 1 was refuted). The channel's public pages were read too: 57 uploads, mostly "I built X"
+videos (game remakes, physics simulations, a Mandelbrot explorer, tools), the remake of the block-world game
+far ahead at 1.22M views. Codex (GPT-6-Astra, Herdr tab 2) gave an independent view before seeing these
+conclusions, then reviewed the plan; the Claude Code session decided and made the edits.
+
+The plugin versions matter: the second project ran on 0.8.1 for its whole two weeks and the first on 0.7.1,
+so 0.10.0's licence and promise rules and 0.11.0's render gate weren't there. Each pattern below was judged
+against today's text.
+
+What made them good, to keep:
+
+- **The thing itself was the show:** real physics and destruction from the game's own simulation, with its own
+  sounds on the right frames and cut to the music, drew the strongest praise ("superb! Keep it!", "I strongly
+  prefer the 'full destruction' version").
+- **Faithful builds approved at first play:** levels converted from the source game's own data and physics
+  from measured numbers ("Gameplay, physics, and functionality are great!").
+- **Real struggles as beats:** each build logged what broke, why and the fix, with before and after images; a
+  fix that saved only 9% and a bug rebuilt for the camera became scenes the director kept.
+- **Determinism and stages you could get back:** fixed ticks, seeded randomness, input replays with state
+  hashes and a capture-only camera, built on day one in both, let 16 shots be re-filmed after a game change
+  ("every sim hash equal") and 31 after two fixes.
+- **The agent's own inventions that acted a line out:** "I liked your ideas and how you designed the scenes";
+  "Keep it as is".
+- **The hand-off loop:** notes saved verbatim, a link per change, choices he could reverse; the director's later
+  rounds shrank to a note or two, answered in minutes.
+
+Where the director steered, and of what kind (counts are the skeptics'):
+
+- **The build had no skill.** The second session loaded only video-repo for ten days (its prompt said to load
+  code-video only after the script was approved); the director wrote the dev log, the recording rules and the
+  gates into his prompts, and repeated them (the footer itself was his habit, and the agent followed it). What a
+  skill could have carried: a capture policy (he had to say "you only need to record now what would be
+  difficult to capture later": 2,242 screenshots and 76 recordings in the first two days, about 16 and 9 used),
+  status and time ("I think you are done already", "why the workflow is taking so long?", "how long until I can
+  test it?"), and showing one model before rolling out a look (asked twice; three times he picked an option
+  nobody had put in front of him, once the runner-up figurine, after the hand-off called the winner clear where
+  its judge had called the two a point apart).
+- **Trade-offs settled inside:** a reviewer's tidiness rule kept the back of the level unbreakable, which he
+  later reversed ("the purpose of this game is to serve this video"), and protective checks rolled back bolder
+  looks he had asked for, while he said the game was for the video three times.
+- **Explanations he couldn't follow:** seven in the second project, raised eight times ("After that, I couldn't
+  understand what was happening"; "too abstract"), all approved on paper in the script and failed only when
+  watched; the accepted rewrites had one subject, a concept defined before use, one idea per line drawn on its
+  word. No critic caught them.
+- **Tags on staged scenes:** "encenação" and "DEMONSTRAÇÃO" removed four times across both, and the dates taken
+  off seven real-bug tags once; three of the removals came after the director had written "do not let
+  documentary literalism weaken the storytelling", and the script had recorded that he removed them last time
+  and asked again, in a list he didn't answer.
+- **Callbacks without setups that land:** in the first, about eight unframed nods to his 2020 video; in the
+  second, a one-line aside set up as a rival ("isn't memorable enough to support the callback") and payoffs re-aimed after their
+  setups were cut.
+- **Story order:** seven notes in three rounds about later looks shown before the chapters that build them, five
+  of them in the first.
+- **Voice:** seven loanwords, names and numbers corrected in pt-BR ("bug" twice, "RTX 4090" said "40 e 90",
+  "devlog", "FPS"); regenerated lines that "sound different" (nine notes in the first, three in the second; one
+  take at 218 Hz among neighbours at 135 Hz); a drift toward European Portuguese on some takes, which two
+  transcribers passed.
+- **Music:** about a dozen notes in each: holes and surges at joins, music stopping under narration, words lost
+  under the bed (one project had measured 169 such words and handed the cut over without them).
+- **Smaller ones:** a still picture under a line that names an action (four), gameplay windows too small
+  (twice the same one), a preview sent broken after a restart, a disclosure answer from an old version of
+  YouTube's rule.
+- **His, and meant to stay his:** what to build and how far ("push it further" was partly a joke he planned for
+  the video), the looks he picked, the villain-boss persona and the scared AI, about 12% of the final words
+  dictated in his own lines, his thumbnails and title, his music library with a use for each track.
+
+The decision: a skill of its own. The build is days of work before any video exists, no skill was loaded in
+it, and its gaps (capture, stages you can get back, one piece first, ETAs, trade-offs, the role of each version,
+when there is enough) have nowhere to live in code-video, whose SKILL.md had 3 bytes left and whose Brief would
+start a treatment at once. `devlog` loads on a devlog request in any language, a request to build something
+and then a video about it, a video about how a project of theirs was built, or a project whose
+`docs/DEVELOPMENT_LOG.md` feeds a video; it hands the material to code-video when the video starts. The user's
+hypothesis holds as a default, not a rule: the first project overlapped the build and the script and went
+well, so the director's order holds, whatever it is. How it knows when to stop building: it doesn't decide;
+each milestone's hand-off says what the video could already be and what it lacks, and when his scope is met it
+says so and offers the script with what one more stage would add.
+
+What changed:
+
+- **`skills/devlog/`:** SKILL.md (7,693 bytes): the opening message with defaults; the log, its story ledger
+  and an AGENTS.md section with the standing rules; a way to film any moment again, sized to the thing; the
+  build's hand-offs (ETA, one piece first, option sheets with close calls, trade-offs put to him, each
+  version's role); "Enough for the video"; the hand-over (story order, the picture showing the line, plain
+  explanations, his lines verbatim, provenance); what stays his. `references/capture.md`: the techniques for a
+  game, a simulation, an explorer and a tool, shot folders and manifests, footage in the video, the checks.
+  `references/log-template.md`: the log, the ledger, the AGENTS.md section and a real entry (a block-world
+  build's meshing fix).
+- **treatment-template.md:** lines the director wrote for himself and staged comedy need no tag, and a
+  re-staged demonstration's tag is asked once; a payoff needs a setup the viewer will still hold, and a cut
+  setup takes its payoff along or asks; an optional Stage column for any progression (a devlog's looks, a
+  before and after, a tutorial's steps), checked by the storyboard critic; the opening may be a trailer that
+  only glimpses the payoff; a long narrated piece voices and roughly cuts its least certain passage first and
+  posts it while building on.
+- **critique.md:** the full-cut critic restates each explanation in its first look, and one it couldn't
+  restate ranks with what loses the viewer; a line that asks the viewer to see something happen is checked for
+  the picture showing it; a round of notes reads what a note keeps (other voices, effects, the timing around
+  it), what "right at this point, add" and "use your judgment on whether to remake" ask, and turns a removal
+  into a search; each measured flag is fixed, marked as meant or listed in the hand-off; the preview link is
+  opened after a restart; and the claim that `qc.py` shows one-frame pops is corrected, since it has no such
+  test (eight flickers and pops reached the director; a sheet of every frame shows them).
+- **soundtrack:** elevenlabs.md's words from another language (the approved say map carried, uncertain words
+  tested rather than respelled on a guess, every occurrence checked), what a transcript can't catch, a
+  regenerated line made in the narrator's own settings and compared with its neighbours, and takes to pick from
+  in place for a line carried by its delivery. A new `references/score.md`, the method for a score cut from
+  several tracks, moved out of nutlight-style's music.md so every video gets it, with licences recorded at
+  intake; music.md keeps the style's taste and points to it.
+- **The smaller ones:** video-repo keeps a devlog's recordings, screenshots and captures as sources (the
+  director had to say so); youtube.md quotes YouTube's own exemption for "Cloning one's own voice to create
+  voice overs or dubs" (checked 2026-11-04); code-video's Brief waits for "a devlog's gates", and video-ideas'
+  "make it" goes through devlog first for a devlog; init's AGENTS.md names the skill and what a later session
+  owes a devlog.
+- **Engineering,** each built in its own worktree and reviewed by a fresh agent that reran the tests; all three
+  reviews asked for fixes, all made before merging:
+  - streamed footage in the template, for minutes of captured frames (the next entry);
+  - the mix's moments to listen to, per narration line and per music join (the entry after it), which
+    `score.md` and SKILL.md's Mix step point to;
+  - a pitch diagnostic in `eleven.py tts`'s takes report: each take's median pitch, its distance in semitones
+    from the kept blocks beside it with the same voice and settings, and "check by ear" past 2 (`--no-pitch`,
+    `--pitch-tolerance`), never regenerating or picking, and saying it was measured, not heard. On the block
+    the director flagged in one project, his rejected take read +6.1 semitones and his pick -1.3; on 76 real
+    blocks it agreed with librosa's pYIN to a median 0.25 semitones. A first version also moved new takes
+    onto seeds not used before (one "new" take had been a byte copy of a rejected one); the review showed a
+    renumbered paragraph then paying for its takes again, and since that copy never reached the director it
+    was dropped: the take that is the block's file is labelled instead.
+- **Evals:** devlog's trigger set (ten requests, two in Portuguese, three not games, one already built, one
+  inside a devlog project from a new fixture; ten near-misses), two task cases (`dl-build-first`,
+  `dl-explorer-video`), and a harness fix: the Claude projects cleanup failed with EXDEV moving a session from
+  the config's drive to the repository's, after every query ran and before results were written.
+
+Codex's two rounds. Its independent view reached the same shape: a small devlog-scoped coordinator, mainly for
+the build, plus a reveal map, voice continuity and whole audio transitions. Its review of the plan, taken almost
+whole: capture as techniques sized to the thing, not one architecture; no stage count or required struggles in
+the readiness test (they could manufacture work); gates as the director sets them, retrospective devlogs and
+overlap allowed; no universal spectacle, help-text or date rules (show both and ask; dates stay the channel's
+decision); the picture-shows-the-line rule only where a line asks to see something; a removal starts a search,
+not a sweep; respell only uncertain or flagged words; disclosure tied to the current page; a voiced passage
+posted while building on; each measured flag acted on; provenance in the hand-off; licences at intake; and the
+engineering ranked: streamed footage and the mix measures now, pitch as an optional diagnostic, a flicker
+detector deferred and the doc corrected instead. Its review of the text diff found nine issues, all taken:
+the no-tag rule had covered "the people in their story" (another real person's words stay under the limit);
+init's AGENTS.md and the README still said "build first"; capture had no branch for a project already built;
+nothing outside Nutlight pointed to score.md; the description's quoted "start by building the game" would
+load on a bare request (confirmed by a probe: it did, 1 of 1, until reworded: 0 of 3); the ideas-and-make
+branch of video-ideas bypassed devlog; the explorer case penalized prototype recordings and required a
+problem; the Stage check lost its flashback exception; score.md fixed only the music when an effect masked
+the voice; and elevenlabs.md said base settings ended the accent drift. Its review of the engineering found six more, all
+fixed (in the next two entries, and the takes wording, which promised K new takes from `--takes K+1` where only
+unchanged requests are reused, so the plan before `--yes` says which are new).
+
+What was checked:
+
+- **Spec checks:** all seven skills pass the three validators, under 8,000 bytes (devlog 7,925, code-video
+  7,999, soundtrack 7,987, video-ideas 7,988, video-repo 7,989, youtube-package 7,996, nutlight-style 7,822), no
+  byte-order mark.
+- **Routing on Claude Code** (Opus 5.5, low effort, one run each): devlog 22/22 on the final description,
+  loading on every request and on none of the near-misses (which loaded code-video, video-ideas or nothing),
+  and over three runs the bare "start by building the game" 0 of 3 and the same with a devlog in view 3 of 3
+  (the first description, 20/20 on the first set, loaded the bare one); with devlog beside them,
+  code-video 27/27, soundtrack 25/25 and video-ideas 25/26, its miss vi-10, the borderline Portuguese ideas
+  request 0.11.0 recorded (1 of 6 on main), with nothing loading devlog.
+- **Tests:** `test_footage` 23/23, `test_render_inputs` 17/17, `test_render_failures` 13/13,
+  `test_init_gitignore` 3/3, `test_eleven_pitch.py` 13/13, `test_mix_measure.py` 18/18; a project made by this
+  branch's init typechecks, verify passes, and its AGENTS.md names the skill; `bun evals/tasks/cases.ts` writes
+  every `case.json`.
+- **Not run:** the two new task cases and every other one (an hour or more each per tool, waiting for the user's
+  yes), routing on Codex, and a devlog made with these changes. Whether they bring a first result closer to
+  what the director accepts is expected from the evidence, not measured.
+
+Considered and left out: an automatic point to stop building; a long questionnaire before the build (he gave
+most of it unasked, and his own lines still took rounds by ear); critic rounds after rounds of notes again
+(0.8.1's evidence stands; costed critic offers went 0 for 7 in the second project); a flicker detector in
+`qc.py` until it is tested against real defects and deliberate flashes; a phone-recognizer accent check (one
+project, a heavy model); removing the director's escalation, which made story.
+
 ## Streamed footage in the template (0.12.0, 2026-11-04)
 
 The template played footage only as frames decoded at boot, "seconds of footage, not minutes" (contract.md).
@@ -3561,6 +3757,18 @@ a stateful echo preparing its own preroll from 9 to 12 s, a 30-frame loop by ind
   clip's next half second; 72 at the end.
 - **Tests:** `test_footage` 21/21, `test_render_inputs` 17/17, `test_render_failures` 13/13.
 
+A second review (Codex's) found three more. The frame on each shot's texture was never let go, and since the
+engine keeps every scene of the timeline loaded, 150 short shots rendered in the export page held up to 181
+decoded full frames against a budget of 72, and 166 GPU textures. Now that frame stays only while its shot is in
+use, and goes with its GPU copy otherwise: the same run held 72 at most and 31 GPU textures, and a still back in
+the first shot showed its frame. A paused `refine = true` frame refined on the nearest frame standing in for one
+still loading, and kept it (with its proxy held back 3 s, frame 149 stayed on screen refined, where 150
+belonged): the preview now refines once the frame's prepare has settled. And the documented `return
+Promise.all(...)` prepare failed `bun run check` (TS2416): `Scene.prepare` takes any promise. `test_footage` is
+23/23 (its two new checks fail on the commit before); in a scratch project, verify passed on 150 shots of four
+frames (1,185 renders, 0 mismatched), stills back in early shots after later ones were right, serial and
+`--jobs 2` matched by framemd5, and the example matched the branch before the change.
+
 Considered and left out:
 
 - **Decoding a video file in the page** (WebCodecs) instead of JPEG sequences: no folder of tens of thousands
@@ -3671,6 +3879,13 @@ What was checked:
 - **The same plan built by `main` and by this branch** (the demo track under the synthetic narration) wrote the
   same `mix.wav` and `music-only.wav`, byte for byte.
 - **Not run:** a real project's mix (the two devlogs were evidence only, not run), and anyone listening.
+
+A later review (Codex's) found two more. With voice A timed by `words.json` and voice B after it, only A's lines
+were measured, so music burying B was never listed: the speech no line reaches (beyond 0.5 s of a line) is now
+measured by its regions, and the report names the voice files measured that way. A return the plan listed in
+`music.joins` kept its surge listed when only the stop carried the reason, while the same return found on its
+own was intended: it now takes the stop's reason. `test_mix_measure.py` is 18 tests, the three new ones failing
+on the commit before; a plan with both cases built the same `mix.wav` and `music-only.wav`, byte for byte.
 
 Considered and left out:
 - **Finding joins inside a music file by analysis:** the music's own section changes would read as joins.
