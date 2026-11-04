@@ -290,6 +290,23 @@ class VoiceOverBedTest(unittest.TestCase):
                 self.assertEqual([x["i"] for x in out["lines"] if x["findings"]], listed,
                                  json.dumps(out["lines"], indent=1))
 
+    def test_a_plan_under_12_lu_moves_the_median_bar(self):
+        # Four lines at 8.5 LU, all alike (nothing for the median-line rule): under the default 12 LU they sit under
+        # the 10 LU bar and are listed; a plan that asks for 9 (one director's) moves the bar to 7 and says once
+        # that 9 is under 10; a plan at 11 moves it to 9 and lists them, with no word about the recommendation.
+        lines = [(0.5 + 2 * k, 2.0 + 2 * k, 8.5) for k in range(4)]
+        for target, bar, listed, under_rec in ((mix.UNDER_VOICE_LU, 10.0, 4, False), (9.0, 7.0, 0, True),
+                                               (11.0, 9.0, 4, False)):
+            with self.subTest(target=target):
+                out = self.steady(lines, target)
+                self.assertEqual(out["bars"]["median_lu"], bar)
+                self.assertEqual(out["listed"], listed, json.dumps(out["lines"], indent=1))
+                if bar == mix.VOB_MEDIAN_LU:
+                    self.assertIsNone(out["plan_note"])
+                else:
+                    self.assertIn(f"under {bar:g} LU", out["plan_note"])
+                    self.assertEqual("recommended between commentary and music" in out["plan_note"], under_rec)
+
     def test_speech_no_line_reaches_is_measured_by_region(self):
         # Speech at 1-3 s, 5-7 s and 9-11 s; words.json times the first two (their speech runs 0.2 s past each
         # line's end, as a decay does). The third went unmeasured; the tails stay the lines'.
@@ -561,11 +578,58 @@ class MixMeasureTest(unittest.TestCase):
         self.assertEqual(pts["music starts"]["status"], "intended")
         self.assertTrue(pts["music ends"]["voice_after_stop"])
         self.assertEqual(pts["music ends"]["status"], "listed")
-        # No music.joins: the note on joins inside the music prints on the music file's first build, not again.
+        # No music.joins: the note on joins inside the music prints on the music file's first build, not again,
+        # while the joins line says on every build that none are declared.
         self.assertIn(rep["music_joins"]["inside_the_music"], printed)
         rep, printed = self.build(d, "--force")
         self.assertIn("inside_the_music", rep["music_joins"])
         self.assertNotIn(rep["music_joins"]["inside_the_music"], printed)
+        self.assertIn("none declared inside the music file", printed)
+
+    def test_a_mix_built_before_the_checks_upgrades_without_new_audio(self):
+        # A project mixed by a release without these checks: its record has none of them. The next build is up to
+        # date (the audio is the same) and says --force measures them; --force builds the same bytes and, being the
+        # first build to measure joins, prints the note on joins inside the music although the music is unchanged;
+        # after that it is up to date and current. A record from an older version of the checks says so too.
+        m = pad(int(16.0 * SR), (110, 220, 261.6, 329.6, 440), self.rng)
+        d = self.project("upgrade", m, {"at": 3.3})
+        self.build(d)
+        rec_path = d / "audio" / "mix.wav.request.json"
+        mix_sha = mix.sha256(d / "audio" / "mix.wav")
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        for k in ("voice_over_bed", "music_joins", "stem_checks"):
+            rec.pop(k)
+        rec_path.write_text(json.dumps(rec), encoding="utf-8")
+        _, printed = self.build(d)
+        self.assertIn("is up to date", printed)
+        self.assertIn("predates the voice-over-bed and music-join checks", printed)
+        self.assertEqual(self.cached_json(d)["stem_checks"]["status"], "missing")  # (--json says it too)
+        rep, printed = self.build(d, "--force")
+        self.assertEqual(mix.sha256(d / "audio" / "mix.wav"), mix_sha)
+        self.assertIn(rep["music_joins"]["inside_the_music"], printed)
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        self.assertEqual(rec["stem_checks"], mix.STEM_CHECKS)
+        _, printed = self.build(d)
+        self.assertIn("is up to date", printed)
+        self.assertNotIn("older version of the checks", printed)
+        self.assertEqual(self.cached_json(d)["stem_checks"]["status"], "current")
+        rec["stem_checks"] = mix.STEM_CHECKS - 1
+        rec_path.write_text(json.dumps(rec), encoding="utf-8")
+        _, printed = self.build(d)
+        self.assertIn("is up to date", printed)
+        self.assertIn("older version of the checks", printed)
+        sc = self.cached_json(d)["stem_checks"]
+        self.assertEqual((sc["status"], sc["version"], sc["current"]), ("older", mix.STEM_CHECKS - 1, mix.STEM_CHECKS))
+        self.assertIn("--force measures them again", sc["note"])
+
+    def cached_json(self, d: Path) -> dict:
+        """mix.py build --json on an up-to-date plan: what an agent reading JSON gets."""
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(mix.main(["build", "--plan", str(d / "mix.json"), "--out", str(d), "--json"]), 0)
+        res = json.loads(out.getvalue())
+        self.assertEqual(res["status"], "up to date")
+        return res
 
     def test_plan_mistakes_are_usage_errors(self):
         n = int(23.0 * SR)

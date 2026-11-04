@@ -200,6 +200,16 @@ ElevenLabs"), and `tts` is built around them.
   drifted toward European Portuguese on some takes, which pitch, timbre and two transcribers all passed; lines
   made again in the base settings, on a new seed, drew no more accent notes, though few were made after that,
   so the ear decides.
+- **Each request has a delivery of its own**, so short requests can break a narration's continuity, and longer
+  passages or context can help. Two narrated explainers made one request per paragraph drew notes like the
+  devlogs': a passage that "sounds different from the opening", and "disconnected pronunciation styles between
+  phrases that should be together. Maybe you need to regenerate some parts of the narration sending larger
+  portions of the script". One was remade with a paragraph per chapter. The other's agent remade its narration
+  as a few long passages, each conditioned on its neighbours (the API's `previous_text` and `next_text`, or the
+  ids of the requests around it, which expire after two hours), and cut them back into its blocks in the pauses:
+  one short paragraph went from 4.5 semitones above the approved opening to 2.2. `eleven.py tts` sends one
+  paragraph per request and no context, so paragraphs written longer are the lever it has, at a price: a note on
+  one line then remakes its whole paragraph. Say which you chose before spending.
 - **Listen to the names before approving a file**: people, products, foreign words.
 - Keep stage directions out of the text: the voice reads them aloud. Audio tags such as
   `[whispers]` exist only on v3 and v4, and go on the say map's spoken side (`Calma.`, a tab,

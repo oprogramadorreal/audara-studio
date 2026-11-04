@@ -34,6 +34,7 @@ Contents
 - Devlogs: building first, and what two of them taught (0.12.0, 2026-11-04)
 - Streamed footage in the template (0.12.0, 2026-11-04)
 - The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
+- 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
 
 ## Definition of done
 
@@ -3897,3 +3898,116 @@ Considered and left out:
 - **Finding joins inside a music file by analysis:** the music's own section changes would read as joins.
 - **Separating a finished file** into voice and music for `measure`.
 - **The speech band alone for the median:** Torcoli's 10 LU and `under_voice` are full-range K-weighted.
+
+## 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
+
+The user asked for a review of this release against the video projects on another machine of theirs, none of
+them a devlog: does it improve the workflow, could it affect work already done, and what do those projects
+teach it? They also said how each stands. The two devlogs the release came from were really good: the block-world
+one is published and did well, and the platformer one is scheduled. The machine holds a finished 14-minute
+explainer, uploaded and scheduled. Its script was adapted from an existing article, and the user doubts a good
+article made a good script for an interesting video. It also holds an 8-minute explainer in the Nutlight style,
+unfinished and "very bad" in the user's words, though its last commit records a critic's "SHIP". Besides those:
+a 7-minute explainer, a product film that plays footage frames, and smaller ones. Each project was read, never
+changed. The audio and the engine were tested on copies in a scratch folder. Codex (Herdr tab 2) gave an
+independent read, challenged the plan twice and answered the measurements below; the Claude Code session decided
+and made the edits.
+
+What the projects showed:
+
+- **The release's shared patterns aren't devlog-only.** A voice that changed from one paragraph to the next came up
+  in two explainers, both made one request per paragraph. In one, "my voice is completly wrong!" and
+  "disconnected pronunciation styles between phreases that should be together. Maybe you need to regenerate some
+  parts of the narration sending larger portions of the script". In the other, a passage "sounds different from
+  the opening", and its agent wrote its own passage tool: long requests conditioned on their neighbours, which
+  measured one short paragraph from +4.5 to +2.2 semitones off the approved opening. A loanword was corrected
+  ("JPEG" as "jotapégue", "LLMs"). Explanations were "abstract or appear before the viewer has enough context" in
+  the unfinished one. Music notes concerned joins and entrances. And tags came off what nobody would take as fact:
+  "exemplo", "experimento mental" and "analogia", on nine scenes in two rounds of the finished explainer.
+- **The finished explainer's mix rebuilt exactly.** Its own build script, run on copies, made the published
+  `mix.wav` byte for byte with `main`'s `mix.py`. This release's `mix.py` made the same bytes at two revisions
+  (before its last music round, and as published), and so did it after the changes below.
+- **The voice check on that approved mix:** 14 of its 30 lines and regions listed, 10 of its 23 paragraph lines
+  by the worst-window rule. Its lines are whole paragraphs, so each gets one loud moment in a minute of speech. Its
+  notes after its music round have no word lost. On the same stems, a rule comparing voice and bed in the same 100
+  ms window listed all 23 lines, and a word-by-word rule listed 16 (75 words, mostly short unstressed ones: 5% of
+  its words sit under 3 LU). Windows of 200, 300 and 500 ms listed 7, 5 and 3. The recall data (the devlog whose 169
+  measured words matched its director's ear) is on the other machine, so nothing was re-tuned.
+- **Its plan set `under_voice` to 11, and every local plan that set it asked for 9 or 11.** At 9, the fixed 10 LU
+  bar lists nearly every line for the level the plan chose.
+- **The join check, given the score's joins.** The score has 12 cues from 10 tracks. Its plan is written by the
+  project's own script, with no `music.joins`, and the report said "0 point(s)... nothing listed", with no
+  reminder: the reminder printed only with a new music file. With the 40 cuts and cue starts of its arrangement
+  declared, at the revision before its director's last music notes, it listed 9 moments. Two match those notes:
+  a surge of +6.8 dB at an entrance "a little too loud", and a 13 dB hole before a track that came in. It missed
+  strings that came in late (timing) and a harsh cut whose step was above 4 kHz (timbre). The other seven drew no
+  note, which says nothing about whether they were heard.
+- **A stop the agent chose was turned down:** "You do not need to stop the background music at ~203s when I say
+  'não'".
+- **An earlier project's next build** (a record from before the checks, the same plan) says "up to date", writes
+  nothing and notes that `--force` measures them. `MIX_VERSION` didn't change, so no mix is rebuilt for a report.
+- **An earlier project updated by this release's init:** a copy of the product film, whose engine has no `prepare`,
+  run through `init --force`. It replaced `main.ts`, `render.ts` and twelve other files, each kept as `.orig`,
+  kept `src/engine/` (naming `footage.ts` among its differences), and updated `bun.lock`. Then `bun run check`
+  passed, and `verify` on its 24 fps footage video passed: 81 renders, 0 mismatched, 0 errors. Its 47 frames
+  hashed the same as an untouched copy's, over two runs of each. The untouched copy's own `verify` failed once,
+  on one pixel 1/255 off (its additive blending, which the message names), and passed on the rerun. Its scene
+  blends neighbouring footage frames, which streamed footage holds whole.
+- **Disclosure:** two packages advised that the creator's own cloned narration needed YouTube's "AI use", and one
+  counted its animated characters' stock voices too. The page, read again today, lists "Cloning one's own voice
+  to create voice overs or dubs" as not needing it. Its "not realistic" examples include a fully animated video,
+  though it names no voice case there.
+
+What changed:
+
+- **`mix.py`:** the median bar is `min(10, under_voice - 2)`, stored in the report's bars, with one note saying so
+  (and, under 10, that the level is under the recommendation). Every build says when no joins are declared inside
+  the music file. The reminder also prints on the first build that measures joins. The record carries the checks'
+  version (`STEM_CHECKS`, 2), apart from `MIX_VERSION`: an up-to-date mix whose lists are older or missing says so,
+  in the summary and in `--json`'s `stem_checks` (Codex's last look found `--json` silent), and `--force`
+  measures them again to the same bytes. Its help text says a long narration's list is for the ear.
+- **score.md:** a stop you chose is a proposal until the director hears it. A plan a project's script writes gets
+  its joins from that script. The joins check hears energy, not timing or timbre, with the two found and two
+  missed. On audio approved by ear, a flag is listed, not fixed, and a revised mix keeps that approval only where
+  it didn't change. critique.md's hand-off says the same.
+- **elevenlabs.md:** each request has a delivery of its own. Longer passages can improve continuity, and the
+  API's `previous_text`/`next_text` exist. `eleven.py` sends one paragraph per request and no context, so longer
+  paragraphs are its lever, at the price of remaking the whole paragraph for a note on one line.
+- **treatment-template.md:** an analogy, a thought experiment or an illustrative example the narration already
+  frames as one needs no tag; a made-up result still mustn't look real.
+- **devlog's SKILL.md:** the log is the research, not the outline. The script keeps the turns that carry the
+  promise, with their setups and payoffs, and most entries stay out (7,995 bytes; two parentheticals shortened).
+- **contract.md:** a project made before 0.12.0 takes streamed footage as one port, its own edits kept; each
+  frame is held whole, and a blend of neighbouring frames needs two Footage.
+- **youtube.md:** the "not realistic" reading for invented characters' voices, marked as a reading, not a stated
+  exemption, and the page's own words on reach and money.
+- **design.md,** in place: the voice check's bar and how to read its list, the checks' version, what the join
+  check can't hear, labels, the log as research, the voice's continuity and why `eleven.py` doesn't send context
+  yet, and old engines.
+
+Considered and left out:
+
+- **Sending the neighbours' text from `eleven.py tts`:** it changes the request a block's file is compared with.
+  A take picked with context would then read as stale on the next plain run and be paid for again, the kind of
+  cache change this release's first seed scheme was dropped for. Doc first; a feature that keeps each take's
+  context through `--pick` and later runs is its own piece of work.
+- **A same-window or word-by-word voice check** (Codex proposed the first; it withdrew it after the numbers above),
+  and a longer window: without recall data, any re-tuning would fit one approved mix.
+- **A spectral step at joins** (the harsh cut above 4 kHz): one case.
+
+What was checked:
+
+- **`uv run evals/tests/test_mix_measure.py`:** 21 tests pass. Two are new: the bar following a plan at 9, 11 and
+  12, and a record from before the checks going through up to date, `--force` (same bytes, the reminder) and up
+  to date again, then an older checks version, each also through `--json`. One is extended: "none declared" on a
+  rebuild. Run against this release's `mix.py` before these changes, each new test fails.
+- **Codex's last look** at the diff found five things, all fixed: `--json` silent about older or missing checks;
+  the approved-audio exception reading as a waiver for any measured flag (it covers the mix's listening lists
+  only, never verify or a wrong word); "only as continuous as its requests are long", stronger than the evidence;
+  "10 of 23" given as the whole voice check rather than its worst-window rule; and the bar's comment implying 11
+  conflicted with the old bar.
+- **The finished explainer's rebuild** with the changed `mix.py`: the same `mix.wav` and `music-only.wav`, 13 to
+  listen to (a paragraph at 9.7 LU no longer listed on median under its plan's 11), the plan's note, and "none
+  declared inside the music file".
+- **`test_eleven_pitch.py`** 13/13, **`test_footage.ts`** 23/23, **`test_render_inputs.ts`** 17/17, rerun unchanged.
+- **Not run:** any task eval, routing on either tool (no description changed), and anyone listening.

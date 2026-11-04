@@ -295,6 +295,12 @@ frames load as the video reaches them and the oldest are let go. A shot is a fol
 server alike. It isn't watched (a shot written while the preview runs shows when the page reloads), and
 `video --resume` sees it change.
 
+A project made before 0.12.0 has an engine without it: init never replaces `src/engine/`, not even with
+`--force`, whose report names `footage.ts` among the engine files that differ. Taking it is one port: `footage.ts`
+and the `prepare` hooks of `scene.ts` and `engine.ts`, beside the `main.ts`, `render.ts` and `vite.config.ts` that
+call and serve them (init `--force` updates those three, keeping each old one as `<file>.orig`: bring back what
+the project had changed on purpose). Footage that fits in memory can stay on the boot path.
+
 ```
 footage/<shot>/
   full/000001.jpg ...    the frames at the size they're shown: what render.ts reads
@@ -328,7 +334,10 @@ override dispose() { this.clip.dispose(); }
   is the entry's start unless given; `rate: 0.5` shows each frame twice as long; `offset` skips frames.
   `prepare(t0, t1)` loads the frames the video frames in that stretch show, so at `rate: 4` it loads every
   fourth. A freeze, a ramp or a loop picks the frames itself: `prepareFrames(i0, i1)` or `prepareSet(indices)`
-  in `prepare()`, then `frameAt(i)`.
+  in `prepare()`, then `frameAt(i)`. Each frame is held whole, so footage at a lower rate than the video, or
+  slowed, steps. One project's 24 fps clips juddered in a 60 fps video until its scene blended each frame with
+  the next by the fraction between them. Here that is two Footage of the shot, `frameAt(k)` and `frameAt(k + 1)`,
+  mixed in a pass. A scene that already blends keeps doing so when it moves to streamed footage.
 - **Loading.** `Scene.prepare(t0, t1)` does nothing by default. The engine calls it for every entry on screen
   in a window, over the entry's part of it (`Engine.prepare`). render.ts waits for it before every frame it
   renders (stills, sheets, posters, verify, the video and each `--jobs` piece, with the next half second of

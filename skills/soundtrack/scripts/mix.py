@@ -125,6 +125,11 @@ BLK = SR // 1000
 MIX_VERSION = 2
 # Bump when a change in this file changes the audio a plan produces: every up-to-date mix then rebuilds once.
 # (2: a mono file plays on both channels at full level; the music rises between a narration's paragraphs.)
+STEM_CHECKS = 2
+# The version of the moments-to-listen-to checks (voice over the bed, music joins) in a build's record, apart from
+# MIX_VERSION: a change to them changes the report, not the audio, so an up-to-date mix isn't rebuilt for it, and
+# its summary says the record's checks are older (--force measures them again, to the same audio).
+# (2: the median bar follows a plan's under_voice under 12 LU.)
 
 TIME_ORIGIN = ("Time: t = 0 is the first sample of mix.wav and music-only.wav, as browsers and ffmpeg play them (PCM: "
                "no encoder delay): never shift these times; no offset is needed. Each input went in through ffmpeg's "
@@ -306,6 +311,12 @@ VOB_MEDIAN_LU = 10.0
 # produce esthetically pleasing audio for TV with clear speech", AES 146th Convention, 2019, a listening test)
 # recommend at least 10 LU between commentary and music (15 over ambience), and under_voice's 12 LU is that with
 # 2 LU of margin.
+VOB_TARGET_MARGIN_LU = 2.0
+# ...or under the plan's own under_voice less those 2 LU, when the plan asks for less than 12: the bar is
+# min(10, under_voice - 2), the default's own 2 LU of tolerance kept for any target (every plan in one user's
+# projects that set under_voice asked for 9 or 11). At 9, a fixed 10 LU bar would list nearly every line for the
+# level the plan asked for; at 11 the bar moves to 9. The report says once where the bar is, and, under 10, that
+# the plan sits under the recommendation.
 VOB_WORST_LU = 3.0
 # ...or whose worst 100 ms brings the bed within 3 LU of the line's voice level (the line's active speech, as a
 # power mean). The Speech Intelligibility Index (ANSI S3.5-1997) counts a band's speech fully audible 15 dB over
@@ -1533,10 +1544,13 @@ time for a ?v=<video>&t= link: measurements, not a judgement of how it sounds, a
   without them, or a voice file they don't time: the report names those files), the voice as mixed
   against everything else that plays (music and effects), K-weighted in 100 ms windows every 10 ms: the bed's
   median margin under the line's voice level, and its worst window through a 300 Hz high-pass (what covers a
-  word; a kick under it does not). A line is listed under 10 LU on median, under 3 LU in its worst 100 ms (an
-  effect over a word), or 4 LU or more under the video's median line (taken over the lines whose bed comes within
-  15 LU of the voice) while under the plan's under_voice (12 LU by default). A line shorter than 100 ms is not
-  measured.
+  word; a kick under it does not). A line is listed under 10 LU on median (under the plan's under_voice less 2,
+  when it asks for less than 12), under 3 LU in its worst 100 ms (an effect over a word), or 4 LU or more under
+  the video's median line (taken over the lines whose bed comes within 15 LU of the voice) while under the plan's
+  under_voice (12 LU by default). A line shorter than 100 ms is not measured. On a long narration with whole
+  paragraphs as lines, many lines get one loud moment each (on a finished 14-minute explainer its director had
+  approved by ear, the worst-window rule listed 10 of its 23 paragraphs): a list for the ear, not defects to fix by
+  measurement.
   Music joins: around the music's start and end, each of "joins", and each stop of the music under the voice and
   where it comes back, the energy of the bed without the voice (dBFS RMS, not LUFS) in 100 ms windows over
   +-1.5 s. Listed: a hole (its quietest 0.2 s 6 dB or more under both sides), a surge (up 6 dB or more within
@@ -2188,10 +2202,19 @@ def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict
         rows.append(row)
     bedded = [x["median_lu"] for x in rows if x["median_lu"] < VOB_CLEAR_LU]
     vm = float(np.median(bedded)) if bedded else None
+    # (a plan that asks for less than 12 LU moves the median bar with it: VOB_TARGET_MARGIN_LU)
+    bar = min(VOB_MEDIAN_LU, target_lu - VOB_TARGET_MARGIN_LU)
+    plan_note = None
+    if bar < VOB_MEDIAN_LU:
+        plan_note = (f"the plan asks for the music {target_lu:g} LU under the voice, so a line is listed on median "
+                     f"under {bar:g} LU (its target less {VOB_TARGET_MARGIN_LU:g}), not {VOB_MEDIAN_LU:g}"
+                     + (f"; {target_lu:g} LU is itself under the {VOB_MEDIAN_LU:g} LU recommended between commentary "
+                        "and music (Torcoli et al., 2019): a choice to keep if it was the director's, else one to "
+                        "raise with them" if target_lu < VOB_MEDIAN_LU else ""))
     for x in rows:
         f = []  # why the line is listed (none: nothing under the bars)
-        if x["median_lu"] < VOB_MEDIAN_LU:
-            f.append(f"the bed sits {x['median_lu']:.1f} LU under the voice on median (under {VOB_MEDIAN_LU:g})")
+        if x["median_lu"] < bar:
+            f.append(f"the bed sits {x['median_lu']:.1f} LU under the voice on median (under {bar:g})")
         if x["worst_lu"] < VOB_WORST_LU:
             what = (f"within {x['worst_lu']:.1f} LU of" if x["worst_lu"] >= 0 else f"{-x['worst_lu']:.1f} LU over")
             f.append(f"its loudest 100 ms above 300 Hz, at {x['worst_at']:.2f} s, comes {what} the voice"
@@ -2203,8 +2226,9 @@ def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict
                            "K-weighted, in 100 ms windows every 10 ms where the voice speaks: the median at full "
                            "range, the worst window through a 300 Hz high-pass (what covers a word)",
             "by": by, "by_region": regions_by_file or [], "window_s": VOB_WIN, "hop_s": VOB_HOP,
-            "bars": {"median_lu": VOB_MEDIAN_LU, "worst_lu": VOB_WORST_LU, "under_video_median_lu": VOB_UNDER_VIDEO_LU,
+            "bars": {"median_lu": bar, "worst_lu": VOB_WORST_LU, "under_video_median_lu": VOB_UNDER_VIDEO_LU,
                      "clear_lu": VOB_CLEAR_LU, "under_voice_target_lu": target_lu},
+            "plan_note": plan_note,
             "video_median_lu": r(vm), "lines": rows, "listed": sum(bool(x["findings"]) for x in rows),
             "unmeasured": len(lines) - len(rows), "note": STEM_NOTE}
 
@@ -2820,10 +2844,13 @@ def cmd_build(args) -> dict:
                         "intended": j["intended"]})
         joins = music_joins(Power(mix_r), Power(mo_r), active if has_voice else None, pts, dur, len(mu["joins"]))
     del mix_r
-    # Whether this build is the first with its music file (new to the plan, or changed): the summary prints the
-    # note on joins inside the music then, not on every build of a single-track score.
+    # Whether this build is the first with its music file (new to the plan, or changed), or the first to measure the
+    # joins at all (a project mixed before these checks: its score may be spliced from several tracks, and with no
+    # music.joins its report says "nothing listed" about splices it never measured): the summary prints the note on
+    # joins inside the music then, not on every build of a single-track score.
     music_rel = relpath(plan["music"]["file"], root) if has_music else None
-    music_new = has_music and (old or {}).get("inputs", {}).get(music_rel) != inputs.get(music_rel)
+    music_new = has_music and ((old or {}).get("inputs", {}).get(music_rel) != inputs.get(music_rel)
+                               or not (old or {}).get("music_joins"))
 
     balance = {}
     if has_voice:
@@ -2941,7 +2968,7 @@ def cmd_build(args) -> dict:
                                              "integrated_lufs_phone", "first_sound_s", "dead_tail_s",
                                              "quiet_intro_s", "last_2s_lufs")},
         "balance": balance, "hits": rep["hits"], "warnings": rep["warnings"], "sync": sync,
-        "voice_over_bed": vob, "music_joins": joins,
+        "voice_over_bed": vob, "music_joins": joins, "stem_checks": STEM_CHECKS,
         "stems_residual_dbfs": r(dbv(resid)),
         "outputs": {"mix.wav": sha256(mix_path), "music-only.wav": sha256(mo_path)},
         "notes": notes, "time_origin": TIME_ORIGIN,
@@ -2955,13 +2982,29 @@ def cmd_build(args) -> dict:
 PRINTED_MAX = 10  # moments printed per check; the rest are in mix-report.json
 
 
+def stem_checks_status(rec: dict) -> dict:
+    """Whether a record's moments-to-listen-to are this version's (current), an older version's (older) or absent
+    (missing: a record from before them), with the note that says so: the audio is current either way, and
+    --force measures them again to the same bytes. In the summary and in --json alike."""
+    if "voice_over_bed" not in rec and "music_joins" not in rec:
+        status, note = "missing", ("this round's record predates the voice-over-bed and music-join checks: --force "
+                                   "measures them (the audio stays the same)")
+    elif rec.get("stem_checks") != STEM_CHECKS:
+        status, note = "older", ("these lists come from an older version of the checks: --force measures them again "
+                                 "(the audio stays the same)")
+    else:
+        status, note = "current", None
+    return {"status": status, "version": rec.get("stem_checks"), "current": STEM_CHECKS, "note": note}
+
+
 def short(s: str | None, n: int = 48) -> str:
     return "" if not s else s if len(s) <= n else s[:n - 3].rstrip() + "..."
 
 
 def print_stem_checks(rec: dict, music_new: bool = False) -> None:
     """The two lists of moments to listen to (voice over the bed, music joins), from the record. music_new: the
-    build is the first with its music file, the one time the note on joins inside the music is printed."""
+    build is the first with its music file, or the first to measure joins, when the note on joins inside the music
+    is printed."""
     vob, joins = rec.get("voice_over_bed"), rec.get("music_joins")
     if vob:
         lines = vob["lines"]
@@ -2978,10 +3021,13 @@ def print_stem_checks(rec: dict, music_new: bool = False) -> None:
             vm = vob.get("video_median_lu")
             median = (f"median line {vm:.1f} LU under the voice" if vm is not None else
                       f"no line has music or effects within {VOB_CLEAR_LU:g} LU of the voice")
+            bar = (vob.get("bars") or {}).get("median_lu", VOB_MEDIAN_LU)
             print(head + f": {median}, worst 100 ms {worst['worst_lu']:.1f} LU at {worst['worst_at']:.2f} s; "
                   + (f"{len(listed)} to listen to:" if listed else
-                     f"none under the bars ({VOB_MEDIAN_LU:g} LU on median, {VOB_WORST_LU:g} LU in a window, "
+                     f"none under the bars ({bar:g} LU on median, {VOB_WORST_LU:g} LU in a window, "
                      f"{VOB_UNDER_VIDEO_LU:g} LU under the median line)"))
+        if vob.get("plan_note"):
+            print(f"    note: {vob['plan_note']}")
         regs = vob.get("by_region") or []
         if regs and vob["by"].startswith("data/words.json"):  # (without lines, "by" says all of it is by region)
             print("    by region, where no data/words.json line reaches: " + "; ".join(
@@ -3001,8 +3047,10 @@ def print_stem_checks(rec: dict, music_new: bool = False) -> None:
         pts = joins["points"]
         which = (", ".join(f"{p['kind']} {p['t']:.2f} s" for p in pts[:6]) + (", ..." if len(pts) > 6 else "")
                  if pts else "none inside the mix")
+        # (with no music.joins, every build says so: "nothing listed" then covers the music's ends and stops only)
         print(f"  music joins (energy of the bed without the voice, dBFS RMS in 100 ms windows over +-1.5 s: not "
-              f"LUFS): {len(pts)} point(s) ({which}); "
+              f"LUFS): {len(pts)} point(s) ({which}"
+              + ("; none declared inside the music file" if joins.get("inside_the_music") else "") + "); "
               + (f"{joins['listed']} to listen to" if joins["listed"] else "nothing listed")
               + (f", {joins['intended']} intended" if joins["intended"] else ""))
         shown = [p for p in pts if p["status"] != "clear"]
@@ -3037,11 +3085,11 @@ def print_build(res: dict) -> None:
               f"  report: {relpath(png, root)} is gone (out/ is not kept): --force rebuilds it, or run measure on mix.wav")
         for s in rec.get("warnings") or []:
             print(f"  {s}")
-        if "voice_over_bed" in rec or "music_joins" in rec:
+        sc = stem_checks_status(rec)
+        if sc["status"] != "missing":
             print_stem_checks(rec)
-        else:  # (a record from before these checks: the audio is the same, only the report lacks them)
-            print("  note: this round's record predates the voice-over-bed and music-join checks: --force measures "
-                  "them")
+        if sc["note"]:
+            print(f"  note: {sc['note']}")
         for s in (rec.get("notes") or []) + ([res["uv_cache"]["note"]] if res.get("uv_cache") else []):
             print(f"  note: {s}")
         for h in res.get("hints") or []:
@@ -3408,6 +3456,7 @@ def main(argv=None) -> int:
                 out.update({k: res["record"].get(k) for k in ("measured", "balance", "hits", "warnings", "sync",
                                                               "voice_over_bed", "music_joins",
                                                               "notes", "changed_since_previous", "resolved")})
+                out["stem_checks"] = stem_checks_status(res["record"])
                 out["uv_cache"] = res.get("uv_cache")
                 print(json.dumps(clean(out), indent=1, ensure_ascii=False))
             else:

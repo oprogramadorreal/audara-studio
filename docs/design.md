@@ -185,6 +185,10 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
   read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
 - **Labels once.** About 25 honesty captions once piled up on one video until the user said "remove them all".
+  The tags directors went on removing were on what nobody would take as fact: their own lines, plainly invented
+  characters, staged comedy, and analogies, thought experiments and examples the narration already frames as
+  such ("exemplo", "experimento mental", "analogia", off nine scenes of one explainer in two rounds). Those need
+  none; a made-up result still mustn't look real, and a re-staged demonstration's tag is asked once.
 - **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; no piece owes a
   lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
   answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
@@ -283,7 +287,10 @@ code-video, and ideas for one with video-ideas.
   him as a before and after, and at each milestone what the video could already be and what it lacks. When
   his scope is met it says so and offers the script; he decides whether to push further, which may be the
   beat he wants.
-- **Into the video:** the script comes from the log through code-video's treatment, its stages in story order
+- **Into the video:** the script comes from the log through code-video's treatment, the log as its research and
+  not its outline (the turns that carry the promise, with their setups and payoffs; most entries stay out: an
+  explainer adapted faithfully from a good article left its director unsure the adaptation made an interesting
+  video, and a log is a source text in the same way), its stages in story order
   (the treatment's Stage column), the picture showing a line that asks the viewer to see something happen,
   explanations a first-time viewer can restate, his lines verbatim, provenance for each claim. soundtrack,
   nutlight-style (only when named: its look for the scenes around the footage), youtube-package and video-repo
@@ -816,6 +823,10 @@ it (`src/engine/footage.ts`):
 - The frame is picked at `frameTime(t)`, as for frames decoded at boot, so every sub-frame of a frame shows
   the same one.
 - `video --resume` counts `footage/` among a render's inputs, so a shot captured again isn't resumed over.
+- A project made earlier keeps its engine, since init never replaces `src/engine/`. `main.ts`, `render.ts` and
+  verify call `prepare` only where the engine has it, so old projects render as before. Taking streamed footage
+  is one port, which `contract.md` lists. Each footage frame is held whole: a project whose 24 fps clips juddered
+  in a 60 fps video blends neighbouring frames in its scene, which two Footage of a shot can still do.
 
 ### Photographic 3D: an optional kit, not a default
 
@@ -993,6 +1004,15 @@ no ElevenLabs"): one voice and the same settings for every file; one paragraph o
 the picture cuts in the silence between blocks; acronyms read better written as they appear on screen
 than spelled out; generate the key lines several times and keep the most natural take.
 
+Each request has a delivery of its own, so one paragraph per request also means a voice that can drift between
+paragraphs. Four long narrations drew that note, the two devlogs and two explainers. In one, the director asked
+for "larger portions of the script" and got a paragraph per chapter. In another, the agent wrote its own tool:
+long passages conditioned on their neighbours (`previous_text`/`next_text`, or request ids, which expire), cut
+back into blocks. `eleven.py` sends neither, so `elevenlabs.md` names longer paragraphs as the lever it has,
+and the pitch diagnostic as the check. Sending the neighbours' text from `eleven.py` waits: it changes the
+request a block's file is compared with, so a take picked with context would read as stale on the next plain
+run and be paid for again, the kind of cache change an earlier seed scheme was dropped for.
+
 ### What mix.py lists to listen to
 
 `mix.py build` measures the whole mix (loudness, true peak, each hit and the build into it). From the stems it
@@ -1003,7 +1023,10 @@ verdict on how it sounds, and never a failure:
   speech no line reaches, such as a second voice file, which the report names as measured by region): the voice layer as mixed against everything else in the mix, K-weighted, in 100 ms windows. A line is
   listed in three cases:
   - the bed sits under 10 LU below the voice on median. Torcoli et al. (AES 2019) recommend at least 10 LU
-    between commentary and music; `under_voice`'s 12 is that plus a margin.
+    between commentary and music; `under_voice`'s 12 is that plus a margin. A plan that asks for less moves the
+    bar to its `under_voice` less 2 and says once that it does (and, under 10, that the level is under the
+    recommendation): every plan in one user's projects that set it asked for 9 or 11, and at 9 the fixed bar
+    would have listed nearly every line for the level the plan chose.
   - its worst 100 ms above 300 Hz comes within 3 LU, an effect over a word. One window is enough, so a short
     event isn't averaged into the line. Above 300 Hz, because a kick under a word doesn't bury it.
   - it sits 4 LU or more under the video's median line, while under the plan's `under_voice`. The median is
@@ -1025,8 +1048,26 @@ or by a loud effect. The agent judged mixes by whole-mix loudness. It built a ch
 in both projects, and 100 ms measures of a join in one, each only after a note. `measure` gets a finished file
 with no stems, so it says these need the plan and skips them.
 
+What a rebuild of a finished 14-minute explainer showed (its own build script, re-run on copies; its director had
+approved the mix by ear): the voice check lists 14 of its 30 lines and regions, 10 of its 23 paragraphs by the
+worst-window rule. Its lines are whole paragraphs, so each gets one loud moment in a minute of speech, and nothing
+in that video's notes after its music round says a word was lost. Measured on the same stems, a rule comparing voice and bed in the same 100 ms window listed all 23, and one
+word by word listed 16, mostly short unstressed words. So the window rule stays, and the guidance says how to
+read it: a flag on audio the director approved by ear is listed for them, not fixed by measurement alone. With
+the score's 40 joins declared, the join check found two of the four join notes its director gave next (a surge at
+an entrance "a little too loud", a hole before a track came in). It missed a late entrance and a harsh cut whose
+step was above 4 kHz: it hears energy, not timing or timbre. Without declared joins it measured only the music's
+ends, so every build now says when none are declared, and the first build that measures joins prints the reminder
+even when the music file is unchanged.
+
+The checks have a version of their own in the record (`STEM_CHECKS`), apart from `MIX_VERSION`: a change to them
+changes the report, not the audio, so an up-to-date mix isn't rebuilt for it. Its summary and `--json`'s
+`stem_checks` say when the record's lists are older or missing, and `--force` measures them again to the same
+bytes.
+
 Left out: finding joins inside a music file by analysis (the music's own section changes would read as joins),
-separating a finished file's voice from its music, and any judgement of how it sounds.
+separating a finished file's voice from its music, any judgement of how it sounds, and re-tuning the window rule
+on one approved mix with no record of what its director would have flagged.
 
 ### Adding more tools later
 

@@ -275,7 +275,10 @@ loud section under another, each is listed or listed as intended. A clean varian
 words.json: drums whose 100 ms windows swing 10 dB, a crossfade join, and an effect the solver levels. It also
 covers the two joins the devlogs measured, a ramp before a join that isn't a surge, an intended join inside a
 silence, a return listed in `music.joins` taking the stop's reason, the music's start and end intents apart, the
-median line over silence and room tone, a line at the plan's `under_voice`, a line shorter than a window, speech
+median line over silence and room tone, a line at the plan's `under_voice`, the median bar following a plan
+under 12 LU (9, 11) with its note, a record from before the checks going through up to date, `--force` (the
+same bytes, the joins reminder) and up to date again, an older checks version named, "none declared" on every
+build without `music.joins`, a line shorter than a window, speech
 no words.json line reaches (a stretch the lines leave out; a second voice file under music, its masked regions
 listed and the file named), builds with no line over a bed (voice only, music only before the voice), plan
 mistakes as usage errors, and `measure` saying it needs the plan.

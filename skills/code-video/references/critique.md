@@ -410,7 +410,10 @@ reply gives the director, every time:
   and what wasn't checked. Each flag the measured checks raised (qc.py, verify, the mix's measures, a
   transcript of the voice) is fixed, marked as meant with why, or listed here as open: one project measured
   169 words under 3 dB of the music, handed the cut over without them, and the director then named the same
-  stretches by ear;
+  stretches by ear. On audio the director has already approved by ear (that version, or a passage a later round
+  left unchanged), a flag from the mix's listening lists alone is listed for them, not fixed: on a finished
+  explainer they had accepted, its voice check's worst-window rule listed 10 of 23 paragraphs. That covers
+  the mix's heuristics only, never a failed verify, a determinism error or a wrong word;
 - the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
   if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
   costs), the review it gets first when the picture changed since the last critic round (Delivery, step

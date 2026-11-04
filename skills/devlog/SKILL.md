@@ -69,21 +69,22 @@ Don't stop short of their scope, and don't widen it silently.
 
 ## The video
 - **The script** comes from the log and the ledger, through code-video's treatment (its Promise, Never claim and
-  Decisions), or video-ideas when they want a script alone; their gates hold. On a long narrated piece, voice and
-  roughly cut its least certain passage (an explanation, a joke, a transition) and post it while building on.
+  Decisions), or video-ideas when they want a script alone; their gates hold. The log is the research, not the
+  outline: keep the turns that carry the promise, with their setups and payoffs; most entries stay out. On a long
+  narrated piece, voice and roughly cut its least certain passage first and post it while building on.
 - **Story order:** a stage appears first in the chapter that builds it, unless the story is told out of order on
   purpose (the treatment's Stage column); the hook may glimpse the payoff briefly and borrow later shots.
 - **The picture shows the line** where a line asks the viewer to see something happen: footage of it happening,
-  moving, filmed for it. Reactions, metaphors and counterpoint stay open.
+  filmed for it. Reactions, metaphors and counterpoint stay open.
 - **Explanations a first-time viewer can follow:** one subject, a concept defined before it's used, one idea per
   line, drawn as it is said (code-video's critic restates each one).
 - **Their lines verbatim,** their persona as they set it; a joke for their voice is offered with options.
 - **Provenance:** a claim, a number or a re-staged bug cites its log entry, the build and its settings.
 - **Footage** enters through the engine's streamed footage (code-video's contract.md, "Images and footage").
-- Then code-video and soundtrack as usual (carry the respellings the director approved before, and test the
-  words the voice may get wrong). nutlight-style only when named: its look is for the scenes around the footage,
-  and the thing keeps its own. youtube-package on request. video-repo keeps the recordings, screenshots and
-  captures of old stages as sources.
+- Then code-video and soundtrack as usual (carry the respellings approved before; test words the voice may
+  miss). nutlight-style only when named: its look is for the scenes around the footage, and the thing keeps its
+  own. youtube-package on request. video-repo keeps the recordings, screenshots and captures of old stages as
+  sources.
 
 ## Stays theirs
 What to build and how far; the look picks; the escalation; the story beats they seed; jokes in their voice; how

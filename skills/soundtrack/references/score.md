@@ -36,7 +36,9 @@ splice landing in a louder section, music stopping under the voice, words lost u
   arrive too loud; coming in soft and rising often works, and a whoosh or a riser into the new track covers a
   change of key or energy. Late, early, too loud and a gap were each a separate note.
 - **Stops are chosen:** music that stops under narration, or a silence before a punchline, is a beat. Each one
-  is in the cue sheet with why, and the hand-off lists them, so a stop nobody chose reads as one.
+  is in the cue sheet with why, and the hand-off lists them, so a stop nobody chose reads as one. A stop you
+  chose is a proposal until the director has heard it: one wrote "You do not need to stop the background music
+  at ~203s when I say 'não'" about a silence the agent had put there on purpose.
 - **The picture and the music turn together** where the video is cut to its music: a new track or a drop comes
   with a change in the picture, or the cue moves to a moment that already has one.
 - **The arrangement is a script beside the audio** (`videos/<video>/music/arrange.py`, run with uv), with times
@@ -49,7 +51,16 @@ splice landing in a louder section, music stopping under the voice, words lost u
   music comes back too, a join listed there included), and the music's own entrance and end take
   `intended_start` and `intended_end`. `mix.py build` then lists the joins with a hole, a surge or a stop
   under the voice, and the lines the music or an effect may bury: measured, not heard, each a moment for the
-  director to listen to, with its `?t=` link.
+  director to listen to, with its `?t=` link. A plan that a project's own script writes (from its arrangement)
+  gets its joins from that script, so they follow the next rebuild. Without them the report says none are
+  declared, and its "nothing listed" covers only the music's ends and stops: two scores cut from several tracks
+  had mix plans with no joins.
+- **What the joins check can and can't hear:** broadband energy, so a hole, a surge or a stop. Not an entrance a
+  beat late or early, nor a harsh change of timbre at the same level. On one 14-minute score of 12 cues from 10
+  tracks, re-measured with its 40 joins declared, it found two of the four join notes the director gave next (an
+  entrance "a little too loud", a hole before a track came in) and missed the other two (strings that came in
+  late, and a cut whose step was above 4 kHz). Entrances are still timed against their line by ear and by the
+  cue sheet.
 - **Retime the picture to the music** where an action should land on a hit, not only the music to the picture.
 
 ## Under the voice
@@ -69,7 +80,11 @@ down everywhere it plays.
 
 The cue sheet, the measured levels and joins, a `?t=` link to every entrance, join and stop so the director can
 listen to them in the preview, and plainly that nobody has listened yet when that is the case. A flag the
-measures raised is fixed, marked as meant, or listed as open.
+measures raised is fixed, marked as meant, or listed as open. On audio the director has approved by ear, a flag
+from these lists alone is listed for them, not fixed: on a finished 14-minute explainer its director had
+accepted, the voice check's worst-window rule listed 10 of its 23 paragraphs, each for one loud moment in a
+minute of speech. That approval covers the version they heard; in a revised mix it holds only for the passages
+that didn't change.
 
 ## Checks
 

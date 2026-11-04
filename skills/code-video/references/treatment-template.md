@@ -66,7 +66,10 @@ it: a number, a cause, who did what, an instruction, what a product does. No inv
 is presented as a real person's, company's or study's. The liberties go in Never claim; a label appears once,
 where the picture could mislead, never as a running disclaimer. Lines the director wrote or approved for
 themselves are theirs, not invented quotes, and so are lines for characters plainly made up (a mascot, a talking
-graphics card); a scene staged for comedy that reads as one needs no tag either. Words put in another real
+graphics card); a scene staged for comedy that reads as one needs no tag either. Nor does an analogy, a
+thought experiment or an illustrative example that the narration already makes clear as one: one explainer's
+director took "exemplo", "experimento mental" and "analogia" off nine such scenes in two rounds. A made-up
+result or piece of evidence still mustn't look real. Words put in another real
 person's mouth stay under the limit above. Whether a re-staged demonstration (a fixed bug brought back for the
 camera) says so on screen is the director's call: ask once, then do the same everywhere.
 
