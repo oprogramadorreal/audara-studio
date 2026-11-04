@@ -786,6 +786,33 @@ scenes through `remix`, audio by a relative path). But a video reads its timing 
 copy would have needed the song's data and audio copied too, and the two would drift. A format that needs
 another edit (another length, other scenes) is still another video.
 
+### Footage: frames, streamed when long
+
+Footage plays as frames, never through a video element, which runs on the wall clock and seeks
+asynchronously: the preview, a still and the render would each show another frame for the same `t`. A few
+seconds of it are decoded at boot from the video's `assets/`. Minutes of it can't be: a minute at 1080p and
+60 fps is about 30 GB decoded. Two devlogs, each with many minutes of footage captured from a game the agent
+built, wrote their own streaming module, the second copying and extending the first, so the template has
+it (`src/engine/footage.ts`):
+
+- A shot is a folder at the project root, `footage/<shot>/`: `full/` frames for the render, `proxy/` frames at
+  half the size for the preview, and a `manifest.json` with their count and rate. The dev server serves the
+  root, so the preview and render.ts's own server reach it alike; the preview doesn't watch it.
+- Frames load ahead of need. A scene's `prepare(t0, t1)` asks for what a stretch shows (the frames its video
+  frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.
+  render.ts waits for it before every frame it renders, with the next half second of the range loading
+  alongside; a failure there is left to the frame's own prepare, so a missing frame past the range is no
+  error. The preview asks two seconds ahead without waiting and shows the nearest frame it has meanwhile.
+- One memory budget over every shot lets the least recently asked frames go, never one asked since a prepare
+  render.ts waits for began, until it settles and for a few prepares after, nor those of the latest rounds.
+  A scene may ask for its clips one after another, each once the last has loaded, while the look-ahead asks
+  for more: the frames about to be drawn still stay.
+- In the render, a frame nobody prepared throws and one that fails to load stops the video, so a stale frame
+  never reaches the file; verify fails on either.
+- The frame is picked at `frameTime(t)`, as for frames decoded at boot, so every sub-frame of a frame shows
+  the same one.
+- `video --resume` counts `footage/` among a render's inputs, so a shot captured again isn't resumed over.
+
 ### Photographic 3D: an optional kit, not a default
 
 [golden-temple](https://github.com/Leonxlnx/golden-temple) (MIT, Leon Lin, 2026-10-15) showed that the
@@ -1233,6 +1260,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # tags.txt, NOTES.md and what rebuilds the thumbnails (kept in git)
 ├── videos/_shared/              # optional, made when needed: what several videos use (scenes/,
 │                                # assets/ with SOURCES.md); no video.json, so it isn't a video
+├── footage/<shot>/              # optional: long footage streamed as frames (full/, proxy/, manifest.json)
 ├── .audara-cache/               # caches and scratch work, git-ignored
 ├── out/<name>/                  # renders, sheets and reports, not committed
 └── docs/REPOSITORY.md           # once video-repo puts it in git: what's kept, what's left out and why

@@ -134,14 +134,15 @@ videos/<video>/
   timeline.ts     the timeline: which scene plays when
   scenes/*.ts     one module per scene (its helpers: scenes/<scene>-*.ts; shared: scenes/_<name>.ts,
                   like the example's _label.ts)
-  assets/         what only this video loads: images, models, fonts, footage frames (create it with
-                  the first one)
+  assets/         what only this video loads: images, models, fonts, a few seconds of footage frames
+                  (create it with the first one)
   audio/          the soundtrack's files (and the records of how they were made)
   data/           audio.json (beat grid, envelopes, onsets) and words.json (timed lines)
 videos/_shared/   optional, made when needed: what several videos use, in scenes/ and assets/ (with
                   assets/SOURCES.md). No video.json, so it isn't a video; the preview hot-swaps and
                   reloads it like a video's own files. Soundtrack scripts run on its files take
                   --video <the video>, or they would treat _shared as one
+footage/<shot>/   optional: longer footage, streamed as the video plays (see "Footage")
 out/<video>/      renders (not committed)
 ```
 
@@ -425,6 +426,46 @@ that time, or a frame reached by a seek differs from the same frame in the rende
 replay the same way, so they agree even when the state hasn't settled: compare a still at `t` with the
 frame at `t` of a clip rendered from the entry's start.
 
+## Footage
+
+A few seconds of a clip are decoded at boot from the video's `assets/`. Anything longer (a capture, a screen
+recording, minutes of a clip) streams from a shot folder at the project root, `footage/<shot>/`:
+`full/000001.jpg ...` for the render, `proxy/000001.jpg ...` at half the size for the preview, and
+`manifest.json` (`{ "frames": 720, "fps": 60 }`). `src/engine/footage.ts` loads the frames as the video
+reaches them and lets the oldest go. The code-video skill's `references/contract.md`, "Images and footage",
+has both ways, the ffmpeg commands and the reasons.
+
+```ts
+import { openFootage, type Footage } from '../../../src/engine/footage';
+
+private clip!: Footage;
+override async init() { this.clip = await openFootage(this.ctx, '<shot>', { rate: 0.5, offset: 120 }); }
+override prepare(t0: number, t1: number) { return this.clip.prepare(t0, t1); } // what [t0, t1] shows
+override render(f: Frame, out: THREE.WebGLRenderTarget) {
+  this.ctx.comp.draw(this.ctx.renderer, this.clip.frame(f.t), out, { mode: 'replace' });
+}
+override dispose() { this.clip.dispose(); }
+```
+
+- `prepare(t0, t1)` is a scene's hook for what it must load before a frame renders (it does nothing by
+  default). render.ts waits for it before every frame it renders; the preview calls it ahead of the playhead
+  and shows the nearest loaded frame until the exact one arrives. When render.ts renders, a frame no
+  `prepare` asked for throws, so a mistake fails the render instead of leaving a stale frame in it.
+- A scene with several clips asks for them in one call, so they load together:
+  `return Promise.all(this.clips.map((c) => c.prepare(t0, t1)));`.
+- `frame(t)` picks by `frameTime(t)`, so every sub-frame of a frame shows the same footage frame; `start` (the
+  entry's start by default), `rate` and `offset` place the shot, and `prepare(t0, t1)` loads only the frames
+  shown (every fourth at `rate: 4`). For a freeze, a ramp or a loop, ask by index: `prepareFrames(i0, i1)` or
+  `prepareSet(indices)`, then `frameAt(i)`.
+- A stateful scene's preroll replays frames before the window `prepare` gets: skip the footage while
+  `f.preroll` is true, or prepare that stretch too (`t0 - this.prerollMax`) with `prerollMax` lowered to about
+  1 s. One call loads at most 72 full frames (61 is a second at 60 fps): at the default 6 s it would ask for
+  361, and the frames on screen wouldn't load.
+- A Footage has one texture (two moments of one shot on screen at once take two). One budget over every shot
+  keeps about 72 decoded full frames and 360 proxies and lets the least recently asked go, never one about to
+  be drawn; `dispose()` it in the scene's `dispose()`, or a hot-swapped scene's frames stay loaded.
+- The preview doesn't watch `footage/`: reload the page after writing a shot.
+
 ## Toolbox
 
 - `gl.ts`: `FSPass(frag, uniforms)` fullscreen GLSL3 pass (has `vUv`, writes `fragColor`, gets
@@ -473,6 +514,7 @@ frame at `t` of a clip rendered from the entry's start.
   - Something that starts moving from rest mid-shot starts with `smootherstep` (or `ease.inOutCubic`), not
     `ease.outExpo`: an ease that starts at full speed is right for a snap on a cut or a hit, and makes a
     one-frame pop anywhere else.
+- `footage.ts`: streamed footage (`openFootage`, `Footage`, `footageUrl`, `projectUrl`; see "Footage").
 - `hud.ts`: the global overlay: the crop-mark frame (`post.frame`) and `post.hudDraw`.
 - `soundtrack.ts`: the soundtrack's segments (`Segment`, `segmentGain`, `resolveDuration`) and the
   preview's `SoundtrackPlayer`. Scenes don't play audio; they read `ctx.audio` and `ctx.words`.

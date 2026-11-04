@@ -262,9 +262,11 @@ The rule, applied to three.js:
   sizes for 4K).
 - Footage (the director's own clips) never plays through an `HTMLVideoElement` or a `VideoTexture`: it runs
   on the wall clock and seeks asynchronously, `render()` can't wait, and the preview, stills and render
-  would each show a different frame for the same `t`. Extract the frames with ffmpeg at the size they're
-  shown and at the footage's own rate (`-ss` before `-i` cuts on the exact frame; `f_0001.jpg` is the frame
-  at `<in>`), into a folder made first, since ffmpeg doesn't create one (`mkdir -p` works in PowerShell too):
+  would each show a different frame for the same `t`. It plays as frames: a few seconds decoded at boot from
+  the video's `assets/`, as here, and anything longer streamed from `footage/` (below). Extract the frames
+  with ffmpeg at the size they're shown and at the footage's own rate (`-ss` before `-i` cuts on the exact
+  frame; `f_0001.jpg` is the frame at `<in>`), into a folder made first, since ffmpeg doesn't create one
+  (`mkdir -p` works in PowerShell too):
 
 ```
 mkdir -p videos/<video>/assets/<clip>
@@ -285,6 +287,80 @@ this.ctx.comp.draw(renderer, this.frames[k]!, out, { rect: [x, y, w, h] });
 Measured: 120 frames at 960×540 decoded in 0.1 s and uploaded in 0.3 s at boot, and showing one costs
 nothing. Each takes width × height × 4 bytes of GPU memory (2 MB at 960×540, 8 MB at 1080p): seconds of
 footage, not minutes.
+
+**Longer footage streams** (`src/engine/footage.ts`). Minutes of it (a capture of a game the agent built, a
+screen recording, a long clip) would take tens of GB decoded, about 30 GB a minute at 1080p and 60 fps, so its
+frames load as the video reaches them and the oldest are let go. A shot is a folder at the project root,
+`footage/<shot>/`, which the dev server serves as `/footage/<shot>/` to the preview and to render.ts's own
+server alike. It isn't watched (a shot written while the preview runs shows when the page reloads), and
+`video --resume` sees it change.
+
+```
+footage/<shot>/
+  full/000001.jpg ...    the frames at the size they're shown: what render.ts reads
+  proxy/000001.jpg ...   the same frames at half that size: what the preview reads
+  manifest.json          { "frames": 720, "fps": 60 }: how many files full/ holds, and their rate
+                         ("proxy": false when there is no proxy/)
+```
+
+```
+mkdir -p footage/<shot>/full footage/<shot>/proxy
+ffmpeg -ss <in> -t <seconds> -i <footage> -vf "fps=<rate>,scale=1920:-2" -q:v 2 footage/<shot>/full/%06d.jpg
+ffmpeg -framerate <rate> -i footage/<shot>/full/%06d.jpg -vf "scale=960:-2" -q:v 4 footage/<shot>/proxy/%06d.jpg
+```
+
+A scene opens the shot in `init()`, says what it will show in `prepare()`, and asks for the frame at `f.t`:
+
+```ts
+import { openFootage, type Footage } from '../../../src/engine/footage';
+
+private clip!: Footage;
+override async init() { this.clip = await openFootage(this.ctx, '<shot>', { rate: 0.5, offset: 120 }); }
+override prepare(t0: number, t1: number) { return this.clip.prepare(t0, t1); }
+override render(f: Frame, out: THREE.WebGLRenderTarget) {
+  this.ctx.comp.draw(this.ctx.renderer, this.clip.frame(f.t), out, { rect: [x, y, w, h] });
+}
+override dispose() { this.clip.dispose(); }
+```
+
+- **Time.** `frame(t)` shows the shot's frame `floor((frameTime(t) - start) * fps * rate + offset)`, held at
+  the shot's first and last frames: the same frame for every sub-frame of a video frame, as above. `start`
+  is the entry's start unless given; `rate: 0.5` shows each frame twice as long; `offset` skips frames.
+  `prepare(t0, t1)` loads the frames the video frames in that stretch show, so at `rate: 4` it loads every
+  fourth. A freeze, a ramp or a loop picks the frames itself: `prepareFrames(i0, i1)` or `prepareSet(indices)`
+  in `prepare()`, then `frameAt(i)`.
+- **Loading.** `Scene.prepare(t0, t1)` does nothing by default. The engine calls it for every entry on screen
+  in a window, over the entry's part of it (`Engine.prepare`). render.ts waits for it before every frame it
+  renders (stills, sheets, posters, verify, the video and each `--jobs` piece, with the next half second of
+  the range loading meanwhile; a range needs no frame outside it). The preview calls it two seconds ahead of
+  the playhead without waiting, and shows the nearest frame it has until the exact one arrives. A scene with
+  several clips asks for them in one call, so they load together:
+  `prepare(t0, t1) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`.
+- **Proxies.** The preview reads `proxy/`, a quarter of the pixels to fetch, decode and upload; the render
+  reads `full/`. `openFootage` picks by `ctx.export`, and takes `full/` for both when the manifest says
+  `"proxy": false`.
+- **Memory.** One budget over every shot on the page holds 72 decoded full frames (about 600 MB at 1080p)
+  and 360 proxies. Past it, the least recently asked for are let go, but never the one on screen, nor one
+  asked since a prepare render.ts waits for began, until it settles and for a few prepares after: a frame
+  about to be drawn stays (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p). Those kept can
+  take it far past when many full-size clips are on screen at once (eleven 1080p clips held about 350 while
+  the render loaded ahead), so a clip shown small is cut at the size it's shown. One call loads at most a
+  budget's worth, 72 full frames. A Footage has one texture: two moments of one shot on screen at once take
+  two. `dispose()` it in the scene's `dispose()`, or a hot-swapped scene's frames stay loaded.
+- **Strict in the render.** When render.ts renders, a frame that wasn't prepared throws, and the scene's
+  error names it; a frame that doesn't load stops the video with its URL and leaves no file. A stale frame
+  never reaches the video, and verify fails on either.
+- **Stateful scenes.** The engine prepares the frames on screen, but a stateful scene's preroll replays up to
+  `prerollMax` seconds before them. One that shows footage skips it while `f.preroll` is true; one whose state
+  is made from the footage (a feedback trail) prepares that stretch too, with a `prerollMax` of about a
+  second that keeps it within one call's 72 frames (a second at 60 fps is 61; the default 6 s would be 361,
+  and the frames on screen wouldn't load):
+  `prepare(t0, t1) { return this.clip.prepare(Math.max(this.ctx.start, t0 - this.prerollMax), t1); }`.
+
+Measured on an RTX 4090, with a 12-second 60 fps test shot that has its frame number burned in: the preview
+played two entries of it crossfading at 58-60 fps from proxies; stills in any order, a sheet, the render and a
+`--jobs 2` render each showed the expected frame; adaptive sampling stopped at its minimum, 12 sub-frames, on
+every frame; a frame taken out of `full/` stopped the render with its URL.
 
 ## 4K
 

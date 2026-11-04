@@ -11,6 +11,7 @@ import { loadFonts } from './type';
 import { loadStrokeFonts } from './stroke';
 import { loadSegments, resolveDuration, type DurationSource, type Segment } from './soundtrack';
 import { testCardNote } from './palette';
+import { footageRound, RENDERING } from './footage';
 import { DATA_URLS, VIDEO, type MakeTimeline } from '../video';
 
 export interface TimelineEntry {
@@ -543,6 +544,50 @@ export class Engine {
 
     if (!outTex) { clearRT(r, this.rts[0]!, [0, 0, 0]); outTex = this.rts[0]!.texture; }
     return { outTex, post };
+  }
+
+  /**
+   * Let every loaded scene on screen in [t0, t1] load what it needs there (Scene.prepare: streamed footage,
+   * src/engine/footage.ts), each over the part of the window its entry is on, as one prepare round; it
+   * settles once every scene's has. render.ts waits for it before every frame it renders (main.ts still()
+   * and stream(), verify's and perf's renders), and every frame asked from its start until it settles stays
+   * loaded (footageRound), even one a scene asks for after awaiting another. A scene whose prepare fails gets
+   * the error in `errors`, as a render error would, and the promise rejects with it.
+   * `ahead`: a look-ahead nobody waits for (stream()'s next half second, the preview's next two seconds). Its
+   * frames stay only while its round is one of the latest; when render.ts renders, a failure isn't recorded,
+   * since the frame's own prepare reports it if that frame is rendered (one past the range isn't). The
+   * preview has no other prepare to report one, so there it is recorded.
+   * It reaches [t0, t1] only: a stateful scene's preroll replays up to prerollMax seconds before t, so a
+   * stateful scene that shows footage skips it while f.preroll is true, or prepares that stretch itself.
+   * With nothing to load it resolves at once.
+   */
+  async prepare(t0: number, t1: number, ahead = false) {
+    const jobs: Promise<void>[] = [];
+    const settled = footageRound(() => {
+      for (const e of this.timeline) {
+        const rec = this.loaded.get(e.id), s = rec?.scene;
+        if (!rec || !s || e.end <= t0 || e.start > t1) continue;
+        const a = Math.max(t0, e.start), b = Math.min(t1, e.end);
+        const failed = (err: unknown): never => {
+          if (!rec.error && !(ahead && RENDERING)) {
+            rec.error = `prepare error for ${a.toFixed(3)}-${b.toFixed(3)} s: ${String((err as Error)?.stack ?? err)}`;
+            this.errorsVersion++;
+            console.error(`scene ${e.id} prepare error`, err);
+          }
+          throw err;
+        };
+        try {
+          const p = s.prepare(a, b);
+          if (p) jobs.push(Promise.resolve(p).catch(failed));
+        } catch (err) { jobs.push(Promise.reject(err).catch(failed)); }
+      }
+    }, !ahead);
+    // (not at the first failure: the other scenes' frames are still loading, kept until they're in, and
+    // still() then draws what it can)
+    const done = await Promise.allSettled(jobs);
+    settled();
+    const bad = done.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (bad) throw bad.reason;
   }
 
   /** Wait for the GPU to finish the last frame (a 1-pixel read): what a frame costs without reading it back. */

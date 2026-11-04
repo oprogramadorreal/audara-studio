@@ -35,6 +35,16 @@ declare global {
 
 let engine: Engine;
 
+/**
+ * Engine.prepare (streamed footage: what the scenes on screen in [t0, t1] need loaded; `ahead`, a look-ahead
+ * nobody waits for), or nothing to wait for with an engine from before it: init --force updates this file
+ * but never src/engine/.
+ */
+const prepare = (t0: number, t1: number, ahead = false): Promise<void> => {
+  const p = (engine as unknown as { prepare?: (t0: number, t1: number, ahead?: boolean) => Promise<void> }).prepare;
+  return typeof p === 'function' ? p.call(engine, t0, t1, ahead) : Promise.resolve();
+};
+
 /** This page's address, at this video (`?v=`) and time t (`?t=`). */
 const link = (t: number) => {
   const u = new URL(location.href);
@@ -133,8 +143,15 @@ function setupExport() {
     logicalWidth: W,
     logicalHeight: H,
     timeline: engine.timeline.map(({ id, start, end }) => ({ id, start, end })),
-    /** Render a single frame at t (seeks as needed). Returns the sub-frames used. */
-    still(t: number, samples: number | AdaptiveSampling = 1, shutter = 0.2) { return engine.render(t, dt, true, samples, shutter); },
+    /**
+     * Render a single frame at t (seeks as needed), once what it shows is loaded (streamed footage: the frames
+     * of t and its neighbours, the shutter's reach). Returns the sub-frames used. A scene whose prepare failed
+     * has the error in `errors`, which render.ts reports, and draws what it can.
+     */
+    async still(t: number, samples: number | AdaptiveSampling = 1, shutter = 0.2) {
+      await prepare(t - dt, t + dt).catch(() => {});
+      return engine.render(t, dt, true, samples, shutter);
+    },
     /** The last rendered frame as ImageData (see frame above): render.ts draws contact sheets from it. */
     frame,
     /** The last rendered frame as a PNG (PW x PH, opaque), base64: render.ts saves stills and posters from it. */
@@ -155,6 +172,8 @@ function setupExport() {
      * video each), it also leaves in `streamEnds` a hash of its first frame, rendered after a jump (`first`),
      * and of the frame after its last, rendered straight on from it (`after`): where one piece ends and the
      * next starts, the two must be equal, or a scene there depends on what was rendered before it.
+     * Each frame waits for what it shows to be loaded (streamed footage), the next half second of the range
+     * loading meanwhile; a frame that fails to load stops the stream with its error.
      */
     async stream(opts: { from: number; to: number; fps: number; ws: string; samples?: number | AdaptiveSampling; shutter?: number; inflight?: number; ends?: { first?: boolean; after?: boolean } }) {
       const ws = new WebSocket(opts.ws);
@@ -168,10 +187,19 @@ function setupExport() {
       // warm-up: render one frame before the range so the first frame is sequential for stateful scenes
       const S = opts.samples ?? 1, SH = opts.shutter ?? 0.2;
       // (adaptive sampling only runs stateless scenes: one sample is enough for the warm-up)
-      if (n0 > 0) engine.render((n0 - 1) * dt, dt, false, typeof S === 'number' ? S : 1, SH);
+      // (streamed footage: each prepare here reaches only frames this call renders, the warm-up's to the
+      // last, so a range needs no footage frame outside it, the shutter's sub-frames staying within theirs)
+      if (n0 > 0) {
+        await prepare((n0 - 1) * dt, n0 * dt);
+        engine.render((n0 - 1) * dt, dt, false, typeof S === 'number' ? S : 1, SH);
+      }
       const used: Record<number, number> = {}; // sub-frames per frame -> frames
       const ends: { first?: string; after?: string } = {};
       for (let n = n0; n < n1; n++) {
+        // (the next half second, loading without waiting; then this frame's, waited for, which reports a
+        // frame that fails to load)
+        if ((n - n0) % 15 === 0) prepare(n * dt, Math.min(n + 30, n1 - 1) * dt, true).catch(() => {});
+        await prepare((n - 1) * dt, Math.min(n + 1, n1 - 1) * dt);
         const k = engine.render(n * dt, dt, false, S, SH);
         used[k] = (used[k] ?? 0) + 1;
         await engine.readPixelsAsync(buf);
@@ -182,6 +210,7 @@ function setupExport() {
         if (n % 30 === 0) await new Promise((r) => setTimeout(r, 0)); // let the socket flush
       }
       if (opts.ends?.after && n1 < Math.round(engine.duration * opts.fps)) {
+        await prepare((n1 - 1) * dt, n1 * dt);
         engine.render(n1 * dt, dt, false, S, SH);
         await engine.readPixelsAsync(buf);
         ends.after = hashPixels(buf);
@@ -341,7 +370,7 @@ function setupPlayer() {
     hot.on('vite:beforeFullReload', () => history.replaceState(history.state, '', link(track.now())));
   }
 
-  let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false;
+  let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false, prefetchT = -Infinity;
   // A paused frame whose scenes all ask for it (`refine = true` on the scene: the realism kit's; none of them
   // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
   // playhead has rested 0.3 s, then held until something changes (the playhead, or a scene it shows hot-
@@ -374,6 +403,9 @@ function setupPlayer() {
     const t = track.now();
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;
+    // streamed footage: the next two seconds loading, without holding up playback (a frame not there yet
+    // shows the nearest one loaded until it arrives); again once the playhead has moved half a second
+    if (Math.abs(t - prefetchT) > 0.5) { prefetchT = t; prepare(t - 0.25, t + 2, true).catch(() => {}); }
     const tc = Math.min(t, D - 0.001), scenes = scenesAt(tc);
     if (track.playing || tc !== rest.t || !same(scenes, rest.scenes)) {
       rest = { t: tc, since: performance.now(), scenes };

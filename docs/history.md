@@ -3386,6 +3386,198 @@ Considered and left out:
   would have (0.7.1).
 - **A README line:** the README states no disk behavior.
 
+## Streamed footage in the template (0.12.0, 2026-11-04)
+
+The template played footage only as frames decoded at boot, "seconds of footage, not minutes" (contract.md).
+Both long devlogs this plugin was studied on played many minutes of footage captured from a game the agent
+built, and each project wrote its own streaming module into its engine: the 0.8.1 entry left that hook out as
+"a feature for its own change". This is that change.
+
+What the two projects showed (read, not run; neither was touched):
+
+- **The size.** A 13.5-minute devlog had 146 shot folders, 67,767 frames; a 16-minute devlog of a game remake
+  had 141 folders, 63,799 frames, 44 GB on disk. Decoded at boot, a minute at 1080p and 60 fps is about 30 GB.
+- **The design both used.** A shot folder of `full/` frames for the render and half-size `proxy/` frames for
+  the preview, with a manifest; frames fetched and decoded with `createImageBitmap`; a `Scene.prepare(t0, t1)`
+  the engine calls for the entries on screen, which render.ts waits for before every frame and the preview
+  fires ahead of the playhead; in the export, a frame that wasn't prepared throws. Both kept `footage/` out
+  of the preview's file watcher.
+- **What the second changed.** The first kept a budget per shot (48 full frames, 240 proxies). The second made
+  it one budget over every shot (72 and 480), protecting the frames of the last 24 `prepare()` calls. Its
+  verify then failed once with "frame 14 not prepared": one scene's eleven small clips each made a call, and
+  those calls pushed its large frame out of the protected ones. That project fixed the scene.
+- **Time.** Its module picked the frame by `round(lt * fps * rate + offset)`. Its media helper picked at
+  `frameTime(t)` instead, so every sub-frame of a frame shows the same footage frame, as contract.md's
+  boot-decoded recipe already did.
+- **What it left open.** Its ENGINE.md: "`render.ts video --resume` doesn't see footage/ change: render again
+  without it after a re-capture." Read in its code: `perf` prepared its whole measured stretch in one call,
+  and one call loads at most the budget's 72 full frames.
+
+What changed (the template, which init copies into projects):
+
+- **`src/engine/footage.ts`** (new): `Footage` (`prepare`, `prefetch`, `frame`, and by index `prepareFrames`,
+  `prepareSet`, `frameAt`), `openFootage(ctx, shot, opts)` (the manifest read, full frames in the export and
+  proxies in the preview, from the entry's start), `footageInfo`/`infoOf`, `footageUrl`/`projectUrl`.
+  - **Time:** a shot's frame is `floor((frameTime(t) - start) * fps * rate + offset)`, held at its ends. It
+    uses `floor` as contract.md's recipe does, so half rate shows each frame twice from the first. It takes
+    video times, so a scene passes `f.t` and its own window.
+  - **Memory:** one budget over every shot (72 full frames, about 600 MB at 1080p; 360 proxies), least
+    recently asked first. It protects the latest 4 prepare *rounds*, not calls (an `Engine.prepare` is one
+    round however many shots it asks in that call), and every frame asked since a prepare render.ts waits
+    for began, until it settles and while it is one of the latest 4 such: a scene that awaits its clips one
+    after another asks for the later ones outside its round (see the review below). The proxy budget is 360
+    (about 750 MB), not 480: one preview request covers 2.25 s, 136 proxies a shot, so two shots crossfading
+    fit in one.
+  - **Loading:** `prepare(t0, t1)` loads the frames the video frames in the stretch show, one per video frame
+    at most.
+  - **Strict:** when render.ts renders, a frame not prepared throws, `--as-preview` included.
+- **`Scene.prepare(t0, t1)`**, a no-op by default, and **`Engine.prepare(t0, t1, ahead)`**, which calls it for
+  every loaded entry on screen in the window, clipped to the entry, as one round, and settles once every
+  scene's has. A scene whose prepare fails gets the error in `errors`, as a render error would, except for a
+  look-ahead (`ahead`) when render.ts renders: there the frame's own prepare reports it. A stateful scene's
+  preroll reaches before the window: it skips the footage while `f.preroll` is true, or prepares that stretch
+  itself.
+- **`main.ts`:**
+  - `still()` waits for the frames around `t`, so it is async now.
+  - `stream()` waits before each frame, the warm-up frame and the `ends` probe frame included, with the next
+    half second of the range loading meanwhile as a look-ahead, and stops at a frame that fails to load.
+    Each of its prepares reaches only frames it renders, so a range needs no footage frame outside it.
+  - The player asks two seconds ahead, a look-ahead, whenever the playhead moves half a second, without
+    waiting, and shows the nearest loaded frame until the exact one arrives.
+  - With an engine from before `Engine.prepare` (init never replaces `src/engine/`), each of these does
+    nothing.
+- **`render.ts`:**
+  - The sheet and verify now wait for `still()`; verify's determinism renders and its cut checks prepare
+    first, and `perf` prepares each frame outside its timing.
+  - `--resume`'s fingerprint includes `footage/`.
+- **`vite.config.ts`:** the preview doesn't watch `footage/`.
+- **Docs:** contract.md's "Images and footage" keeps the boot-decoded path for a few seconds and adds the
+  streamed one: the folder and manifest, the ffmpeg commands, the API, proxies, memory, the strict render and
+  stateful scenes. engine-guide-template.md (each project's `docs/ENGINE.md`) gets a "Footage" section, a line
+  in the project tree and one in the toolbox. design.md gets the same in a section and a line in the layout.
+- **Tests:** `evals/tests/test_footage.ts` (new) runs `shotFrame`, `framesShown`, `keptFrom` and
+  `framesToDrop` from footage.ts. `test_render_inputs.ts` checks that a footage frame captured again changes
+  the fingerprint.
+
+What was checked (a scratch project made by this branch's init, an RTX 4090; a 12-second 60 fps `testsrc2`
+shot with its frame number burned in, full 1920×1080 and proxy 960×540 JPEGs; a video of it at rate 1 from 0
+to 5 s, at rate 0.5 from its frame 200 from 4 to 9 s, crossfading over 4-5 s, then a stateful echo that keeps
+85 % of the last frame and prepares its own preroll):
+
+- **The checks:** `bun run check` passed, and `verify` passed (31 frames, 21 probes, 75 renders, none
+  mismatched).
+- **Stills:** in backward and random order, byte-identical between the two runs, and each matched its
+  expected frame best by PSNR against the shot's own JPEG: about 32 dB, against 16-21 dB for the frames either
+  side. The difference sits on colour edges only (red and blue), as two JPEG decoders' chroma upsampling
+  leaves it.
+- **A sheet with `--cuts`:** each tile showed its expected number, each frame twice at half rate, and the
+  crossfade's two numbers.
+- **Draft speed:** the draft rendered at 10.9 fps, the example's own draft at 9.8 on the same machine.
+- **The video:** rendered serially and with `--jobs 2`, both at CRF 0: all 720 frames identical (framemd5).
+  Where the pieces meet at the crossfade's first frame, the frame after a jump matched the one rendered
+  straight on. At the default CRF 16, frames 197 on differed: x264's lookahead before a piece's end, not the
+  picture.
+- **Adaptive sampling:** a poster showed its frame, and `auto` stopped at 12 sub-frames on all 120 frames of
+  a clip across the crossfade.
+- **A frame taken out of `full/`:**
+  - the render stopped with `footage /footage/testsrc/full/000306.jpg: HTTP 404`, exit 1, no file and no
+    `.part`;
+  - verify failed with the same error;
+  - a still failed with SCENE ERRORS;
+  - `--jobs 2` rendered the piece again, failed it twice with the URL and kept the finished piece. With the
+    frame back, `--resume` refused, naming the footage.
+- **The preview:** loaded with no console errors and no failed request, played through the crossfade and the
+  echo at 58-60 fps, and seeked back to the exact frame. With real decoded frames, 700 proxies asked 50 at a
+  time held at most 357, and 700 full frames 10 at a time at most 72, the latest kept.
+- **Ordinary videos:** the example rendered against a scratch project of the unchanged template (the main
+  checkout's, identical to this branch's base). 300 frames at the final render's settings and 180 at CRF 0
+  were identical (framemd5); verify's 48 frame hashes, a sheet and four stills were too.
+- **An engine from before `Engine.prepare`** with this main.ts and render.ts, as init `--force` leaves a
+  project: `bun run check` passed, verify passed with the same 48 hashes, the sheet was identical, and `perf`
+  ran.
+- **Tests:** `test_footage` 12/12, `test_render_inputs` 17/17, `test_render_failures` 13/13.
+
+An independent review of the branch, which reran the checks above, found five more, each confirmed and
+fixed:
+
+- **A prepare round kept only what its scenes asked for in the same call.** A scene whose `prepare` awaited
+  its clips one after another asked for the first inside the round and for each later one in a round of its
+  own, while the look-ahead's rounds ran alongside, so the frames about to be drawn fell out of the latest 4:
+  eleven clips of one shot, awaited in turn, stopped a draft at its first frame with "frame 1
+  (/footage/bars/full/000001.jpg) wasn't prepared", and the same scene with `Promise.all` rendered. A prepare
+  render.ts waits for now keeps every frame asked from its start until it settles, and after that while it is
+  one of the latest 4 waited for (`keptFrom`); `Engine.prepare` settles once every scene's prepare has, not at
+  the first failure. contract.md, ENGINE.md and `Scene.prepare` say to ask for several clips in one call, so
+  they load together.
+- **The render's look-ahead reached past the range, and its failures were scene errors.** With
+  `full/000306.jpg` (shown only around 7.5 s) taken out, `video --draft --from 7.0 --to 7.45` exited 1 with
+  "SCENE ERRORS: [slow] prepare error ... 000306.jpg: HTTP 404". The look-ahead now stops at the range's last
+  frame, and when render.ts renders, a look-ahead's failure isn't recorded: the frame's own prepare, waited
+  for, reports one that is rendered. The preview has no other prepare, so there it still is. Each frame's own
+  window also reached a frame beyond those rendered, after the range's end and before its warm-up frame; it
+  now stops at them, since a frame's sub-frames never reach a neighbour's footage frame (the shutter is at
+  most a frame).
+- **Above rate 1, a prepare loaded every frame its stretch passed over:** 60 consecutive stills fetched 62
+  full frames at rate 1, 245 at rate 4 and 488 at rate 8; from rate 2.4 the look-ahead's half second met one
+  call's 72-frame limit, and at a very high rate the frame shown could be beyond it. `prepare(t0, t1)` now
+  loads the frames its video frames show (`framesShown`).
+- **ENGINE.md contradicted the budget and left out the preroll's limit:** it said a Footage's frames stay
+  loaded until it is disposed, and suggested preparing from `t0 - this.prerollMax` without saying that at the
+  default 6 s that is 361 frames, past one call's 72. It now says how the budget lets frames go, and to lower
+  `prerollMax` to about a second.
+- **`footageInfo` stripped a byte-order mark with an invisible character in a regex.** `Response.text()`
+  drops it already (a manifest starting with one read as 3 frames at 30 fps without the replace), so the
+  replace is gone.
+
+Checked again after the fixes, in a new scratch project made by this branch's init (the same RTX 4090; a
+`testsrc2` shot as above, its frame number also burned in as ten black or white boxes, so every frame of a
+render could be read back; a 14 s video of it: rate 1 from 0 to 5 s, rate 0.5 from frame 200 from 4 to 9 s,
+a stateful echo preparing its own preroll from 9 to 12 s, a 30-frame loop by index from 12 to 14 s):
+
+- **The checks:** `bun run check` passed, and `verify` passed (37 frames, 23 probes, 83 renders, none
+  mismatched).
+- **Stills** at 15 times in random order: the 14 outside the crossfade each showed its frame.
+- **The video:** in a draft, the 780 frames outside the crossfade each showed its frame. At CRF 0, serial and
+  `--jobs 2` (4 pieces) were identical on all 840 frames (framemd5), as they were before each frame's window
+  was clamped.
+- **The review's cases:** the eleven clips awaited in turn rendered, every tile of their 180 frames showing
+  its frame (1,980 read back), in 65.7 s; asked with `Promise.all`, the same in 36.9 s. 60 stills fetched 62
+  full frames at rates 1, 4 and 8, and 6 stills at rate 80 fetched 7, with no error; a render at rate 8
+  showed each of its 180 frames right.
+- **`full/000306.jpg` taken out:**
+  - the whole draft stopped with its URL and HTTP 404, exit 1, no file and no `.part`; verify failed, every
+    error about that frame; a still at 7.5 s failed with SCENE ERRORS, one at 7.45 s didn't; `--jobs 2`
+    failed its piece twice with the URL and kept the other three;
+  - ranges that don't show it rendered, each frame right: the review's 7.0-7.45 s, 7.0-7.5 s (its last frame
+    is the one before) and 7.55-8.0 s (its warm-up frame is the one after). With each frame's window as it
+    was, the last two exited 1 with the 404.
+- **The preview:** no console error or failed request playing from 7.2 s; with that frame's proxy taken
+  out, it reported "scene slow prepare error ... proxy/000306.jpg: HTTP 404".
+- **Ordinary videos:** the example's first 5 s at the final render's settings and CRF 0 were identical
+  (framemd5, 300 frames) to a scratch project of main's template, this branch's base, and so were verify's
+  48 frame hashes.
+- **Memory:** the eleven full-size clips held up to 346 decoded frames at once (369 asked with `Promise.all`,
+  355 with the code before these fixes), about 2.8 GB at 1080p, while the render's look-ahead loaded every
+  clip's next half second; 72 at the end.
+- **Tests:** `test_footage` 21/21, `test_render_inputs` 17/17, `test_render_failures` 13/13.
+
+Considered and left out:
+
+- **Decoding a video file in the page** (WebCodecs) instead of JPEG sequences: no folder of tens of thousands
+  of files, but seeking to an exact frame means decoding from a keyframe, and both projects' JPEG folders
+  worked.
+- **The engine preparing a stateful scene's preroll:** up to `prerollMax` seconds of frames per seek, 361 at
+  the default 6 s, five times the full budget. The scene knows whether its state reads the footage.
+- **Finding the shots with an `import.meta.glob`** of their manifests, with a placeholder card for one not
+  captured yet (one project's helper did this): a missing shot is an error in general, and says so.
+- **A budget in bytes, and prefetches that don't count as protected:** a budget in frames is what both
+  projects ran, and shorter prefetch windows keep the latest rounds within it. Many full-size clips on screen
+  at once still take it far past (eleven held about 350): clips shown small are cut at the size they're
+  shown, as contract.md says.
+- **Frames with alpha** (PNG): neither project streamed any; Blender's and Manim's layers keep the
+  boot-decoded path.
+- **A script to cut a shot:** two ffmpeg commands and a two-field manifest, in contract.md.
+
 ## The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
 
 Two devlogs of game remakes made with the plugin, one 16 minutes long and one 13, drew about a dozen music notes

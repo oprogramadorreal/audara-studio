@@ -50,7 +50,8 @@
 //            GPU context and memory: on a laptop, 2; with `gpu` naming SwiftShader (no GPU), none. The pieces
 //            wait in <out>.pieces/ until the join. After an interruption, the same command with --resume
 //            renders only the missing ones while what they're made from is unchanged (the scenes, data and
-//            assets under src/, videos/ and public/, the options); otherwise it says what changed and stops.
+//            assets under src/, videos/ and public/, the streamed footage in footage/, the options); otherwise
+//            it says what changed and stops.
 //            Without --resume, pieces of the same render stop the run instead of being thrown away. Where two
 //            pieces meet, the frame rendered after a jump is compared with the one rendered straight on: a
 //            difference means a scene there depends on what was drawn before it
@@ -642,7 +643,7 @@ async function sheet(page: Page, info: Info, groups: Tile[][], cols: number, tw:
       fc.width = P.width; fc.height = P.height;
       const fx = fc.getContext('2d')!;
       for (const [r, row] of rows.entries()) for (const [k, tile] of row.entries()) {
-        P.still(tile.t, samples, shutter);
+        await P.still(tile.t, samples, shutter); // (async: it waits for streamed footage first)
         const x = pad + k * (tw + pad), y = pad + r * (th + lab + pad);
         fx.putImageData(await P.frame(), 0, 0);
         c.drawImage(fc, x, y + lab, tw, th);
@@ -957,12 +958,13 @@ function planPieces(n0: number, n1: number, fps: number, cuts: number[], statefu
 
 /**
  * What a render's frames depend on besides its options: the project's code, data and assets (src/, videos/
- * with every video's scenes, since one can remix another's, public/, the dependencies, root tsconfig*.json,
- * render.ts itself), by path, size and modification time, and the browser. A video's notes (the .md files
- * under videos/: a treatment's Decisions, the critic's ledger) and its YouTube package (videos/<video>/youtube/) aren't inputs,
- * nor is the render's own output (`skip`: the file, its .part and its pieces, wherever --out puts them).
- * --resume reuses pieces only while it is unchanged. (Footage a scene reads from outside these folders isn't
- * in it, and links aren't followed.)
+ * with every video's scenes, since one can remix another's, public/, the streamed footage in footage/, the
+ * dependencies, root tsconfig*.json, render.ts itself), by path, size and modification time, and the
+ * browser. A video's notes (the .md files under videos/: a treatment's Decisions, the critic's ledger) and
+ * its YouTube package (videos/<video>/youtube/) aren't inputs, nor is the render's own output (`skip`: the
+ * file, its .part and its pieces, wherever --out puts them).
+ * --resume reuses pieces only while it is unchanged: a shot captured again can't be resumed over. (A file a
+ * scene reads from outside these folders isn't in it, and links aren't followed.)
  */
 function inputsFingerprint(browser: string, skip: string[]) {
   const h = new Bun.CryptoHasher('sha1');
@@ -975,7 +977,7 @@ function inputsFingerprint(browser: string, skip: string[]) {
     else if (st.isFile() && !(inVideos && rel.endsWith('.md'))) h.update(`${rel}\t${st.size}\t${st.mtimeMs}\n`);
   };
   const configs = readdirSync(PROJECT).filter((n) => /^tsconfig.*\.json$/.test(n)).sort();
-  for (const rel of ['src', 'videos', 'public', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'bun.lockb', ...configs, path.join('scripts', 'render.ts')]) walk(rel);
+  for (const rel of ['src', 'videos', 'public', 'footage', 'index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'bun.lockb', ...configs, path.join('scripts', 'render.ts')]) walk(rel);
   return h.digest('hex');
 }
 
@@ -1036,7 +1038,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     let before: Record<string, unknown> = {};
     try { before = JSON.parse(readFileSync(runFile, 'utf8')); } catch {}
     const differs = Object.keys(runOf).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((runOf as Record<string, unknown>)[k]));
-    const changed = [...new Set(differs.map((k) => (k === 'inputs' ? 'the files (a scene, its data, an asset, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
+    const changed = [...new Set(differs.map((k) => (k === 'inputs' ? 'the files (a scene, its data, an asset, the footage, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
     const has = pieces.filter((x) => existsSync(pieceFile(x))).length;
     // (hours of pieces aren't thrown away for a forgotten flag, nor kept for a render they don't belong to)
     if (!differs.length && !flag('resume') && has)
@@ -1220,6 +1222,9 @@ async function verifyInPage(page: Page, earlier: number[]) {
     const words = E.words.words as { w: string; start: number; end: number }[];
     const yieldNow = () => new Promise((r) => setTimeout(r, 0));
     const at = (t: number) => TL.filter((e) => t >= e.start && t < e.end).map((e) => e.id);
+    // what a frame at t shows, loaded before it renders (streamed footage; nothing with an engine from before
+    // Engine.prepare). A scene whose prepare fails has the error in E.errors, which fails verify: it goes on.
+    const ready = async (t: number) => { if (typeof E.prepare === 'function') await E.prepare(t - f1, t + f1).catch(() => {}); };
 
     const N = p.width * p.height * 4;
     const ref = new Uint8Array(N), cur = new Uint8Array(N);
@@ -1255,7 +1260,7 @@ async function verifyInPage(page: Page, earlier: number[]) {
     const shots: { t: number; scenes: string[]; hash: string }[] = [];
     for (const t of [...times].sort((a, b) => a - b)) {
       if (t < 0 || t >= D) continue;
-      p.still(t); frames++;
+      await p.still(t); frames++;
       if (hashed.has(t)) {
         await E.readPixelsAsync(ref);
         shots.push({ t, scenes: at(t), hash: hash(ref) });
@@ -1267,7 +1272,7 @@ async function verifyInPage(page: Page, earlier: number[]) {
     const again: { t: number; scenes: string[]; hash: string }[] = [];
     for (const t of earlier) {
       if (!(t >= 0 && t < D) || hashed.has(t)) continue;
-      p.still(t);
+      await p.still(t);
       await E.readPixelsAsync(ref);
       again.push({ t, scenes: at(t), hash: hash(ref) });
     }
@@ -1282,6 +1287,8 @@ async function verifyInPage(page: Page, earlier: number[]) {
     for (const w of ws) probes.add(snap((w.start + w.end) / 2));
     for (let i = 0; i < 16; i++) probes.add(snap(D * ((0.5 + i * 0.6180339887) % 1))); // spread evenly, not on the beat grid
     const render = async (from: number, t: number, into: Uint8Array) => {
+      await ready(from);
+      await ready(t);
       E.render(from, f1, false, 1);
       E.render(t, f1, false, 1);
       await E.readPixelsAsync(into);
@@ -1321,6 +1328,7 @@ async function verifyInPage(page: Page, earlier: number[]) {
       const n = Math.ceil(b * fps - 1e-6); // the first frame at or after the cut
       for (const t of [(n - 1) / fps, n / fps]) {
         if (t < 0 || t >= D) continue;
+        await ready(t);
         E.render(t, f1, false, 4, 1);
         const across = ([...E.lastEntries] as string[]).filter((id) => {
           const e = TL.find((x) => x.id === id)!;
@@ -1576,9 +1584,14 @@ function measure(page: Page, o: { from: number; n: number; fps: number; bare: bo
       return { avg: s.reduce((a, b) => a + b, 0) / s.length, p50: s[s.length >> 1]!, p95: s[Math.floor(s.length * 0.95)]!, max: s[s.length - 1]! };
     };
     const frame: number[] = [], full: number[] = [], used: Record<number, number> = {};
+    // (streamed footage, loaded outside the timing, as the preview loads it ahead; an engine from before
+    // Engine.prepare has nothing to load)
+    const ready = (t: number) => (!bare && typeof E.prepare === 'function' ? E.prepare(t - 1 / fps, t + 1 / fps) : null);
     E.bare = bare; // (no scene at all: the engine's own post-processing and HUD)
+    await ready(from);
     E.render(from, 1 / fps, false); E.sync(); // (the seek, outside the timing)
     for (let i = 0; i < n; i++) {
+      await ready(from + i / fps);
       const a = performance.now();
       const k = E.render(from + i / fps, 1 / fps, false, samples, shutter);
       E.sync();

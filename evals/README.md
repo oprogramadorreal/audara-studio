@@ -249,8 +249,13 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
 and three text files); preview's sheets; and what niche refuses before any network call.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
-with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints and piece
-boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
+included) and piece boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+`test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
+frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
+frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
+lets go (never the latest rounds', those of a prepare render.ts waits for, its clips asked one after another
+included, or the one on screen).
 `test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
 synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to
@@ -280,6 +285,7 @@ bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
 bun evals/tests/test_render_inputs.ts
+bun evals/tests/test_footage.ts
 ```
 
 ## Spec checks

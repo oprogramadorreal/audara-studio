@@ -85,8 +85,10 @@ export default defineConfig({
     hmr: process.env.AUDARA_NO_HMR ? false : undefined,
     // never watched: the renders in out/, and .audara-cache/ (uv's cache, models, the preview's own log). On
     // Windows a watched folder makes uv's renames inside it fail ("Access is denied (os error 5)"), which
-    // leaves half-extracted packages behind
-    watch: { ignored: ['**/out/**', '**/.audara-cache/**'] },
+    // leaves half-extracted packages behind. Nor footage/: streamed shots (src/engine/footage.ts), tens of
+    // thousands of frames that scenes fetch and never import, served from the root as /footage/<shot>/...;
+    // a shot written while the preview runs shows when the page reloads
+    watch: { ignored: ['**/out/**', '**/.audara-cache/**', '**/footage/**'] },
   },
   build: { target: 'esnext', assetsInlineLimit: 0 },
 });
