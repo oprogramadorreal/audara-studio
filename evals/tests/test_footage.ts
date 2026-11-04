@@ -2,7 +2,7 @@
 // Offline checks of streamed footage's pure parts: bun evals/tests/test_footage.ts
 // Runs the template's actual shotFrame (which frame of a shot a video time shows), framesShown (which frames
 // a prepare over a stretch loads), keptFrom and framesToDrop (which decoded frames the memory budget lets
-// go), taken from src/engine/footage.ts, without a browser.
+// go, over many shots played one after another too), taken from src/engine/footage.ts, without a browser.
 import path from 'node:path';
 
 const file = path.resolve(import.meta.dir, '../../skills/code-video/assets/template-webgl/src/engine/footage.ts');
@@ -16,16 +16,17 @@ const compiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(
   ['export function shotFrame(', 'export function framesShown(', 'export function keptFrom(', 'export function framesToDrop<K>(']
     .map(declaration).join('\n').replace(/^export /gm, ''));
 type Shot = { start: number; fps: number; rate: number; offset: number; frames: number };
-type Held = { key: string; asked: number; shown: boolean };
+/** (`used`: the latest round its Footage was asked for or drawn in; 0 when left out) */
+type Held = { key: string; asked: number; shown: boolean; used?: number };
 const { shotFrame, framesShown, keptFrom, framesToDrop } = new Function(`${compiled}\nreturn { shotFrame, framesShown, keptFrom, framesToDrop };`)() as {
   shotFrame(t: number, videoFps: number, o: Shot): number;
   framesShown(t0: number, t1: number, videoFps: number, o: Shot, max: number): number[];
   keptFrom(round: number, protect: number, waited: number[], pending: Iterable<number>): number;
-  framesToDrop(held: Held[], cap: number, from: number): string[];
+  framesToDrop<K>(held: { key: K; asked: number; shown: boolean; used: number }[], cap: number, from: number): K[];
 };
 /** framesToDrop with keptFrom's answer: the latest round `round`, the latest 4 kept (PROTECT). */
 const drop = (held: Held[], cap: number, round: number, waited: number[] = [], pending: number[] = []) =>
-  framesToDrop(held, cap, keptFrom(round, 4, waited, pending));
+  framesToDrop(held.map((h) => ({ ...h, used: h.used ?? 0 })), cap, keptFrom(round, 4, waited, pending));
 
 function check(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
@@ -127,10 +128,16 @@ test('the latest rounds are never dropped, even over the budget', () => {
   const got = drop(held, 1, 100);
   check(got.join(',') === 'r95,r96', `dropped ${got.join(',')}`);
 });
-test('the frame on screen is never dropped', () => {
-  const held = [{ key: 'shown', asked: 1, shown: true }, { key: 'a', asked: 2, shown: false }, { key: 'b', asked: 3, shown: false }];
+test('the frame on screen stays while its shot is in use (asked for or drawn in the latest rounds)', () => {
+  const held = [{ key: 'shown', asked: 1, shown: true, used: 98 }, { key: 'a', asked: 2, shown: false }, { key: 'b', asked: 3, shown: false }];
   const got = drop(held, 2, 100);
   check(got.join(',') === 'a', `dropped ${got.join(',')}`);
+});
+test('a shot that has played lets the frame on its texture go like any other', () => {
+  // drawn last in round 50, the latest 4 being 97-100: least recently asked, so first
+  const held = [{ key: 'shown', asked: 1, shown: true, used: 50 }, { key: 'a', asked: 2, shown: false }, { key: 'b', asked: 3, shown: false }];
+  const got = drop(held, 2, 100);
+  check(got.join(',') === 'shown', `dropped ${got.join(',')}`);
 });
 test('frames never asked for (loaded to stand in) go before any asked one', () => {
   const held = [{ key: 'asked', asked: 50, shown: false }, { key: 'stand-in', asked: 0, shown: false }];
@@ -161,6 +168,67 @@ test('a settled waited prepare stays kept while one of the latest 4 waited (veri
 test('four waited prepares later, its frames can go', () => {
   check(keptFrom(60, 4, [10, 30, 40, 50, 60], []) === 30, `kept from ${keptFrom(60, 4, [10, 30, 40, 50, 60], [])}`);
   check(keptFrom(60, 4, [30, 40, 50, 60], [10]) === 10, 'a waited prepare still running was let go');
+});
+
+/**
+ * Footage's bookkeeping in miniature: `shots` shots of `len` frames each, one after another as render.ts
+ * plays them, every video frame a waited prepare round asking for the frames of its window (the frame before
+ * to the frame after) of each shot in it, then drawn, strictly (a frame not loaded fails); every load followed
+ * by framesToDrop over every shot, as evict() does, a dropped frame on a texture taking the texture's picture
+ * with it. Then a still back in the first shot, which has to load its frames again. `pinned`: the rule
+ * before, the frame on a texture kept whatever its shot.
+ */
+function playShots(shots: number, len: number, cap: number, pinned = false) {
+  type Shot = { cache: Set<number>; asked: Map<number, number>; shown: number; used: number };
+  const S: Shot[] = Array.from({ length: shots }, () => ({ cache: new Set(), asked: new Map(), shown: -1, used: 0 }));
+  const waited: number[] = [], pending: number[] = [];
+  let round = 0, most = 0;
+  const heldNow = () => S.reduce((n, s) => n + s.cache.size, 0);
+  const evict = () => {
+    const held = S.flatMap((s, k) => [...s.cache].map((i) => ({ key: `${k}:${i}`, asked: s.asked.get(i) ?? 0, shown: i === s.shown, used: pinned ? Infinity : s.used })));
+    for (const key of framesToDrop(held, cap, keptFrom(round, 4, waited, pending))) {
+      const [k, i] = key.split(':').map(Number) as [number, number], s = S[k]!;
+      s.cache.delete(i);
+      s.asked.delete(i);
+      if (s.shown === i) s.shown = -1;
+    }
+    most = Math.max(most, heldNow());
+  };
+  const at = (n: number) => ({ s: S[Math.floor(n / len)]!, i: n % len });
+  const still = (n: number) => {
+    round++;
+    waited.push(round);
+    if (waited.length > 4) waited.shift();
+    pending.push(round);
+    const want: { s: Shot; i: number }[] = [];
+    for (let m = Math.max(0, n - 1); m <= Math.min(shots * len - 1, n + 1); m++) {
+      const w = at(m);
+      w.s.used = round;
+      w.s.asked.set(w.i, round);
+      want.push(w);
+    }
+    for (const { s, i } of want) if (!s.cache.has(i)) { s.cache.add(i); evict(); }
+    pending.length = 0;
+    const { s, i } = at(n);
+    if (!s.cache.has(i)) throw new Error(`video frame ${n}: frame ${i} of shot ${Math.floor(n / len)} wasn't loaded`);
+    s.used = round;
+    s.shown = i;
+  };
+  for (let n = 0; n < shots * len; n++) still(n);
+  const end = heldNow(), pictures = S.filter((s) => s.shown >= 0).length, firstKept = S[0]!.cache.size;
+  still(0);
+  return { most, end, pictures, firstKept, firstAgain: S[0]!.shown === 0 };
+}
+test('150 shots played one after another stay within the budget, and a still back in the first loads it again', () => {
+  const r = playShots(150, 10, 72);
+  check(r.most <= 72 && r.end <= 72, `held up to ${r.most} decoded frames, ${r.end} at the end (budget 72)`);
+  // (only the latest shots' textures, those whose frames the budget still holds: 72 frames, 10 a shot)
+  check(r.pictures <= 8, `${r.pictures} textures still hold a picture`);
+  check(r.firstKept === 0, `the first shot kept ${r.firstKept} frames`);
+  check(r.firstAgain, 'the still back in the first shot did not show its frame');
+  // (the rule before kept the frame on every texture: one a shot, past the budget)
+  const before = playShots(150, 10, 72, true);
+  check(before.end >= 150 + 2 && before.pictures === 150, `the rule before held ${before.end}, ${before.pictures} pictures`);
 });
 
 let passed = 0;

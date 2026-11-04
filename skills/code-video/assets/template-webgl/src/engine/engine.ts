@@ -562,7 +562,8 @@ export class Engine {
    * With nothing to load it resolves at once.
    */
   async prepare(t0: number, t1: number, ahead = false) {
-    const jobs: Promise<void>[] = [];
+    // (a scene's prepare may resolve to anything, Promise.all's array included: only when it settles matters)
+    const jobs: Promise<unknown>[] = [];
     const settled = footageRound(() => {
       for (const e of this.timeline) {
         const rec = this.loaded.get(e.id), s = rec?.scene;

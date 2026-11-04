@@ -333,16 +333,20 @@ override dispose() { this.clip.dispose(); }
   in a window, over the entry's part of it (`Engine.prepare`). render.ts waits for it before every frame it
   renders (stills, sheets, posters, verify, the video and each `--jobs` piece, with the next half second of
   the range loading meanwhile; a range needs no frame outside it). The preview calls it two seconds ahead of
-  the playhead without waiting, and shows the nearest frame it has until the exact one arrives. A scene with
-  several clips asks for them in one call, so they load together:
-  `prepare(t0, t1) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`.
+  the playhead without waiting, and shows the nearest frame it has until the exact one arrives (a frame
+  refined at rest, `refine = true`, waits for it). A scene with several clips asks for them in one call, so
+  they load together (the hook takes any promise):
+  `override prepare(t0: number, t1: number) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`.
 - **Proxies.** The preview reads `proxy/`, a quarter of the pixels to fetch, decode and upload; the render
   reads `full/`. `openFootage` picks by `ctx.export`, and takes `full/` for both when the manifest says
   `"proxy": false`.
 - **Memory.** One budget over every shot on the page holds 72 decoded full frames (about 600 MB at 1080p)
-  and 360 proxies. Past it, the least recently asked for are let go, but never the one on screen, nor one
-  asked since a prepare render.ts waits for began, until it settles and for a few prepares after: a frame
-  about to be drawn stays (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p). Those kept can
+  and 360 proxies. Past it, the least recently asked for are let go, but never the one a shot shows while
+  it plays, nor one asked since a prepare render.ts waits for began, until it settles and for a few prepares
+  after: a frame about to be drawn stays (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p).
+  Every scene of the timeline stays loaded, so a shot that has played lets its last frame go too, with its
+  texture's GPU copy, and loads it again when it's shown again (in the preview, black until the first frame
+  is in): a devlog's 140 shots stay within the budget. Those kept can
   take it far past when many full-size clips are on screen at once (eleven 1080p clips held about 350 while
   the render loaded ahead), so a clip shown small is cut at the size it's shown. One call loads at most a
   budget's worth, 72 full frames. A Footage has one texture: two moments of one shot on screen at once take
@@ -355,7 +359,7 @@ override dispose() { this.clip.dispose(); }
   is made from the footage (a feedback trail) prepares that stretch too, with a `prerollMax` of about a
   second that keeps it within one call's 72 frames (a second at 60 fps is 61; the default 6 s would be 361,
   and the frames on screen wouldn't load):
-  `prepare(t0, t1) { return this.clip.prepare(Math.max(this.ctx.start, t0 - this.prerollMax), t1); }`.
+  `override prepare(t0: number, t1: number) { return this.clip.prepare(Math.max(this.ctx.start, t0 - this.prerollMax), t1); }`.
 
 Measured on an RTX 4090, with a 12-second 60 fps test shot that has its frame number burned in: the preview
 played two entries of it crossfading at 58-60 fps from proxies; stills in any order, a sheet, the render and a

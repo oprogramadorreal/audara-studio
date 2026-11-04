@@ -373,10 +373,11 @@ function setupPlayer() {
   let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false, prefetchT = -Infinity;
   // A paused frame whose scenes all ask for it (`refine = true` on the scene: the realism kit's; none of them
   // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
-  // playhead has rested 0.3 s, then held until something changes (the playhead, or a scene it shows hot-
-  // swapped; one saved elsewhere in the video leaves it). Every other frame, a crossfade with any other scene
-  // included, is drawn as it always was.
-  let rest = { t: NaN, since: 0, scenes: [] as unknown[] }, refined = false;
+  // playhead has rested 0.3 s and what the frame shows is loaded, then held until something changes (the
+  // playhead, or a scene it shows hot-swapped; one saved elsewhere in the video leaves it). Every other frame,
+  // a crossfade with any other scene included, is drawn as it always was. (Loaded: streamed footage shows the
+  // nearest frame it has until the exact one arrives, and a frame refined before then would hold that one.)
+  let rest = { t: NaN, since: 0, scenes: [] as unknown[], asked: false, loaded: false }, refined = false;
   const half = (0.2 / fps) / 2; // (the render's default shutter, 0.2 of a frame, either side of t)
   // the entries the frame's sub-frames draw: its shutter, up to a hard cut, where the engine keeps every
   // sub-frame on the frame's side (an engine without sameSide: the whole shutter)
@@ -408,11 +409,20 @@ function setupPlayer() {
     if (Math.abs(t - prefetchT) > 0.5) { prefetchT = t; prepare(t - 0.25, t + 2, true).catch(() => {}); }
     const tc = Math.min(t, D - 0.001), scenes = scenesAt(tc);
     if (track.playing || tc !== rest.t || !same(scenes, rest.scenes)) {
-      rest = { t: tc, since: performance.now(), scenes };
+      rest = { t: tc, since: performance.now(), scenes, asked: false, loaded: false };
       refined = false;
     } else if (!refined && performance.now() - rest.since > 300 && wantsRefine(tc) && !engine.renderer.getContext().isContextLost()) {
-      engine.render(tc, 1 / fps, true, 12);
-      refined = true;
+      // what the frame's sub-frames show, loaded first (a frame that fails to load has its error listed, and
+      // the frame is refined as it stands)
+      if (!rest.asked) {
+        const r = rest;
+        r.asked = true;
+        prepare(tc - half, tc + half, true).catch(() => {}).then(() => { r.loaded = true; });
+      }
+      if (rest.loaded) {
+        engine.render(tc, 1 / fps, true, 12);
+        refined = true;
+      }
     }
     if (!refined) engine.render(tc, 1 / fps);
     scrub.value = String(t);

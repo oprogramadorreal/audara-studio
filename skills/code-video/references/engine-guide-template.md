@@ -329,7 +329,8 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   using `f.tin` (0→1 over the overlap).
 - `refine = true` on a scene (a plain property: the realism kit's scenes set it) says its frame depends
   on its sub-frame samples (`SUBFRAME`, below). When the preview is paused, the playhead has rested 0.3 s,
-  and every scene the frame shows sets it (none stateful), the player renders that frame once more with
+  what the frame shows has loaded (streamed footage, below), and every scene the frame shows sets it (none
+  stateful), the player renders that frame once more with
   the render's sampling, 12 sub-frames with their jitter and motion blur, holds it until the playhead
   moves or a scene it shows reloads, and says "refined (12 sub-frames)" on the info line. It is still the
   preview path (`ctx.export` false: a scene's cheaper settings stay). The page waits while it renders (12
@@ -451,8 +452,8 @@ override dispose() { this.clip.dispose(); }
   default). render.ts waits for it before every frame it renders; the preview calls it ahead of the playhead
   and shows the nearest loaded frame until the exact one arrives. When render.ts renders, a frame no
   `prepare` asked for throws, so a mistake fails the render instead of leaving a stale frame in it.
-- A scene with several clips asks for them in one call, so they load together:
-  `return Promise.all(this.clips.map((c) => c.prepare(t0, t1)));`.
+- A scene with several clips asks for them in one call, so they load together (the hook takes any promise):
+  `override prepare(t0: number, t1: number) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`.
 - `frame(t)` picks by `frameTime(t)`, so every sub-frame of a frame shows the same footage frame; `start` (the
   entry's start by default), `rate` and `offset` place the shot, and `prepare(t0, t1)` loads only the frames
   shown (every fourth at `rate: 4`). For a freeze, a ramp or a loop, ask by index: `prepareFrames(i0, i1)` or
@@ -463,7 +464,9 @@ override dispose() { this.clip.dispose(); }
   361, and the frames on screen wouldn't load.
 - A Footage has one texture (two moments of one shot on screen at once take two). One budget over every shot
   keeps about 72 decoded full frames and 360 proxies and lets the least recently asked go, never one about to
-  be drawn; `dispose()` it in the scene's `dispose()`, or a hot-swapped scene's frames stay loaded.
+  be drawn. A shot that has played lets its last frame go too, with its GPU copy, and loads it again when
+  it's shown again (the preview draws black until it's in). `dispose()` it in the scene's `dispose()`, or a
+  hot-swapped scene's frames stay loaded.
 - The preview doesn't watch `footage/`: reload the page after writing a shot.
 
 ## Toolbox

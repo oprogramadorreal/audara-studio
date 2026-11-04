@@ -24,12 +24,15 @@
 // frameAt.
 //
 // Memory: a decoded 1080p frame takes about 8 MB, a proxy 2 MB. One budget over every Footage on the page
-// (BUDGET, in frames, full and proxy counted apart) drops the frames least recently asked for, but never the
-// one on screen, one asked in the latest PROTECT prepare rounds (an Engine.prepare is one round, whatever
-// its scenes ask for), nor one asked since a prepare render.ts waits for began, until that prepare settles and
-// then while it is one of the latest PROTECT such (footageRound): verify prepares two moments, then renders
-// both, and a scene whose prepare awaits its clips one after another asks for the later ones after its
-// round's first call. It only decides what stays loaded: what a frame shows never depends on it.
+// (BUDGET, in frames, full and proxy counted apart) drops the frames least recently asked for, but never one
+// asked in the latest PROTECT prepare rounds (an Engine.prepare is one round, whatever its scenes ask for),
+// nor one asked since a prepare render.ts waits for began, until that prepare settles and then while it is
+// one of the latest PROTECT such (footageRound): verify prepares two moments, then renders both, and a scene
+// whose prepare awaits its clips one after another asks for the later ones after its round's first call.
+// Nor the frame a Footage shows while that Footage is in use, asked for or drawn in those rounds: the engine
+// keeps every scene of the timeline loaded, and a long devlog plays 140 shots, so a shot that has played lets
+// its last frame go like any other, its texture's GPU copy with it, and is prepared again before it is drawn
+// again. It only decides what stays loaded: what a frame shows never depends on it.
 //
 // A Footage has one texture: draw it before asking it for another frame (two moments of one shot on screen
 // at once take two Footage). dispose() it in the scene's dispose(), or a hot-swapped scene's frames stay
@@ -134,15 +137,16 @@ export function framesShown(t0: number, t1: number, videoFps: number, o: { start
 
 /**
  * The frames to drop to bring `held` within `cap`: least recently asked first, never one asked in round
- * `from` or later (keptFrom), nor one on screen. Fewer than that when the rest are protected.
+ * `from` or later (keptFrom), nor one on its Footage's texture (`shown`) while that Footage is in use, asked
+ * for or drawn in round `from` or later (`used`). Fewer than that when the rest are protected.
  */
-export function framesToDrop<K>(held: { key: K; asked: number; shown: boolean }[], cap: number, from: number): K[] {
+export function framesToDrop<K>(held: { key: K; asked: number; shown: boolean; used: number }[], cap: number, from: number): K[] {
   let over = held.length - cap;
   const out: K[] = [];
   if (over <= 0) return out;
   for (const h of [...held].sort((a, b) => a.asked - b.asked)) {
     if (over <= 0 || h.asked >= from) break;
-    if (h.shown) continue;
+    if (h.shown && h.used >= from) continue;
     out.push(h.key);
     over--;
   }
@@ -156,7 +160,10 @@ export class Footage {
   /** (frame -> the round that last asked for it) */
   private asked = new Map<number, number>();
   private loading = new Map<number, Promise<void>>();
+  /** (the frame on the texture, -1 for none) */
   private shown = -1;
+  /** (the latest round this Footage was asked for frames or drawn in: while it is kept, so is `shown`) */
+  private used = 0;
   private disposed = false;
 
   constructor(opts: FootageOptions) {
@@ -216,6 +223,7 @@ export class Footage {
   // (marked before the first await, so the frames carry the round they were asked in)
   private async want(ks: number[]) {
     const round = inRound ? ROUND : ++ROUND;
+    this.used = round;
     for (const k of ks) this.asked.set(k, round);
     await Promise.all(ks.map((k) => this.load(k)));
   }
@@ -246,10 +254,12 @@ export class Footage {
   /**
    * The texture, showing frame i (0-based, clamped). One not loaded: with `strict` (render.ts) it throws, since
    * the scene's prepare() should have asked for it; otherwise the nearest loaded frame stands in, and frame i
-   * starts loading.
+   * starts loading. With none loaded (a shot that played long ago, its frames let go), the texture has no
+   * picture until one arrives, and draws black.
    */
   frameAt(index: number, strict = this.o.strict): THREE.Texture {
     const i = this.clamp(index);
+    this.used = ROUND;
     let use = this.cache.has(i) ? i : -1;
     if (use < 0) {
       if (strict)
@@ -268,15 +278,28 @@ export class Footage {
 
   /** Whether frame i (0-based) is decoded. */
   has(i: number) { return this.cache.has(this.clamp(i)); }
-  /** Whether any frame is decoded yet (until then the texture has no picture: a scene may draw something else). */
+  /**
+   * Whether any frame is decoded (until one is, the texture has no picture: a scene may draw something else).
+   * False again once the budget has let all of a shot's frames go; its prepare() loads them again.
+   */
   get ready() { return this.cache.size > 0; }
 
   /** (what the budget sees, see evict) */
-  held() { return [...this.cache.keys()].map((i) => ({ key: [this, i] as [Footage, number], asked: this.asked.get(i) ?? 0, shown: i === this.shown })); }
+  held() {
+    return [...this.cache.keys()].map((i) => ({ key: [this, i] as [Footage, number], asked: this.asked.get(i) ?? 0, shown: i === this.shown, used: this.used }));
+  }
   drop(i: number) {
     this.cache.get(i)?.close();
     this.cache.delete(i);
     this.asked.delete(i);
+    if (i !== this.shown) return;
+    // the frame on the texture: its GPU copy goes too, and the texture is left as a new one is, with no
+    // picture and version 0 (three.js uploads a texture whose version is above 0, and warns on every draw
+    // when that has no image), so the next frame() uploads its frame again
+    this.shown = -1;
+    this.texture.dispose();
+    this.texture.image = null;
+    this.texture.version = 0;
   }
 
   dispose() {
