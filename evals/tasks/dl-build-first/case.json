@@ -1,0 +1,37 @@
+{
+  "id": "dl-build-first",
+  "skill": "devlog",
+  "setup": {
+    "files": [],
+    "mock": "elevenlabs",
+    "key": false
+  },
+  "timeoutMinutes": 240,
+  "turns": [
+    {
+      "prompt": "I want to make a devlog for my YouTube channel. Let's start by building the game: a 3D Breakout for the browser, no game engine, three levels with bricks that break into pieces. Show it to me before you write any script."
+    },
+    {
+      "prompt": "Nice, the ball feels great. But the bricks look plain. Give them a glowing neon look, and show me one row of them first before you change the rest."
+    },
+    {
+      "prompt": "The neon row is approved, do the rest. I'll want the old plain look in the video as the before, so keep it."
+    },
+    {
+      "prompt": "Approved, the game is done. Now write the script for a 4-minute devlog about how you built it, narrated in Portuguese. Script only for now."
+    }
+  ],
+  "assertions": [
+    "Turn 1's first reply asks, each with a default, about the scope or where it runs, a working promise (a title and a thumbnail idea), the gates and the director's own material (music, characters, voice), in one message, and the turn goes on building without waiting for the answers.",
+    "The game lives in its own folder (not the project root), and no video production happens before turn 4: no videos/*/video.json, TREATMENT.md, scene file, narration or render in turns 1-3 (transcript order and file times).",
+    "docs/DEVELOPMENT_LOG.md exists by the end of turn 1 with a status, decisions with their reasons and dated timeline entries, each naming its commit or its artifact paths; by the end, a story ledger in it (or docs/VIDEO_NOTES.md) quotes turn 2's and turn 3's notes verbatim.",
+    "AGENTS.md has a Devlog section, outside init's <!-- audara:begin --> markers if they exist, with the standing rules: keep the log, film now what a change will erase, keep shown stages recoverable, the director's gates.",
+    "A demonstration can be filmed again: the game steps on a fixed tick with seeded randomness, and a replay or a capture page (or command) re-runs a recorded play-through to the same state (the grader runs it twice and compares the state hash or two captured frames).",
+    "Turn 1's hand-off says how to run the game, what to look at and what is still short, and a reply before any step that runs over about 10 minutes states how long it will take.",
+    "Turn 2 changes one row of bricks (or one brick set) to the neon look and hands it back before converting the rest (the transcript, and a capture or screenshot of the row); turn 3 converts the rest.",
+    "After turn 3, the plain look is recoverable (a flag, a style switch or a tagged commit), and the log's versions table, or an entry, names both looks with their role in the video (the before, the hero).",
+    "At least one state that a later change erased (the plain bricks, a first attempt, a bug before its fix) was filmed or captured before it went (a file under devlog/ or footage/ with its log entry).",
+    "Turn 4 delivers a script (a treatment or a script file) whose beats come from the log: each development beat names its log entry or artifact; the stages appear in story order (the neon look not shown before the chapter that makes it, except as a brief glimpse in the opening); and nothing is built or generated for the video yet.",
+    "Turn 4 names the words a pt-BR voice may get wrong (English terms, numbers) or says how they will be checked, and makes no ElevenLabs request (mock-requests.jsonl is empty)."
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "skill": "devlog",
+  "queries": [
+    { "id": "dl-01", "should_trigger": true, "files": [], "query": "I want to make a devlog. Let's start by building the game: a 3D remake of Breakout that runs in the browser, no game engine." },
+    { "id": "dl-02", "should_trigger": true, "files": [], "query": "quero fazer um devlog: primeiro você constrói o jogo, um Tetris em 3D no navegador, e depois a gente faz o vídeo mostrando como foi feito" },
+    { "id": "dl-03", "should_trigger": true, "files": [], "query": "Build a physics simulation of a domino city collapsing, in the browser, then make a video showing how you built it." },
+    { "id": "dl-04", "should_trigger": true, "files": [], "query": "Code a Mandelbrot set explorer with a really deep zoom, and keep a record of how you build it, because I want a making-of video about it for YouTube afterwards." },
+    { "id": "dl-05", "should_trigger": true, "files": [], "query": "Make a devlog video about how I built my roguelike. The game is in ./game and its git history has the whole story." },
+    { "id": "dl-06", "should_trigger": true, "files": [], "query": "cria um simulador de fluidos no navegador e depois um vídeo contando como você fez, estilo devlog, narrado em português" },
+    { "id": "dl-07", "should_trigger": true, "files": [], "query": "I want a YouTube devlog where an AI builds a voxel destruction sandbox from scratch and the video tells the story of the build. Start with the sandbox; show it to me before you write any script." },
+    { "id": "dl-08", "should_trigger": true, "files": ["devlog-DEVELOPMENT_LOG.md => docs/DEVELOPMENT_LOG.md"], "query": "The lander is approved. Before the script, film the landing again from a low angle in the final look." },
+    { "id": "dl-09", "should_trigger": true, "files": [], "query": "Build a gravity simulator with orbits and collisions. Keep notes and recordings as you go: I'll make a video about how it was made." },
+    { "id": "dl-10", "should_trigger": true, "files": [], "query": "faz um devlog do Flappy Bird em 3D: constrói o jogo primeiro e me mostra pra aprovar antes do roteiro" },
+    { "id": "dl-11", "should_trigger": false, "files": [], "query": "Make a 60-second animated explainer about how a ray tracer works." },
+    { "id": "dl-12", "should_trigger": false, "files": [], "query": "Build me a Snake game that runs in the browser." },
+    { "id": "dl-13", "should_trigger": false, "files": [], "query": "Give me three ideas for a devlog video. I don't know what to build yet, just ideas for now." },
+    { "id": "dl-14", "should_trigger": false, "files": [], "query": "Make a 30-second promo video for my budgeting app." },
+    { "id": "dl-15", "should_trigger": false, "files": [], "query": "Animate quicksort's code being typed line by line, as a 20-second clip for Shorts." },
+    { "id": "dl-16", "should_trigger": false, "files": ["song.mp3"], "query": "Make a lyric video for song.mp3 with an 8-bit video game look." },
+    { "id": "dl-17", "should_trigger": false, "files": [], "query": "Write a development log for the last sprint of my app in docs/CHANGES.md." },
+    { "id": "dl-18", "should_trigger": false, "files": [], "query": "faz um vídeo de 15 segundos de um jogo de plataforma em pixel art, só a animação, sem jogo de verdade" },
+    { "id": "dl-19", "should_trigger": false, "files": [], "query": "Make a tutorial video teaching how to set up a React project step by step, for beginners." },
+    { "id": "dl-20", "should_trigger": false, "files": [], "query": "Make a demo video of my finished web app's main features, with a voiceover, for the landing page." }
+  ]
+}

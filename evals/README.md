@@ -53,6 +53,7 @@ bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/vi
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-repo.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/youtube-package.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/nutlight-style.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/devlog.json
 ```
 
 `--effort` sets the reasoning effort the user's settings would otherwise pick, as in `task.ts` below. Every run
@@ -81,6 +82,14 @@ session learns only from the project's files: a probe of discovery, since a run 
 fixture has no cast or references; ns-new-subject's third turn tests the later session's work). Its near-misses ask for squirrels, cute animals, a glowing
 night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
+
+devlog's set asks to build something and then a video of how it was built, in ten requests: two in Portuguese,
+three that aren't games (a physics simulation, a fluid simulator, a fractal explorer), a devlog of a project
+already built (dl-05), and one made inside a devlog project whose `docs/DEVELOPMENT_LOG.md` comes from the
+fixtures (dl-08). Its near-misses are the neighbours a devlog skill could take by mistake: a game alone with no
+video, ideas for a devlog (video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being
+typed, a log with no video, and a pixel-art game animation with nothing built. It has no scripts, so, as with
+video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the load.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
@@ -264,6 +273,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo`, `skills/youtube-package` and `skills/nutlight-style`. Two checks no
+UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo`, `skills/youtube-package`, `skills/nutlight-style` and `skills/devlog`. Two checks no
 validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
 a byte-order mark.

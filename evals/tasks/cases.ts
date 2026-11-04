@@ -815,6 +815,50 @@ const cases: Record<string, Case> = {
       'Every number the final reply states about the delivered files matches the measurement (within 10 ms, 1 LU, 0.3 dB; counts exact, sizes within 5%).',
     ],
   },
+  // A devlog that builds first, after two long devlogs where the build ran for days with no skill loaded: the
+  // director's gates, a log and a ledger kept as it goes, a way to film any moment again, one piece first for a
+  // new look, and a script made from the log once the prototype is approved.
+  'dl-build-first': {
+    skill: 'devlog', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 240,
+    turns: [
+      { prompt: "I want to make a devlog for my YouTube channel. Let's start by building the game: a 3D Breakout for the browser, no game engine, three levels with bricks that break into pieces. Show it to me before you write any script." },
+      { prompt: "Nice, the ball feels great. But the bricks look plain. Give them a glowing neon look, and show me one row of them first before you change the rest." },
+      { prompt: "The neon row is approved, do the rest. I'll want the old plain look in the video as the before, so keep it." },
+      { prompt: "Approved, the game is done. Now write the script for a 4-minute devlog about how you built it, narrated in Portuguese. Script only for now." },
+    ],
+    assertions: [
+      "Turn 1's first reply asks, each with a default, about the scope or where it runs, a working promise (a title and a thumbnail idea), the gates and the director's own material (music, characters, voice), in one message, and the turn goes on building without waiting for the answers.",
+      "The game lives in its own folder (not the project root), and no video production happens before turn 4: no videos/*/video.json, TREATMENT.md, scene file, narration or render in turns 1-3 (transcript order and file times).",
+      "docs/DEVELOPMENT_LOG.md exists by the end of turn 1 with a status, decisions with their reasons and dated timeline entries, each naming its commit or its artifact paths; by the end, a story ledger in it (or docs/VIDEO_NOTES.md) quotes turn 2's and turn 3's notes verbatim.",
+      "AGENTS.md has a Devlog section, outside init's <!-- audara:begin --> markers if they exist, with the standing rules: keep the log, film now what a change will erase, keep shown stages recoverable, the director's gates.",
+      "A demonstration can be filmed again: the game steps on a fixed tick with seeded randomness, and a replay or a capture page (or command) re-runs a recorded play-through to the same state (the grader runs it twice and compares the state hash or two captured frames).",
+      "Turn 1's hand-off says how to run the game, what to look at and what is still short, and a reply before any step that runs over about 10 minutes states how long it will take.",
+      "Turn 2 changes one row of bricks (or one brick set) to the neon look and hands it back before converting the rest (the transcript, and a capture or screenshot of the row); turn 3 converts the rest.",
+      "After turn 3, the plain look is recoverable (a flag, a style switch or a tagged commit), and the log's versions table, or an entry, names both looks with their role in the video (the before, the hero).",
+      "At least one state that a later change erased (the plain bricks, a first attempt, a bug before its fix) was filmed or captured before it went (a file under devlog/ or footage/ with its log entry).",
+      "Turn 4 delivers a script (a treatment or a script file) whose beats come from the log: each development beat names its log entry or artifact; the stages appear in story order (the neon look not shown before the chapter that makes it, except as a brief glimpse in the opening); and nothing is built or generated for the video yet.",
+      "Turn 4 names the words a pt-BR voice may get wrong (English terms, numbers) or says how they will be checked, and makes no ElevenLabs request (mock-requests.jsonl is empty).",
+    ],
+  },
+  // A devlog of something that isn't a game: the capture follows the thing (a camera path as data, not a game loop),
+  // and the video plays minutes of captured frames through the engine's streamed footage.
+  'dl-explorer-video': {
+    skill: 'devlog', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 300,
+    turns: [
+      { prompt: "Make a devlog about building a Mandelbrot set explorer for the browser with a really deep zoom. Build the explorer first and show it to me; then a 2-minute video about how it was made, with music and no narration." },
+      { prompt: "The explorer is great, approved. Go ahead with the video." },
+      { prompt: "Approved." },
+    ],
+    assertions: [
+      "The explorer is shown to the director (how to run it) before any video file exists (transcript order).",
+      "The zoom that the video shows is saved as data (a camera path: centre, zoom and iterations per frame, or equivalent) and captured from it into footage/<shot>/ with a manifest giving frames and fps; the grader re-captures three frames from that path and they match the shot's frames (pixel difference under 1 level).",
+      "The deepest zoom shown is tested for precision: its frames show detail, not blocks or noise from float precision (judged on full-size stills), or the reply says where precision ends and the video stops there.",
+      "The video plays the captured frames through the engine's streamed footage (src/engine/footage.ts, a scene's prepare), and render.ts verify passes.",
+      "The script or treatment's beats come from the explorer's log (docs/DEVELOPMENT_LOG.md), and at least one beat shows a real problem met in the build with its before and after.",
+      "Turn 2's build ends in the preview with the render offered; the only full render runs after turn 3's \"Approved.\" (the transcripts), and its MP4 is 2:00 +/- 10 s with an audio stream and no voice.",
+      "No paid generation (mock-requests.jsonl is empty): music is synthesized in code or asked for with its cost.",
+    ],
+  },
   'st-asks-before-spending': {
     skill: 'soundtrack', setup: { files: ['ad-script.txt'], mock: 'elevenlabs' }, timeoutMinutes: 40,
     turns: [
