@@ -14,12 +14,16 @@
            plan (mix.wav.request.json), normalized to a delivery loudness. Effects land by their measured onset
            and get their level inside their own frequency band against the music. Every placement and level
            it prints is measured on the output. An unchanged plan is not rebuilt; a changed one keeps the
-           previous round in out/<video>/mix-rounds/ for A/B and prints what changed.
+           previous round in out/<video>/mix-rounds/ for A/B and prints what changed. From the stems as built
+           it also lists moments to listen to (measurements, not a judgement of how it sounds): narration lines
+           the bed may bury (the voice against music and effects, per line and per 100 ms), and the music's
+           joins with a hole, a surge or a stop under the voice (the bed's energy around each).
   measure  What a listener hears in any audio file: integrated loudness, loudness range, true peak,
            short-term (3 s) and momentary (400 ms) K-weighted loudness, loudness per section and the rise
            between sections, each hit's measured onset, its contrast with the 4 s before it and the build into
            it, at full range and through a phone-like 300 Hz high-pass, the first sound and dead tails. Writes a
-           loudness-curve PNG and a JSON. Reports, not gates: a weak hit or a flat build is a warning.
+           loudness-curve PNG and a JSON. Reports, not gates: a weak hit or a flat build is a warning. A
+           finished file has no stems, so the voice over the bed and the music's joins are build's alone.
 
 Run it through uv (no pip):
   uv run <skill>/scripts/mix.py build --video launch
@@ -64,6 +68,7 @@ import subprocess
 import sys
 import time
 import unicodedata
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -285,6 +290,74 @@ SYNC_TOL_S = 0.05
 ROUNDS_KEPT = 10
 # Previous rounds kept in out/<video>/mix-rounds/ (FLAC, lossless): enough to A/B the last few notes without
 # filling the disk (a minute of 48 kHz/24-bit stereo is ~17 MB as WAV, roughly half as FLAC).
+
+# Voice over the bed, per narration line (build only: it needs the stems as built). In two devlogs the director
+# raised about a dozen music notes each, narration buried by the music or by a loud effect among them, while the
+# agent judged the mix by its whole-mix loudness; it built a check of the voice against the rest in each project,
+# only after the notes. The voice layer as mixed is measured against everything else in mix.wav (music, effects,
+# game sounds), K-weighted as under_voice is, so the numbers read against its 12 LU.
+VOB_WIN, VOB_HOP = 0.1, 0.01
+# 100 ms windows every 10 ms: short enough that an effect's hit over one word is not averaged away by the line,
+# long enough to hold a syllable. Each window lies inside its line, so a line shorter than one (a 60 ms line in
+# a words.json read -120 LUFS from the next line's window) or with no speech in it is left unmeasured, out of the
+# video's median line and the list.
+VOB_MEDIAN_LU = 10.0
+# A line whose bed sits under 10 LU below the voice on median is listed: Torcoli et al. ("Background ducking to
+# produce esthetically pleasing audio for TV with clear speech", AES 146th Convention, 2019, a listening test)
+# recommend at least 10 LU between commentary and music (15 over ambience), and under_voice's 12 LU is that with
+# 2 LU of margin.
+VOB_WORST_LU = 3.0
+# ...or whose worst 100 ms brings the bed within 3 LU of the line's voice level (the line's active speech, as a
+# power mean). The Speech Intelligibility Index (ANSI S3.5-1997) counts a band's speech fully audible 15 dB over
+# the noise and half at 0 dB, so within 3 dB much of what is said there is covered; the second devlog's per-word
+# check listed words under the same 3 dB. The worst window is read through the phone check's 300 Hz high-pass,
+# both sides: what covers a word sits mostly above it, and a kick under a word is not a word buried (init's demo
+# drums under a voice set 12 LU over them: a downbeat's kick came within 3.5 LU at full range, 10.9 above 300 Hz).
+VOB_UNDER_VIDEO_LU = 4.0
+# ...or that sits 4 LU or more under the video's own median line: Torcoli et al. found non-expert listeners
+# wanted the background 4 LU further down than experts did, so a step that size is one some viewers notice. In
+# the first devlog the line a note was about sat 5.4 dB under its video's median line (8.1 against 13.5). A line
+# at or above the plan's under_voice target (12 LU by default) sits where the plan put the music, so this rule
+# leaves it out.
+VOB_CLEAR_LU = 15.0
+# The video's median line is taken over the lines whose bed comes within 15 LU of the voice: past Torcoli et al.'s
+# bar for commentary over ambience the bed is far under it. A line over silence (VOB_CAP_LU) or room tone reads
+# far more, and counted in, such lines pulled the median up until lines at the default 12 LU were listed.
+VOB_CAP_LU = 40.0
+# A window where the bed is 40 LU or more under the voice counts as 40: the bed is silent for this purpose.
+REGION_GAP_S, REGION_MIN_S = 0.5, 0.3
+# Without a data/words.json timed to the voice, the lines are the voice's regions: speech split at pauses of
+# 0.5 s or more (longer than most pauses between sentences, see DUCK_HOLD), each at least 0.3 s long.
+
+# Music joins (build only). One join went from a -17 dB bridge into a -8.5 dB section (the director: a "very
+# noticeable cut"); another left the mix at -30..-32 dBFS for 0.3 s after the cut, then the music came up 10 dB;
+# others stopped the music under the narration. The agent found each with 100 ms energy windows after the note.
+# These are energy (dBFS RMS, unweighted, full scale = 1), not LUFS: a hole or a jump is about level over time.
+JOIN_SPAN_S, JOIN_WIN_S = 1.5, 0.1
+# The profile around each point: 100 ms windows over +-1.5 s, the windows those notes were measured in.
+JOIN_FLOOR_DBFS = -70.0
+# A window under -70 dBFS counts as -70 (silence), so a step out of silence reads as a finite number.
+HOLE_DB = 6.0
+# A hole: the quietest 0.2 s within [-0.6, +0.9] s of the point sits 6 dB or more under the quietest 0.2 s of
+# each side ([-1.5, -0.6] and [+0.9, +1.5]: an entrance takes a moment to arrive). The quietest stretch on each
+# side is the reference, so drums (a kick every beat, little between) don't read as holes between their hits; the
+# second note's trough sat about 10 dB under the music that followed.
+SURGE_DB = 6.0
+# A surge: the 1.3 s after the point (from +0.2 s) is 6 dB or more over the 1.3 s before it (to -0.2 s), power
+# means, and it jumps there within about 0.3 s: the first 100 ms window from -0.3 to +0.5 s that comes within 2 dB
+# of the level after sits 6 dB or more over the window 0.3 s before it. A fade-in or the duck's 0.6 s release
+# arrives from closer and is not a surge; the note's splice stepped 8.5 dB.
+STOP_DB, STOP_MIN_S, STOP_REF_S = 30.0, 0.5, 3.0
+# The music stops where it falls 30 dB or more under its level of the 3 s before (their 90th percentile) and stays
+# down 0.5 s or more: far past the duck (6 dB) and a quiet bar, and a shorter rest reads as a hole, not a stop.
+STOP_VOICE_S = 1.5
+# It stops under the voice when the voice speaks within the 1.5 s after the stop: the narration goes on without it.
+STOP_MERGE_S = 0.5
+# A stop within 0.5 s of a point the plan names (a join, the music's start or end) is that point's, and so is its
+# intent. An intended point anywhere in the stop, from 0.5 s before it to where the music comes back, makes the
+# silence meant too: an intended join at 4 s in a silence from 3 to 5 s left both ends listed when only a point
+# near the stop counted. Where the music comes back after a stop under the voice is a point too, unless the plan
+# names one there, and it is as meant as the stop.
 
 # BS.1770-4 K-weighting at 48 kHz, coefficients from the standard: the high shelf (head effect), then the RLB
 # high-pass.
@@ -1392,11 +1465,17 @@ def block_gaps(doc: dict | None, layer: str | None, shift: float) -> list[tuple[
 PLAN_KEYS = {"kind", "loudness", "true_peak", "max_limit_db", "duration", "fade_in", "fade_out", "voice", "music",
              "effects", "hits", "hit_lu", "build_lu", "note", "notes"}
 VOICE_KEYS = {"file", "at", "from", "dur", "gain_db", "note"}
-MUSIC_KEYS = {"file", "at", "from", "dur", "gain_db", "under_voice", "fade_in", "fade_out", "duck", "note"}
+MUSIC_KEYS = {"file", "at", "from", "dur", "gain_db", "under_voice", "fade_in", "fade_out", "duck", "joins",
+              "intended_start", "intended_end", "note"}
+# The music's entrance and its end each take their own intent: a hard entrance is meant more often than a stop
+# under the voice at the end, and one key for both let excusing the first hide the second.
 DUCK_KEYS = {"depth_db", "attack", "hold", "release", "note"}
 FX_KEYS = {"file", "at", "cue", "word", "line", "beat", "downbeat", "nth", "edge", "offset", "align", "gain_db",
            "target_db", "peak_cap_db", "note"}
 FX_WHEN = ("at", "cue", "word", "line", "beat", "downbeat")
+JOIN_KEYS = {"at", "cue", "word", "line", "beat", "downbeat", "nth", "edge", "offset", "intended", "note"}
+# A join inside the music file is placed as an effect is (a time, or a word, line, cue or beat), so an arrangement
+# timed to the words keeps its joins in step when the voice is re-paced.
 
 PLAN_HELP = """\
 The plan (videos/<video>/mix.json by default) is JSON. File paths are relative to the plan's folder, so a plan in
@@ -1416,7 +1495,14 @@ videos/<video>/ writes them the way video.json does ("audio/narration.wav"). Tim
             "under_voice": 12,     LU under the voice while it speaks (default with a voice), or
             "gain_db": -6,         a fixed gain on the file instead
             "fade_in": 0, "fade_out": 2.5,
-            "duck": {"depth_db": 6, "attack": 0.15, "hold": 0.4, "release": 0.6}},   or false; with a voice only
+            "duck": {"depth_db": 6, "attack": 0.15, "hold": 0.4, "release": 0.6},   or false; with a voice only
+            "joins": [41.2, {"word": "suddenly"},
+                      {"at": "4:12", "intended": "the music drops out for the punchline"}],
+                                   where the music file changes source inside itself (a cut, a splice, a
+                                   crossfade, the next track), which only the arrangement that made it knows:
+                                   the report measures the bed around each
+            "intended_start": "...", "intended_end": "..."},   the music's entrance, or its end, is meant
+                                   as it is (the reason): each covers only its own end of the music
   "effects": [
     {"file": "audio/sfx/whoosh.wav", "cue": "chorus", "align": "peak", "offset": -0.05},
     {"file": "audio/sfx/hit.wav", "at": "0:20"},
@@ -1436,7 +1522,26 @@ or several in a row, in data/words.json, found as the engine's findWords does; "
 "downbeat" (index into data/audio.json), plus "offset" seconds. "align": "onset" (default) puts the effect's
 measured onset on that time; "peak" puts its loudest moment there (whooshes into a cut). Its level is solved in
 its own band against the music: "target_db" (the lift over the music, above 0; default 3.5 dB), "peak_cap_db"
-(default 6), or "gain_db" to set it by hand."""
+(default 6), or "gain_db" to set it by hand.
+
+Two checks in the report (mix-report.json, the record and the summary) list moments to listen to, each with its
+time for a ?v=<video>&t= link: measurements, not a judgement of how it sounds, and never a failure.
+  Voice over the bed: for each data/words.json line (each stretch of speech without it), the voice as mixed
+  against everything else that plays (music and effects), K-weighted in 100 ms windows every 10 ms: the bed's
+  median margin under the line's voice level, and its worst window through a 300 Hz high-pass (what covers a
+  word; a kick under it does not). A line is listed under 10 LU on median, under 3 LU in its worst 100 ms (an
+  effect over a word), or 4 LU or more under the video's median line (taken over the lines whose bed comes within
+  15 LU of the voice) while under the plan's under_voice (12 LU by default). A line shorter than 100 ms is not
+  measured.
+  Music joins: around the music's start and end, each of "joins", and each stop of the music under the voice and
+  where it comes back, the energy of the bed without the voice (dBFS RMS, not LUFS) in 100 ms windows over
+  +-1.5 s. Listed: a hole (its quietest 0.2 s 6 dB or more under both sides), a surge (up 6 dB or more within
+  about 0.3 s) and a stop under the voice (the music falls 30 dB for 0.5 s or more while the voice goes on). A
+  join is a time or takes an effect's keys for one ("at", "cue", "word", "line", "beat", "downbeat", "nth",
+  "edge", "offset"); "intended": "<why>" on a join lists what is found there as intended instead. For a silence
+  you mean, the intended join goes anywhere from where the music stops (or 0.5 s before) to where it comes back:
+  it covers the stop and the return. "intended_start" and "intended_end" on the music do the same for its
+  entrance and its end."""
 
 
 def check_keys(obj, allowed: set[str], where: str) -> dict:
@@ -1477,6 +1582,32 @@ def need_file(obj: dict, where: str, base: Path) -> Path:
     return p
 
 
+def when_of(e: dict, where: str) -> dict:
+    """How an effect or a join is placed: exactly one of FX_WHEN, plus "nth", "edge" and "offset"."""
+    when = [k for k in FX_WHEN if k in e]
+    if len(when) != 1:
+        raise usage(f"{where} needs exactly one of {', '.join(FX_WHEN)} (it has {', '.join(when) or 'none'})")
+    edge = e.get("edge", "start")
+    if edge not in ("start", "end"):
+        raise usage(f'{where}.edge must be "start" (default) or "end", got {json.dumps(edge)}')
+    nth = e.get("nth", 0)
+    if isinstance(nth, bool) or not isinstance(nth, int):
+        raise usage(f"{where}.nth must be a whole number (0 = the first occurrence), got {json.dumps(nth)}")
+    return {"when": when[0], "value": e[when[0]], "nth": nth, "edge": edge,
+            "offset": num(e, "offset", where, 0.0, -10, 10), "where": where}
+
+
+def intended_of(obj: dict, where: str, key: str = "intended") -> str | None:
+    """The reason a stop or a silence is meant ("intended": "<why>"), or None."""
+    v = obj.get(key)
+    if v is None:
+        return None
+    if not isinstance(v, str) or not v.strip():
+        raise usage(f'{where}.{key} takes the reason, e.g. "{key}": "the music stops for the punchline", '
+                    f"got {json.dumps(v)}")
+    return v.strip()
+
+
 def parse_plan(raw, base: Path) -> dict:
     check_keys(raw, PLAN_KEYS, "plan")
     plan: dict = {}
@@ -1513,6 +1644,10 @@ def parse_plan(raw, base: Path) -> dict:
     if music is not None:
         if isinstance(music, str):
             music = {"file": music}
+        if isinstance(music, dict) and "intended" in music:
+            raise usage('music.intended: say which end of the music is meant, "intended_start" (its entrance) or '
+                        '"intended_end" (its end), each with the reason; a join or a stop inside the music takes '
+                        '"intended" in music.joins')
         check_keys(music, MUSIC_KEYS, "music")
         if "gain_db" in music and "under_voice" in music:
             raise usage('music: give "gain_db" (a fixed gain) or "under_voice" (LU under the voice), not both')
@@ -1525,12 +1660,27 @@ def parse_plan(raw, base: Path) -> dict:
                   "attack": num(d, "attack", "music.duck", DUCK_ATTACK, 0, 5),
                   "hold": num(d, "hold", "music.duck", DUCK_HOLD, 0, 10),
                   "release": num(d, "release", "music.duck", DUCK_RELEASE, 0.01, 10)}
+        joins = music.get("joins") or []
+        if not isinstance(joins, list):
+            raise usage('music.joins must be a list of times or {"at" | "word" | "line" | "cue" | ...: ..., '
+                        '"intended": "<why>"}, e.g. [41.2, {"word": "now", "intended": "the music stops here"}]')
+        jl = []
+        for i, j in enumerate(joins):
+            where = f"music.joins[{i}]"
+            if isinstance(j, (int, float, str)) and not isinstance(j, bool):
+                j = {"at": j}  # a bare time
+            check_keys(j, JOIN_KEYS, where)
+            note_ = j.get("note")
+            jl.append({**when_of(j, where), "intended": intended_of(j, where),
+                       "note": note_ if isinstance(note_, str) else None})
         plan["music"] = {"file": need_file(music, "music", base), "at": tkey(music, "at", "music", 0.0),
                          "from": tkey(music, "from", "music", 0.0), "dur": tkey(music, "dur", "music"),
                          "gain_db": num(music, "gain_db", "music", None, -60, 40),
                          "under_voice": num(music, "under_voice", "music", None, -10, 60),
                          "fade_in": tkey(music, "fade_in", "music", 0.0),
-                         "fade_out": tkey(music, "fade_out", "music", 0.0), "duck": dk}
+                         "fade_out": tkey(music, "fade_out", "music", 0.0), "duck": dk, "joins": jl,
+                         "intended_start": intended_of(music, "music", "intended_start"),
+                         "intended_end": intended_of(music, "music", "intended_end")}
 
     fx = raw.get("effects") or []
     if not isinstance(fx, list):
@@ -1541,18 +1691,10 @@ def parse_plan(raw, base: Path) -> dict:
         if isinstance(e, str):
             raise usage(f'{where}: an effect needs a time too, e.g. {{"file": "{e}", "at": 12.0}}')
         check_keys(e, FX_KEYS, where)
-        when = [k for k in FX_WHEN if k in e]
-        if len(when) != 1:
-            raise usage(f"{where} needs exactly one of {', '.join(FX_WHEN)} (it has {', '.join(when) or 'none'})")
+        when = when_of(e, where)
         align = e.get("align", "onset")
         if align not in ("onset", "peak"):
             raise usage(f'{where}.align must be "onset" (default) or "peak", got {json.dumps(align)}')
-        edge = e.get("edge", "start")
-        if edge not in ("start", "end"):
-            raise usage(f'{where}.edge must be "start" (default) or "end", got {json.dumps(edge)}')
-        nth = e.get("nth", 0)
-        if isinstance(nth, bool) or not isinstance(nth, int):
-            raise usage(f"{where}.nth must be a whole number (0 = the first occurrence), got {json.dumps(nth)}")
         if "gain_db" in e and ("target_db" in e or "peak_cap_db" in e):
             raise usage(f'{where}: "gain_db" sets the level by hand; drop "target_db"/"peak_cap_db" (they steer the solver)')
         target = num(e, "target_db", where, FX_TARGET_DB, -20, 30)
@@ -1560,12 +1702,10 @@ def parse_plan(raw, base: Path) -> dict:
             raise usage(f"{where}.target_db is {target:g}: it is how far the effect lifts the music in its own band, so 0 "
                         f"or less asks for no lift and would mute it. For a quiet effect give a small lift (0.5 to 2), "
                         f'or set "gain_db" by hand')
-        plan["effects"].append({"file": need_file(e, where, base), "when": when[0], "value": e[when[0]], "nth": nth,
-                                "edge": edge, "offset": num(e, "offset", where, 0.0, -10, 10), "align": align,
+        plan["effects"].append({"file": need_file(e, where, base), **when, "align": align,
                                 "gain_db": num(e, "gain_db", where, None, -80, 40),
                                 "target_db": target,
-                                "peak_cap_db": num(e, "peak_cap_db", where, FX_PEAK_CAP_DB, -20, 40),
-                                "where": where})
+                                "peak_cap_db": num(e, "peak_cap_db", where, FX_PEAK_CAP_DB, -20, 40)})
     hits = raw.get("hits") or []
     if not isinstance(hits, list):
         raise usage('plan.hits must be a list of times or cue names, e.g. [20, "drop"]')
@@ -1874,6 +2014,290 @@ def solve_effect(bed: np.ndarray, s: np.ndarray, start: int, onset: int, target:
             "floor_db": r(floor_b), "music_band_db": r(dbp(A.max()))}
 
 
+# ------------------------------------------------------------------------------------------------ the stems as built
+
+STEM_NOTE = "Measurements, not a judgement of how it sounds: each one listed is a moment to listen to, not a failure."
+
+
+class Power:
+    """Unweighted power of a stereo signal in 1 ms blocks (the mean over samples and both channels): energy in
+    dBFS RMS (20 log10 of the RMS, full scale 1), not loudness. Built in 10 s chunks, as KEnergy is."""
+
+    def __init__(self, x: np.ndarray):
+        n = len(x)
+        nb = max(1, -(-n // BLK))
+        cnt = np.full(nb, float(BLK))
+        cnt[-1] = (n - (nb - 1) * BLK) or BLK
+        E = np.zeros(nb)
+        step = BLK * 10_000
+        for i0 in range(0, n, step):
+            seg = np.asarray(x[i0:i0 + step], dtype=np.float64)
+            s = blocksums((seg * seg).mean(axis=1))
+            E[i0 // BLK:i0 // BLK + len(s)] = s
+        self.nb = nb
+        self.E = np.concatenate([[0.0], np.cumsum(E)])
+        self.C = np.concatenate([[0.0], np.cumsum(cnt)])
+
+    def levels(self, starts: np.ndarray, win: float) -> np.ndarray:
+        """dBFS RMS of each window [s, s + win); NaN for a window that lies mostly outside the signal."""
+        a = np.round(np.asarray(starts) * 1000).astype(np.int64)
+        W = round(win * 1000)
+        i0, i1 = np.clip(a, 0, self.nb), np.clip(a + W, 0, self.nb)
+        ok = (i1 - i0) * 2 >= W
+        c = np.maximum(self.C[i1] - self.C[i0], 1.0)
+        m = (self.E[i1] - self.E[i0]) / c
+        out = np.where(m > 1e-12, 10 * np.log10(np.maximum(m, 1e-30)), SILENT)
+        return np.where(ok, out, np.nan)
+
+
+def voice_lines(doc: dict | None, shift: float, active: np.ndarray, dur: float,
+                timed_to_voice: bool) -> tuple[list[dict], list[dict], str]:
+    """The stretches the voice-over-bed check measures, in mix time: data/words.json's lines when it is the voice's
+    (timed to a voice file by its audioSha256; one with no hash only when the voice speaks through most of its lines:
+    init's demo words sit on the music's beats), else the voice's regions (speech split at pauses of REGION_GAP_S or
+    more). Returns (lines, words, what they are)."""
+    def timed(o) -> bool:
+        return isinstance(o, dict) and all(isinstance(o.get(k), (int, float)) for k in ("start", "end"))
+
+    lines, words = [], []
+    for i, line in enumerate((doc or {}).get("lines") or []):
+        if not timed(line):
+            continue
+        a, b = float(line["start"]) + shift, float(line["end"]) + shift
+        if b <= a or b <= 0 or a >= dur:
+            continue
+        text = line.get("sourceText") or line.get("text")
+        lines.append({"i": i, "start": a, "end": b, "text": text if isinstance(text, str) else None})
+        words += [{"w": str(w.get("w", "")), "start": float(w["start"]) + shift, "end": float(w["end"]) + shift}
+                  for w in line.get("words") or [] if timed(w)]
+    spoken = 0.0
+    for line in lines:  # how much of the lines' time the voice speaks
+        a, b = int(line["start"] * 100), int(math.ceil(line["end"] * 100))
+        spoken += float(active[max(0, a):max(0, b)].sum()) / 100
+    span = sum(line["end"] - line["start"] for line in lines)
+    if lines and (timed_to_voice or spoken >= 0.5 * span):
+        return lines, words, "data/words.json lines"
+    why = (f"data/words.json's lines are not this voice's: it speaks in {100 * spoken / span:.0f}% of their time"
+           if lines else "no data/words.json timed to the voice")
+    d = np.diff(np.concatenate([[0], active.astype(np.int8), [0]]))
+    runs = list(zip(np.flatnonzero(d == 1), np.flatnonzero(d == -1)))
+    merged: list[list[int]] = []
+    for a, b in runs:  # (frames are 10 ms)
+        if merged and a - merged[-1][1] < REGION_GAP_S * 100:
+            merged[-1][1] = b
+        else:
+            merged.append([a, b])
+    regions = [{"i": k, "start": a / 100, "end": min(dur, b / 100), "text": None}
+               for k, (a, b) in enumerate(m for m in merged if (m[1] - m[0]) >= REGION_MIN_S * 100)]
+    return regions, [], f"voice regions ({why})"
+
+
+def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict], words: list[dict],
+                   by: str, target_lu: float) -> dict:
+    """Per line: the voice's level (its active speech, a power mean, K-weighted) against the bed (everything else in
+    the mix) in 100 ms windows every 10 ms where the voice speaks: the median margin at full range and the worst
+    window through the 300 Hz high-pass (kv and kb carry both). target_lu is the plan's under_voice target: a line
+    at or above it sits where the plan put the music, so the median-line rule leaves it out."""
+    Eb, Cb = kb.cs("full")
+    Ep, Cp = kb.cs("phone")
+    A = np.concatenate([[0], np.cumsum(act_b.astype(np.int64))])
+    W, H, nb = round(VOB_WIN * 1000), round(VOB_HOP * 1000), len(kv.cnt)
+    rows = []
+    for line in lines:
+        i0, i1 = kv.blk(line["start"]), kv.blk(line["end"])
+        s = np.arange(i0, i1 - W + 1, H)  # (windows inside the line: none in a line shorter than one)
+        s = s[s + W <= nb]
+        if not len(s):
+            continue
+        act = (A[s + W] - A[s]) * 2 >= W  # windows where the voice speaks half the time or more
+        if not act.any():
+            continue
+        on = act_b[i0:i1]  # (an active window lies inside the line, so the line has speech blocks to measure)
+        c = kv.cnt[i0:i1][on].sum()
+        lv, lp = (to_lufs(float(kv.E[w][i0:i1][on].sum() / c)) for w in ("full", "phone"))
+        bed = lufs_arr((Eb[s + W] - Eb[s]) / (Cb[s + W] - Cb[s]))[act]
+        bedp = lufs_arr((Ep[s + W] - Ep[s]) / (Cp[s + W] - Cp[s]))[act]
+        m = np.minimum(lv - bed, VOB_CAP_LU)
+        mp = np.minimum(lp - bedp, VOB_CAP_LU)
+        k = int(np.argmin(mp))
+        t = s[act][k] / 1000
+        row = {"i": line["i"], "start": round(line["start"], 3), "end": round(line["end"], 3), "text": line["text"],
+               "voice_lufs": r(lv), "median_lu": r(float(np.median(m))), "worst_lu": r(float(mp[k])),
+               "worst_at": round(t, 2), "worst_bed_lufs_phone": r(float(bedp[k]))}
+        over = [(min(w["end"], t + VOB_WIN) - max(w["start"], t), w["w"]) for w in words
+                if w["start"] < t + VOB_WIN and w["end"] > t]
+        if over:
+            row["worst_word"] = max(over)[1]
+        rows.append(row)
+    bedded = [x["median_lu"] for x in rows if x["median_lu"] < VOB_CLEAR_LU]
+    vm = float(np.median(bedded)) if bedded else None
+    for x in rows:
+        f = []  # why the line is listed (none: nothing under the bars)
+        if x["median_lu"] < VOB_MEDIAN_LU:
+            f.append(f"the bed sits {x['median_lu']:.1f} LU under the voice on median (under {VOB_MEDIAN_LU:g})")
+        if x["worst_lu"] < VOB_WORST_LU:
+            what = (f"within {x['worst_lu']:.1f} LU of" if x["worst_lu"] >= 0 else f"{-x['worst_lu']:.1f} LU over")
+            f.append(f"its loudest 100 ms above 300 Hz, at {x['worst_at']:.2f} s, comes {what} the voice"
+                     + (f' ("{x["worst_word"]}")' if x.get("worst_word") else "") + f" (under {VOB_WORST_LU:g})")
+        if vm is not None and x["median_lu"] <= vm - VOB_UNDER_VIDEO_LU and x["median_lu"] < target_lu:
+            f.append(f"{vm - x['median_lu']:.1f} LU closer than the video's median line ({vm:.1f} LU)")
+        x["findings"] = f
+    return {"measured_on": "the voice layer as mixed against everything else in mix.wav (music and effects), "
+                           "K-weighted, in 100 ms windows every 10 ms where the voice speaks: the median at full "
+                           "range, the worst window through a 300 Hz high-pass (what covers a word)",
+            "by": by, "window_s": VOB_WIN, "hop_s": VOB_HOP,
+            "bars": {"median_lu": VOB_MEDIAN_LU, "worst_lu": VOB_WORST_LU, "under_video_median_lu": VOB_UNDER_VIDEO_LU,
+                     "clear_lu": VOB_CLEAR_LU, "under_voice_target_lu": target_lu},
+            "video_median_lu": r(vm), "lines": rows, "listed": sum(bool(x["findings"]) for x in rows),
+            "unmeasured": len(lines) - len(rows), "note": STEM_NOTE}
+
+
+def music_stops(mus: Power, active: np.ndarray | None, dur: float) -> list[dict]:
+    """Where the music stops (falls STOP_DB under its level of the STOP_REF_S before and stays down STOP_MIN_S or to
+    the end), and whether the voice speaks in the STOP_VOICE_S after: 100 ms windows of music-only.wav."""
+    nw = int(dur / JOIN_WIN_S)
+    if nw < 2:
+        return []
+    L = mus.levels(np.arange(nw) * JOIN_WIN_S, JOIN_WIN_S)
+    R = round(STOP_REF_S / JOIN_WIN_S)
+    past = np.lib.stride_tricks.sliding_window_view(np.concatenate([np.full(R, np.nan), L[:-1]]), R)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # (the first window has nothing before it: all NaN)
+        ref = np.nanpercentile(past, 90, axis=1)
+    vw = None
+    if active is not None:
+        f = round(JOIN_WIN_S * 100)
+        a = np.pad(active, (0, max(0, nw * f - len(active))))[:nw * f]
+        vw = a.reshape(nw, f).any(axis=1)
+    need, after = round(STOP_MIN_S / JOIN_WIN_S), round(STOP_VOICE_S / JOIN_WIN_S)
+    out, k = [], 1
+    while k < nw:
+        thr = ref[k] - STOP_DB
+        # (the music was playing: its level before is over -60 dBFS; down to the end of the mix counts as staying down)
+        if np.isfinite(ref[k]) and ref[k] > JOIN_FLOOR_DBFS + 10 and np.all(L[k:k + need] < thr):
+            s = {"t": round(k * JOIN_WIN_S, 2), "ref_dbfs": r(ref[k]),
+                 "under_voice": bool(vw is not None and vw[k:k + after].any())}
+            while k < nw and L[k] < thr:  # on to where the music is back
+                k += 1
+            s["back"] = round(k * JOIN_WIN_S, 2) if k < nw else None
+            out.append(s)
+            continue
+        k += 1
+    return out
+
+
+def join_profile(bed: Power, mus: Power, t: float) -> tuple[dict, list[str]]:
+    """The bed (everything but the voice) and the music around t: 100 ms windows over +-JOIN_SPAN_S, and the hole
+    and surge read from them (HOLE_DB, SURGE_DB)."""
+    n = round(2 * JOIN_SPAN_S / JOIN_WIN_S)
+    starts = t - JOIN_SPAN_S + JOIN_WIN_S * np.arange(n)
+    B = np.maximum(bed.levels(starts, JOIN_WIN_S), JOIN_FLOOR_DBFS)  # (NaN stays NaN: outside the mix)
+    M = np.maximum(mus.levels(starts, JOIN_WIN_S), JOIN_FLOOR_DBFS)
+
+    def ix(sec: float) -> int:  # the window that starts `sec` from t
+        return round((sec + JOIN_SPAN_S) / JOIN_WIN_S)
+
+    def pmean(a: float, b: float) -> float | None:  # power mean of the windows in [t + a, t + b)
+        v = B[ix(a):ix(b)]
+        v = v[np.isfinite(v)]
+        return dbp(float(np.mean(10 ** (v / 10)))) if len(v) * 2 >= ix(b) - ix(a) else None
+
+    def quietest(a: float, b: float):  # the quietest 0.2 s (two windows, both under it) in [t + a, t + b)
+        v = B[ix(a):ix(b)]
+        pair = np.maximum(v[:-1], v[1:])
+        if not len(pair) or not np.isfinite(pair).any():
+            return None, None
+        k = int(np.nanargmin(pair))
+        return float(pair[k]), round(t + a + k * JOIN_WIN_S, 2)
+
+    before, after = pmean(-JOIN_SPAN_S, -0.2), pmean(0.2, JOIN_SPAN_S)
+    row: dict = {"before_dbfs": r(before), "after_dbfs": r(after),
+                 "step_db": r(after - before) if before is not None and after is not None else None}
+    tr, tr_at = quietest(-0.6, 0.9)
+    qb, _ = quietest(-JOIN_SPAN_S, -0.6)
+    qa, _ = quietest(0.9, JOIN_SPAN_S)  # (later on this side: an entrance takes a moment to arrive)
+    found = []
+    if tr is not None and qb is not None and qa is not None:
+        depth = min(qb, qa) - tr
+        row.update({"trough_dbfs": r(tr), "trough_at": tr_at, "hole_db": r(depth)})
+        if depth >= HOLE_DB:
+            found.append(f"a hole: the bed dips to {tr:.1f} dBFS for 0.2 s at {tr_at:.2f} s, {depth:.1f} dB under the "
+                         f"quietest of both sides ({qb:.1f} and {qa:.1f} dBFS)")
+    if before is not None and after is not None and after - before >= SURGE_DB:
+        # The first window near the point that arrives within 2 dB of the level after decides: a jump got there
+        # from 6 dB or more under it in 0.3 s; a ramp (a fade-in, the duck's release) arrives from closer.
+        k = next((k for k in range(max(3, ix(-0.3)), ix(0.5)) if np.isfinite(B[k]) and B[k] >= after - 2), None)
+        if k is not None and np.isfinite(B[k - 3]) and B[k] - B[k - 3] >= SURGE_DB:
+            to = t - JOIN_SPAN_S + (k + 1) * JOIN_WIN_S  # (the end of the window that arrives)
+            found.append(f"a surge: the bed comes up {after - before:+.1f} dB ({before:.1f} to {after:.1f} dBFS), "
+                         f"{B[k] - B[k - 3]:+.1f} dB of it in the 0.3 s to {to:.2f} s")
+    row["profile"] = {"from_s": round(t - JOIN_SPAN_S, 2), "window_s": JOIN_WIN_S,
+                      "bed_dbfs": [r(v) for v in B], "music_dbfs": [r(v) for v in M]}
+    return row, found
+
+
+def music_joins(bed: Power, mus: Power, active: np.ndarray | None, points: list[dict], dur: float,
+                declared: int) -> dict:
+    """The bed's energy around every point where the music's source changes (its start and end, and each join the
+    plan lists inside the music file) and every stop of the music under the voice and where it comes back: holes,
+    surges and stops, each listed as intended where the plan says so."""
+    stops = music_stops(mus, active, dur)
+    pts = [dict(p) for p in points if 0.05 < p["t"] < dur - 0.05]
+
+    def nearest(t: float):
+        p = min(pts, key=lambda p: abs(p["t"] - t), default=None)
+        return p if p is not None and abs(p["t"] - t) <= STOP_MERGE_S else None
+
+    for s in stops:
+        at = nearest(s["t"])
+        # An intended point anywhere in the stop, from STOP_MERGE_S before it to where the music comes back (or the
+        # end of the mix), says the silence is meant: it carries the stop when no point sits near its start, and
+        # lends the stop its reason when one does.
+        back = s["back"] if s["back"] is not None else dur
+        meant = next((p for p in pts if p.get("intended") and s["t"] - STOP_MERGE_S <= p["t"] <= back), None)
+        if at is None:
+            at = meant
+        if at is not None:
+            if "stop" not in at or (s["under_voice"] and not at["stop"]["under_voice"]):
+                at["stop"] = s
+                if meant is not None and not at.get("intended"):
+                    at["intended"] = meant["intended"]
+        elif s["under_voice"]:
+            at = {"t": s["t"], "kind": "stop", "source": "found on music-only.wav", "intended": None, "stop": s}
+            pts.append(at)
+        # Where the music comes back under the narration is a start like any other (a hard re-entrance surges),
+        # and as meant as the stop it ends.
+        if s["under_voice"] and s["back"] is not None and s["back"] < dur - 0.05 and nearest(s["back"]) is None:
+            pts.append({"t": s["back"], "kind": "music back", "source": "found on music-only.wav",
+                        "intended": at["intended"] if at is not None else None})
+    rows = []
+    for p in sorted(pts, key=lambda p: p["t"]):
+        row = {k: p.get(k) for k in ("t", "kind", "source", "note", "intended") if p.get(k) is not None}
+        row["t"] = round(p["t"], 2)
+        prof, found = join_profile(bed, mus, p["t"])
+        st = p.get("stop")
+        if st:
+            row.update({"stop_at": st["t"], "voice_after_stop": st["under_voice"]})
+            if st["under_voice"]:
+                found.append(f"the music stops at {st['t']:.2f} s while the voice goes on (it falls {STOP_DB:g} dB or "
+                             f"more under its {st['ref_dbfs']:.1f} dBFS of the {STOP_REF_S:g} s before)")
+        row.update({k: v for k, v in prof.items() if k != "profile"})
+        row["findings"] = found
+        row["status"] = ("intended" if p.get("intended") else "listed") if found else "clear"
+        row["profile"] = prof["profile"]
+        rows.append(row)
+    out = {"measured_on": "energy (dBFS RMS, not LUFS) of the bed without the voice (music and effects as mixed) in "
+                          "100 ms windows over +-1.5 s of each point; the stops on music-only.wav",
+           "window_s": JOIN_WIN_S, "span_s": JOIN_SPAN_S,
+           "bars": {"hole_db": HOLE_DB, "surge_db": SURGE_DB, "stop_db": STOP_DB, "stop_min_s": STOP_MIN_S},
+           "points": rows, "listed": sum(x["status"] == "listed" for x in rows),
+           "intended": sum(x["status"] == "intended" for x in rows), "note": STEM_NOTE}
+    if not declared:  # (kept in the report; the summary prints it on a music file's first build only)
+        out["inside_the_music"] = ("no music.joins in the plan: joins inside the music file (a cut, a splice, a "
+                                   "crossfade, the next track) are measured only where music.joins lists them")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ build
 
 def locate_build(args) -> dict:
@@ -2020,6 +2444,9 @@ def cmd_build(args) -> dict:
     # When each effect lands, and the hits to report: from the plan and the video's timing data (cheap: no audio).
     for e in plan["effects"]:
         e["t"], e["source"] = resolve_when(e, data)
+    for j in (plan["music"] or {}).get("joins", []):
+        t, src = resolve_when(j, data)
+        j["t"], j["source"] = t, f"{j['where']} ({src})"
     hit_times = [(h, resolve_hit(h, data, {}, [], f"plan.hits[{i}]")) for i, h in enumerate(plan["hits"])]
 
     # Up to date? The fingerprint covers the plan, every input file, the timing data it read and this script.
@@ -2125,12 +2552,14 @@ def cmd_build(args) -> dict:
     mrow = None
     duck_db = None
     kv = None
+    m_span = None
     if has_music:
         mu = plan["music"]
         a0 = int(round(mu["from"] * SR))
         a1 = min(len(M), a0 + int(round(mu["dur"] * SR))) if mu["dur"] is not None else len(M)
         at = int(round(mu["at"] * SR))
         pa, pb = place(Mx, M[a0:a1], at)
+        m_span = (pa / SR, pb / SR)  # where the music starts and ends in the mix: two of its joins
         fade(Mx, pa, pb, mu["fade_in"], mu["fade_out"], a0 > 0, a1 < len(M) or at + (a1 - a0) > n)
         mend, avail = pb / SR, len(M) / SR - mu["from"]
         M = None
@@ -2290,7 +2719,6 @@ def cmd_build(args) -> dict:
                                  "end": float(s["end"]) + data.shift_audio})
     rep, curves, _ = analyze(mix_r, sections, [t for _, t in hit_times], k_mix, plan["hit_lu"], plan["build_lu"])
     rep.update(meas)
-    del mix_r
     km_r = KEnergy(mo_r, phone=False)
     mt_m, mv_m = km_r.curve(0.4, 0.1)
     curves["m_music"] = (mt_m - 0.2, mv_m)
@@ -2298,11 +2726,44 @@ def cmd_build(args) -> dict:
     # The balance as heard: the voice layer as it went into the mix against the written music-only stem, while the
     # voice speaks and in the pauses where the duck has fully released.
     V *= g_stem[:, None]
+    kv = KEnergy(V, phone=True) if has_voice else None
+    act_b = frames_to_blocks(active, len(kv.cnt)) if has_voice else None
+
+    # The stems as built, for the moments to listen to: the voice layer against everything else that plays, per
+    # narration line, and the bed's energy around the music's joins. mix.wav minus the voice layer as mixed is the
+    # bed (music and effects), made in place so no third full-length copy is held.
+    vob = joins = None
+    if has_voice or has_music:
+        for i0 in range(0, n, SR * 10):
+            mix_r[i0:i0 + SR * 10] -= V[i0:i0 + SR * 10]
+    if has_voice:
+        doc = words_doc if words_layer is None or words_layer.startswith("voice") else None
+        vlines, vwords, by = voice_lines(doc, data.shift_words, active, dur, words_layer is not None)
+        # (the plan's under_voice target; with music.gain_db set by hand, or no music, the default's 12 LU)
+        target_lu = (mrow or {}).get("under_voice_target", UNDER_VOICE_LU)
+        vob = voice_over_bed(kv, KEnergy(mix_r, phone=True), act_b, vlines, vwords, by, target_lu)
+    if has_music:
+        mu = plan["music"]
+        fo = f", fading out over {mu['fade_out']:g} s" if mu["fade_out"] > 0 else ""
+        pts = [{"t": m_span[0], "kind": "music starts", "intended": mu["intended_start"],
+                "source": "music.at" + (f", {mu['from']:g} s into its file" if mu["from"] > 0 else "")},
+               {"t": m_span[1], "kind": "music ends", "intended": mu["intended_end"],
+                "source": ("music.dur" if mu["dur"] is not None else "the end of the music file") + fo}]
+        for j in mu["joins"]:
+            if not 0 < j["t"] < dur:
+                notes.append(f"{j['where']} at {j['t']:.2f} s lies outside the mix (0-{dur:.2f} s): not measured")
+            pts.append({"t": j["t"], "kind": "join", "source": j["source"], "note": j["note"],
+                        "intended": j["intended"]})
+        joins = music_joins(Power(mix_r), Power(mo_r), active if has_voice else None, pts, dur, len(mu["joins"]))
+    del mix_r
+    # Whether this build is the first with its music file (new to the plan, or changed): the summary prints the
+    # note on joins inside the music then, not on every build of a single-track score.
+    music_rel = relpath(plan["music"]["file"], root) if has_music else None
+    music_new = has_music and (old or {}).get("inputs", {}).get(music_rel) != inputs.get(music_rel)
+
     balance = {}
     if has_voice:
-        kv = KEnergy(V, phone=False)
         nb = len(kv.cnt)
-        act_b = frames_to_blocks(active, nb)
         lv = kv.masked(act_b)
         balance["voice_lufs_speaking"] = r(lv)
         if has_music:
@@ -2385,7 +2846,8 @@ def cmd_build(args) -> dict:
     draw_png(png, title, rep, curves, {"marks": marks, "duck": duck_panel})
     if in_project_cache:
         notes.append(cache_size_note(in_project_cache, ctx["w"]))
-    rep_out = {"file": relpath(mix_path, root), **rep, "png": relpath(png, root), "time_origin": TIME_ORIGIN}
+    rep_out = {"file": relpath(mix_path, root), **rep, "png": relpath(png, root), "voice_over_bed": vob,
+               "music_joins": joins, "time_origin": TIME_ORIGIN}
     write_json(jpath, rep_out)
 
     for row in frows:
@@ -2415,6 +2877,7 @@ def cmd_build(args) -> dict:
                                              "integrated_lufs_phone", "first_sound_s", "dead_tail_s",
                                              "quiet_intro_s", "last_2s_lufs")},
         "balance": balance, "hits": rep["hits"], "warnings": rep["warnings"], "sync": sync,
+        "voice_over_bed": vob, "music_joins": joins,
         "stems_residual_dbfs": r(dbv(resid)),
         "outputs": {"mix.wav": sha256(mix_path), "music-only.wav": sha256(mo_path)},
         "notes": notes, "time_origin": TIME_ORIGIN,
@@ -2422,7 +2885,68 @@ def cmd_build(args) -> dict:
     write_json(rec_path, record)
     return {"ok": True, "status": "built", "round": rnd, "record": record, "ctx": ctx, "rep": rep,
             "archived": rnd_note, "hints": hints, "png": png, "json": jpath, "files": [mix_path, mo_path, rec_path],
-            "uv_cache": uv_cache()}
+            "music_new": music_new, "uv_cache": uv_cache()}
+
+
+PRINTED_MAX = 10  # moments printed per check; the rest are in mix-report.json
+
+
+def short(s: str | None, n: int = 48) -> str:
+    return "" if not s else s if len(s) <= n else s[:n - 3].rstrip() + "..."
+
+
+def print_stem_checks(rec: dict, music_new: bool = False) -> None:
+    """The two lists of moments to listen to (voice over the bed, music joins), from the record. music_new: the
+    build is the first with its music file, the one time the note on joins inside the music is printed."""
+    vob, joins = rec.get("voice_over_bed"), rec.get("music_joins")
+    if vob:
+        lines = vob["lines"]
+        listed = [x for x in lines if x["findings"]]
+        skipped = vob.get("unmeasured") or 0
+        head = (f"  voice over the bed (each of the {len(lines)} {vob['by']}"
+                + (f", {skipped} more not measured: shorter than 100 ms or no speech in them" if skipped else "")
+                + ": the voice as mixed against music and effects, K-weighted in 100 ms windows, the worst one above "
+                  "300 Hz)")
+        if not lines:
+            print(head + ": no speech to measure")
+        else:
+            worst = min(lines, key=lambda x: x["worst_lu"])
+            vm = vob.get("video_median_lu")
+            median = (f"median line {vm:.1f} LU under the voice" if vm is not None else
+                      f"no line has music or effects within {VOB_CLEAR_LU:g} LU of the voice")
+            print(head + f": {median}, worst 100 ms {worst['worst_lu']:.1f} LU at {worst['worst_at']:.2f} s; "
+                  + (f"{len(listed)} to listen to:" if listed else
+                     f"none under the bars ({VOB_MEDIAN_LU:g} LU on median, {VOB_WORST_LU:g} LU in a window, "
+                     f"{VOB_UNDER_VIDEO_LU:g} LU under the median line)"))
+        for x in listed[:PRINTED_MAX]:
+            txt = short(x.get("text"))
+            print(f"    {x['start']:.2f} s  {'line' if x.get('text') is not None else 'voice region'} {x['i']}"
+                  + (f' "{txt}"' if txt else "") + f" ({x['start']:.2f}-{x['end']:.2f} s): " + "; ".join(x["findings"]))
+        if len(listed) > PRINTED_MAX:
+            print(f"    ({len(listed) - PRINTED_MAX} more in mix-report.json)")
+    if joins:
+        pts = joins["points"]
+        which = (", ".join(f"{p['kind']} {p['t']:.2f} s" for p in pts[:6]) + (", ..." if len(pts) > 6 else "")
+                 if pts else "none inside the mix")
+        print(f"  music joins (energy of the bed without the voice, dBFS RMS in 100 ms windows over +-1.5 s: not "
+              f"LUFS): {len(pts)} point(s) ({which}); "
+              + (f"{joins['listed']} to listen to" if joins["listed"] else "nothing listed")
+              + (f", {joins['intended']} intended" if joins["intended"] else ""))
+        shown = [p for p in pts if p["status"] != "clear"]
+        for p in shown[:PRINTED_MAX]:
+            why = "; ".join(p["findings"])
+            label = p["kind"] + f" ({p['source']}" + (f', "{short(p["note"], 40)}"' if p.get("note") else "") + ")"
+            if p["status"] == "intended":
+                print(f"    {p['t']:.2f} s  intended ({short(p['intended'], 60)}): {label}: {why}")
+            else:
+                print(f"    {p['t']:.2f} s  {label}: {why}")
+        if len(shown) > PRINTED_MAX:
+            print(f"    ({len(shown) - PRINTED_MAX} more in mix-report.json)")
+        if joins.get("inside_the_music") and music_new:
+            print(f"    note: {joins['inside_the_music']}")
+    if vob or joins:
+        print("    (measurements, not a judgement of how it sounds: listen at each time, ?v=<video>&t=<seconds> a "
+              "second or two before, before changing anything)")
 
 
 def print_build(res: dict) -> None:
@@ -2440,6 +2964,11 @@ def print_build(res: dict) -> None:
               f"  report: {relpath(png, root)} is gone (out/ is not kept): --force rebuilds it, or run measure on mix.wav")
         for s in rec.get("warnings") or []:
             print(f"  {s}")
+        if "voice_over_bed" in rec or "music_joins" in rec:
+            print_stem_checks(rec)
+        else:  # (a record from before these checks: the audio is the same, only the report lacks them)
+            print("  note: this round's record predates the voice-over-bed and music-join checks: --force measures "
+                  "them")
         for s in (rec.get("notes") or []) + ([res["uv_cache"]["note"]] if res.get("uv_cache") else []):
             print(f"  note: {s}")
         for h in res.get("hints") or []:
@@ -2521,6 +3050,7 @@ def print_build(res: dict) -> None:
         else:
             print(f"  words.json vs the voice: {sy['matched']}/{sy['lines']} lines start within {sy['worst_ms']:.0f} ms "
                   f"({sy['worst_frames']:.2f} frames at {sy['fps']:g} fps) of the voice's measured onset")
+    print_stem_checks(rec, res.get("music_new", False))
     print(f"  stems: music-only.wav is the music exactly as in the mix (same gain, ducking and limiter); mix minus it "
           f"leaves voice and effects (residual {rec['stems_residual_dbfs']} dBFS)")
     flags = summary_flags(res["rep"])
@@ -2582,6 +3112,11 @@ def parse_sections(spec: str | None, dur: float, default_json: Path | None, root
     return secs, {}, "inline"
 
 
+MEASURE_NO_STEMS = ("voice over the bed and the music's joins are not measured on a finished file: they need the "
+                    "plan's stems (the voice apart from music and effects, and where the music's source changes), so "
+                    "mix.py build measures them, in out/<video>/mix-report.json")
+
+
 def cmd_measure(args) -> dict:
     need_ffmpeg()
     path = Path(args.audio)
@@ -2612,7 +3147,8 @@ def cmd_measure(args) -> dict:
     draw_png(png, title, rep, curves)
     rep["png"] = relpath(png, proj)
     rep["uv_cache"] = uv_cache()
-    rep["notes"] = (summary_flags(rep) + ([cache_size_note(in_project_cache, w)] if in_project_cache else [])
+    rep["notes"] = (summary_flags(rep) + [MEASURE_NO_STEMS]
+                    + ([cache_size_note(in_project_cache, w)] if in_project_cache else [])
                     + ([rep["uv_cache"]["note"]] if rep["uv_cache"] else []))
     rep["time_origin"] = time_note(path.name, priming(path))
     jpath = out_dir / f"loudness-{path.stem}.json"
@@ -2687,7 +3223,9 @@ writes (in a project):
   videos/<video>/audio/mix.wav                 48 kHz 24-bit stereo, at the delivery loudness
   videos/<video>/audio/music-only.wav          the music exactly as in the mix (same gain, ducking, limiter)
   videos/<video>/audio/mix.wav.request.json    the plan, input hashes, resolved times and levels, measurements
-  out/<video>/mix-report.png, .json            loudness curves (mix, phone, music-only), ducking, effects, hits
+  out/<video>/mix-report.png, .json            loudness curves (mix, phone, music-only), ducking, effects, hits;
+                                               the JSON also voice_over_bed (each line's margin, its worst 100 ms)
+                                               and music_joins (each point's profile and what was found there)
   out/<video>/mix-rounds/round-NN-*            the previous round (FLAC) and its record, kept for A/B
 
 """ + PLAN_HELP
@@ -2711,7 +3249,8 @@ bars, 0 none): reports, not gates. The measured onset is where the hit's attack 
 0.5 s, weighted toward the hit's time (both channels' K-weighted power, 50 ms after against 30 ms before), traced
 back to where it rises fastest; a swell (under 3 dB) has none. Section loudness is ungated (each span as one
 window); "rise" is each section against the one before. Writes out/<video>/loudness-<file>.png and .json (outside
-a project: ./out/ or --out)."""
+a project: ./out/ or --out). The voice over the bed and the music's joins need the plan's stems: build measures
+them (mix.py build --help)."""
 
 
 TOP_EPILOG = """\
@@ -2794,6 +3333,7 @@ def main(argv=None) -> int:
                                 "report": relpath(res["json"], res["ctx"]["project"])})
                 out["hints"] = res.get("hints") or []
                 out.update({k: res["record"].get(k) for k in ("measured", "balance", "hits", "warnings", "sync",
+                                                              "voice_over_bed", "music_joins",
                                                               "notes", "changed_since_previous", "resolved")})
                 out["uv_cache"] = res.get("uv_cache")
                 print(json.dumps(clean(out), indent=1, ensure_ascii=False))

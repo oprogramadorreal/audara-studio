@@ -261,9 +261,20 @@ report, that asking again for takes that exist buys nothing, and that after a pa
 block with takes they are reused for free and can be picked under its new number. It needs ffmpeg, and takes
 under a minute.
 
+`test_mix_measure.py` checks `mix.py build`'s two lists of moments to listen to, on synthetic stems built
+through a small mix.json (it needs ffmpeg). With a planned hole, a surge, a stop under the voice and its hard
+return, an intended silence, the music ending under the last line on purpose, a loud effect over one line and a
+loud section under another, each is listed or listed as intended. A clean variant lists nothing, with and without
+words.json: drums whose 100 ms windows swing 10 dB, a crossfade join, and an effect the solver levels. It also
+covers the two joins the devlogs measured, a ramp before a join that isn't a surge, an intended join inside a
+silence, the music's start and end intents apart, the median line over silence and room tone, a line at the
+plan's `under_voice`, a line shorter than a window, builds with no line over a bed (voice only, music only
+before the voice), plan mistakes as usage errors, and `measure` saying it needs the plan.
+
 ```sh
 uv run evals/tests/test_imagegen.py
 uv run evals/tests/test_eleven_pitch.py
+uv run evals/tests/test_mix_measure.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts

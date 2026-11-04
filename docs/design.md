@@ -591,8 +591,9 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   would make every video sound the same. The order is the director's library, then generated music after a
   yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses
   when asked to, says it chose by measurement and offers a `?t=` link to every join. `mix.py` takes one music
-  file, so a score cut from several tracks is assembled by a script in the project. A cue list in `mix.py`
-  waits until runs show how much that assembly costs.
+  file, so a score cut from several tracks is assembled by a script in the project. The agent lists that
+  file's joins in mix.json's `music.joins`, so the build measures the bed around each ("What mix.py lists to
+  listen to", below). A cue list in `mix.py` waits until runs show how much that assembly costs.
 - **The images are the author's own,** made with ChatGPT's image model and shipped under the plugin's MIT
   license. They were re-encoded from 16 MB of PNG to 2.5 MB of JPEG, with no difference visible at 2x zoom.
   They guide the code and never appear in a video.
@@ -960,6 +961,41 @@ Lessons from pdoom-video's explainer are in `references/elevenlabs.md` (from its
 no ElevenLabs"): one voice and the same settings for every file; one paragraph of text is one block, and
 the picture cuts in the silence between blocks; acronyms read better written as they appear on screen
 than spelled out; generate the key lines several times and keep the most natural take.
+
+### What mix.py lists to listen to
+
+`mix.py build` measures the whole mix (loudness, true peak, each hit and the build into it). From the stems it
+built, it also lists moments to listen to, each with its time for a `?t=` link. They are measurements, never a
+verdict on how it sounds, and never a failure:
+
+- **Voice over the bed, per narration line** (each `data/words.json` line timed to the voice, else each stretch of
+  speech): the voice layer as mixed against everything else in the mix, K-weighted, in 100 ms windows. A line is
+  listed in three cases:
+  - the bed sits under 10 LU below the voice on median. Torcoli et al. (AES 2019) recommend at least 10 LU
+    between commentary and music; `under_voice`'s 12 is that plus a margin.
+  - its worst 100 ms above 300 Hz comes within 3 LU, an effect over a word. One window is enough, so a short
+    event isn't averaged into the line. Above 300 Hz, because a kick under a word doesn't bury it.
+  - it sits 4 LU or more under the video's median line, while under the plan's `under_voice`. The median is
+    taken over the lines whose bed comes within 15 LU: lines over silence or room tone would pull it up until
+    lines at the default level were listed.
+
+  A line shorter than a 100 ms window, or with no speech in it, isn't measured.
+- **Music joins:** points around the music's start and end, each join the plan lists inside the music file
+  (`music.joins`), and each stop of the music under the voice and where it comes back. At each, the bed's energy
+  in 100 ms windows over ±1.5 s (dBFS RMS, not LUFS). Listed: a hole, a surge, a stop under the voice. Only the
+  arrangement knows where a spliced score's joins are, so the agent lists them, placed by the same anchors as an
+  effect. `"intended": "<why>"` on a join lists what is found there as intended, not as a candidate; on a join
+  anywhere inside a silence, it covers the stop and the return. The music's own entrance and end take
+  `intended_start` and `intended_end`, apart, so excusing a hard entrance doesn't hide a stop at the end.
+
+Why: in two devlogs (one 16 minutes long, one 13) the director raised about a dozen music notes each. The music
+cut abruptly, a join left a hole or a surge, the music stopped under the narration, a line was buried by music
+or by a loud effect. The agent judged mixes by whole-mix loudness. It built a check of the voice against the rest
+in both projects, and 100 ms measures of a join in one, each only after a note. `measure` gets a finished file
+with no stems, so it says these need the plan and skips them.
+
+Left out: finding joins inside a music file by analysis (the music's own section changes would read as joins),
+separating a finished file's voice from its music, and any judgement of how it sounds.
 
 ### Adding more tools later
 

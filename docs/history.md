@@ -31,6 +31,7 @@ Contents
 - The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
 - Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
 - Disk: clean up on request, keep what the next round needs (0.11.0, 2026-11-03)
+- The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
 
 ## Definition of done
 
@@ -3384,3 +3385,102 @@ Considered and left out:
 - **Smaller critic frames** (JPEG or a lower size): they would change what the critics judge, as smaller drafts
   would have (0.7.1).
 - **A README line:** the README states no disk behavior.
+
+## The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
+
+Two devlogs of game remakes made with the plugin, one 16 minutes long and one 13, drew about a dozen music notes
+each from the director. The music cut abruptly; a join left a hole or a surge; the music stopped under the
+narration; a line was buried by the music or by a loud effect. The agent had judged the mix by whole-mix
+loudness, and in each project built its own measure only after a note:
+
+- **The first devlog,** a round of notes: a splice had moved into a quiet bridge (-17 dB) and jumped into the loud
+  final section (-8.5 dB, "twice as bright"). A per-line voice-to-background script found one line's bed (the
+  game's own music) 10.5 dB under the voice and another line at 8.1 dB, against a median line of 13.5.
+- **The same devlog, a later round** (0.1 s windows, after a note on an entrance): the mix sat at -30..-32 dBFS
+  for 0.3 s after a cut, then the music came up 10 dB over 0.6 s. After the fix the trough measured -26, and a
+  0.2 s low at -31..-35 remained just before the cut, noted as "the breath before the whoosh's rise".
+- **The second devlog:** a script of the agent's own (in the project's cache) measured every spoken word against
+  music and effects in a 300-3400 Hz band and listed the words under 3 dB.
+
+What changed, in `mix.py build` only (the audio it makes is the same, so `MIX_VERSION` stays):
+
+- **Voice over the bed,** per `data/words.json` line timed to the voice (or per stretch of speech without one).
+  The voice layer as mixed against everything else in the mix, K-weighted, 100 ms windows every 10 ms. A line is
+  listed in three cases:
+  - its median margin is under 10 LU (Torcoli et al., AES 2019: at least 10 LU between commentary and music);
+  - its worst window, read above 300 Hz, is under 3 LU (the second devlog's bar; the Speech Intelligibility
+    Index counts speech half audible at 0 dB over the noise);
+  - it sits 4 LU or more under the video's median line, while under the plan's `under_voice` (Torcoli et al.:
+    non-experts wanted 4 LU more than experts). The median is taken over the lines whose bed comes within 15 LU
+    (Torcoli et al.'s bar over ambience).
+
+  A line shorter than a 100 ms window, or with no speech in it, isn't measured.
+- **Music joins:** the music's start and end, each `music.joins` entry, each stop of the music under the voice
+  and where it comes back. At each, the energy of the bed without the voice (dBFS RMS, not LUFS) in 100 ms
+  windows over ±1.5 s. Listed: a hole (6 dB under the quietest 0.2 s of both sides), a surge (6 dB up, the jump
+  within about 0.3 s), a stop under the voice (30 dB down for 0.5 s or more). `music.joins` takes a time or an
+  effect's anchors: `mix.py` takes one music file, so only the arrangement knows where its joins are, and the
+  agent lists them. An optional `"intended": "<why>"` on a join lists what is found there as intended; on a join
+  anywhere from where the music stops to where it comes back, it covers the stop and the return.
+  `intended_start` and `intended_end` on the music do the same for its entrance and its end, each on its own.
+- **In the record, `mix-report.json` and the summary,** each with its time for a `?t=` link, under a line saying
+  these are measurements, not a judgement of how it sounds. An up-to-date mix prints them from its record; a
+  record from before says `--force` measures them. A plan without `music.joins` gets a note that joins inside
+  the music are measured only where listed, printed on the first build with that music file. `measure` gets a
+  finished file with no stems: it says these need the plan and skips them.
+- **soundtrack's score reference and its Mix step** ask the agent to list a spliced file's joins in
+  `music.joins`, to mark the stops it chose as intended, and to report what the build listed.
+
+Found on the way, and changed before the commit:
+
+- **The worst window at full range** put init's demo kick within 3.5 LU of a voice set 12 LU over it. Above
+  300 Hz the same window reads 10.9.
+- **A first surge rule** passed a duck's release that ended 0.1 s before a join. The rule now looks for the first
+  window to arrive within 2 dB of the level after, and asks for a 6 dB rise in the 0.3 s before it.
+- **The median line** counted lines over silence (capped at 40 LU), which would have listed every line with music
+  under it. It now counts only lines with a bed.
+- **Demo words timed to the music** were taken as the voice's lines, as the sync check takes them. Lines with no
+  hash now count only when the voice speaks through half their time or more.
+
+An independent review of the branch confirmed the audio was unchanged (`mix.wav` byte for byte) and found six
+more, each reproduced and fixed:
+
+- **No line with a bed under it crashed the build.** With no music, or music only before the first line, every
+  line read the 40 LU cap and left no median line. The summary formatted that as a number, so the build exited
+  1 after writing its files, and every up-to-date run of the same plan did again from the record. It now says
+  no line has music or effects within 15 LU of the voice.
+- **A line shorter than a window** (60 ms, just before the next one) took a window reaching into the next line:
+  voice -120 LUFS, a median 95.7 LU under zero, "88.1 LU over the voice", and it entered the median. Windows now
+  lie inside their line, and such a line is left unmeasured.
+- **The median line still counted room tone:** lines over -52 dBFS noise pulled it up until lines at the default
+  12 LU read "16.8 LU closer than the video's median line". It now counts lines under 15 LU only, and the rule
+  leaves out a line at or above the plan's `under_voice`.
+- **An intended silence counted only within 0.5 s of the stop:** an intended join at 4 s in a silence from 3 to
+  5 s left both the stop and the return listed. A join anywhere in the stop now covers it.
+- **One `"intended"` on the music covered both its ends,** and a hard entrance is always a surge, so excusing it
+  hid a stop under the voice at the end. Now `intended_start` and `intended_end`; `"intended"` on the music is a
+  usage error that names both.
+- **The note on joins inside the music printed on every build** of a single-track score. It now prints once per
+  music file.
+
+What was checked:
+
+- **`uv run evals/tests/test_mix_measure.py`:** 15 tests pass. They build planned stems (the problems above,
+  each listed or listed as intended) and a clean variant (nothing listed). They also check the devlogs' two joins
+  modelled, a ramp before a join, the median line over silence and over room tone, a line at the plan's
+  `under_voice`, a line shorter than a window, an intended join inside a silence, the music's start and end
+  intents apart, builds with no line over a bed (voice only, music only before the voice) and their up-to-date
+  runs, plan mistakes and `measure`'s note. Run against the commit before the review, five of the six tests
+  added for it fail (the sixth needs the new keys); the two builds exit 1 there, on the crash above.
+- **Plain mixes of init's demo track** in a scratch project: music alone, with joins at its three section edges,
+  under a synthetic narration (ducked and not), and with a voice away from its words. Nothing was listed. The
+  line medians sat at 11.4-13.3 LU and the worst windows at 10.6 LU or more. The joins' steps ran from -6.1 to
+  +1.8 dB (the -6.1 the duck coming in under a line 0.4 s after the join) and their holes reached 1.6 dB at most.
+- **The same plan built by `main` and by this branch** (the demo track under the synthetic narration) wrote the
+  same `mix.wav` and `music-only.wav`, byte for byte.
+- **Not run:** a real project's mix (the two devlogs were evidence only, not run), and anyone listening.
+
+Considered and left out:
+- **Finding joins inside a music file by analysis:** the music's own section changes would read as joins.
+- **Separating a finished file** into voice and music for `measure`.
+- **The speech band alone for the median:** Torcoli's 10 LU and `under_voice` are full-range K-weighted.
