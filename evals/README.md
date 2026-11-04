@@ -256,7 +256,8 @@ frame and each of its sub-frames shows (rates, offsets, an entry starting betwee
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
 lets go (never the latest rounds', those of a prepare render.ts waits for, its clips asked one after another
 included, or the one on screen while its shot is in use; 150 shots played one after another stay within it,
-and a still back in the first loads it again).
+and a still back in the first loads it again). On the real `Footage` class, with three, fetch and the decoder
+stubbed: a frame the preview loads on demand after four seeks fill the budget stays, fetched once.
 `test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
 synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to

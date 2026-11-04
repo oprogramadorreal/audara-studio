@@ -31,8 +31,36 @@ const drop = (held: Held[], cap: number, round: number, waited: number[] = [], p
 function check(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
 }
-const cases: [string, () => void][] = [];
-const test = (name: string, run: () => void) => cases.push([name, run]);
+const cases: [string, () => void | Promise<void>][] = [];
+const test = (name: string, run: () => void | Promise<void>) => cases.push([name, run]);
+
+/**
+ * The whole of footage.ts, with three, the video's settings, fetch and the image decoder stubbed: the real Footage
+ * class and its budget, for what only they decide together (which frames stay when one arrives). A frame's
+ * "bitmap" is its URL.
+ */
+function realFootage() {
+  const ts = source
+    .replace("import * as THREE from 'three';", "const THREE = { Texture: class { image: unknown = null; needsUpdate = false; version = 0; colorSpace = ''; minFilter = 0; magFilter = 0; generateMipmaps = true; flipY = true; dispose() {} }, SRGBColorSpace: 'srgb', NearestFilter: 1, LinearFilter: 2 };")
+    .replace("import { VIDEO } from '../video';", 'const VIDEO = { fps: 60 };')
+    .replace('import.meta.env.BASE_URL', "'/'");
+  check(!/^import /m.test(ts), 'footage.ts has an import this test does not stub');
+  const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(ts).replace(/^export /gm, '');
+  const fetched: string[] = [];
+  const fetchStub = async (url: string) => { fetched.push(url); return { ok: true, status: 200, blob: async () => url }; };
+  const decode = async (blob: string) => ({ url: blob, close() {} });
+  const mod = new Function('fetch', 'createImageBitmap', `${js}\nreturn { Footage, footageRound, BUDGET };`)(fetchStub, decode);
+  return { ...mod, fetched } as {
+    Footage: new (o: { base: string; frames: number; fps?: number; full: boolean }) => {
+      prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; index(t: number): number;
+      has(i: number): boolean; held(): unknown[];
+    };
+    footageRound(ask: () => void, waited?: boolean): () => void;
+    BUDGET: { full: number; proxy: number };
+    fetched: string[];
+  };
+}
+const settle = () => new Promise((r) => setTimeout(r, 20));
 const shot = (o: Partial<Shot> = {}): Shot => ({ start: 0, fps: 60, rate: 1, offset: 0, frames: 100000, ...o });
 /** The frame shown at video frame n of a video at `fps`, and at every sub-frame of it (offsets -0.5..0.5 at shutter 1). */
 function framesAt(n: number, fps: number, o: Shot) {
@@ -231,9 +259,31 @@ test('150 shots played one after another stay within the budget, and a still bac
   check(before.end >= 150 + 2 && before.pictures === 150, `the rule before held ${before.end}, ${before.pictures} pictures`);
 });
 
+test('a frame the preview loads on demand stays: a step back after four seeks shows it', async () => {
+  const { Footage, footageRound, BUDGET, fetched } = realFootage();
+  const clip = new Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
+  // the preview's look-ahead after four seeks (main.ts: prepare(t - 0.25, t + 2, true)), a round each: about 136
+  // proxies apiece, all four protected, past the budget of 360 together
+  for (const t of [10, 20, 30, 40]) {
+    let p: Promise<void> = Promise.resolve();
+    footageRound(() => { p = clip.prepare(t - 0.25, t + 2); });
+    await p;
+  }
+  check(clip.held().length > BUDGET.proxy, `the four look-aheads held ${clip.held().length} proxies, within ${BUDGET.proxy}`);
+  // a step back of 0.4 s, under the 0.5 s that starts another look-ahead: only frame() asks for it
+  const i = clip.index(39.6), url = `/footage/s/proxy/${String(i + 1).padStart(6, '0')}.jpg`;
+  check(!clip.has(i), `frame ${i} was loaded already`);
+  clip.frame(39.6); // (the nearest loaded frame stands in while it loads)
+  await settle();
+  check(clip.has(i), `frame ${i} was let go as soon as it arrived`);
+  check((clip.frame(39.6).image as { url: string }).url === url, 'the texture does not show it');
+  await settle();
+  check(fetched.filter((u) => u === url).length === 1, `frame ${i} was fetched ${fetched.filter((u) => u === url).length} times`);
+});
+
 let passed = 0;
 for (const [name, run] of cases) {
-  try { run(); passed++; console.log('PASS ' + name); }
+  try { await run(); passed++; console.log('PASS ' + name); }
   catch (e) { console.log('FAIL ' + name + ': ' + (e as Error).message); }
 }
 console.log(`${passed}/${cases.length} checks passed`);

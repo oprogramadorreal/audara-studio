@@ -352,7 +352,8 @@ override dispose() { this.clip.dispose(); }
 - **Memory.** One budget over every shot on the page holds 72 decoded full frames (about 600 MB at 1080p)
   and 360 proxies. Past it, the least recently asked for are let go, but never the one a shot shows while
   it plays, nor one asked since a prepare render.ts waits for began, until it settles and for a few prepares
-  after: a frame about to be drawn stays (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p).
+  after, nor one the preview loads on demand for the frame it draws: a frame about to be drawn stays
+  (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p).
   Every scene of the timeline stays loaded, so a shot that has played lets its last frame go too, with its
   texture's GPU copy, and loads it again when it's shown again (in the preview, black until the first frame
   is in): a devlog's 140 shots stay within the budget. Those kept can

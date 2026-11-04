@@ -814,7 +814,10 @@ it (`src/engine/footage.ts`):
 - One memory budget over every shot lets the least recently asked frames go, never one asked since a prepare
   render.ts waits for began, until it settles and for a few prepares after, nor those of the latest rounds.
   A scene may ask for its clips one after another, each once the last has loaded, while the look-ahead asks
-  for more: the frames about to be drawn still stay. The frame on a shot's texture stays only while that shot
+  for more: the frames about to be drawn still stay. So does a frame the preview loads on demand for the frame
+  it draws: unasked, it was the oldest the moment it arrived, and after a few seeks filled the budget with
+  protected look-aheads, a step back too short to start another left the stand-in up and fetched it on every
+  draw (Codex's review). The frame on a shot's texture stays only while that shot
   is in use (asked for or drawn in the kept rounds): the engine keeps every scene loaded, so a shot that has
   played lets its last frame and its GPU copy go, and is prepared again before it is drawn again (in the
   preview it shows black until its frame is back).

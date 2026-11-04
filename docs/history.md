@@ -4010,4 +4010,13 @@ What was checked:
   listen to (a paragraph at 9.7 LU no longer listed on median under its plan's 11), the plan's note, and "none
   declared inside the music file".
 - **`test_eleven_pitch.py`** 13/13, **`test_footage.ts`** 23/23, **`test_render_inputs.ts`** 17/17, rerun unchanged.
+- **Codex's review of the whole PR** against `main` found one more, in streamed footage. In the preview,
+  `frameAt()` loaded a frame no prepare had asked for without marking it asked. After a few seeks, the four
+  protected look-aheads (about 136 proxies each) held more than the budget of 360. A step back of 0.4 s,
+  under the 0.5 s that starts another look-ahead, then loaded the frame, and the budget let it go at once as the
+  oldest. The stand-in stayed up and the frame was fetched again on every draw. It now counts as asked in the
+  latest round. `test_footage.ts` gains a check on the real `Footage` class (three, the video's settings, fetch
+  and the decoder stubbed) that fails before the fix ("frame 2376 was let go as soon as it arrived") and passes
+  after, the frame fetched once: 24/24. `test_render_inputs.ts` 17/17 and `test_render_failures.ts` 13/13. A
+  project made by init from the fixed template passes `bun run check` and `verify` (117 renders, 0 mismatched).
 - **Not run:** any task eval, routing on either tool (no description changed), and anyone listening.

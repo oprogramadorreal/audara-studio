@@ -29,6 +29,7 @@
 // nor one asked since a prepare render.ts waits for began, until that prepare settles and then while it is
 // one of the latest PROTECT such (footageRound): verify prepares two moments, then renders both, and a scene
 // whose prepare awaits its clips one after another asks for the later ones after its round's first call.
+// A frame the preview's frame() loads on demand (one no prepare asked for) counts as asked in the latest round.
 // Nor the frame a Footage shows while that Footage is in use, asked for or drawn in those rounds: the engine
 // keeps every scene of the timeline loaded, and a long devlog plays 140 shots, so a shot that has played lets
 // its last frame go like any other, its texture's GPU copy with it, and is prepared again before it is drawn
@@ -266,6 +267,11 @@ export class Footage {
         throw new Error(`footage ${this.o.base}: frame ${i + 1} (${this.url(i)}) wasn't prepared: the scene's prepare() must ask for every time it shows (a stateful scene's preroll too, unless it skips the footage while f.preroll is true), and one call loads at most ${this.cap} frames (BUDGET)`);
       let best = Infinity;
       for (const k of this.cache.keys()) if (Math.abs(k - i) < best) { best = Math.abs(k - i); use = k; }
+      // (asked in the latest round, as a prepare's frames are: unasked, it would be the oldest the moment it
+      // arrives, and let go at once whenever the protected rounds fill the budget, say after a few seeks in the
+      // preview and a step back too short to start another look-ahead, leaving the stand-in up and the frame
+      // fetched again on every draw)
+      this.asked.set(i, ROUND);
       this.load(i).catch(() => {});
     }
     if (use >= 0 && use !== this.shown) {
