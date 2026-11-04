@@ -45,10 +45,11 @@ splice landing in a louder section, music stopping under the voice, words lost u
   grid when the picture syncs to the music.
 - **The joins go in the mix plan too:** `mix.py` sees one music file and can't tell where a spliced one changes
   track, so list each join in mix.json's `music.joins`, anchored as the arrangement's cues are (a word, a cue or a
-  time). A stop or a silence you chose takes `"intended": "<why>"` on a join inside it, and the music's own
-  entrance and end take `intended_start` and `intended_end`. `mix.py build` then lists the joins with a hole, a
-  surge or a stop under the voice, and the lines the music or an effect may bury: measured, not heard, each a
-  moment for the director to listen to, with its `?t=` link.
+  time). A stop or a silence you chose takes `"intended": "<why>"` on a join inside it (it covers where the
+  music comes back too, a join listed there included), and the music's own entrance and end take
+  `intended_start` and `intended_end`. `mix.py build` then lists the joins with a hole, a surge or a stop
+  under the voice, and the lines the music or an effect may bury: measured, not heard, each a moment for the
+  director to listen to, with its `?t=` link.
 - **Retime the picture to the music** where an action should land on a hit, not only the music to the picture.
 
 ## Under the voice
@@ -57,7 +58,8 @@ splice landing in a louder section, music stopping under the voice, words lost u
 is an average: a dark voice under bright tracks can still lose its consonants, and a loud effect or game sound
 on top of the bed can bury a phrase the average calls fine. Check the voice's presence band (about 1-4 kHz)
 against everything else on `mix.wav`, with `mix.py measure`'s phone check too, line by line (`mix.py build` lists
-the lines where the bed comes close: start there). Where it is masked,
+the lines where the bed comes close, and measures the speech no `words.json` line times, such as a second voice
+file, by its regions: start there). Where it is masked,
 find which layer masks it (the music, an effect, a game sound) and change that one: dip the music's presence band
 under the words from the arrangement (holding the dips through short breaths, so it doesn't pump between
 sentences), or lower or move the effect. A track the director says is a little loud everywhere it plays comes

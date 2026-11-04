@@ -261,10 +261,11 @@ synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to
 catch a plainer picker (or this one without its octave guard); the distance from the kept blocks around a take
 and its "check by ear" mark; and, end to end against the mock ElevenLabs server (served in-process, its files in
-a temp folder), that take 1 of a block that has its file is that file, copied for free and labelled in the
-report, that asking again for takes that exist buys nothing, and that after a paragraph is inserted before a
-block with takes they are reused for free and can be picked under its new number. It needs ffmpeg, and takes
-under a minute.
+a temp folder), that the block's own file is found among its takes (take 1 after the first run, copied for
+free; the picked take after a pick) and labelled in the report, that the plan before `--yes` tells the new
+takes from those copied for free, that asking again for takes that exist buys nothing, and that after a
+paragraph is inserted before a block with takes they are reused for free and can be picked under its new
+number. It needs ffmpeg, and takes under a minute.
 
 `test_mix_measure.py` checks `mix.py build`'s two lists of moments to listen to, on synthetic stems built
 through a small mix.json (it needs ffmpeg). With a planned hole, a surge, a stop under the voice and its hard
@@ -272,9 +273,11 @@ return, an intended silence, the music ending under the last line on purpose, a 
 loud section under another, each is listed or listed as intended. A clean variant lists nothing, with and without
 words.json: drums whose 100 ms windows swing 10 dB, a crossfade join, and an effect the solver levels. It also
 covers the two joins the devlogs measured, a ramp before a join that isn't a surge, an intended join inside a
-silence, the music's start and end intents apart, the median line over silence and room tone, a line at the
-plan's `under_voice`, a line shorter than a window, builds with no line over a bed (voice only, music only
-before the voice), plan mistakes as usage errors, and `measure` saying it needs the plan.
+silence, a return listed in `music.joins` taking the stop's reason, the music's start and end intents apart, the
+median line over silence and room tone, a line at the plan's `under_voice`, a line shorter than a window, speech
+no words.json line reaches (a stretch the lines leave out; a second voice file under music, its masked regions
+listed and the file named), builds with no line over a bed (voice only, music only before the voice), plan
+mistakes as usage errors, and `measure` saying it needs the plan.
 
 ```sh
 uv run evals/tests/test_imagegen.py

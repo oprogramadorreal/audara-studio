@@ -2275,7 +2275,7 @@ def report_takes(out: Out, b: Block, paths: list[Path], base: list[str], title: 
                              "note": PITCH_NOTE if around.hz is not None else None}
     if len(paths) > 1:
         out(f"Listen, then keep one (no API call): {me(*base, '--pick', 'K', '--block', b.n)}")
-        if holds:  # take k is seed + k - 1, so take 1 of a block that had its file is that file, copied for free
+        if holds:  # (the take that is the block's file: take 1 on the seed that made it, the picked one after --pick)
             more = (f"For another, ask for one more take: {me(*base, '--takes', len(paths) + 1, '--block', b.n)} "
                     f"(these stay, free; it shows the cost first, add --yes). Or " if len(paths) < 10 else
                     "For another, ")  # (10: the cap of --takes)
@@ -3496,8 +3496,9 @@ pair 'IA=I-A'; words.json keeps w = shown and adds spoken. Phrase starts and end
 on narration.wav and moved onto the sound (free; --no-snap keeps the API's times). An edit made
 to words.json by hand is kept while nothing it is made from changes. The voice, model, settings,
 say map, gap, lead, tail, snap and loudness are kept in audio/narration/narration.json.
-Takes: take 1 of a block that already has its file is that file (copied, free) and is marked
-so in the report: for K new takes, ask for K + 1, or K on a --seed none of its takes has had.
+Takes: --takes K asks for K takes, on seeds seed to seed+K-1 (1 to K until --seed sets another).
+A take whose request is unchanged is reused, free, the block's current file among them (the
+report marks it); the plan printed before --yes says which are new and what they cost.
 The takes report gives each take's median pitch (F0) and voiced share, and its distance in
 semitones from the kept files of up to 2 blocks on each side made with the same voice, model
 and settings; a take more than 2 st off (--pitch-tolerance) is marked "check by ear". Pitch is

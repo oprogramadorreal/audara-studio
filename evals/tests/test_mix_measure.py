@@ -163,6 +163,27 @@ class JoinsTest(unittest.TestCase):
         pts = self.joins(m, [{"t": 4.0, "kind": "join", "source": "test", "intended": None}])
         self.assertEqual({t: p["status"] for t, p in pts.items()}, {3.0: "listed", 4.0: "clear", 5.0: "listed"})
 
+    def test_a_return_listed_in_the_plan_is_as_meant_as_the_stop(self):
+        # music.joins lists the stop and the return, the reason on the stop only: the return's surge stayed listed,
+        # while the same return found on its own (not in the plan) was intended.
+        m = pad(self.n, (110, 220, 330), self.rng)
+        m[3 * SR:5 * SR] = 0  # a stop at 3 s, back at 5 s at full level
+        for stop, back, active, want in (("a planned silence", None, self.active, ("intended", "intended")),
+                                         ("a planned silence", None, None, ("clear", "intended")),  # (no voice)
+                                         ("a planned silence", "on the downbeat", self.active, ("intended", "intended")),
+                                         (None, None, self.active, ("listed", "listed"))):
+            with self.subTest(stop=stop, back=back, voice=active is not None):
+                x = mix.Power(stereo(m))
+                rows = mix.music_joins(x, x, active, [{"t": 3.0, "kind": "join", "source": "test", "intended": stop},
+                                                      {"t": 5.0, "kind": "join", "source": "test", "intended": back}],
+                                       self.n / SR, 2)
+                pts = {p["t"]: p for p in rows["points"]}
+                self.assertEqual(sorted(pts), [3.0, 5.0], json.dumps(rows["points"], indent=1))
+                self.assertIn("a surge", " ".join(pts[5.0]["findings"]))
+                self.assertEqual((pts[3.0]["status"], pts[5.0]["status"]), want)
+                self.assertEqual(pts[5.0].get("intended"), back or stop)
+                self.assertEqual(rows["listed"], 2 if stop is None else 0)
+
     def test_drums_alone_read_as_no_hole_and_no_surge(self):
         m = pad(self.n, (110, 220, 330), self.rng) * 0.3 + drums(self.n, self.rng)
         pts = self.joins(m, [{"t": t, "kind": "join", "source": "test", "intended": None} for t in (2.0, 4.05, 6.3)])
@@ -268,6 +289,25 @@ class VoiceOverBedTest(unittest.TestCase):
                 out = self.steady(lines, target)
                 self.assertEqual([x["i"] for x in out["lines"] if x["findings"]], listed,
                                  json.dumps(out["lines"], indent=1))
+
+    def test_speech_no_line_reaches_is_measured_by_region(self):
+        # Speech at 1-3 s, 5-7 s and 9-11 s; words.json times the first two (their speech runs 0.2 s past each
+        # line's end, as a decay does). The third went unmeasured; the tails stay the lines'.
+        active = np.zeros(1200, bool)
+        for a, b in ((100, 320), (500, 720), (900, 1100)):
+            active[a:b] = True
+        doc = {"lines": [{"text": "one", "start": 1.0, "end": 3.0}, {"text": "two", "start": 5.0, "end": 7.0}]}
+        layers = [("voice", "in/voice.wav", 0.0, 12.0)]
+        rows, _, by, regs = mix.voice_lines(doc, 0.0, active, 12.0, True, layers)
+        self.assertEqual([(x.get("region", False), x["start"], x["end"]) for x in rows],
+                         [(False, 1.0, 3.0), (False, 5.0, 7.0), (True, 9.0, 11.0)])
+        self.assertEqual(by, "data/words.json lines and voice regions")
+        self.assertEqual(regs, [{"voice": "voice", "file": "in/voice.wav", "lines": 2, "regions": 1,
+                                 "from": 9.0, "to": 11.0}])
+        # Lines that reach all of the speech leave nothing to measure by region.
+        doc["lines"].append({"text": "three", "start": 9.0, "end": 11.0})
+        rows, _, by, regs = mix.voice_lines(doc, 0.0, active, 12.0, True, layers)
+        self.assertEqual((len(rows), by, regs), (3, "data/words.json lines", []))
 
     def test_a_line_shorter_than_a_window_is_not_measured(self):
         # A 40 ms line with no speech in it, just before the next one: its window reached into that line, and it
@@ -428,6 +468,46 @@ class MixMeasureTest(unittest.TestCase):
                 self.assertEqual([p["t"] for p in joins["points"]], [9.9])  # (the music plays to the end of the mix)
                 self.assertIn("none under the bars", printed)
                 self.assertIn("nothing listed", printed)
+
+    def test_a_voice_file_words_json_does_not_time_is_measured_by_region(self):
+        # Voice A with data/words.json timed to it, then voice B with none, the music only under B's first three
+        # lines and at its file level: once the lines matched A, only they were measured, and B went unchecked.
+        n = int(9.6 * SR)  # the music from 23.0 s to 32.6 s (B's third line ends at 32.4 s)
+        m = pad(n, (110, 220, 261.6, 329.6, 440), self.rng)
+        m[-int(0.02 * SR):] *= np.linspace(1, 0, int(0.02 * SR))
+        d = self.project("two-voices", m, {"at": 23.0, "gain_db": 0, "duck": False})
+        vb, b_lines = voice(np.random.default_rng(8), self.n_voice)  # (its lines are for the test, not written)
+        write(d / "in" / "voice-b.wav", vb)
+        plan = json.loads((d / "mix.json").read_text(encoding="utf-8"))
+        plan["voice"] = [{"file": "in/voice.wav", "at": 0}, {"file": "in/voice-b.wav", "at": 23.0}]
+        (d / "mix.json").write_text(json.dumps(plan), encoding="utf-8")
+        rep, printed = self.build(d)
+
+        vob = rep["voice_over_bed"]
+        self.assertEqual(vob["by"], "data/words.json lines and voice regions")
+        lines = [x for x in vob["lines"] if not x.get("region")]
+        regions = [x for x in vob["lines"] if x.get("region")]
+        self.assertEqual(len(lines), len(LINES))  # A's, over silence: none listed
+        self.assertEqual([x["i"] for x in lines if x["findings"]], [], json.dumps(lines, indent=1))
+        self.assertEqual(len(regions), len(LINES), json.dumps(regions, indent=1))  # B's seven, by region
+        for x, line in zip(regions, b_lines):  # (the VAD's 50 ms window reaches 25 ms past the sound)
+            self.assertEqual(x["voice"], "voice[1]")
+            self.assertAlmostEqual(x["start"], 23.0 + line["start"], delta=0.05)
+            self.assertAlmostEqual(x["end"], 23.0 + line["end"], delta=0.05)
+        self.assertEqual([x["i"] for x in regions if x["findings"]], [0, 1, 2], json.dumps(regions, indent=1))
+        for x in regions[:3]:
+            self.assertLess(x["median_lu"], mix.VOB_MEDIAN_LU)
+        (g,) = vob["by_region"]
+        self.assertEqual((g["voice"], g["lines"], g["regions"]), ("voice[1]", 0, len(LINES)))
+        self.assertTrue(g["file"].endswith("in/voice-b.wav"), g)
+        self.assertIn("by region, where no data/words.json line reaches: voice[1] ", printed)
+        self.assertIn("voice region 0 of voice[1]", printed)
+        # The record keeps them, and an up-to-date run prints them from it.
+        rec = json.loads((d / "audio" / "mix.wav.request.json").read_text(encoding="utf-8"))
+        self.assertEqual(rec["voice_over_bed"]["listed"], 3)
+        _, again = self.build(d)
+        self.assertIn("is up to date", again)
+        self.assertIn("voice region 0 of voice[1]", again)
 
     def test_no_line_with_a_bed_under_it_builds_and_rebuilds(self):
         # Every line over silence (the 40 LU cap) left no median line, and printing it crashed the build after its

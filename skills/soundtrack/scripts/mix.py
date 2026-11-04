@@ -327,7 +327,9 @@ VOB_CAP_LU = 40.0
 # A window where the bed is 40 LU or more under the voice counts as 40: the bed is silent for this purpose.
 REGION_GAP_S, REGION_MIN_S = 0.5, 0.3
 # Without a data/words.json timed to the voice, the lines are the voice's regions: speech split at pauses of
-# 0.5 s or more (longer than most pauses between sentences, see DUCK_HOLD), each at least 0.3 s long.
+# 0.5 s or more (longer than most pauses between sentences, see DUCK_HOLD), each at least 0.3 s long. With one,
+# the speech its lines don't reach (beyond 0.5 s of any line) is measured by its regions too: words.json times one
+# voice file, and a second file after it went unmeasured.
 
 # Music joins (build only). One join went from a -17 dB bridge into a -8.5 dB section (the director: a "very
 # noticeable cut"); another left the mix at -30..-32 dBFS for 0.3 s after the cut, then the music came up 10 dB;
@@ -357,7 +359,8 @@ STOP_MERGE_S = 0.5
 # intent. An intended point anywhere in the stop, from 0.5 s before it to where the music comes back, makes the
 # silence meant too: an intended join at 4 s in a silence from 3 to 5 s left both ends listed when only a point
 # near the stop counted. Where the music comes back after a stop under the voice is a point too, unless the plan
-# names one there, and it is as meant as the stop.
+# names one there, and it is as meant as the stop: so is a return the plan lists with no reason of its own (one
+# listed in music.joins kept its surge listed while the same return found on its own was intended).
 
 # BS.1770-4 K-weighting at 48 kHz, coefficients from the standard: the high shelf (head effect), then the RLB
 # high-pass.
@@ -1526,7 +1529,8 @@ its own band against the music: "target_db" (the lift over the music, above 0; d
 
 Two checks in the report (mix-report.json, the record and the summary) list moments to listen to, each with its
 time for a ?v=<video>&t= link: measurements, not a judgement of how it sounds, and never a failure.
-  Voice over the bed: for each data/words.json line (each stretch of speech without it), the voice as mixed
+  Voice over the bed: for each data/words.json line, and each stretch of speech no line reaches (all of it
+  without them, or a voice file they don't time: the report names those files), the voice as mixed
   against everything else that plays (music and effects), K-weighted in 100 ms windows every 10 ms: the bed's
   median margin under the line's voice level, and its worst window through a 300 Hz high-pass (what covers a
   word; a kick under it does not). A line is listed under 10 LU on median, under 3 LU in its worst 100 ms (an
@@ -1540,8 +1544,8 @@ time for a ?v=<video>&t= link: measurements, not a judgement of how it sounds, a
   join is a time or takes an effect's keys for one ("at", "cue", "word", "line", "beat", "downbeat", "nth",
   "edge", "offset"); "intended": "<why>" on a join lists what is found there as intended instead. For a silence
   you mean, the intended join goes anywhere from where the music stops (or 0.5 s before) to where it comes back:
-  it covers the stop and the return. "intended_start" and "intended_end" on the music do the same for its
-  entrance and its end."""
+  it covers the stop and the return, a join listed at the return with no reason of its own included.
+  "intended_start" and "intended_end" on the music do the same for its entrance and its end."""
 
 
 def check_keys(obj, allowed: set[str], where: str) -> dict:
@@ -2050,12 +2054,54 @@ class Power:
         return np.where(ok, out, np.nan)
 
 
-def voice_lines(doc: dict | None, shift: float, active: np.ndarray, dur: float,
-                timed_to_voice: bool) -> tuple[list[dict], list[dict], str]:
+def layer_at(a: float, b: float, layers) -> tuple | None:
+    """The voice layer (label, file, start, end in mix time) that overlaps [a, b) the most, or None."""
+    lay = max(layers, key=lambda l: min(b, l[3]) - max(a, l[2]), default=None)
+    return lay if lay is not None and min(b, lay[3]) > max(a, lay[2]) else None
+
+
+def speech_regions(active: np.ndarray, dur: float, layers) -> list[dict]:
+    """Speech split at pauses of REGION_GAP_S or more, each at least REGION_MIN_S long, in mix time, each with the
+    voice layer it lies in."""
+    d = np.diff(np.concatenate([[0], active.astype(np.int8), [0]]))
+    runs = list(zip(np.flatnonzero(d == 1), np.flatnonzero(d == -1)))
+    merged: list[list[int]] = []
+    for a, b in runs:  # (frames are 10 ms)
+        if merged and a - merged[-1][1] < REGION_GAP_S * 100:
+            merged[-1][1] = b
+        else:
+            merged.append([a, b])
+    out = []
+    for a, b in (m for m in merged if (m[1] - m[0]) >= REGION_MIN_S * 100):
+        row = {"i": len(out), "start": a / 100, "end": min(dur, b / 100), "text": None, "region": True}
+        lay = layer_at(row["start"], row["end"], layers)
+        if lay is not None:
+            row["voice"] = lay[0]
+        out.append(row)
+    return out
+
+
+def by_region(lines: list[dict], layers) -> list[dict]:
+    """Per voice file with stretches measured by region: how many, where, and how many words.json lines lie in it
+    (none: all of its speech is measured by region)."""
+    out = []
+    for lay in layers:
+        regs = [x for x in lines if x.get("region") and x.get("voice") == lay[0]]
+        if regs:
+            n = sum(1 for x in lines if not x.get("region") and layer_at(x["start"], x["end"], layers) == lay)
+            out.append({"voice": lay[0], "file": lay[1], "lines": n, "regions": len(regs),
+                        "from": round(regs[0]["start"], 2), "to": round(regs[-1]["end"], 2)})
+    return out
+
+
+def voice_lines(doc: dict | None, shift: float, active: np.ndarray, dur: float, timed_to_voice: bool,
+                layers=()) -> tuple[list[dict], list[dict], str, list[dict]]:
     """The stretches the voice-over-bed check measures, in mix time: data/words.json's lines when it is the voice's
     (timed to a voice file by its audioSha256; one with no hash only when the voice speaks through most of its lines:
-    init's demo words sit on the music's beats), else the voice's regions (speech split at pauses of REGION_GAP_S or
-    more). Returns (lines, words, what they are)."""
+    init's demo words sit on the music's beats), and the voice's regions (speech split at pauses of REGION_GAP_S or
+    more) wherever no line reaches: all of it without such lines, else a voice file the words don't time (one
+    words.json describes one file) or a stretch they leave out. layers: each voice file's (label, file, start, end)
+    in mix time. Returns (lines, words, what they are, the voice files measured by region)."""
     def timed(o) -> bool:
         return isinstance(o, dict) and all(isinstance(o.get(k), (int, float)) for k in ("start", "end"))
 
@@ -2076,28 +2122,28 @@ def voice_lines(doc: dict | None, shift: float, active: np.ndarray, dur: float,
         spoken += float(active[max(0, a):max(0, b)].sum()) / 100
     span = sum(line["end"] - line["start"] for line in lines)
     if lines and (timed_to_voice or spoken >= 0.5 * span):
-        return lines, words, "data/words.json lines"
+        # Speech within REGION_GAP_S of a line is that line's (the regions' own pause); the rest no line reaches.
+        rest = active.copy()
+        for line in lines:
+            a = max(0, int((line["start"] - REGION_GAP_S) * 100))
+            b = max(0, int(math.ceil((line["end"] + REGION_GAP_S) * 100)))
+            rest[a:b] = False
+        rows = lines + speech_regions(rest, dur, layers)
+        return (rows, words, "data/words.json lines" + (" and voice regions" if len(rows) > len(lines) else ""),
+                by_region(rows, layers))
     why = (f"data/words.json's lines are not this voice's: it speaks in {100 * spoken / span:.0f}% of their time"
            if lines else "no data/words.json timed to the voice")
-    d = np.diff(np.concatenate([[0], active.astype(np.int8), [0]]))
-    runs = list(zip(np.flatnonzero(d == 1), np.flatnonzero(d == -1)))
-    merged: list[list[int]] = []
-    for a, b in runs:  # (frames are 10 ms)
-        if merged and a - merged[-1][1] < REGION_GAP_S * 100:
-            merged[-1][1] = b
-        else:
-            merged.append([a, b])
-    regions = [{"i": k, "start": a / 100, "end": min(dur, b / 100), "text": None}
-               for k, (a, b) in enumerate(m for m in merged if (m[1] - m[0]) >= REGION_MIN_S * 100)]
-    return regions, [], f"voice regions ({why})"
+    regions = speech_regions(active, dur, layers)
+    return regions, [], f"voice regions ({why})", by_region(regions, layers)
 
 
 def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict], words: list[dict],
-                   by: str, target_lu: float) -> dict:
+                   by: str, target_lu: float, regions_by_file: list[dict] | None = None) -> dict:
     """Per line: the voice's level (its active speech, a power mean, K-weighted) against the bed (everything else in
     the mix) in 100 ms windows every 10 ms where the voice speaks: the median margin at full range and the worst
     window through the 300 Hz high-pass (kv and kb carry both). target_lu is the plan's under_voice target: a line
-    at or above it sits where the plan put the music, so the median-line rule leaves it out."""
+    at or above it sits where the plan put the music, so the median-line rule leaves it out. regions_by_file: the
+    voice files measured by region rather than by line (voice_lines), kept in the report."""
     Eb, Cb = kb.cs("full")
     Ep, Cp = kb.cs("phone")
     A = np.concatenate([[0], np.cumsum(act_b.astype(np.int64))])
@@ -2122,6 +2168,7 @@ def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict
         k = int(np.argmin(mp))
         t = s[act][k] / 1000
         row = {"i": line["i"], "start": round(line["start"], 3), "end": round(line["end"], 3), "text": line["text"],
+               **{key: line[key] for key in ("region", "voice") if key in line},
                "voice_lufs": r(lv), "median_lu": r(float(np.median(m))), "worst_lu": r(float(mp[k])),
                "worst_at": round(t, 2), "worst_bed_lufs_phone": r(float(bedp[k]))}
         over = [(min(w["end"], t + VOB_WIN) - max(w["start"], t), w["w"]) for w in words
@@ -2145,7 +2192,7 @@ def voice_over_bed(kv: KEnergy, kb: KEnergy, act_b: np.ndarray, lines: list[dict
     return {"measured_on": "the voice layer as mixed against everything else in mix.wav (music and effects), "
                            "K-weighted, in 100 ms windows every 10 ms where the voice speaks: the median at full "
                            "range, the worst window through a 300 Hz high-pass (what covers a word)",
-            "by": by, "window_s": VOB_WIN, "hop_s": VOB_HOP,
+            "by": by, "by_region": regions_by_file or [], "window_s": VOB_WIN, "hop_s": VOB_HOP,
             "bars": {"median_lu": VOB_MEDIAN_LU, "worst_lu": VOB_WORST_LU, "under_video_median_lu": VOB_UNDER_VIDEO_LU,
                      "clear_lu": VOB_CLEAR_LU, "under_voice_target_lu": target_lu},
             "video_median_lu": r(vm), "lines": rows, "listed": sum(bool(x["findings"]) for x in rows),
@@ -2266,10 +2313,15 @@ def music_joins(bed: Power, mus: Power, active: np.ndarray | None, points: list[
             at = {"t": s["t"], "kind": "stop", "source": "found on music-only.wav", "intended": None, "stop": s}
             pts.append(at)
         # Where the music comes back under the narration is a start like any other (a hard re-entrance surges),
-        # and as meant as the stop it ends.
-        if s["under_voice"] and s["back"] is not None and s["back"] < dur - 0.05 and nearest(s["back"]) is None:
-            pts.append({"t": s["back"], "kind": "music back", "source": "found on music-only.wav",
-                        "intended": at["intended"] if at is not None else None})
+        # and as meant as the stop it ends: a point the plan lists there with no reason of its own takes the stop's.
+        reason = (at or {}).get("intended") or (meant or {}).get("intended")
+        if s["back"] is not None and s["back"] < dur - 0.05:
+            ret = nearest(s["back"])
+            if ret is None and s["under_voice"]:
+                pts.append({"t": s["back"], "kind": "music back", "source": "found on music-only.wav",
+                            "intended": reason})
+            elif ret is not None and ret is not at and not ret.get("intended") and reason:
+                ret["intended"] = reason
     rows = []
     for p in sorted(pts, key=lambda p: p["t"]):
         row = {k: p.get(k) for k in ("t", "kind", "source", "note", "intended") if p.get(k) is not None}
@@ -2738,10 +2790,12 @@ def cmd_build(args) -> dict:
             mix_r[i0:i0 + SR * 10] -= V[i0:i0 + SR * 10]
     if has_voice:
         doc = words_doc if words_layer is None or words_layer.startswith("voice") else None
-        vlines, vwords, by = voice_lines(doc, data.shift_words, active, dur, words_layer is not None)
+        layers = [("voice" if len(vrows) == 1 else f"voice[{i}]", v["file"], v["at"], v["end"])
+                  for i, v in enumerate(vrows)]
+        vlines, vwords, by, regs = voice_lines(doc, data.shift_words, active, dur, words_layer is not None, layers)
         # (the plan's under_voice target; with music.gain_db set by hand, or no music, the default's 12 LU)
         target_lu = (mrow or {}).get("under_voice_target", UNDER_VOICE_LU)
-        vob = voice_over_bed(kv, KEnergy(mix_r, phone=True), act_b, vlines, vwords, by, target_lu)
+        vob = voice_over_bed(kv, KEnergy(mix_r, phone=True), act_b, vlines, vwords, by, target_lu, regs)
     if has_music:
         mu = plan["music"]
         fo = f", fading out over {mu['fade_out']:g} s" if mu["fade_out"] > 0 else ""
@@ -2918,9 +2972,18 @@ def print_stem_checks(rec: dict, music_new: bool = False) -> None:
                   + (f"{len(listed)} to listen to:" if listed else
                      f"none under the bars ({VOB_MEDIAN_LU:g} LU on median, {VOB_WORST_LU:g} LU in a window, "
                      f"{VOB_UNDER_VIDEO_LU:g} LU under the median line)"))
+        regs = vob.get("by_region") or []
+        if regs and vob["by"].startswith("data/words.json"):  # (without lines, "by" says all of it is by region)
+            print("    by region, where no data/words.json line reaches: " + "; ".join(
+                (f"{g['voice']} {g['file']}, all of it" if not g["lines"] else
+                 f"{g['regions']} stretch{'es' if g['regions'] != 1 else ''} of {g['voice']} {g['file']} its lines "
+                 "leave out") + f" ({g['from']:.2f}-{g['to']:.2f} s)" for g in regs))
         for x in listed[:PRINTED_MAX]:
             txt = short(x.get("text"))
-            print(f"    {x['start']:.2f} s  {'line' if x.get('text') is not None else 'voice region'} {x['i']}"
+            # (a record from before by_region marks a region only by its missing text)
+            region = x.get("region") if "by_region" in vob else x.get("text") is None
+            print(f"    {x['start']:.2f} s  {'voice region' if region else 'line'} {x['i']}"
+                  + (f" of {x['voice']}" if region and x.get("voice") not in (None, "voice") else "")
                   + (f' "{txt}"' if txt else "") + f" ({x['start']:.2f}-{x['end']:.2f} s): " + "; ".join(x["findings"]))
         if len(listed) > PRINTED_MAX:
             print(f"    ({len(listed) - PRINTED_MAX} more in mix-report.json)")
