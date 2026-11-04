@@ -252,6 +252,52 @@ ideas), an interview inside production (the stop before building that round 4 re
 fresh session. The research behind it is in `docs/research/` (dated snapshots), the decision in history.md
 (0.5.0).
 
+### A devlog: the build is the story
+
+Some videos are about making something: a game, a physics simulation, a fractal explorer, a tool, built by the
+agent (or by the user, earlier) and then told as how it was made. Their story happens during the build, and
+much of it is gone once the next change lands: the first attempt, the bug before its fix, the look the
+director rejected, his reaction. `devlog` covers that phase and what it keeps, then hands the material to
+code-video, which makes the video by its usual steps. It loads on a devlog request, or in a project whose
+`docs/DEVELOPMENT_LOG.md` feeds a video; tutorials, product demos and videos that only show code stay with
+code-video, and ideas for one with video-ideas.
+
+- **The director's order holds.** He may build first and approve the prototype before any script, script
+  while building, or bring a project already built; the skill's defaults (an early first look, the prototype
+  before the script, the script before production, the render on his yes) are offered in one opening message
+  that also asks for his scope, a working promise, and his own material (a music library and what each track
+  is for, characters from earlier videos, his photo, the voice, how far the video may tease him), and the
+  build starts without waiting.
+- **A log and a ledger as it goes.** `docs/DEVELOPMENT_LOG.md`: status, decisions and why, the versions with
+  their role in the video, known issues, next steps, and a timeline whose entries name their commit and
+  artifacts, with times from the session's messages. Its story ledger keeps his words that name a beat
+  verbatim, the struggles with their before and after, measured numbers, and joke ideas as options. An
+  AGENTS.md section carries the standing rules, so a later or compacted session keeps them.
+- **Any moment can be filmed again,** sized to the thing: replays on a fixed tick with seeded randomness for a
+  game or simulation, the camera path as data for an explorer, scripted input for a tool; a capture page
+  writes frames, a free camera moves nothing in the state, and a stage the video will show stays recoverable.
+  So only what a change will erase is filmed as it happens, and the rest at final quality against the script.
+  The engine streams minutes of such footage (code-video's contract.md).
+- **The build's own hand-offs:** an ETA per stage, one representative piece shown before a new look is rolled
+  out, the runner-up and close calls on an option sheet, a trade-off a check settled against his ask put to
+  him as a before and after, and at each milestone what the video could already be and what it lacks. When
+  his scope is met it says so and offers the script; he decides whether to push further, which may be the
+  beat he wants.
+- **Into the video:** the script comes from the log through code-video's treatment, its stages in story order
+  (the treatment's Stage column), the picture showing a line that asks the viewer to see something happen,
+  explanations a first-time viewer can restate, his lines verbatim, provenance for each claim. soundtrack,
+  nutlight-style (only when named: its look for the scenes around the footage), youtube-package and video-repo
+  work as they always do; video-repo keeps the build's recordings and captures as sources.
+
+Why a skill of its own: in two long devlogs the build ran for days before any video skill had anything to say
+(one loaded only video-repo for ten days, by the director's own order to load code-video at the script), and
+the director wrote the log, the recording rules and the gates into his prompts himself. code-video's Brief
+would start a treatment at once, and its SKILL.md has no room. What carried those videos stays the director's:
+what to build and how far, the looks he picks, the escalation, the beats he seeds, the jokes in his voice.
+Considered and left out: a fixed number of stages or required struggles as the test of enough (they could
+manufacture work), one capture architecture for every kind of thing, and an automatic point to stop building
+(history.md, 0.12.0).
+
 ### Coming back later
 
 A project outlives the session that started it. `init` writes a short `AGENTS.md` into the project with
@@ -566,8 +612,9 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has six skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
-for deciding what to make, **`video-repo`** for handing a finished project on, **`youtube-package`** for
+It has seven skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
+for deciding what to make, **`devlog`** for a video about building something (the build and what it keeps,
+see "A devlog: the build is the story"), **`video-repo`** for handing a finished project on, **`youtube-package`** for
 publishing a finished video and **`nutlight-style`**, a house style the director can name (see "A house
 style you can name: Nutlight"). `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads, and does the sound of a video made
@@ -925,7 +972,7 @@ in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-All six skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All seven skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -934,7 +981,7 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - All six stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+  - All seven stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own. `video-repo` was the one in question,
     since Anthropic advises manual invocation for workflows with side effects (`/commit`, `/deploy`). It
     stays model-invoked because a repository is something the user asks for in words ("put this in git"),
@@ -1066,6 +1113,11 @@ audara-studio/
     │   └── assets/realism/           # the realism kit, copied into a project's src/realism/ on demand
     ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt or script out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
+    ├── devlog/                       # a video about building something: the build and what it keeps
+    │   ├── SKILL.md                  # text only: the opening message, the log, the build's hand-offs, enough
+    │   │                             # for the video, the hand-over to code-video
+    │   ├── references/capture.md     # filming the thing again: replays, shot folders, footage in the video
+    │   └── references/log-template.md  # DEVELOPMENT_LOG.md, the story ledger, the AGENTS.md section
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
@@ -1086,6 +1138,7 @@ audara-studio/
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
+        ├── references/score.md       # a score cut from several tracks: cue sheet, joins, under the voice
         └── scripts/                  # uv scripts with PEP 723 inline deps
             ├── eleven.py             # tts | music | sfx → audio + request record + word timings
             ├── standin.py            # a free local voice (Kokoro) in eleven.py's place
