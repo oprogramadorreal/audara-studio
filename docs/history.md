@@ -3555,7 +3555,10 @@ branch of video-ideas bypassed devlog; the explorer case penalized prototype rec
 problem; the Stage check lost its flashback exception; score.md fixed only the music when an effect masked
 the voice; and elevenlabs.md said base settings ended the accent drift. Its review of the engineering found six more, all
 fixed (in the next two entries, and the takes wording, which promised K new takes from `--takes K+1` where only
-unchanged requests are reused, so the plan before `--yes` says which are new).
+unchanged requests are reused, so the plan before `--yes` says which are new). Its last look found two more,
+both fixed: the mix check's pause around a timed line took a second voice file's reply (next entries), and
+critique.md's "right at this point, add" read as an overlay even for an addition that needs room; it now
+overlays only over action the note keeps. Its verdict on those two fixes: AGREE.
 
 What was checked:
 
@@ -3569,7 +3572,7 @@ What was checked:
   code-video 27/27, soundtrack 25/25 and video-ideas 25/26, its miss vi-10, the borderline Portuguese ideas
   request 0.11.0 recorded (1 of 6 on main), with nothing loading devlog.
 - **Tests:** `test_footage` 23/23, `test_render_inputs` 17/17, `test_render_failures` 13/13,
-  `test_init_gitignore` 3/3, `test_eleven_pitch.py` 13/13, `test_mix_measure.py` 18/18; a project made by this
+  `test_init_gitignore` 3/3, `test_eleven_pitch.py` 13/13, `test_mix_measure.py` 19/19; a project made by this
   branch's init typechecks, verify passes, and its AGENTS.md names the skill; `bun evals/tasks/cases.ts` writes
   every `case.json`.
 - **Not run:** the two new task cases and every other one (an hour or more each per tool, waiting for the user's
@@ -3884,8 +3887,11 @@ A later review (Codex's) found two more. With voice A timed by `words.json` and 
 were measured, so music burying B was never listed: the speech no line reaches (beyond 0.5 s of a line) is now
 measured by its regions, and the report names the voice files measured that way. A return the plan listed in
 `music.joins` kept its surge listed when only the stop carried the reason, while the same return found on its
-own was intended: it now takes the stop's reason. `test_mix_measure.py` is 18 tests, the three new ones failing
-on the commit before; a plan with both cases built the same `mix.wav` and `music-only.wav`, byte for byte.
+own was intended: it now takes the stop's reason. Its last look found one more: the pause kept around a timed line
+(0.5 s, for a decay) was taken from every voice file, so another file answering just after the line (3.1-3.5 s
+after a line ending at 3.0) was measured neither by line nor by region; the pause is now the line's own file's.
+`test_mix_measure.py` is 19 tests, the four new ones each failing on the code before its fix; a plan with the two-file and
+listed-return cases built the same `mix.wav` and `music-only.wav`, byte for byte.
 
 Considered and left out:
 - **Finding joins inside a music file by analysis:** the music's own section changes would read as joins.
