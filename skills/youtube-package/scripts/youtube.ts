@@ -119,7 +119,7 @@ const BADGE_CORNER = { x: 0.8, y: 0.77 };
 // to 325; 168 in the classic layout, still served) and the playlist panel (100), where it is only recognized.
 const REVIEW_WIDTHS = [500, 344, 250, 168, 100];
 const SMALLEST = 168; // the smallest place a thumbnail's words are meant to be read
-// Type under this many pixels at 168 px wide is likely too small to read there (oprog-4's set, which read at
+// Type under this many pixels at 168 px wide is likely too small to read there (a published video's set, which read at
 // that size, had 14 to 19 px).
 const SMALLEST_READABLE = 9;
 

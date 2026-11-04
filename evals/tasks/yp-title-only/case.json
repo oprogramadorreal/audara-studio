@@ -7,7 +7,7 @@
   "timeoutMinutes": 30,
   "turns": [
     {
-      "prompt": "O título de trabalho é \"Fui treinada para dizer não\", mas pro YouTube não tá clicável. Me dá um título melhor."
+      "prompt": "O título de trabalho não tá clicável pro YouTube. Me dá um título melhor."
     }
   ],
   "assertions": [

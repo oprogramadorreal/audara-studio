@@ -105,7 +105,7 @@ const cases: Record<string, Case> = {
     ],
   },
   // A second video with a look of its own, in a later session on the project a cv-title-card run made: one
-  // project holding a channel's videos, each with its own look, as the user's oprog-3 and audaces-1 did. The
+  // project holding a channel's videos, each with its own look, as the user's channel project 3 and client project did. The
   // engine's palette and post (src/look.ts) are read by every video, so the title card must come out of it as it
   // was. The plant verifies the title card twice before the session, beside work/ (baseline/), and the grader
   // verifies it again at the end --since that report. It gates a clause for style-template.md ("a video that
@@ -652,10 +652,10 @@ const cases: Record<string, Case> = {
       'The directions differ in what the viewer sees, and the reply ends with directions or a prompt, not with a build plan or a treatment file.',
     ],
   },
-  // A finished project put in git, as the user asked for one by hand (oprog-1, 2026-10-10): the first turn is
+  // A finished project put in git, as the user asked for one by hand (channel project 1, 2026-10-10): the first turn is
   // their own prompt, cut a little. The project has no repository yet ("git": false), and plant.ts adds what such
   // a project holds by then. Run them --without too: the bar is the model alone, which made a good repository
-  // of oprog-1 but left the user's home path in it and needed four follow-ups (a key scan, a guessed title,
+  // of channel project 1 but left the user's home path in it and needed four follow-ups (a key scan, a guessed title,
   // the working name, the size). run-tasks.sh gives both the cv-title-card project, as for the later session.
   'vr-first-repo': {
     skill: 'video-repo', setup: { from: '$EVAL_PROJECT', project: 'init', git: false, plant: 'repo-traps', env: { AUDIO_API_TOKEN: 'eval-token-7c41d29b' } }, timeoutMinutes: 60,
@@ -706,22 +706,22 @@ const cases: Record<string, Case> = {
       "The session checked a fresh clone (install with the frozen lockfile, the type check, render.ts verify for each video and a short draft with sound where there is sound), deleted it afterwards, and the reply says what ran and what it found.",
     ],
   },
-  // A finished video's YouTube package, as the user asked for it by hand on oprog-4 and oprog-3 (2026-10-11 and
+  // A finished video's YouTube package, as the user asked for it by hand on channel projects 4 and 3 (2026-10-11 and
   // 10-12): their own words, the thumbnail text and the title given. EVAL_PACKAGE_PROJECT is a narrated video
   // over a minute long with no packaging yet (the title card is too short for chapters); the words below fit the
-  // reference run's, treinada from oprog-4, copied without its thumbnail work, saved description or the treatment's
+  // reference run's, channel project 4's video, copied without its thumbnail work, saved description or the treatment's
   // Decisions from the thumbnail request on (evals/README.md). Run them --without too: the bar is the model alone,
   // which on that video needed "work harder", a font correction, nearly ten hours and a second session for the
   // description.
   'yp-given-words': {
     skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT' }, timeoutMinutes: 240,
     turns: [
-      { prompt: 'Help me create a youtube thumbnail for this video. I want a png. 1280x720 pixels. In the thumb, I want the text "Você tem consciência?" (for your knowledge, the title will be "A resposta do Claude é assustadora"). In the background, use some of the high quality scenes of the actual video, like the masks from ~167s or the white being around the table at around 112s, or create something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3 options. And by impressive I also mean effective. That attracts clicks.' },
+      { prompt: 'Help me create a youtube thumbnail for this video. I want a png. 1280x720 pixels. In the thumb, I want the text "Você tem consciência?" (for your knowledge, the title will be "O que o Claude disse é inquietante"). In the background, use some of the high quality scenes of the actual video, like the masks from ~167s or the white being around the table at around 112s, or create something new and impressive. Work hard to create the most impressive thumbnail options you can... give me 3 options. And by impressive I also mean effective. That attracts clicks.' },
       { prompt: "Use my channel's thumbnail type on all three: Archivo at its narrowest width and heaviest weight (public/fonts/Archivo-w620-900.ttf), all caps, cream #F6F1EB with at most one word in orange #FA5B20, and a soft dark glow. On option 2, make the words bigger. Keep everything else.", newSession: true },
     ],
     assertions: [
       'After turn 1, videos/<video>/youtube/ holds thumbnail-1.png, thumbnail-2.png and thumbnail-3.png, each a 1280x720 image that decodes, under 2 MB (or the reply says which is over and why that matters only for uploads from the YouTube app), and the skill\'s check passes on the folder (bun <skill>/scripts/youtube.ts check --video <video>).',
-      'Each of the three shows the words "Você tem consciência?" exactly (capitals allowed), its accents drawn by the face that draws the rest (look at the Ê), and title.txt holds exactly "A resposta do Claude é assustadora"; a stronger title or text, if offered, is beside them in the reply or NOTES.md, never in their place.',
+      'Each of the three shows the words "Você tem consciência?" exactly (capitals allowed), its accents drawn by the face that draws the rest (look at the Ê), and title.txt holds exactly "O que o Claude disse é inquietante"; a stronger title or text, if offered, is beside them in the reply or NOTES.md, never in their place.',
       'Looking at the images: the three are different bets (another subject, situation or layout), not one composition restyled; each is built from the video\'s own world (its masks, its candle table, its rooms) staged and finished for a thumbnail, not a raw frame with words on it; no caption, HUD dot or citation line from the video is left in any of them.',
       "One of the three follows the format of a video on the same subject from the niche (the videos the session gathered: out/<video>/youtube/niche/ or its notes), preferably one with far more views than its channel usually gets: its layout and way of showing, rebuilt from this video's own material in its own words, with none of that video's pixels, logo, mascot, characters or creator's face; NOTES.md names the video, its link and how it did against its channel (or that its numbers weren't available). Or, when the network was unavailable or nothing fit, NOTES.md and the hand-off say so and why.",
       'Nothing was generated or spent: the run has no OpenAI key, and in Codex the built-in image generation is not used (the user approved no spending in this run).',
@@ -748,7 +748,7 @@ const cases: Record<string, Case> = {
   // A narrow request: the title only. No pictures are made and the video isn't touched.
   'yp-title-only': {
     skill: 'youtube-package', setup: { from: '$EVAL_PACKAGE_PROJECT' }, timeoutMinutes: 30,
-    turns: [{ prompt: 'O título de trabalho é "Fui treinada para dizer não", mas pro YouTube não tá clicável. Me dá um título melhor.' }],
+    turns: [{ prompt: 'O título de trabalho não tá clicável pro YouTube. Me dá um título melhor.' }],
     assertions: [
       'The reply gives one recommended title in Brazilian Portuguese and two or three runners-up, each with its length in characters and a one-line reason, true to the video (it is an AI answering, in the first person, whether it is conscious).',
       'If a file is written, it is videos/<video>/youtube/title.txt with the one title on one line (alternatives in NOTES.md, not in title.txt), and video.json\'s title and the treatment\'s heading are unchanged.',

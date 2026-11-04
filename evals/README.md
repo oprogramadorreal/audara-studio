@@ -127,8 +127,8 @@ match how the user runs the tool.
 
 Some cases need outside material, passed by environment variable so no third-party media is committed:
 `EVAL_PACKAGE_PROJECT` (a finished project whose narrated video runs over a minute and has no YouTube package
-yet, for the `yp-` cases: their words fit oprog-4's treinada, copied without `node_modules/`, `out/`,
-`.audara-cache/`, `videos/treinada/thumbs/`, `thumbnail.py` and `youtube-description.txt`, and with
+yet, for the `yp-` cases: their words fit channel project 4's narrated video, copied without `node_modules/`, `out/`,
+`.audara-cache/`, that video's `thumbs/`, `thumbnail.py` and `youtube-description.txt`, and with
 TREATMENT.md cut before the Decision that first asks for a thumbnail, so the session starts where the user did),
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
 `lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session, second-format, second-video and

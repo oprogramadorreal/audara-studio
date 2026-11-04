@@ -1,4 +1,4 @@
-# An AI-video commercial made beside audara (Neolevel, 2026-10-13)
+# An AI-video commercial made beside audara (a client's ad, 2026-10-13)
 
 Written 2026-10-14 on audara-studio 0.7.1, from the project's files and its Claude Code session's transcript
 (Opus 5.5, read through Herdr; its thinking was redacted). This is a dated snapshot, not a description of
@@ -9,7 +9,7 @@ decisions (an alpha export from the engine, a skill for such films). Nothing her
 ## The request
 
 The user's prompt, in short (its API keys left out; the user has revoked them since): make the first of
-three scripts in a PDF, a 60-second ad for Neolevel, a program for young entrepreneurs in Florianópolis;
+three scripts in a PDF, a 60-second ad for a client, a city's program for young entrepreneurs;
 read the brand's site and Instagram; "AAA production level, with a cinematic style"; "The choice of tools is
 up to you. Go all out. You can use motion graphics, AI video generation, 3D graphics, or whatever else";
 keys for OpenAI (images: "create a character sheet ... so characters stay consistent when you generate
@@ -23,7 +23,7 @@ mode) never invoked any of its skills.
 59 s, 1920×1080, 24 fps, H.264 at -14 LUFS, plus a ProRes 422 HQ master and voice, music and effects
 stems. A photoreal young man in real places: a dark bedroom lit by a phone, a queue at dusk, a wall clock at
 night (black and white, letterboxed), then at sunrise the colour returns, and a notebook, a mentor, a team,
-a pitch at the FIESC Observatory and a walk on the Beira-Mar with the Hercílio Luz bridge, ending on the
+a pitch in a landmark of the city and a walk on its seafront by its best-known bridge, ending on the
 logo forming in the sunset sky and a brand card. Every line of the script is in it.
 
 ## How
