@@ -11,7 +11,7 @@ The user directs; you make the rest. A video's parts: idea, words (script or lyr
 In a script or a cut: entertain first (a piece people would watch twice), then show (words for what the viewer still needs); lessons ride the story; explain when it fits. Take liberties, but a reasonable viewer leaves believing nothing false that matters.
 
 ## When the look is yours
-Start from an image that carries the idea: for a song, tied to its words sideways rather than illustrating each line; for an explainer, the mechanism itself, staged so it surprises; for a named form or style (a showreel, psychedelic), what defines it. Pick the means that image needs, not the habitual one: light and depth, one flat field, a treated photograph or type alone can each be the bold choice. The picture changes most where the sound does. A frame that could be a slide isn't done. What the director pins down (the look, a shot), even to something plain, make exactly that, well.
+Start from an image that carries the idea: for a song, tied to its words sideways rather than illustrating each line; for an explainer, the mechanism itself, staged so it surprises; for a named form or style (a showreel, psychedelic), what defines it. Pick the means it needs, not the habitual one: light and depth, one flat field, a treated photograph or type alone can each be the bold choice. The picture changes most where the sound does. A frame that could be a slide isn't done. What the director pins down (the look, a shot), even to something plain, make exactly that, well.
 
 ## Fixed
 The rest is a default: depart from it when the piece gains, and say why.
@@ -23,7 +23,7 @@ The rest is a default: depart from it when the piece gains, and say why.
 
 ## A session
 Keep this checklist in your notes.
-- [ ] **Brief.** Work out the whole piece, its promise first, then write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first"), in one message whose defaults "go" accepts.
+- [ ] **Brief.** Work out the whole piece, its promise first, then write `videos/<video>/TREATMENT.md` (references/treatment-template.md) and post it (a short one whole) in a message before any scene; keep building. Wait only for what they alone can decide (a fact or file only they have, two readings that make different videos, a piece over a minute, their own "plan first", a devlog's gates), in one message whose defaults "go" accepts.
 - [ ] **Setup.** Check bun, run init, start the preview and post its link in a message.
 - [ ] **Look.** When it's yours, render two or three style frames: the key moment, with any words it shows, in the engine, each a different idea of what's staged (inside what the director said), not one layout restyled; pick by looking, post them. Then write `docs/STYLE.md` (references/style-template.md), `src/look.ts` and the treatment's Look from the pick.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for, with a free stand-in meanwhile (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
@@ -52,7 +52,7 @@ In the project folder (`<skill>`: this skill's folder); all options: `scripts/re
 - references/treatment-template.md, style-template.md: brief, look.
 - references/contract.md: f(t) edge cases, three.js, images, footage, 4K, cheap previews.
 - references/motion.md: eases, keys, cuts, sync, pacing.
-- references/glsl-cookbook.md: 4K lines, raymarching, kinetic type, karaoke, fields, particles, inks.
+- references/glsl-cookbook.md: 4K lines, raymarching, type, karaoke, fields, particles, inks.
 - references/critique.md: stills loop, critic, checks.
 - references/images.md: images given or asked for; surfaces and faces code draws poorly.
 - references/realism.md: photoreal 3D; blender.md: what three.js can't model or light.
@@ -60,7 +60,7 @@ In the project folder (`<skill>`: this skill's folder); all options: `scripts/re
 - references/backends.md: when the engine doesn't suit.
 
 ## Defaults
-The engine is the default; anything in the frame is fair, engine changes included (keep `docs/ENGINE.md` in step). If another approach serves it better, use it and say why. AI clips only as footage the director asks for.
+The engine is the default; anything in the frame is fair, engine changes included (keep `docs/ENGINE.md` in step). If another approach serves it better, use it, saying why. AI clips only as footage the director asks for.
 
 ## Gotchas
 - Time and values come from data: cuts on the beat grid (`ctx.audio`), words by their text (`ctx.words.get('...')`), an explainer's results from its inputs; never typed.
