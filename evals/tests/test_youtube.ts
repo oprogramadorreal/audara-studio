@@ -91,9 +91,9 @@ try {
 
   // check: a valid package
   const good = pkg('good', {
-    'title.txt': 'A resposta do Claude é assustadora\n',
+    'title.txt': 'O que o Claude disse é inquietante\n',
     'description.txt': 'Perguntei pra IA se ela era consciente.\n\nCAPÍTULOS\n0:00 Começo\n0:17 Meio\n1:10 Fim\n\n#IA #Claude\n',
-    'tags.txt': 'inteligência artificial, ia, claude, o programador\n',
+    'tags.txt': 'inteligência artificial, ia, claude, canal curioso\n',
   });
   copyFileSync(path.join(root, 'pages', 'good.png'), path.join(good, 'thumbnail-1.png'));
   r = run(['check', 'good', '--duration', '4:26']);

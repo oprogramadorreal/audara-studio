@@ -15,11 +15,11 @@ where they show · Policy and disclosure · Sources
   subject) can help.
 - **One channel's formula,** as an example of the logic, not a template: the picture is the question put to an
   AI ("COMO VOCÊ FUNCIONA?", "VOCÊ TEM CONSCIÊNCIA?"), the title is its surprising answer, with the AI's name
-  first ("Claude respondeu essa pergunta com um clipe", "A resposta do Claude é assustadora"). Other pairs work
+  first ("Claude respondeu com um desenho", "O que o Claude disse é inquietante"). Other pairs work
   as well: the result shown and the question in the title; the stakes shown and the twist named; a picture with
   no words and a title that carries them.
 - **Settle the title with the pictures in view:** the preview shows each option beside it. One creator chose a
-  final title a day after the thumbnail, so that it pointed at it ("essa pergunta").
+  final title a day after the thumbnail, so that it pointed at it ("this question").
 
 ## Title
 
@@ -75,8 +75,8 @@ where they show · Policy and disclosure · Sources
   the user promised to give "in the description" go here. The person's name only as `docs/CHANNEL.md` says.
 - **Links** as the user gave them, without tracking parameters (`?si=`); none invented; say which weren't checked.
   A video's title as published comes from `niche <links> --video <video>` (oEmbed) or the Data API; yt-dlp or a
-  page read in another language gets YouTube's automatic translation ("Claude's response is terrifying" for "A
-  resposta do Claude é assustadora"), and nothing scrapes youtube.com (references/art.md, the niche).
+  page read in another language gets YouTube's automatic translation ("What Claude said is unsettling" for "O
+  que o Claude disse é inquietante"), and nothing scrapes youtube.com (references/art.md, the niche).
 - **No keyword lists:** a block of search terms in the description breaks YouTube's spam policy and reads badly.
 - **Characters, and bytes:** YouTube's help allows 5,000 characters, its Data API 5,000 bytes (an accent takes
   two, an emoji four), and an upload through the API or a tool using it counts bytes; `check` counts both. `wc -m`

@@ -1,5 +1,5 @@
 // What a real project accumulates before it goes into git, planted in a task case's copy of a finished project
-// (setup "plant": "<name>"). Each comes from a project the user turned into a repository by hand (oprog-1,
+// (setup "plant": "<name>"). Each comes from a project the user turned into a repository by hand (channel project 1,
 // 2026-10-10: history.md, 0.6.0) or from what they ask of one: a home-folder path in a treatment, a key in a
 // script, a render outside out/, an out/ folder below a video, a duplicate at the top, a file over GitHub's
 // 100 MiB limit, a superseded generated image; for a project already in git, a key committed once and taken
@@ -47,7 +47,7 @@ export const plants: Record<string, { before?: (work: string, setup: Setup) => v
   'repo-traps': {
     before(work, setup) {
       const v = video(work), dir = path.join(work, 'videos', v), t = token(setup);
-      // the user's home in a note an agent wrote (oprog-1's treatment named plugin-cache paths under C:\Users\<name>)
+      // the user's home in a note an agent wrote (channel project 1's treatment named plugin-cache paths under C:\Users\<name>)
       const ref = path.join(os.homedir(), '.claude', 'plugins', 'cache', 'audara-studio', 'audara-studio', '0.5.0', 'skills', 'code-video', 'references', 'motion.md');
       appendFileSync(path.join(dir, 'TREATMENT.md'), `\n## Notes\n\n- Motion read from \`${ref}\` while timing the title.\n`);
       // keys: in .env (git-ignored by init), a script that hardcodes one, and a debug dump that copied the other

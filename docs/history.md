@@ -1116,8 +1116,8 @@ Astra), talking through Herdr, argued it out over four rounds; the user gave Cla
 
 What the evidence said:
 
-- **The request had been made once already,** by a Codex session on `videos/oprog-1` (2026-10-10, now
-  published as ai-video-proxima-palavra). It did much well: media ignored by default with an exception for
+- **The request had been made once already,** by a Codex session on channel project 1 (2026-10-10, its
+  repository since published). It did much well: media ignored by default with an exception for
   each input the render needs, generated and paid assets kept as files, a `docs/ASSETS.md` of what was kept
   and left out (a root `song.mp3` that was a byte-identical duplicate, intermediate mixes, rejected takes)
   measured against GitHub's 50 and 100 MiB limits, the scratch scripts that made kept assets archived, a
@@ -1125,15 +1125,15 @@ What the evidence said:
   half-second draft with audio).
 - **The user still had to ask four times afterwards:** for a key scan of the files and the history
   ("just make sure there is no api key or key of any sort exposed in the versioned files"), for the
-  published title the README had guessed, for the working folder name `oprog-1` to go from `package.json`,
-  `bun.lock`, AGENTS.md's heading and `docs/STYLE.md` ("rename it to ai-video-proxima-palavra, which is
+  published title the README had guessed, for the working folder name to go from `package.json`,
+  `bun.lock`, AGENTS.md's heading and `docs/STYLE.md` ("rename it to [the repository's name], which is
   current repo name"), and for the repository's size.
 - **The published repository still leaks the user's Windows account name:** `TREATMENT.md` lines 151–152
   name plugin-cache paths under `C:\Users\<name>`, and the key scan didn't flag them. Every commit also
   carries the user's work e-mail. Its ignore rule `/out/` (the top folder only) let the mix-round records a
-  script wrote to `videos/proxima-palavra/intro/out/` into the first commit; init's own `.gitignore` merge
+  script wrote to `videos/<video>/intro/out/` into the first commit; init's own `.gitignore` merge
   counted `/out/` as covering `out/`, so running init again wouldn't have added the broader rule.
-- **Other projects show what a clone lacks:** `oprog-3` has a script that loads image models by absolute
+- **Other projects show what a clone lacks:** channel project 3 has a script that loads image models by absolute
   paths under the home folder, nested `.venv/` folders, another tool's render output (`tools/manim/media/`)
   and `.playwright-mcp/` logs.
 - **Invocation:** Claude Code's `disable-model-invocation: true` takes the description out of context, so
@@ -1162,7 +1162,7 @@ What changed:
   secret-named environment and `.env` values (the user's keys live there), known key formats, key files,
   home paths, e-mail addresses, files over GitHub's limits and duplicates;
   `--staged` reads the index, `--history` every reachable blob; it masks secrets and lists what it doesn't
-  cover. On `oprog-1 --history` it runs in about 3.5 seconds and flags `TREATMENT.md:151–152`.
+  cover. On channel project 1, `--history` runs in about 3.5 seconds and flags `TREATMENT.md:151–152`.
 - **init:** its `.gitignore` merge no longer counts `/out/` as `out/`; its AGENTS.md names video-repo and
   owes "for a request to put the project in git or get it ready for GitHub, that repository, with the
   videos left as they are".
@@ -1187,7 +1187,7 @@ Considered and rejected:
   that, and init's AGENTS.md routes the request meanwhile. Codex argued for an exclusion in code-video's
   description now; the evidence rule decided it.
 - **A general "media project into git" skill:** only audara-studio projects have been seen.
-- **A media allowlist by default** (oprog-1's): it hides the next required file from the session that adds
+- **A media allowlist by default** (channel project 1's): it hides the next required file from the session that adds
   it; one a project already has on purpose is kept.
 - **Installing a secret scanner:** gitleaks is suggested when it's already installed.
 - **Stopping to ask at the start:** nothing is published until the user pushes, so the skill goes on with
@@ -1218,7 +1218,7 @@ finds this repo; with it, none, and the skill links stay out of `git status`. A 
 Code, Opus 5.5, one run each) loaded video-repo for "put this video project in git so I can push it to
 GitHub later" and left "commit my changes to the intro scene with a good message" alone. **Not run:** the
 full trigger sets (cv-23 included) and the two `vr-` cases, an hour or more per case and tool. They, with
-`--without` runs as the bar (the model alone did oprog-1), decide whether the skill earns its place.
+`--without` runs as the bar (the model alone made channel project 1's repository), decide whether the skill earns its place.
 
 After the pull request opened, the user asked how the skill behaves when it comes first, in an empty
 folder, and whether it then picks up the files the other skills make; asked that the product be called
@@ -1290,8 +1290,8 @@ enters the masking. The audit has 26 checks; the session agreed.
 
 ## One video or many in a project (0.6.1, 2026-10-11)
 
-The user had made five projects, one per video or close to it (`videos/audaces-1`, `oprog-1` to `oprog-4`, the
-last four for their YouTube channel), and asked whether audara-studio would work as a studio: one git
+The user had made five projects, one per video or close to it (a client project and channel projects 1 to 4,
+the last four for their YouTube channel), and asked whether audara-studio would work as a studio: one git
 repository for a channel, with a shared core (the engine, some assets) and what's specific to each video. Then
 a constraint: separate repositories and one big one must both work, and if the big one complicated the plugin
 too much, they would rather drop it, since the skills must stay light while models change fast. A Claude Code
@@ -1305,20 +1305,20 @@ AGENTS.md lists them. A separate repository is a project with one video (and the
 What the five projects showed:
 
 - **Their engines were the template's,** byte for byte outside `src/look.ts` once line endings are set aside
-  (audaces-1 and oprog-2 exactly), but for features a project added: oprog-1 a replay (`TimelineEntry.shift`
-  and `window`) and shadow maps; oprog-3 a `clock.ts`, LaTeX fonts in `type.ts` and `render.ts --param`;
-  oprog-4 scanlines and a glitch in the post, a timeline's `postAt`, and shadow maps, the same code oprog-1
+  (the client project and channel project 2 exactly), but for features a project added: channel project 1 a replay (`TimelineEntry.shift`
+  and `window`) and shadow maps; channel project 3 a `clock.ts`, LaTeX fonts in `type.ts` and `render.ts --param`;
+  channel project 4 scanlines and a glitch in the post, a timeline's `postAt`, and shadow maps, the same code channel project 1
   wrote.
-- **Projects copied from each other:** oprog-4 took oprog-1's CRT scene, its plastic texture and
-  `tileable.py`; audaces-1's vertical cut of video 3 is a copy (11 of its 15 scene files identical), so the
-  director's note "include Audaces name together with the logo" was made twice.
-- **Two projects gave a second video a look of its own, and both kept the first intact:** oprog-3 added v2's
-  keys beside v1's in `src/look.ts` and set `V2_POST` on every v2 entry; audaces-1 kept video 2's palette in
+- **Projects copied from each other:** channel project 4 took channel project 1's CRT scene, its plastic texture and
+  `tileable.py`; the client project's vertical cut of video 3 is a copy (11 of its 15 scene files identical), so
+  the director's note to set the client's name beside its logo was made twice.
+- **Two projects gave a second video a look of its own, and both kept the first intact:** channel project 3 added v2's
+  keys beside v1's in `src/look.ts` and set `V2_POST` on every v2 entry; the client project kept video 2's palette in
   its scenes (`_story.ts`, "so the first video's `src/look.ts` is untouched").
 - **A font one video registers loads for all of them** (`type.ts` registers `'../videos/<video>/assets/...'`
   and `loadFonts` loads every face at boot), so deleting it stops every video.
-- **Disk:** `out/` reached 34 GB in oprog-3 (one draft of 516 MB in oprog-4); a channel repository's media
-  would pass GitHub's recommended 10 GB for `.git` within a few dozen episodes (oprog-1's pack is 233 MiB).
+- **Disk:** `out/` reached 34 GB in channel project 3 (one draft of 516 MB in channel project 4); a channel repository's media
+  would pass GitHub's recommended 10 GB for `.git` within a few dozen episodes (channel project 1's pack is 233 MiB).
 
 Proposed, and left out on the evidence: a look per video in the engine (`videos/<video>/look.ts` merged over
 `src/look.ts`: both projects that needed one managed without it, and engine code never reaches an existing
@@ -1334,10 +1334,10 @@ to verify every video a shared change reaches (below). Codex's own first list ha
 the sound defaults; its second round agreed none rested on a failure that had happened, and found the font
 dependency, the boundary below and the soundtrack catch.
 
-The AGENTS.md sentence was the one point left open, so it was measured. oprog-3's first video was last
+The AGENTS.md sentence was the one point left open, so it was measured. Channel project 3's first video was last
 verified on 10-08 at 21:26; after that only shared files changed, for v2 (`src/look.ts`, `type.ts`, four
 fonts), and nobody verified v1 again. On scratch copies, verify `--since` the old reports said every sampled
-frame changed, for v1 (1,000 of 1,000) and for a control, an audaces-1 video whose code hadn't changed since
+frame changed, for v1 (1,000 of 1,000) and for a control, a video of the client project whose code hadn't changed since
 its verify on 10-07 (57 of 57), so those reports couldn't tell a change from anything else. render.ts puts
 such a result down to the browser or the GPU when nothing shared changed, which fits the control but wasn't
 established. Compared with frames of the drafts each
@@ -1346,7 +1346,7 @@ project rendered right after those verifies, fresh stills matched: mean colour w
 control's 36.3–40.3, most likely v1's full-frame TV static, which a draft's encoding can't keep, though the
 comparison doesn't isolate that cause. So no regression attributable to the shared edits at the sampled
 times: the sentence waits for an eval or a real regression. Codex added that "outside the video's folder"
-was the wrong boundary for it, since oprog-1's thumbnail video imports helpers from inside the main video's.
+was the wrong boundary for it, since channel project 1's thumbnail video imports helpers from inside the main video's.
 
 What changed:
 
@@ -1415,33 +1415,33 @@ skill-creator over five rounds through Herdr and ran the script in its own envir
 processes: its default shell couldn't start a process on this machine, so the default shell sandbox itself
 wasn't tested).
 
-What the evidence said, from the user's four channel projects (`oprog-1` to `oprog-4`) and the sessions that
+What the evidence said, from the user's four channel projects (channel projects 1 to 4) and the sessions that
 packaged them, read by nine research agents (the transcripts, the files, YouTube's help pages, data studies):
 
-- **Too little, then too much.** On oprog-4 the first round (10 minutes) skipped the channel: the user had to
+- **Too little, then too much.** On channel project 4 the first round (10 minutes) skipped the channel: the user had to
   name their thumbnail font ("I did not like the font... use the same font that I used for this other video of
   my channel"), then ask to "work harder". The round that followed took 9 h 44 min, 61 agent runs and about
   1.55M output tokens, six of those hours on an option that lost; it banned generated images "(they cost
   money)" as the director's rule, though the director had approved them for that film, and painted
-  photographic eyes by hand instead. oprog-3's session showed the user nothing for over four hours, against
+  photographic eyes by hand instead. Channel project 3's session showed the user nothing for over four hours, against
   their standing rule to bring findings and wait, and hit the account's limit twice.
 - **What paid.** A five-minute scan of 65 real thumbnails from nine searches changed a whole set's type size
   (30% to 40-60% of the height), brightness (the set at 0.19-0.23 against the niche's 0.34) and colour (orange
   read as "Claude tutorial"); the feed mock with real neighbours showed what a sheet of sizes had passed as
   readable; one audit after the final polish caught real streaks between letters; three distinct hooks.
-- **The video's own world wins.** oprog-1's first round (generated look-alike plates, rainbow confetti and music
+- **The video's own world wins.** Channel project 1's first round (generated look-alike plates, rainbow confetti and music
   notes in a video with neither, stacked template type, a pasted face) was rejected in six minutes ("I'd like a
   cleaner aspect"); the thumbnail YouTube serves is the video's own computer and a modelled mascot, rendered in
   its engine in nine minutes. The user's own candidate re-staged the video's real computer with their face, made
   in ChatGPT: generation is welcome when it re-stages what the video has. Rules that count elements were wrong
   (the user's own design had a face, a computer, a line of text and ten labels); hierarchy decides.
-- **The idea beats the pipeline.** oprog-3's quick first thumbnail (about 20 s of tool time) already held the
+- **The idea beats the pipeline.** Channel project 3's quick first thumbnail (about 20 s of tool time) already held the
   idea that won its long round; locking the given words at 20% cap height with wide gutters made all sixteen
   mockups the same text wall and shrank the subject, so craft scores rose while the pull to click fell.
 - **The pair, as the user writes it.** The thumbnail asks, the title answers, never with the same words
   ("FOMOS NÓS" became "EM EXTINÇÃO" because the title said "nós"); "Claude" early; spoken Brazilian Portuguese;
   31 to 53 characters; current, not "outdated"; clickable by the user's gut. They iterate titles over days and
-  once chose the final title after the thumbnail, to point at it ("Claude respondeu essa pergunta com um clipe").
+  once chose the final title after the thumbnail, so that its words pointed at the picture's question.
 - **The words.** Descriptions shipped at 1,100-1,700 characters (a 4,570 one was cut by its lyrics); chapters
   computed from `words.json` and the render's length held, chapters recalled from memory were luck; no session
   ever wrote the tags to a file (the user typed eight short lowercase ones); three projects kept the description
@@ -1481,9 +1481,9 @@ Considered and rejected:
 - **A compositor or a layout template:** it would set one look for every channel. Codex first argued against
   any compositor; it agreed in round two that a camera (any page the model writes, rendered at an exact size and
   measured) institutionalizes no layout, since the preview needs the same browser anyway.
-- **Scraping YouTube's search** (oprog-3 and oprog-4 each wrote one): YouTube's terms forbid it and its pages
+- **Scraping YouTube's search** (channel projects 3 and 4 each wrote one): YouTube's terms forbid it and its pages
   change. `niche` reads links through oEmbed and searches only through the Data API with the user's key.
-- **A fixed count of drafts, judges and lenses** (oprog-3's sixteen mockups and four weighted lenses): about six
+- **A fixed count of drafts, judges and lenses** (channel project 3's sixteen mockups and four weighted lenses): about six
   rough ideas and one critic, with no CTR guesses or averaged scores; a salience score once pulled a design
   toward the cliché its brief ruled out.
 - **Exports split from sources** (Codex's first proposal: the PNGs and text copies in `out/`): one folder for
@@ -1590,7 +1590,7 @@ generation waits for the user's yes).
 
 **One option in a format from the niche (2026-10-13).** The user asked that at least one of the three options
 "look for successful videos of similar content and copy its style, if possible", a successful video being one
-"that has much more views that would be expected for its channel size". The evidence was their own oprog-3
+"that has much more views that would be expected for its channel size". The evidence was their own channel project 3
 sessions. The first (2026-10-12) made sixteen mockups and three options from the video's own ideas. Its niche
 scan already held 3Blue1Brown's guest video by Welch Labs, "But how do AI images and videos actually work?"
 (iv-5mZ_9CPY), but only as a neighbour in the feed mock. The second (2026-10-13) made six dust variants the user
@@ -1616,7 +1616,7 @@ What changed:
   name it, and the commands table no longer calls `niche` optional. SKILL.md is 7,996 bytes: two gotchas and
   `shoot`'s serving line, all in art.md already, left it.
 - **art.md:** a section, "The niche, and a format that worked": finding the videos, what counts as having
-  worked, fit before numbers (the oprog-3 case), what the option takes and what it never takes, notes in
+  worked, fit before numbers (the channel project 3 case), what the option takes and what it never takes, notes in
   `NOTES.md`, and what to do when nothing fits. The niche paragraph moved there from "Looking as viewers do", and
   the film-poster line now says why a niche format differs: it borrows a way of showing, not a work's identity.
 - **youtube.md:** Test & Compare notes what the format option tests; the sources add the channels resource and
@@ -1653,18 +1653,18 @@ machine; a local stand-in served the same JSON shapes).
 
 ## Small fixes from three published videos (0.7.1, 2026-10-13)
 
-The user published two videos made with audara-studio on their channel (oprog-1, "Claude respondeu essa
-pergunta com um clipe"; oprog-4, "A resposta do Claude é assustadora") and finished a third (oprog-3, "Do Ruído
-à Imagem", scheduled). They were happy with all three and asked for a look at whether the plugin behaved as
+The user published two videos made with audara-studio on their channel (channel project 1's music
+video, and channel project 4's, an AI answering whether it is conscious) and finished a third (channel project 3's,
+an explainer of how image models work, scheduled). They were happy with all three and asked for a look at whether the plugin behaved as
 expected, and for small improvements only, nothing that risks what works. A Claude Code session (Opus 5.5)
 read the sessions through Herdr: the three main ones (0.5.0, whose code-video, soundtrack and video-ideas
-SKILL.md are byte for byte today's), oprog-3's final render and thumbnail sessions (0.6.1), its description
+SKILL.md are byte for byte today's), channel project 3's final render and thumbnail sessions (0.6.1), its description
 and tags (0.7.0, the first youtube-package run on a real project) and a disk audit. Four subagents read the
 transcripts whole, with the tool results, against the current repo.
 
 What worked, to keep: video-ideas stopped at the prompt; treatments came before scenes, style frames were
 picked by looking, Decisions kept the director's words and the budgets' running totals; verify passed at every
-step and `--since` showed what each change touched; critic rounds found real problems (oprog-4's stillness
+step and `--since` showed what each change touched; critic rounds found real problems (channel project 4's stillness
 went from 65% to 17%); costs were printed before every spend; the plugin's own scripts rarely failed (most
 errors in the transcripts were in code the agents wrote). youtube-package's first real run took 6 minutes and
 cost nothing: description and tags only, as asked, chapters from the timing data checked against the final
@@ -1672,14 +1672,14 @@ cut, `docs/CHANNEL.md` started, the "AI use" setting flagged.
 
 What the evidence said:
 
-- **Renders on the integrated GPU.** In oprog-3's final-render session the NVIDIA GPU sat at 0% while Chrome
+- **Renders on the integrated GPU.** In channel project 3's final-render session the NVIDIA GPU sat at 0% while Chrome
   drew on the Intel one: 1.1 fps against 3.7, a heavy stretch 0.2 against 2.4. The agent patched the project's
   render.ts to read `CHROME_FLAGS` and rendered with `--force_high_performance_gpu` (56 min). The same
   project's ~18 full drafts and 23 verifies had all run on the Intel GPU. youtube-package's art.md already told
   agents to set `CHROME_FLAGS`, which the template's render.ts never read. Chrome's choice varies: on the same
   machine on 2026-10-13 it took the NVIDIA GPU unprompted, in a scratch project made with init, where verify of
   the example passed with 0 mismatches on both GPUs, in 3.9 s on the discrete one and 6.5 s on the integrated.
-- **Effects muted by the mix.** In oprog-1, about 200 of 476 effects came out at -60 dB ("paper-slap 50 of 92,
+- **Effects muted by the mix.** In channel project 1, about 200 of 476 effects came out at -60 dB ("paper-slap 50 of 92,
   stamp-soft 54 of 79"): a `target_db` of 0 or less asks the solver for no lift, so it stops at its least
   gain, with no warning and against its own docstring ("never a muted effect"). Reproduced on the example with
   0.7.0's mix.py. Finding and working around it took most of an afternoon.
@@ -1687,42 +1687,42 @@ What the evidence said:
   these keys. I'll invalidate them right after"; "ok you already have the api keys here in your context"),
   where elevenlabs.md said to ask them to set the key in their environment and start the session again, a rule
   no entry here explains. The sessions improvised three ways: a file in the session's temporary folder, loaded
-  per command and deleted (oprog-1); `SetEnvironmentVariable` for the user, which put both keys on a command
-  line and kept them after the session (oprog-4); the key inline on 7 commands (oprog-3). No key reached a
-  project file (checked in all three projects and in oprog-3's 84 subagent transcripts).
-- **`verify --only` replaced the whole video's report.** oprog-4's scene author ran it and overwrote the lead's
-  `verify.json` ("overwrote my full-video report, but I'd kept a copy"); in oprog-3 authors did the same and
+  per command and deleted (channel project 1); `SetEnvironmentVariable` for the user, which put both keys on a command
+  line and kept them after the session (channel project 4); the key inline on 7 commands (channel project 3). No key reached a
+  project file (checked in all three projects and in channel project 3's 84 subagent transcripts).
+- **`verify --only` replaced the whole video's report.** Channel project 4's scene author ran it and overwrote the lead's
+  `verify.json` ("overwrote my full-video report, but I'd kept a copy"); in channel project 3 authors did the same and
   the lead added `--out` to every brief. `video` already names a partial render `-only-<ids>`.
-- **Two renders lost to memory.** oprog-1's final render died at 86% (37 minutes in) and an oprog-4 draft did
+- **Two renders lost to memory.** Channel project 1's final render died at 86% (37 minutes in) and a channel project 4 draft did
   too: each session ended its turn with the render in the background, and Claude Code stopped it when memory
   ran low while the session was idle. The rule was there; its reason didn't name this case.
-- **Disk.** oprog-3's `out/` reached 41 GB (36 GB for v2: 19 kept drafts of about 1 GB, 25 frame folders, the
+- **Disk.** Channel project 3's `out/` reached 41 GB (36 GB for v2: 19 kept drafts of about 1 GB, 25 frame folders, the
   critic rounds) beside a 1.7 GB final; the user had to ask a separate session what was safe to delete
   ("consumed a lot of my disk space with temp stuff"). critique.md said `out/` "costs nothing". That session
   did it well: about 120 GB in groups (A to F), each with its size and why it was safe, the user to pick by
   letter; the finals, the thumbnail options awaiting a pick and the reports `verify` compares with kept; the
-  only render of a video with no final (oprog-3's v1, oprog-2) left to the user; a search showing no code read
+  only render of a video with no final (channel project 3's v1, channel project 2) left to the user; a search showing no code read
   what it would delete; a wait while another session wrote in the project; 14.8 GB found in a finished
   thumbnail session's temporary folder, out of any project. It also offered every project's `.audara-cache/`
-  but `preview.log`, after searching only oprog-3's code: oprog-1's `.audara-cache/tools/` holds the scripts
+  but `preview.log`, after searching only channel project 3's code: channel project 1's `.audara-cache/tools/` holds the scripts
   that make its `mix.json` (`sfx_collect.ts`, `make_mix2.py`) and textures (`tileable.py`), named as such in
   the project's files. Copies were in its git repository (`docs/production-tools/`, from video-repo); a
   project without one would have lost them.
-- **On screen.** oprog-3 showed "Modelo com LoRA do diretor" and the user's real name from their training
+- **On screen.** Channel project 3 showed "Modelo com LoRA do diretor" and the user's real name from their training
   captions until they asked: "I do not want to display my real name ([name]) anywhere... do not mention 'o
   diretor'". About 25 honesty captions piled up round by round ("too overwhelming... remove them all").
 - **Smaller ones.** The treatment message went out without the preview link (the director asked for it 11
-  minutes after init and got it 34 minutes later). oprog-3's preview showed "no default export" for three scenes
+  minutes after init and got it 34 minutes later). Channel project 3's preview showed "no default export" for three scenes
   whose helpers five authors were saving at once, cured by restarting it; renders and verify, each on a fresh
   server, never showed it. `bun run check` failed for an audio script importing the timeline
-  (`import.meta.glob`); oprog-4 added `vite/client` to the scripts' types, and its check passes with it. Two
+  (`import.meta.glob`); channel project 4 added `vite/client` to the scripts' types, and its check passes with it. Two
   cached layers were keyed on a rounded value but drawn with the exact one (a verify failure, then a faint
   ghost). `eleven.py sfx --pick` was run without its prompt. v4 voice lessons: tags on the say map's spoken
   side, a take that doesn't come back when asked for again, about 13.8 characters a second for a slow,
-  dramatic Portuguese read (measured on oprog-4's words.json). youtube-package read the channel's titles with
-  yt-dlp and got YouTube's English translations ("Claude's response is terrifying"), while `niche`'s oEmbed
+  dramatic Portuguese read (measured on channel project 4's words.json). youtube-package read the channel's titles with
+  yt-dlp and got YouTube's English translations of them, while `niche`'s oEmbed
   returned the Portuguese titles under any language header; `check` gave a description's bytes only past
-  5,000, so the agent measured them by hand; the description took as its model a 4,570-character draft oprog-1
+  5,000, so the agent measured them by hand; the description took as its model a 4,570-character draft channel project 1
   cut before upload.
 
 What changed:
@@ -1765,7 +1765,7 @@ What changed:
   to stay at 7,997 bytes (soundtrack 7,996).
 - **design.md, 0.7.1.**
 
-Considered and left out: effects levelled against voice and music together (oprog-1's critic found intro
+Considered and left out: effects levelled against voice and music together (channel project 1's critic found intro
 effects 22-29 dB under them, but every narrated mix would change level); a report of the closest
 voice-over-music gap (the director heard a swell at 9 s that the mean hid: worth doing, but new code); a
 library search in `eleven.py voices`; `beats.py window --at` for a song after a spoken intro; shadow maps,
@@ -1775,7 +1775,7 @@ sound effects by default (one director's taste).
 
 What was checked: in the scratch project, `bun run check`, `gpu` with and without the flags, and the verify
 runs above; mix.py on the example with `target_db` 0 and -3 (both refused) and 0.5 (gain -0.6 dB), and
-0.7.0's mix.py on 0 (-60 dB); `eleven.py sfx --pick 2`; `youtube.ts check` on oprog-3's package ("3956
+0.7.0's mix.py on 0 (-60 dB); `eleven.py sfx --pick 2`; `youtube.ts check` on channel project 3's package ("3956
 characters, 4128 bytes"); `bun evals/tests/test_youtube.ts` 51/51, `test_audit.ts` 26/26,
 `test_init_gitignore.ts` 3/3, `test_imagegen.py` OK; the three spec validators on code-video, soundtrack and
 youtube-package. Not run: a task eval with the changes, and the GPU flag on a machine with one GPU or in a
@@ -1789,14 +1789,14 @@ The second round found nothing.
 
 ## Sound for any video: a commercial made of AI clips (0.7.2, 2026-10-14)
 
-The user ran a long prompt for a 60-second commercial (Neolevel, a program for young entrepreneurs in
-Florianópolis) in a fresh folder with 0.7.1 installed. It left the tools open ("The choice of tools is up to
+The user ran a long prompt for a 60-second commercial (for a client, a city's program for young
+entrepreneurs) in a fresh folder with 0.7.1 installed. It left the tools open ("The choice of tools is up to
 you. Go all out. You can use motion graphics, AI video generation, 3D graphics, or whatever else"), gave keys
 for OpenAI images, ElevenLabs and Higgsfield's video models, and didn't name audara. They half expected
 code-video to load; no audara skill did, and they asked whether that was the right call or whether the skills
 should stretch to cases like it. A Claude Code session (Opus 5.5) read the project and the session's
 transcript through Herdr, and Codex (GPT-6 Astra) went over the same evidence before seeing its conclusions;
-they agreed. What the film took is in `docs/research/ai-video-commercial-neolevel.md`.
+they agreed. What the film took is in `docs/research/ai-video-commercial.md`.
 
 What the evidence said:
 
@@ -1905,7 +1905,7 @@ SAO-style occlusion, a scatter-as-gather depth of field, an ACES/AgX blend, a sh
 sub-frames, a bloom pyramid), but its sub-frames varied time (and cycled four supersampling taps for the
 shaders that ask for them) without giving a three.js scene an index to move its camera, sun or occlusion
 kernel by, and its docs led a three.js scene to flat materials, a RoomEnvironment and THREE.Fog. The user's own projects had already hand-rolled pieces of it
-(audaces-1's `_realism.ts`: VSM shadows, area lights, a planar mirror, a depth of field; oprog-1 and oprog-4:
+(the client project's `_realism.ts`: VSM shadows, area lights, a planar mirror, a depth of field; channel projects 1 and 4:
 shadow maps in the engine), and 0.6.1 and 0.7.1 had left those engine additions out for scope, not for not
 working.
 
@@ -2169,7 +2169,7 @@ once.
 
 ## Iteration time on a 13-minute video (0.8.1, 2026-10-21)
 
-The user made "recriando" with 0.7.1 over eight days: a 13.5-minute pt-BR remake of their most-watched video,
+The user made a channel video with 0.7.1 over eight days: a 13.5-minute pt-BR remake of their most-watched video,
 at 60 fps, narrated in their cloned voice, with a browser Minecraft clone built for its footage. That was a
 build, seven rounds of notes and a Full HD render, in Claude Code with Opus 5.5 at xhigh and ultracode (a
 mode that tells the model to run every substantive task as a multi-agent workflow). They were very happy
@@ -2450,7 +2450,7 @@ render. The drafted fixes stay unmade.
 
 What the evidence said:
 
-- **Check scripts in out/.** Nine files across two runs (out/hopf/wip/, out/palavra/wip/<owner>/): motion.md
+- **Check scripts in out/.** Nine files across two runs (out/hopf/wip/, out/<video>/wip/<owner>/ in the music video's): motion.md
   saved its speed probe as out/<video>/wip/speed.ts and its cut-diff data under out/, against critique.md
   ("never `out/`") and cv-title-card's assertion, and the scene authors, who read motion.md but not
   critique.md, put theirs beside their verify folders.

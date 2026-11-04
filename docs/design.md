@@ -372,7 +372,7 @@ since a cleanup request in a later session may load no skill.
 
 A finished project often goes into git next, so someone else can clone it on another machine, work on it
 and render it again. The user asked for that in the same words project after project, and the first one
-made by hand (`oprog-1`, 2026-10-10) came out well but needed four follow-ups and kept a leak (history.md,
+made by hand (channel project 1, 2026-10-10) came out well but needed four follow-ups and kept a leak (history.md,
 0.6.0). `video-repo` holds the method:
 
 - **Where the repository goes first.** None yet: `git init -b main` in the project. The project already is
@@ -461,7 +461,7 @@ That attracts clicks", then a description with chapters, and tags nobody wrote d
   takes the format of the niche video that best fits this one: what it shows and how, rebuilt from the video's
   own material in the channel's type, never that video's pixels, characters or brand. A format is shared on
   YouTube; a picture is someone's work. The niche video is preferably an outlier, with far more views than its
-  channel usually gets (vidIQ's score starts at 2x a channel's average). Fit comes before numbers: on oprog-3
+  channel usually gets (vidIQ's score starts at 2x a channel's average). Fit comes before numbers: on channel project 3
   the user preferred, over more than a dozen of the video's own ideas, the option that followed the subject's
   big video, 3Blue1Brown's guest video by Welch Labs. It had 2.2 million views, under that channel's average, and
   its layout (four panels from noise to picture) was the mechanism the video explains. The other two options
@@ -951,7 +951,7 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
   (`/v1/music/detailed` with `with_timestamps`). Write them in the same `words[]` format as
   `data/lyrics.json`, and scenes find narration words by their text exactly as they find lyrics.
   pdoom-video's explainer had to force-align its ElevenLabs narration after the fact
-  (`analysis/narracao.py`: CTC alignment plus a pronunciation table). With timestamps that step goes away,
+  (a script of CTC alignment plus a pronunciation table). With timestamps that step goes away,
   and the heavy local path (Demucs plus forced alignment, about 4 GB of models) is only needed for audio
   the user brings.
 - **The music can be composed to fit the edit.** Generate the narration first and measure its chapters.
@@ -983,7 +983,7 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
 1. **Generated audio is an asset, not a build step.** Each generation costs credits and gives a different
    take. Generate once, keep the file, and save the exact request next to it (text, voice, model, settings,
    seed). Renders never call the API, and a script regenerates only when its request has changed.
-   pdoom-video did this by hand: `docs/letra-explicada-pt-br/tts/` holds the exact text of each generation.
+   pdoom-video did this by hand: its explainer's folder holds the exact text of each generation.
 2. **Ask before spending.** Before generating, say what it will make (characters, length) and confirm:
    without `--yes`, `eleven.py` prints what it would make and what it would cost, and exits without
    spending. For music, show the free plan first. Make the voice's first block and check it before
@@ -996,14 +996,14 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
    used now lives for that session only: in a file in the session's temporary folder, outside the project,
    loaded into each command's environment and deleted at the end; never set in their system for them.
 4. **Keep the spoken text and the displayed text apart.** The narration text is spelled the way it should
-   sound (pdoom-video's table in `docs/letra-explicada-pt-br/ROTEIRO.md`, "Grafia para a voz": "pê dum" for
+   sound (the table of spellings for the voice in pdoom-video's explainer script: "pê dum" for
    P(doom), "I-Á" for IA), so the timestamps are in spoken words. Keep a map from spoken to displayed words,
    so scenes still find words by what's on screen.
 5. **Check the result by transcription.** Speech-to-text on the generated file confirms that it says what
    the text says. The user approves it by ear when they want to.
 
-Lessons from pdoom-video's explainer are in `references/elevenlabs.md` (from its `ROTEIRO.md`, "Geração
-no ElevenLabs"): one voice and the same settings for every file; one paragraph of text is one block, and
+Lessons from pdoom-video's explainer are in `references/elevenlabs.md` (from its script's notes on the
+generation): one voice and the same settings for every file; one paragraph of text is one block, and
 the picture cuts in the silence between blocks; acronyms read better written as they appear on screen
 than spelled out; generate the key lines several times and keep the most natural take.
 
