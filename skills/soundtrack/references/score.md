@@ -51,8 +51,9 @@ splice landing in a louder section, music stopping under the voice, words lost u
 is an average: a dark voice under bright tracks can still lose its consonants, and a loud effect or game sound
 on top of the bed can bury a phrase the average calls fine. Check the voice's presence band (about 1-4 kHz)
 against everything else on `mix.wav`, with `mix.py measure`'s phone check too, line by line. Where it is masked,
-dip that band in the music under the words, from the arrangement, and hold those dips through short breaths so
-the music doesn't pump between sentences. A track the director says is a little loud everywhere it plays comes
+find which layer masks it (the music, an effect, a game sound) and change that one: dip the music's presence band
+under the words from the arrangement (holding the dips through short breaths, so it doesn't pump between
+sentences), or lower or move the effect. A track the director says is a little loud everywhere it plays comes
 down everywhere it plays.
 
 ## What to report

@@ -192,7 +192,8 @@ ElevenLabs"), and `tts` is built around them.
   neighbours at 135 Hz. Make it in the narrator's own settings (a register for a scared or excited line kept
   near them: low stability and high style took the clone's timbre away) and compare its takes with the kept
   blocks beside it before picking. A clone speaking Brazilian Portuguese also drifted toward European
-  Portuguese on some takes; the line made again in the base settings, on a new seed, ended it.
+  Portuguese on some takes, which pitch, timbre and two transcribers all passed; lines made again in the base
+  settings, on a new seed, drew no more accent notes, though few were made after that, so the ear decides.
 - **Listen to the names before approving a file**: people, products, foreign words.
 - Keep stage directions out of the text: the voice reads them aloud. Audio tags such as
   `[whispers]` exist only on v3 and v4, and go on the say map's spoken side (`Calma.`, a tab,

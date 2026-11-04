@@ -1,6 +1,6 @@
 ---
 name: devlog
-description: "Makes a devlog: builds something worth watching being built (a game, a physics simulation, a fractal explorer, a visual tool, any prototype) while keeping what makes its making a story (a development log, the director's turns, before and after, real bugs, demonstrations that can be filmed again), then hands that material to code-video for the video about how it was made. Use it whenever the user wants a devlog or a making-of, asks to build something and then a video of how it was built (even if they only say \"start by building the game\"), or wants a video about how a project of theirs was built, and in any project whose docs/DEVELOPMENT_LOG.md feeds a video. Not for tutorials, product demos or screen recordings of finished software, videos that only show code (code-video), or ideas alone (video-ideas)."
+description: "Makes a devlog: builds something worth watching being built (a game, a physics simulation, a fractal explorer, a visual tool, any prototype) while keeping what makes its making a story (a development log, the director's turns, before and after, real bugs, demonstrations that can be filmed again), then hands that material to code-video for the video about how it was made. Use it whenever the user wants a devlog or a making-of, asks to build something and then a video of how it was built (a devlog request that only says \"start by building the game\" counts), or wants a video about how a project of theirs was built, and in any project whose docs/DEVELOPMENT_LOG.md feeds a video. Not for tutorials, product demos or screen recordings of finished software, videos that only show code (code-video), or ideas alone (video-ideas)."
 ---
 
 # devlog
@@ -24,15 +24,15 @@ this skill's; the rest are the project's.
 One message, each point with the default you'll take, then start; wait only for what they alone can decide:
 - what gets built, the scope they will judge ("both levels playable start to finish") and where it runs;
 - a working promise: a title and a thumbnail idea, provisional (youtube-package makes the final ones);
-- the gates (default: a first look early, the prototype approved before the script, the script before
+- the order and gates (default, when they set none: a first look early, the prototype approved before the script, the script before
   production, the render on their yes);
 - their own material: the music library and what each track is for, characters or props from earlier videos and
   where they are, their photo, the narrator's voice, how far the video may tease them;
 - a repository now (video-repo) or later.
 
 ## Setup
-- The prototype in its own folder (`game/`, `sim/`, `app/`); the video project (code-video's init) at the root
-  when the video starts.
+- The prototype in its own folder (`game/`, `sim/`, `app/`), or a project already built as it is; the video
+  project (code-video's init) at the root when the video starts.
 - `docs/DEVELOPMENT_LOG.md` (references/log-template.md): status, decisions and why, known issues, next steps,
   and a timeline whose milestones carry their commit, artifacts by path and time range, and times from the
   session's messages. For a project already built, write it from its history first.
@@ -42,7 +42,8 @@ One message, each point with the default you'll take, then start; wait only for 
   session keeps them.
 - A way to film it again, sized to the thing (references/capture.md): for a game or a simulation, a fixed tick,
   seeded randomness and replays; for an explorer, the camera path as data; for a tool, scripted input. Set it up
-  before the first feature: determinism added later means hunting every hidden clock.
+  before the first feature: determinism added later means hunting every hidden clock. A project already built
+  lists what it has first (recordings, history, tags) and adds only what the shots need.
 
 ## Build
 - **Stages with an ETA,** said at the start and again when it slips. Hand off when the stage's own check passes:

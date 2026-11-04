@@ -267,7 +267,7 @@ code-video, and ideas for one with video-ideas.
   before the script, the script before production, the render on his yes) are offered in one opening message
   that also asks for his scope, a working promise, and his own material (a music library and what each track
   is for, characters from earlier videos, his photo, the voice, how far the video may tease him), and the
-  build starts without waiting.
+  build starts without waiting. A project already built keeps its structure and starts from what it has.
 - **A log and a ledger as it goes.** `docs/DEVELOPMENT_LOG.md`: status, decisions and why, the versions with
   their role in the video, known issues, next steps, and a timeline whose entries name their commit and
   artifacts, with times from the session's messages. Its story ledger keeps his words that name a beat

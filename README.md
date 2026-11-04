@@ -15,10 +15,10 @@ audara-studio is a plugin for Claude Code and Codex with seven skills:
   also for a video made elsewhere (filmed, or from AI video clips).
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
   one and writes it up as a prompt or a script, without building anything until you ask.
-- **devlog**: for when the video is about building something. It builds the thing first (a game, a physics
-  simulation, a fractal explorer, any prototype), keeping a development log, the real bugs and their fixes, and
-  a way to film any moment of it again, shows it to you as it goes, and then hands that material to code-video
-  for the video about how it was made.
+- **devlog**: for when the video is about building something (a game, a physics simulation, a fractal explorer,
+  any prototype), or about a project you built. It builds in the order you set, keeping a development log, the
+  real bugs and their fixes, and a way to film any moment again, shows it to you as it goes, and hands that
+  material to code-video for the video about how it was made.
 - **video-repo**: for when you want a project in git, finished or not started yet. It keeps what someone
   else needs to clone it and render the video again, leaves renders and files too big for GitHub out (and
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is

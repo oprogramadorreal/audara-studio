@@ -240,7 +240,8 @@ Check:
 - Where the treatment has a Promise, does the first row pay it, in the picture, and leave a reason to stay?
   Which rows say in words what the picture could show?
 - Where the storyboard has a Stage column, does any row outside the opening show a state before the row
-  that brings it, or linger on an old one after its replacement is revealed?
+  that brings it, or linger on an old one after its replacement is revealed, without saying why (a
+  flashback, a before and after)?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,

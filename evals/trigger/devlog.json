@@ -20,6 +20,8 @@
     { "id": "dl-17", "should_trigger": false, "files": [], "query": "Write a development log for the last sprint of my app in docs/CHANGES.md." },
     { "id": "dl-18", "should_trigger": false, "files": [], "query": "faz um vídeo de 15 segundos de um jogo de plataforma em pixel art, só a animação, sem jogo de verdade" },
     { "id": "dl-19", "should_trigger": false, "files": [], "query": "Make a tutorial video teaching how to set up a React project step by step, for beginners." },
-    { "id": "dl-20", "should_trigger": false, "files": [], "query": "Make a demo video of my finished web app's main features, with a voiceover, for the landing page." }
+    { "id": "dl-20", "should_trigger": false, "files": [], "query": "Make a demo video of my finished web app's main features, with a voiceover, for the landing page." },
+    { "id": "dl-21", "should_trigger": false, "files": [], "query": "Let's start by building the game: a Pong clone in TypeScript that runs in the browser." },
+    { "id": "dl-22", "should_trigger": true, "files": [], "query": "quero um devlog disso depois, mas começa construindo o jogo: um Pong em TypeScript no navegador" }
   ]
 }

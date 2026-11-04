@@ -65,9 +65,10 @@ away believing. The central point stays true, and so does anything that matters 
 it: a number, a cause, who did what, an instruction, what a product does. No invented quote, result or figure
 is presented as a real person's, company's or study's. The liberties go in Never claim; a label appears once,
 where the picture could mislead, never as a running disclaimer. Lines the director wrote or approved for
-themselves, or for the people in their story, are theirs, not invented quotes, and a scene staged for comedy reads
-as one: neither needs a tag on screen. Whether a re-staged demonstration (a fixed bug brought back for the camera)
-says so on screen is the director's call: ask once, then do the same everywhere.
+themselves are theirs, not invented quotes, and so are lines for characters plainly made up (a mascot, a talking
+graphics card); a scene staged for comedy that reads as one needs no tag either. Words put in another real
+person's mouth stay under the limit above. Whether a re-staged demonstration (a fixed bug brought back for the
+camera) says so on screen is the director's call: ask once, then do the same everywhere.
 
 **The promise comes first.** For a video people choose to click, before outlining, write a working title and
 a thumbnail idea: what it shows, and the words it could carry (or none, when the picture says it). Together they make one clear promise,
@@ -227,7 +228,8 @@ several rows.
   in a devlog, a before and after, a tutorial's steps): which state the row shows. A state appears first in
   the row that brings it, unless the piece is told out of order on purpose, and the opening may glimpse a
   later one to pay the Promise. Check the column before building: no row outside the opening shows a state
-  before the row that brings it, and none lingers on an old state once its replacement has been revealed.
+  before the row that brings it, and none lingers on an old state once its replacement has been revealed,
+  unless the row says why (a flashback, a before and after side by side).
 - **Transition out:** how it hands over: a hard cut (a montage's usual one, on the beat), or what crosses
   the cut: an object, a shape, a colour, a direction of motion, a word. Name what crosses, because the
   scene on the far side has to pick it up (a shared pose, `references/motion.md`).

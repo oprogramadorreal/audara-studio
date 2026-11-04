@@ -19,11 +19,11 @@
     }
   ],
   "assertions": [
-    "The explorer is shown to the director (how to run it) before any video file exists (transcript order).",
+    "The explorer is shown to the director (how to run it) before any video production starts: no videos/*/video.json, treatment or scene before that message (transcript order); recordings and captures of the explorer don't count.",
     "The zoom that the video shows is saved as data (a camera path: centre, zoom and iterations per frame, or equivalent) and captured from it into footage/<shot>/ with a manifest giving frames and fps; the grader re-captures three frames from that path and they match the shot's frames (pixel difference under 1 level).",
     "The deepest zoom shown is tested for precision: its frames show detail, not blocks or noise from float precision (judged on full-size stills), or the reply says where precision ends and the video stops there.",
     "The video plays the captured frames through the engine's streamed footage (src/engine/footage.ts, a scene's prepare), and render.ts verify passes.",
-    "The script or treatment's beats come from the explorer's log (docs/DEVELOPMENT_LOG.md), and at least one beat shows a real problem met in the build with its before and after.",
+    "The script or treatment's beats come from the explorer's log (docs/DEVELOPMENT_LOG.md), and at least one beat shows something the build went through (a problem, a discovery or a design choice) with its before and after.",
     "Turn 2's build ends in the preview with the render offered; the only full render runs after turn 3's \"Approved.\" (the transcripts), and its MP4 is 2:00 +/- 10 s with an audio stream and no voice.",
     "No paid generation (mock-requests.jsonl is empty): music is synthesized in code or asked for with its cost."
   ]

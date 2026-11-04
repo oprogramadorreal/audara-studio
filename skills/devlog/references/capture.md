@@ -1,12 +1,15 @@
 # Capture: filming the thing you build
 
-A devlog's footage comes from the program itself, not from a screen recorder. When a demonstration can be run
+A devlog's footage comes best from the program itself rather than from a screen recorder. When a demonstration can be run
 again exactly, any moment can be filmed after the fact: at final quality, from another angle, in an earlier look,
 after a fix, with a note's change and nothing else. Both devlogs this skill comes from built such a rig on their
 first day, and it is what made late notes cheap: one re-filmed 16 shots after a change to its game, every
 simulation hash equal, and the other re-captured 31 shots with identical timing after two fixes. How much of it a
 project needs depends on the thing: a tool needs scripted input, not a physics engine. What every devlog needs is
 the result: each demonstration the video will show can be run again, and each stage it will show can be got back.
+A project already built keeps its own structure: list what exists first (recordings, the history, tags, a replay
+or debug camera) and add only what the shots need; a recording from the time is still footage when the state it
+shows can't be rebuilt.
 
 ## Techniques
 
