@@ -82,11 +82,14 @@ paths rather than deleting it while it may still be compared.
 
 ## Into the video
 
-Scenes play shots through the engine's streamed footage (code-video's contract.md, "Images and footage"): the
-render reads full frames and the preview proxies, loaded just ahead of the frame, so minutes of footage don't
-sit in memory. The video's own motion blur doesn't apply to footage, which carries its own (the capture's
-samples and shutter). A capture's `events.json` gives the game's own sounds at the right frames; soundtrack's
-mix places them from the video's timeline, so they move when the edit does.
+Scenes play shots through the engine's streamed footage (code-video's contract.md, "Images and footage"): a
+scene opens a shot with `openFootage(this.ctx, '<shot>')` in `init()`, says what it will show in `prepare()`,
+and draws `frame(f.t)`. The render reads full frames and the preview proxies, loaded just ahead of the frame,
+so minutes of footage don't sit in memory; a frame that didn't load stops the render rather than leaving a
+stale one in it. The manifest's `frames` and `fps` are what the engine reads; the rest is for re-shooting. The
+video's own motion blur doesn't apply to footage, which carries its own (the capture's samples and shutter).
+A capture's `events.json` gives the thing's own sounds at the right frames; soundtrack's mix places them from
+the video's timeline, so they move when the edit does.
 
 Labels pinned to things in the world (a callout on a character) read the shot's per-frame data when the
 capture writes it (the camera's matrices and the positions that matter), rather than being placed by eye.
