@@ -93,8 +93,10 @@ check go in `.audara-cache/`, never `out/`.
 **A round of notes** (one note or forty) is answered from this loop, not by a critic round (Cadence). A note
 that cuts or moves a setup or a payoff is read against the treatment's Promise: the cut still pays what it
 promised, or the reply says it doesn't. Read a note for what it keeps too: what a rewrite doesn't mention
-(another voice's line, an effect, the timing around it) stays unless it removes it; "right at this point,
-add" lays the new thing over what's there without lengthening it; "use your judgment on whether to remake it"
+(another voice's line, an effect, the timing around it) stays unless it removes it; something added "right at
+this point" over action the note keeps (its narration, effects, animation) lays over that action without
+lengthening it, while an addition that needs room (a pause, a reaction, a new shot) takes it, and the reply says
+what moved; "use your judgment on whether to remake it"
 asks about the scene's purpose, so the reply says what you decided and why, not only what you re-timed. A note
 that removes one instance of something (a tag, a caption, a recurring device, a mispronounced word) starts a
 search for the others: where its reason holds for them, change them too and list them; where it may not, ask

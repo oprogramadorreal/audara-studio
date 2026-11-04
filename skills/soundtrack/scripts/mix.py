@@ -2122,12 +2122,22 @@ def voice_lines(doc: dict | None, shift: float, active: np.ndarray, dur: float, 
         spoken += float(active[max(0, a):max(0, b)].sum()) / 100
     span = sum(line["end"] - line["start"] for line in lines)
     if lines and (timed_to_voice or spoken >= 0.5 * span):
-        # Speech within REGION_GAP_S of a line is that line's (the regions' own pause); the rest no line reaches.
+        # Speech within REGION_GAP_S of a line is that line's (the regions' own pause, as a decay is); the rest no
+        # line reaches. The pause around a line belongs to its own voice file: another file speaking there (a reply
+        # just after it) is still measured, by region.
         rest = active.copy()
         for line in lines:
-            a = max(0, int((line["start"] - REGION_GAP_S) * 100))
-            b = max(0, int(math.ceil((line["end"] + REGION_GAP_S) * 100)))
-            rest[a:b] = False
+            own = layer_at(line["start"], line["end"], layers)
+            a0, b0 = max(0, int(line["start"] * 100)), max(0, int(math.ceil(line["end"] * 100)))
+            rest[a0:b0] = False
+            for lo, hi in ((max(0, int((line["start"] - REGION_GAP_S) * 100)), a0),
+                           (b0, max(0, int(math.ceil((line["end"] + REGION_GAP_S) * 100))))):
+                seg = rest[lo:hi]  # (a view: clearing it clears rest)
+                other = np.zeros(len(seg), bool)
+                for lay in layers:
+                    if lay is not own:
+                        other[max(0, int(lay[2] * 100) - lo):max(0, int(math.ceil(lay[3] * 100)) - lo)] = True
+                seg[~other] = False
         rows = lines + speech_regions(rest, dur, layers)
         return (rows, words, "data/words.json lines" + (" and voice regions" if len(rows) > len(lines) else ""),
                 by_region(rows, layers))

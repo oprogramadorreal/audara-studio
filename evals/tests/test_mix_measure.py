@@ -309,6 +309,23 @@ class VoiceOverBedTest(unittest.TestCase):
         rows, _, by, regs = mix.voice_lines(doc, 0.0, active, 12.0, True, layers)
         self.assertEqual((len(rows), by, regs), (3, "data/words.json lines", []))
 
+    def test_another_voice_just_after_a_line_is_measured(self):
+        # Voice A's timed line ends at 3.0 s and voice B, which no line times, answers at 3.1-3.5 s: the pause kept
+        # around A's line (0.5 s) took B's remark too, so it was measured neither by line nor by region.
+        active = np.zeros(600, bool)
+        active[100:300] = True  # A's line, 1-3 s
+        active[310:350] = True  # B's remark, 3.1-3.5 s
+        doc = {"lines": [{"text": "one", "start": 1.0, "end": 3.0}]}
+        layers = [("voice[0]", "in/a.wav", 0.0, 3.05), ("voice[1]", "in/b.wav", 3.1, 3.6)]
+        rows, _, by, regs = mix.voice_lines(doc, 0.0, active, 6.0, True, layers)
+        self.assertEqual([(x.get("region", False), x["start"], x["end"], x.get("voice")) for x in rows],
+                         [(False, 1.0, 3.0, None), (True, 3.1, 3.5, "voice[1]")])
+        self.assertEqual(regs[0]["voice"], "voice[1]")
+        # A's own decay within the pause stays its line's.
+        active[300:304] = True
+        rows, _, _, _ = mix.voice_lines(doc, 0.0, active, 6.0, True, layers)
+        self.assertEqual(len([x for x in rows if x.get("region")]), 1)
+
     def test_a_line_shorter_than_a_window_is_not_measured(self):
         # A 40 ms line with no speech in it, just before the next one: its window reached into that line, and it
         # read -120 LUFS for the voice and a median 95 LU under zero, into the video's median.
