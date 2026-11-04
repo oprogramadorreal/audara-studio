@@ -191,7 +191,10 @@ ElevenLabs"), and `tts` is built around them.
   sounds different here" in both long devlogs this plugin was studied on; one measured 218 Hz among
   neighbours at 135 Hz. Make it in the narrator's own settings (a register for a scared or excited line kept
   near them: low stability and high style took the clone's timbre away) and compare its takes with the kept
-  blocks beside it before picking. A clone speaking Brazilian Portuguese also drifted toward European
+  blocks beside it before picking: the takes report gives each take's median pitch, its distance in semitones
+  from those blocks, and "check by ear" past 2 (`--pitch-tolerance`). Pitch is a shortlist, not a verdict:
+  approved lines of one narration spread about 3 semitones, and a take within range can still sound wrong.
+  Take 1 of a block that has its file is that file, so K new takes are `--takes K+1`. A clone speaking Brazilian Portuguese also drifted toward European
   Portuguese on some takes, which pitch, timbre and two transcribers all passed; lines made again in the base
   settings, on a new seed, drew no more accent notes, though few were made after that, so the ear decides.
 - **Listen to the names before approving a file**: people, products, foreign words.

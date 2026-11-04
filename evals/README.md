@@ -251,9 +251,19 @@ and three text files); preview's sheets; and what niche refuses before any netwo
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints and piece
 boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+`test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
+synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
+of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to
+catch a plainer picker (or this one without its octave guard); the distance from the kept blocks around a take
+and its "check by ear" mark; and, end to end against the mock ElevenLabs server (served in-process, its files in
+a temp folder), that take 1 of a block that has its file is that file, copied for free and labelled in the
+report, that asking again for takes that exist buys nothing, and that after a paragraph is inserted before a
+block with takes they are reused for free and can be picked under its new number. It needs ffmpeg, and takes
+under a minute.
 
 ```sh
 uv run evals/tests/test_imagegen.py
+uv run evals/tests/test_eleven_pitch.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
