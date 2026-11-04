@@ -95,6 +95,18 @@ export abstract class Scene {
   /** Reset internal state (called on seeks for stateful scenes). */
   reset(): void {}
 
+  /**
+   * Load what rendering video times [t0, t1] needs that init() can't hold: the frames of streamed footage
+   * (src/engine/footage.ts: `override prepare(t0: number, t1: number) { return this.clip.prepare(t0, t1); }`;
+   * several clips in one call, so they load together:
+   * `override prepare(t0: number, t1: number) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`).
+   * The engine calls it with the part of a window its entry is on (Engine.prepare): render.ts waits for it
+   * before every frame, the preview calls it ahead of the playhead without waiting. It only loads: a frame
+   * is still a function of f.t. A stateful scene's preroll reaches further back than t0 (Engine.prepare).
+   * Any promise will do (what it resolves to is ignored: Promise.all's array too). Default: nothing to load.
+   */
+  prepare(_t0: number, _t1: number): Promise<unknown> | void {}
+
   /** Render into `out` (HalfFloat, linear HDR). Must fully overwrite/clear it. Return post-processing overrides. */
   abstract render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides | void;
 

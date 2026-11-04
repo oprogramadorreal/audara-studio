@@ -31,6 +31,10 @@ Contents
 - The render waits for a yes, and a working title goes to video-ideas (0.11.0, 2026-11-02)
 - Teaching rides in the story; crossings and the brows (0.11.0, 2026-11-03)
 - Disk: clean up on request, keep what the next round needs (0.11.0, 2026-11-03)
+- Devlogs: building first, and what two of them taught (0.12.0, 2026-11-04)
+- Streamed footage in the template (0.12.0, 2026-11-04)
+- The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
+- 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
 
 ## Definition of done
 
@@ -3384,3 +3388,635 @@ Considered and left out:
 - **Smaller critic frames** (JPEG or a lower size): they would change what the critics judge, as smaller drafts
   would have (0.7.1).
 - **A README line:** the README states no disk behavior.
+
+## Devlogs: building first, and what two of them taught (0.12.0, 2026-11-04)
+
+The user made two pt-BR devlogs with audara-studio, both narrated by their ElevenLabs clone: a 13-minute one in
+which the agent built a browser clone of a block-world sandbox game and then the video about it (2026-10-13 to
+10-21, plugin 0.7.1), and a 16-minute one in which it built a 3D remake of a 16-bit platformer's first levels
+and world map in the browser, with no engine, then the video (2026-10-21 to 11-04, plugin 0.8.1). They were
+happy with both, but each took many rounds of their notes, and they are considering devlogs as a recurring
+format. They asked what made the videos good, where they had to steer repeatedly, whether a dedicated devlog
+skill would get a result they accept in fewer interactions, and for every change to keep the plugin's range
+(other formats, the Nutlight style, other styles) and the model's freedom where its judgment works. Their
+starting hypothesis: "I want to make a devlog, and I want to start by building the game".
+
+How it was read. Both projects were read, not changed: every document in the second one's `docs/` (its
+development log is 322 KB, six stage designs 490 KB), both projects' treatments, notes, critiques, scripts and
+dev logs, both sessions' transcripts (517 MB, still open in Herdr; 373 MB), parsed into the director's own
+messages (37 in each), the agent's hand-off before each, and the sessions' compaction summaries (28 and 6), with
+API keys found in one opening prompt redacted before any reader saw them. Fifteen read-only readers took a
+slice each (the dev log in five stage ranges, the stage designs, the sessions, the script against the cut, the
+first project's build and its video rounds, the plugin's current text, the user's channel); a synthesis merged
+their reports into 34 patterns and a skeptic re-checked each against the director's own words (33 held with
+corrected counts, 1 was refuted). The channel's public pages were read too: 57 uploads, mostly "I built X"
+videos (game remakes, physics simulations, a Mandelbrot explorer, tools), the remake of the block-world game
+far ahead at 1.22M views. Codex (GPT-6-Astra, Herdr tab 2) gave an independent view before seeing these
+conclusions, then reviewed the plan; the Claude Code session decided and made the edits.
+
+The plugin versions matter: the second project ran on 0.8.1 for its whole two weeks and the first on 0.7.1,
+so 0.10.0's licence and promise rules and 0.11.0's render gate weren't there. Each pattern below was judged
+against today's text.
+
+What made them good, to keep:
+
+- **The thing itself was the show:** real physics and destruction from the game's own simulation, with its own
+  sounds on the right frames and cut to the music, drew the strongest praise ("superb! Keep it!", "I strongly
+  prefer the 'full destruction' version").
+- **Faithful builds approved at first play:** levels converted from the source game's own data and physics
+  from measured numbers ("Gameplay, physics, and functionality are great!").
+- **Real struggles as beats:** each build logged what broke, why and the fix, with before and after images; a
+  fix that saved only 9% and a bug rebuilt for the camera became scenes the director kept.
+- **Determinism and stages you could get back:** fixed ticks, seeded randomness, input replays with state
+  hashes and a capture-only camera, built on day one in both, let 16 shots be re-filmed after a game change
+  ("every sim hash equal") and 31 after two fixes.
+- **The agent's own inventions that acted a line out:** "I liked your ideas and how you designed the scenes";
+  "Keep it as is".
+- **The hand-off loop:** notes saved verbatim, a link per change, choices he could reverse; the director's later
+  rounds shrank to a note or two, answered in minutes.
+
+Where the director steered, and of what kind (counts are the skeptics'):
+
+- **The build had no skill.** The second session loaded only video-repo for ten days (its prompt said to load
+  code-video only after the script was approved); the director wrote the dev log, the recording rules and the
+  gates into his prompts, and repeated them (the footer itself was his habit, and the agent followed it). What a
+  skill could have carried: a capture policy (he had to say "you only need to record now what would be
+  difficult to capture later": 2,242 screenshots and 76 recordings in the first two days, about 16 and 9 used),
+  status and time ("I think you are done already", "why the workflow is taking so long?", "how long until I can
+  test it?"), and showing one model before rolling out a look (asked twice; three times he picked an option
+  nobody had put in front of him, once the runner-up figurine, after the hand-off called the winner clear where
+  its judge had called the two a point apart).
+- **Trade-offs settled inside:** a reviewer's tidiness rule kept the back of the level unbreakable, which he
+  later reversed ("the purpose of this game is to serve this video"), and protective checks rolled back bolder
+  looks he had asked for, while he said the game was for the video three times.
+- **Explanations he couldn't follow:** seven in the second project, raised eight times ("After that, I couldn't
+  understand what was happening"; "too abstract"), all approved on paper in the script and failed only when
+  watched; the accepted rewrites had one subject, a concept defined before use, one idea per line drawn on its
+  word. No critic caught them.
+- **Tags on staged scenes:** "encenação" and "DEMONSTRAÇÃO" removed four times across both, and the dates taken
+  off seven real-bug tags once; three of the removals came after the director had written "do not let
+  documentary literalism weaken the storytelling", and the script had recorded that he removed them last time
+  and asked again, in a list he didn't answer.
+- **Callbacks without setups that land:** in the first, about eight unframed nods to his 2020 video; in the
+  second, a one-line aside set up as a rival ("isn't memorable enough to support the callback") and payoffs re-aimed after their
+  setups were cut.
+- **Story order:** seven notes in three rounds about later looks shown before the chapters that build them, five
+  of them in the first.
+- **Voice:** seven loanwords, names and numbers corrected in pt-BR ("bug" twice, "RTX 4090" said "40 e 90",
+  "devlog", "FPS"); regenerated lines that "sound different" (nine notes in the first, three in the second; one
+  take at 218 Hz among neighbours at 135 Hz); a drift toward European Portuguese on some takes, which two
+  transcribers passed.
+- **Music:** about a dozen notes in each: holes and surges at joins, music stopping under narration, words lost
+  under the bed (one project had measured 169 such words and handed the cut over without them).
+- **Smaller ones:** a still picture under a line that names an action (four), gameplay windows too small
+  (twice the same one), a preview sent broken after a restart, a disclosure answer from an old version of
+  YouTube's rule.
+- **His, and meant to stay his:** what to build and how far ("push it further" was partly a joke he planned for
+  the video), the looks he picked, the villain-boss persona and the scared AI, about 12% of the final words
+  dictated in his own lines, his thumbnails and title, his music library with a use for each track.
+
+The decision: a skill of its own. The build is days of work before any video exists, no skill was loaded in
+it, and its gaps (capture, stages you can get back, one piece first, ETAs, trade-offs, the role of each version,
+when there is enough) have nowhere to live in code-video, whose SKILL.md had 3 bytes left and whose Brief would
+start a treatment at once. `devlog` loads on a devlog request in any language, a request to build something
+and then a video about it, a video about how a project of theirs was built, or a project whose
+`docs/DEVELOPMENT_LOG.md` feeds a video; it hands the material to code-video when the video starts. The user's
+hypothesis holds as a default, not a rule: the first project overlapped the build and the script and went
+well, so the director's order holds, whatever it is. How it knows when to stop building: it doesn't decide;
+each milestone's hand-off says what the video could already be and what it lacks, and when his scope is met it
+says so and offers the script with what one more stage would add.
+
+What changed:
+
+- **`skills/devlog/`:** SKILL.md (7,693 bytes): the opening message with defaults; the log, its story ledger
+  and an AGENTS.md section with the standing rules; a way to film any moment again, sized to the thing; the
+  build's hand-offs (ETA, one piece first, option sheets with close calls, trade-offs put to him, each
+  version's role); "Enough for the video"; the hand-over (story order, the picture showing the line, plain
+  explanations, his lines verbatim, provenance); what stays his. `references/capture.md`: the techniques for a
+  game, a simulation, an explorer and a tool, shot folders and manifests, footage in the video, the checks.
+  `references/log-template.md`: the log, the ledger, the AGENTS.md section and a real entry (a block-world
+  build's meshing fix).
+- **treatment-template.md:** lines the director wrote for himself and staged comedy need no tag, and a
+  re-staged demonstration's tag is asked once; a payoff needs a setup the viewer will still hold, and a cut
+  setup takes its payoff along or asks; an optional Stage column for any progression (a devlog's looks, a
+  before and after, a tutorial's steps), checked by the storyboard critic; the opening may be a trailer that
+  only glimpses the payoff; a long narrated piece voices and roughly cuts its least certain passage first and
+  posts it while building on.
+- **critique.md:** the full-cut critic restates each explanation in its first look, and one it couldn't
+  restate ranks with what loses the viewer; a line that asks the viewer to see something happen is checked for
+  the picture showing it; a round of notes reads what a note keeps (other voices, effects, the timing around
+  it), what "right at this point, add" and "use your judgment on whether to remake" ask, and turns a removal
+  into a search; each measured flag is fixed, marked as meant or listed in the hand-off; the preview link is
+  opened after a restart; and the claim that `qc.py` shows one-frame pops is corrected, since it has no such
+  test (eight flickers and pops reached the director; a sheet of every frame shows them).
+- **soundtrack:** elevenlabs.md's words from another language (the approved say map carried, uncertain words
+  tested rather than respelled on a guess, every occurrence checked), what a transcript can't catch, a
+  regenerated line made in the narrator's own settings and compared with its neighbours, and takes to pick from
+  in place for a line carried by its delivery. A new `references/score.md`, the method for a score cut from
+  several tracks, moved out of nutlight-style's music.md so every video gets it, with licences recorded at
+  intake; music.md keeps the style's taste and points to it.
+- **The smaller ones:** video-repo keeps a devlog's recordings, screenshots and captures as sources (the
+  director had to say so); youtube.md quotes YouTube's own exemption for "Cloning one's own voice to create
+  voice overs or dubs" (checked 2026-11-04); code-video's Brief waits for "a devlog's gates", and video-ideas'
+  "make it" goes through devlog first for a devlog; init's AGENTS.md names the skill and what a later session
+  owes a devlog.
+- **Engineering,** each built in its own worktree and reviewed by a fresh agent that reran the tests; all three
+  reviews asked for fixes, all made before merging:
+  - streamed footage in the template, for minutes of captured frames (the next entry);
+  - the mix's moments to listen to, per narration line and per music join (the entry after it), which
+    `score.md` and SKILL.md's Mix step point to;
+  - a pitch diagnostic in `eleven.py tts`'s takes report: each take's median pitch, its distance in semitones
+    from the kept blocks beside it with the same voice and settings, and "check by ear" past 2 (`--no-pitch`,
+    `--pitch-tolerance`), never regenerating or picking, and saying it was measured, not heard. On the block
+    the director flagged in one project, his rejected take read +6.1 semitones and his pick -1.3; on 76 real
+    blocks it agreed with librosa's pYIN to a median 0.25 semitones. A first version also moved new takes
+    onto seeds not used before (one "new" take had been a byte copy of a rejected one); the review showed a
+    renumbered paragraph then paying for its takes again, and since that copy never reached the director it
+    was dropped: the take that is the block's file is labelled instead.
+- **Evals:** devlog's trigger set (ten requests, two in Portuguese, three not games, one already built, one
+  inside a devlog project from a new fixture; ten near-misses), two task cases (`dl-build-first`,
+  `dl-explorer-video`), and a harness fix: the Claude projects cleanup failed with EXDEV moving a session from
+  the config's drive to the repository's, after every query ran and before results were written.
+
+Codex's two rounds. Its independent view reached the same shape: a small devlog-scoped coordinator, mainly for
+the build, plus a reveal map, voice continuity and whole audio transitions. Its review of the plan, taken almost
+whole: capture as techniques sized to the thing, not one architecture; no stage count or required struggles in
+the readiness test (they could manufacture work); gates as the director sets them, retrospective devlogs and
+overlap allowed; no universal spectacle, help-text or date rules (show both and ask; dates stay the channel's
+decision); the picture-shows-the-line rule only where a line asks to see something; a removal starts a search,
+not a sweep; respell only uncertain or flagged words; disclosure tied to the current page; a voiced passage
+posted while building on; each measured flag acted on; provenance in the hand-off; licences at intake; and the
+engineering ranked: streamed footage and the mix measures now, pitch as an optional diagnostic, a flicker
+detector deferred and the doc corrected instead. Its review of the text diff found nine issues, all taken:
+the no-tag rule had covered "the people in their story" (another real person's words stay under the limit);
+init's AGENTS.md and the README still said "build first"; capture had no branch for a project already built;
+nothing outside Nutlight pointed to score.md; the description's quoted "start by building the game" would
+load on a bare request (confirmed by a probe: it did, 1 of 1, until reworded: 0 of 3); the ideas-and-make
+branch of video-ideas bypassed devlog; the explorer case penalized prototype recordings and required a
+problem; the Stage check lost its flashback exception; score.md fixed only the music when an effect masked
+the voice; and elevenlabs.md said base settings ended the accent drift. Its review of the engineering found six more, all
+fixed (in the next two entries, and the takes wording, which promised K new takes from `--takes K+1` where only
+unchanged requests are reused, so the plan before `--yes` says which are new). Its last look found two more,
+both fixed: the mix check's pause around a timed line took a second voice file's reply (next entries), and
+critique.md's "right at this point, add" read as an overlay even for an addition that needs room; it now
+overlays only over action the note keeps. Its verdict on those two fixes: AGREE.
+
+What was checked:
+
+- **Spec checks:** all seven skills pass the three validators, under 8,000 bytes (devlog 7,925, code-video
+  7,999, soundtrack 7,987, video-ideas 7,988, video-repo 7,989, youtube-package 7,996, nutlight-style 7,822), no
+  byte-order mark.
+- **Routing on Claude Code** (Opus 5.5, low effort, one run each): devlog 22/22 on the final description,
+  loading on every request and on none of the near-misses (which loaded code-video, video-ideas or nothing),
+  and over three runs the bare "start by building the game" 0 of 3 and the same with a devlog in view 3 of 3
+  (the first description, 20/20 on the first set, loaded the bare one); with devlog beside them,
+  code-video 27/27, soundtrack 25/25 and video-ideas 25/26, its miss vi-10, the borderline Portuguese ideas
+  request 0.11.0 recorded (1 of 6 on main), with nothing loading devlog.
+- **Tests:** `test_footage` 23/23, `test_render_inputs` 17/17, `test_render_failures` 13/13,
+  `test_init_gitignore` 3/3, `test_eleven_pitch.py` 13/13, `test_mix_measure.py` 19/19; a project made by this
+  branch's init typechecks, verify passes, and its AGENTS.md names the skill; `bun evals/tasks/cases.ts` writes
+  every `case.json`.
+- **Not run:** the two new task cases and every other one (an hour or more each per tool, waiting for the user's
+  yes), routing on Codex, and a devlog made with these changes. Whether they bring a first result closer to
+  what the director accepts is expected from the evidence, not measured.
+
+Considered and left out: an automatic point to stop building; a long questionnaire before the build (he gave
+most of it unasked, and his own lines still took rounds by ear); critic rounds after rounds of notes again
+(0.8.1's evidence stands; costed critic offers went 0 for 7 in the second project); a flicker detector in
+`qc.py` until it is tested against real defects and deliberate flashes; a phone-recognizer accent check (one
+project, a heavy model); removing the director's escalation, which made story.
+
+## Streamed footage in the template (0.12.0, 2026-11-04)
+
+The template played footage only as frames decoded at boot, "seconds of footage, not minutes" (contract.md).
+Both long devlogs this plugin was studied on played many minutes of footage captured from a game the agent
+built, and each project wrote its own streaming module into its engine: the 0.8.1 entry left that hook out as
+"a feature for its own change". This is that change.
+
+What the two projects showed (read, not run; neither was touched):
+
+- **The size.** A 13.5-minute devlog had 146 shot folders, 67,767 frames; a 16-minute devlog of a game remake
+  had 141 folders, 63,799 frames, 44 GB on disk. Decoded at boot, a minute at 1080p and 60 fps is about 30 GB.
+- **The design both used.** A shot folder of `full/` frames for the render and half-size `proxy/` frames for
+  the preview, with a manifest; frames fetched and decoded with `createImageBitmap`; a `Scene.prepare(t0, t1)`
+  the engine calls for the entries on screen, which render.ts waits for before every frame and the preview
+  fires ahead of the playhead; in the export, a frame that wasn't prepared throws. Both kept `footage/` out
+  of the preview's file watcher.
+- **What the second changed.** The first kept a budget per shot (48 full frames, 240 proxies). The second made
+  it one budget over every shot (72 and 480), protecting the frames of the last 24 `prepare()` calls. Its
+  verify then failed once with "frame 14 not prepared": one scene's eleven small clips each made a call, and
+  those calls pushed its large frame out of the protected ones. That project fixed the scene.
+- **Time.** Its module picked the frame by `round(lt * fps * rate + offset)`. Its media helper picked at
+  `frameTime(t)` instead, so every sub-frame of a frame shows the same footage frame, as contract.md's
+  boot-decoded recipe already did.
+- **What it left open.** Its ENGINE.md: "`render.ts video --resume` doesn't see footage/ change: render again
+  without it after a re-capture." Read in its code: `perf` prepared its whole measured stretch in one call,
+  and one call loads at most the budget's 72 full frames.
+
+What changed (the template, which init copies into projects):
+
+- **`src/engine/footage.ts`** (new): `Footage` (`prepare`, `prefetch`, `frame`, and by index `prepareFrames`,
+  `prepareSet`, `frameAt`), `openFootage(ctx, shot, opts)` (the manifest read, full frames in the export and
+  proxies in the preview, from the entry's start), `footageInfo`/`infoOf`, `footageUrl`/`projectUrl`.
+  - **Time:** a shot's frame is `floor((frameTime(t) - start) * fps * rate + offset)`, held at its ends. It
+    uses `floor` as contract.md's recipe does, so half rate shows each frame twice from the first. It takes
+    video times, so a scene passes `f.t` and its own window.
+  - **Memory:** one budget over every shot (72 full frames, about 600 MB at 1080p; 360 proxies), least
+    recently asked first. It protects the latest 4 prepare *rounds*, not calls (an `Engine.prepare` is one
+    round however many shots it asks in that call), and every frame asked since a prepare render.ts waits
+    for began, until it settles and while it is one of the latest 4 such: a scene that awaits its clips one
+    after another asks for the later ones outside its round (see the review below). The proxy budget is 360
+    (about 750 MB), not 480: one preview request covers 2.25 s, 136 proxies a shot, so two shots crossfading
+    fit in one.
+  - **Loading:** `prepare(t0, t1)` loads the frames the video frames in the stretch show, one per video frame
+    at most.
+  - **Strict:** when render.ts renders, a frame not prepared throws, `--as-preview` included.
+- **`Scene.prepare(t0, t1)`**, a no-op by default, and **`Engine.prepare(t0, t1, ahead)`**, which calls it for
+  every loaded entry on screen in the window, clipped to the entry, as one round, and settles once every
+  scene's has. A scene whose prepare fails gets the error in `errors`, as a render error would, except for a
+  look-ahead (`ahead`) when render.ts renders: there the frame's own prepare reports it. A stateful scene's
+  preroll reaches before the window: it skips the footage while `f.preroll` is true, or prepares that stretch
+  itself.
+- **`main.ts`:**
+  - `still()` waits for the frames around `t`, so it is async now.
+  - `stream()` waits before each frame, the warm-up frame and the `ends` probe frame included, with the next
+    half second of the range loading meanwhile as a look-ahead, and stops at a frame that fails to load.
+    Each of its prepares reaches only frames it renders, so a range needs no footage frame outside it.
+  - The player asks two seconds ahead, a look-ahead, whenever the playhead moves half a second, without
+    waiting, and shows the nearest loaded frame until the exact one arrives.
+  - With an engine from before `Engine.prepare` (init never replaces `src/engine/`), each of these does
+    nothing.
+- **`render.ts`:**
+  - The sheet and verify now wait for `still()`; verify's determinism renders and its cut checks prepare
+    first, and `perf` prepares each frame outside its timing.
+  - `--resume`'s fingerprint includes `footage/`.
+- **`vite.config.ts`:** the preview doesn't watch `footage/`.
+- **Docs:** contract.md's "Images and footage" keeps the boot-decoded path for a few seconds and adds the
+  streamed one: the folder and manifest, the ffmpeg commands, the API, proxies, memory, the strict render and
+  stateful scenes. engine-guide-template.md (each project's `docs/ENGINE.md`) gets a "Footage" section, a line
+  in the project tree and one in the toolbox. design.md gets the same in a section and a line in the layout.
+- **Tests:** `evals/tests/test_footage.ts` (new) runs `shotFrame`, `framesShown`, `keptFrom` and
+  `framesToDrop` from footage.ts. `test_render_inputs.ts` checks that a footage frame captured again changes
+  the fingerprint.
+
+What was checked (a scratch project made by this branch's init, an RTX 4090; a 12-second 60 fps `testsrc2`
+shot with its frame number burned in, full 1920×1080 and proxy 960×540 JPEGs; a video of it at rate 1 from 0
+to 5 s, at rate 0.5 from its frame 200 from 4 to 9 s, crossfading over 4-5 s, then a stateful echo that keeps
+85 % of the last frame and prepares its own preroll):
+
+- **The checks:** `bun run check` passed, and `verify` passed (31 frames, 21 probes, 75 renders, none
+  mismatched).
+- **Stills:** in backward and random order, byte-identical between the two runs, and each matched its
+  expected frame best by PSNR against the shot's own JPEG: about 32 dB, against 16-21 dB for the frames either
+  side. The difference sits on colour edges only (red and blue), as two JPEG decoders' chroma upsampling
+  leaves it.
+- **A sheet with `--cuts`:** each tile showed its expected number, each frame twice at half rate, and the
+  crossfade's two numbers.
+- **Draft speed:** the draft rendered at 10.9 fps, the example's own draft at 9.8 on the same machine.
+- **The video:** rendered serially and with `--jobs 2`, both at CRF 0: all 720 frames identical (framemd5).
+  Where the pieces meet at the crossfade's first frame, the frame after a jump matched the one rendered
+  straight on. At the default CRF 16, frames 197 on differed: x264's lookahead before a piece's end, not the
+  picture.
+- **Adaptive sampling:** a poster showed its frame, and `auto` stopped at 12 sub-frames on all 120 frames of
+  a clip across the crossfade.
+- **A frame taken out of `full/`:**
+  - the render stopped with `footage /footage/testsrc/full/000306.jpg: HTTP 404`, exit 1, no file and no
+    `.part`;
+  - verify failed with the same error;
+  - a still failed with SCENE ERRORS;
+  - `--jobs 2` rendered the piece again, failed it twice with the URL and kept the finished piece. With the
+    frame back, `--resume` refused, naming the footage.
+- **The preview:** loaded with no console errors and no failed request, played through the crossfade and the
+  echo at 58-60 fps, and seeked back to the exact frame. With real decoded frames, 700 proxies asked 50 at a
+  time held at most 357, and 700 full frames 10 at a time at most 72, the latest kept.
+- **Ordinary videos:** the example rendered against a scratch project of the unchanged template (the main
+  checkout's, identical to this branch's base). 300 frames at the final render's settings and 180 at CRF 0
+  were identical (framemd5); verify's 48 frame hashes, a sheet and four stills were too.
+- **An engine from before `Engine.prepare`** with this main.ts and render.ts, as init `--force` leaves a
+  project: `bun run check` passed, verify passed with the same 48 hashes, the sheet was identical, and `perf`
+  ran.
+- **Tests:** `test_footage` 12/12, `test_render_inputs` 17/17, `test_render_failures` 13/13.
+
+An independent review of the branch, which reran the checks above, found five more, each confirmed and
+fixed:
+
+- **A prepare round kept only what its scenes asked for in the same call.** A scene whose `prepare` awaited
+  its clips one after another asked for the first inside the round and for each later one in a round of its
+  own, while the look-ahead's rounds ran alongside, so the frames about to be drawn fell out of the latest 4:
+  eleven clips of one shot, awaited in turn, stopped a draft at its first frame with "frame 1
+  (/footage/bars/full/000001.jpg) wasn't prepared", and the same scene with `Promise.all` rendered. A prepare
+  render.ts waits for now keeps every frame asked from its start until it settles, and after that while it is
+  one of the latest 4 waited for (`keptFrom`); `Engine.prepare` settles once every scene's prepare has, not at
+  the first failure. contract.md, ENGINE.md and `Scene.prepare` say to ask for several clips in one call, so
+  they load together.
+- **The render's look-ahead reached past the range, and its failures were scene errors.** With
+  `full/000306.jpg` (shown only around 7.5 s) taken out, `video --draft --from 7.0 --to 7.45` exited 1 with
+  "SCENE ERRORS: [slow] prepare error ... 000306.jpg: HTTP 404". The look-ahead now stops at the range's last
+  frame, and when render.ts renders, a look-ahead's failure isn't recorded: the frame's own prepare, waited
+  for, reports one that is rendered. The preview has no other prepare, so there it still is. Each frame's own
+  window also reached a frame beyond those rendered, after the range's end and before its warm-up frame; it
+  now stops at them, since a frame's sub-frames never reach a neighbour's footage frame (the shutter is at
+  most a frame).
+- **Above rate 1, a prepare loaded every frame its stretch passed over:** 60 consecutive stills fetched 62
+  full frames at rate 1, 245 at rate 4 and 488 at rate 8; from rate 2.4 the look-ahead's half second met one
+  call's 72-frame limit, and at a very high rate the frame shown could be beyond it. `prepare(t0, t1)` now
+  loads the frames its video frames show (`framesShown`).
+- **ENGINE.md contradicted the budget and left out the preroll's limit:** it said a Footage's frames stay
+  loaded until it is disposed, and suggested preparing from `t0 - this.prerollMax` without saying that at the
+  default 6 s that is 361 frames, past one call's 72. It now says how the budget lets frames go, and to lower
+  `prerollMax` to about a second.
+- **`footageInfo` stripped a byte-order mark with an invisible character in a regex.** `Response.text()`
+  drops it already (a manifest starting with one read as 3 frames at 30 fps without the replace), so the
+  replace is gone.
+
+Checked again after the fixes, in a new scratch project made by this branch's init (the same RTX 4090; a
+`testsrc2` shot as above, its frame number also burned in as ten black or white boxes, so every frame of a
+render could be read back; a 14 s video of it: rate 1 from 0 to 5 s, rate 0.5 from frame 200 from 4 to 9 s,
+a stateful echo preparing its own preroll from 9 to 12 s, a 30-frame loop by index from 12 to 14 s):
+
+- **The checks:** `bun run check` passed, and `verify` passed (37 frames, 23 probes, 83 renders, none
+  mismatched).
+- **Stills** at 15 times in random order: the 14 outside the crossfade each showed its frame.
+- **The video:** in a draft, the 780 frames outside the crossfade each showed its frame. At CRF 0, serial and
+  `--jobs 2` (4 pieces) were identical on all 840 frames (framemd5), as they were before each frame's window
+  was clamped.
+- **The review's cases:** the eleven clips awaited in turn rendered, every tile of their 180 frames showing
+  its frame (1,980 read back), in 65.7 s; asked with `Promise.all`, the same in 36.9 s. 60 stills fetched 62
+  full frames at rates 1, 4 and 8, and 6 stills at rate 80 fetched 7, with no error; a render at rate 8
+  showed each of its 180 frames right.
+- **`full/000306.jpg` taken out:**
+  - the whole draft stopped with its URL and HTTP 404, exit 1, no file and no `.part`; verify failed, every
+    error about that frame; a still at 7.5 s failed with SCENE ERRORS, one at 7.45 s didn't; `--jobs 2`
+    failed its piece twice with the URL and kept the other three;
+  - ranges that don't show it rendered, each frame right: the review's 7.0-7.45 s, 7.0-7.5 s (its last frame
+    is the one before) and 7.55-8.0 s (its warm-up frame is the one after). With each frame's window as it
+    was, the last two exited 1 with the 404.
+- **The preview:** no console error or failed request playing from 7.2 s; with that frame's proxy taken
+  out, it reported "scene slow prepare error ... proxy/000306.jpg: HTTP 404".
+- **Ordinary videos:** the example's first 5 s at the final render's settings and CRF 0 were identical
+  (framemd5, 300 frames) to a scratch project of main's template, this branch's base, and so were verify's
+  48 frame hashes.
+- **Memory:** the eleven full-size clips held up to 346 decoded frames at once (369 asked with `Promise.all`,
+  355 with the code before these fixes), about 2.8 GB at 1080p, while the render's look-ahead loaded every
+  clip's next half second; 72 at the end.
+- **Tests:** `test_footage` 21/21, `test_render_inputs` 17/17, `test_render_failures` 13/13.
+
+A second review (Codex's) found three more. The frame on each shot's texture was never let go, and since the
+engine keeps every scene of the timeline loaded, 150 short shots rendered in the export page held up to 181
+decoded full frames against a budget of 72, and 166 GPU textures. Now that frame stays only while its shot is in
+use, and goes with its GPU copy otherwise: the same run held 72 at most and 31 GPU textures, and a still back in
+the first shot showed its frame. A paused `refine = true` frame refined on the nearest frame standing in for one
+still loading, and kept it (with its proxy held back 3 s, frame 149 stayed on screen refined, where 150
+belonged): the preview now refines once the frame's prepare has settled. And the documented `return
+Promise.all(...)` prepare failed `bun run check` (TS2416): `Scene.prepare` takes any promise. `test_footage` is
+23/23 (its two new checks fail on the commit before); in a scratch project, verify passed on 150 shots of four
+frames (1,185 renders, 0 mismatched), stills back in early shots after later ones were right, serial and
+`--jobs 2` matched by framemd5, and the example matched the branch before the change.
+
+Considered and left out:
+
+- **Decoding a video file in the page** (WebCodecs) instead of JPEG sequences: no folder of tens of thousands
+  of files, but seeking to an exact frame means decoding from a keyframe, and both projects' JPEG folders
+  worked.
+- **The engine preparing a stateful scene's preroll:** up to `prerollMax` seconds of frames per seek, 361 at
+  the default 6 s, five times the full budget. The scene knows whether its state reads the footage.
+- **Finding the shots with an `import.meta.glob`** of their manifests, with a placeholder card for one not
+  captured yet (one project's helper did this): a missing shot is an error in general, and says so.
+- **A budget in bytes, and prefetches that don't count as protected:** a budget in frames is what both
+  projects ran, and shorter prefetch windows keep the latest rounds within it. Many full-size clips on screen
+  at once still take it far past (eleven held about 350): clips shown small are cut at the size they're
+  shown, as contract.md says.
+- **Frames with alpha** (PNG): neither project streamed any; Blender's and Manim's layers keep the
+  boot-decoded path.
+- **A script to cut a shot:** two ffmpeg commands and a two-field manifest, in contract.md.
+
+## The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
+
+Two devlogs of game remakes made with the plugin, one 16 minutes long and one 13, drew about a dozen music notes
+each from the director. The music cut abruptly; a join left a hole or a surge; the music stopped under the
+narration; a line was buried by the music or by a loud effect. The agent had judged the mix by whole-mix
+loudness, and in each project built its own measure only after a note:
+
+- **The first devlog,** a round of notes: a splice had moved into a quiet bridge (-17 dB) and jumped into the loud
+  final section (-8.5 dB, "twice as bright"). A per-line voice-to-background script found one line's bed (the
+  game's own music) 10.5 dB under the voice and another line at 8.1 dB, against a median line of 13.5.
+- **The same devlog, a later round** (0.1 s windows, after a note on an entrance): the mix sat at -30..-32 dBFS
+  for 0.3 s after a cut, then the music came up 10 dB over 0.6 s. After the fix the trough measured -26, and a
+  0.2 s low at -31..-35 remained just before the cut, noted as "the breath before the whoosh's rise".
+- **The second devlog:** a script of the agent's own (in the project's cache) measured every spoken word against
+  music and effects in a 300-3400 Hz band and listed the words under 3 dB.
+
+What changed, in `mix.py build` only (the audio it makes is the same, so `MIX_VERSION` stays):
+
+- **Voice over the bed,** per `data/words.json` line timed to the voice (or per stretch of speech without one).
+  The voice layer as mixed against everything else in the mix, K-weighted, 100 ms windows every 10 ms. A line is
+  listed in three cases:
+  - its median margin is under 10 LU (Torcoli et al., AES 2019: at least 10 LU between commentary and music);
+  - its worst window, read above 300 Hz, is under 3 LU (the second devlog's bar; the Speech Intelligibility
+    Index counts speech half audible at 0 dB over the noise);
+  - it sits 4 LU or more under the video's median line, while under the plan's `under_voice` (Torcoli et al.:
+    non-experts wanted 4 LU more than experts). The median is taken over the lines whose bed comes within 15 LU
+    (Torcoli et al.'s bar over ambience).
+
+  A line shorter than a 100 ms window, or with no speech in it, isn't measured.
+- **Music joins:** the music's start and end, each `music.joins` entry, each stop of the music under the voice
+  and where it comes back. At each, the energy of the bed without the voice (dBFS RMS, not LUFS) in 100 ms
+  windows over ±1.5 s. Listed: a hole (6 dB under the quietest 0.2 s of both sides), a surge (6 dB up, the jump
+  within about 0.3 s), a stop under the voice (30 dB down for 0.5 s or more). `music.joins` takes a time or an
+  effect's anchors: `mix.py` takes one music file, so only the arrangement knows where its joins are, and the
+  agent lists them. An optional `"intended": "<why>"` on a join lists what is found there as intended; on a join
+  anywhere from where the music stops to where it comes back, it covers the stop and the return.
+  `intended_start` and `intended_end` on the music do the same for its entrance and its end, each on its own.
+- **In the record, `mix-report.json` and the summary,** each with its time for a `?t=` link, under a line saying
+  these are measurements, not a judgement of how it sounds. An up-to-date mix prints them from its record; a
+  record from before says `--force` measures them. A plan without `music.joins` gets a note that joins inside
+  the music are measured only where listed, printed on the first build with that music file. `measure` gets a
+  finished file with no stems: it says these need the plan and skips them.
+- **soundtrack's score reference and its Mix step** ask the agent to list a spliced file's joins in
+  `music.joins`, to mark the stops it chose as intended, and to report what the build listed.
+
+Found on the way, and changed before the commit:
+
+- **The worst window at full range** put init's demo kick within 3.5 LU of a voice set 12 LU over it. Above
+  300 Hz the same window reads 10.9.
+- **A first surge rule** passed a duck's release that ended 0.1 s before a join. The rule now looks for the first
+  window to arrive within 2 dB of the level after, and asks for a 6 dB rise in the 0.3 s before it.
+- **The median line** counted lines over silence (capped at 40 LU), which would have listed every line with music
+  under it. It now counts only lines with a bed.
+- **Demo words timed to the music** were taken as the voice's lines, as the sync check takes them. Lines with no
+  hash now count only when the voice speaks through half their time or more.
+
+An independent review of the branch confirmed the audio was unchanged (`mix.wav` byte for byte) and found six
+more, each reproduced and fixed:
+
+- **No line with a bed under it crashed the build.** With no music, or music only before the first line, every
+  line read the 40 LU cap and left no median line. The summary formatted that as a number, so the build exited
+  1 after writing its files, and every up-to-date run of the same plan did again from the record. It now says
+  no line has music or effects within 15 LU of the voice.
+- **A line shorter than a window** (60 ms, just before the next one) took a window reaching into the next line:
+  voice -120 LUFS, a median 95.7 LU under zero, "88.1 LU over the voice", and it entered the median. Windows now
+  lie inside their line, and such a line is left unmeasured.
+- **The median line still counted room tone:** lines over -52 dBFS noise pulled it up until lines at the default
+  12 LU read "16.8 LU closer than the video's median line". It now counts lines under 15 LU only, and the rule
+  leaves out a line at or above the plan's `under_voice`.
+- **An intended silence counted only within 0.5 s of the stop:** an intended join at 4 s in a silence from 3 to
+  5 s left both the stop and the return listed. A join anywhere in the stop now covers it.
+- **One `"intended"` on the music covered both its ends,** and a hard entrance is always a surge, so excusing it
+  hid a stop under the voice at the end. Now `intended_start` and `intended_end`; `"intended"` on the music is a
+  usage error that names both.
+- **The note on joins inside the music printed on every build** of a single-track score. It now prints once per
+  music file.
+
+What was checked:
+
+- **`uv run evals/tests/test_mix_measure.py`:** 15 tests pass. They build planned stems (the problems above,
+  each listed or listed as intended) and a clean variant (nothing listed). They also check the devlogs' two joins
+  modelled, a ramp before a join, the median line over silence and over room tone, a line at the plan's
+  `under_voice`, a line shorter than a window, an intended join inside a silence, the music's start and end
+  intents apart, builds with no line over a bed (voice only, music only before the voice) and their up-to-date
+  runs, plan mistakes and `measure`'s note. Run against the commit before the review, five of the six tests
+  added for it fail (the sixth needs the new keys); the two builds exit 1 there, on the crash above.
+- **Plain mixes of init's demo track** in a scratch project: music alone, with joins at its three section edges,
+  under a synthetic narration (ducked and not), and with a voice away from its words. Nothing was listed. The
+  line medians sat at 11.4-13.3 LU and the worst windows at 10.6 LU or more. The joins' steps ran from -6.1 to
+  +1.8 dB (the -6.1 the duck coming in under a line 0.4 s after the join) and their holes reached 1.6 dB at most.
+- **The same plan built by `main` and by this branch** (the demo track under the synthetic narration) wrote the
+  same `mix.wav` and `music-only.wav`, byte for byte.
+- **Not run:** a real project's mix (the two devlogs were evidence only, not run), and anyone listening.
+
+A later review (Codex's) found two more. With voice A timed by `words.json` and voice B after it, only A's lines
+were measured, so music burying B was never listed: the speech no line reaches (beyond 0.5 s of a line) is now
+measured by its regions, and the report names the voice files measured that way. A return the plan listed in
+`music.joins` kept its surge listed when only the stop carried the reason, while the same return found on its
+own was intended: it now takes the stop's reason. Its last look found one more: the pause kept around a timed line
+(0.5 s, for a decay) was taken from every voice file, so another file answering just after the line (3.1-3.5 s
+after a line ending at 3.0) was measured neither by line nor by region; the pause is now the line's own file's.
+`test_mix_measure.py` is 19 tests, the four new ones each failing on the code before its fix; a plan with the two-file and
+listed-return cases built the same `mix.wav` and `music-only.wav`, byte for byte.
+
+Considered and left out:
+- **Finding joins inside a music file by analysis:** the music's own section changes would read as joins.
+- **Separating a finished file** into voice and music for `measure`.
+- **The speech band alone for the median:** Torcoli's 10 LU and `under_voice` are full-range K-weighted.
+
+## 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
+
+The user asked for a review of this release against the video projects on another machine of theirs, none of
+them a devlog: does it improve the workflow, could it affect work already done, and what do those projects
+teach it? They also said how each stands. The two devlogs the release came from were really good: the block-world
+one is published and did well, and the platformer one is scheduled. The machine holds a finished 14-minute
+explainer, uploaded and scheduled. Its script was adapted from an existing article, and the user doubts a good
+article made a good script for an interesting video. It also holds an 8-minute explainer in the Nutlight style,
+unfinished and "very bad" in the user's words, though its last commit records a critic's "SHIP". Besides those:
+a 7-minute explainer, a product film that plays footage frames, and smaller ones. Each project was read, never
+changed. The audio and the engine were tested on copies in a scratch folder. Codex (Herdr tab 2) gave an
+independent read, challenged the plan twice and answered the measurements below; the Claude Code session decided
+and made the edits.
+
+What the projects showed:
+
+- **The release's shared patterns aren't devlog-only.** A voice that changed from one paragraph to the next came up
+  in two explainers, both made one request per paragraph. In one, "my voice is completly wrong!" and
+  "disconnected pronunciation styles between phreases that should be together. Maybe you need to regenerate some
+  parts of the narration sending larger portions of the script". In the other, a passage "sounds different from
+  the opening", and its agent wrote its own passage tool: long requests conditioned on their neighbours, which
+  measured one short paragraph from +4.5 to +2.2 semitones off the approved opening. A loanword was corrected
+  ("JPEG" as "jotapégue", "LLMs"). Explanations were "abstract or appear before the viewer has enough context" in
+  the unfinished one. Music notes concerned joins and entrances. And tags came off what nobody would take as fact:
+  "exemplo", "experimento mental" and "analogia", on nine scenes in two rounds of the finished explainer.
+- **The finished explainer's mix rebuilt exactly.** Its own build script, run on copies, made the published
+  `mix.wav` byte for byte with `main`'s `mix.py`. This release's `mix.py` made the same bytes at two revisions
+  (before its last music round, and as published), and so did it after the changes below.
+- **The voice check on that approved mix:** 14 of its 30 lines and regions listed, 10 of its 23 paragraph lines
+  by the worst-window rule. Its lines are whole paragraphs, so each gets one loud moment in a minute of speech. Its
+  notes after its music round have no word lost. On the same stems, a rule comparing voice and bed in the same 100
+  ms window listed all 23 lines, and a word-by-word rule listed 16 (75 words, mostly short unstressed ones: 5% of
+  its words sit under 3 LU). Windows of 200, 300 and 500 ms listed 7, 5 and 3. The recall data (the devlog whose 169
+  measured words matched its director's ear) is on the other machine, so nothing was re-tuned.
+- **Its plan set `under_voice` to 11, and every local plan that set it asked for 9 or 11.** At 9, the fixed 10 LU
+  bar lists nearly every line for the level the plan chose.
+- **The join check, given the score's joins.** The score has 12 cues from 10 tracks. Its plan is written by the
+  project's own script, with no `music.joins`, and the report said "0 point(s)... nothing listed", with no
+  reminder: the reminder printed only with a new music file. With the 40 cuts and cue starts of its arrangement
+  declared, at the revision before its director's last music notes, it listed 9 moments. Two match those notes:
+  a surge of +6.8 dB at an entrance "a little too loud", and a 13 dB hole before a track that came in. It missed
+  strings that came in late (timing) and a harsh cut whose step was above 4 kHz (timbre). The other seven drew no
+  note, which says nothing about whether they were heard.
+- **A stop the agent chose was turned down:** "You do not need to stop the background music at ~203s when I say
+  'não'".
+- **An earlier project's next build** (a record from before the checks, the same plan) says "up to date", writes
+  nothing and notes that `--force` measures them. `MIX_VERSION` didn't change, so no mix is rebuilt for a report.
+- **An earlier project updated by this release's init:** a copy of the product film, whose engine has no `prepare`,
+  run through `init --force`. It replaced `main.ts`, `render.ts` and twelve other files, each kept as `.orig`,
+  kept `src/engine/` (naming `footage.ts` among its differences), and updated `bun.lock`. Then `bun run check`
+  passed, and `verify` on its 24 fps footage video passed: 81 renders, 0 mismatched, 0 errors. Its 47 frames
+  hashed the same as an untouched copy's, over two runs of each. The untouched copy's own `verify` failed once,
+  on one pixel 1/255 off (its additive blending, which the message names), and passed on the rerun. Its scene
+  blends neighbouring footage frames, which streamed footage holds whole.
+- **Disclosure:** two packages advised that the creator's own cloned narration needed YouTube's "AI use", and one
+  counted its animated characters' stock voices too. The page, read again today, lists "Cloning one's own voice
+  to create voice overs or dubs" as not needing it. Its "not realistic" examples include a fully animated video,
+  though it names no voice case there.
+
+What changed:
+
+- **`mix.py`:** the median bar is `min(10, under_voice - 2)`, stored in the report's bars, with one note saying so
+  (and, under 10, that the level is under the recommendation). Every build says when no joins are declared inside
+  the music file. The reminder also prints on the first build that measures joins. The record carries the checks'
+  version (`STEM_CHECKS`, 2), apart from `MIX_VERSION`: an up-to-date mix whose lists are older or missing says so,
+  in the summary and in `--json`'s `stem_checks` (Codex's last look found `--json` silent), and `--force`
+  measures them again to the same bytes. Its help text says a long narration's list is for the ear.
+- **score.md:** a stop you chose is a proposal until the director hears it. A plan a project's script writes gets
+  its joins from that script. The joins check hears energy, not timing or timbre, with the two found and two
+  missed. On audio approved by ear, a flag is listed, not fixed, and a revised mix keeps that approval only where
+  it didn't change. critique.md's hand-off says the same.
+- **elevenlabs.md:** each request has a delivery of its own. Longer passages can improve continuity, and the
+  API's `previous_text`/`next_text` exist. `eleven.py` sends one paragraph per request and no context, so longer
+  paragraphs are its lever, at the price of remaking the whole paragraph for a note on one line.
+- **treatment-template.md:** an analogy, a thought experiment or an illustrative example the narration already
+  frames as one needs no tag; a made-up result still mustn't look real.
+- **devlog's SKILL.md:** the log is the research, not the outline. The script keeps the turns that carry the
+  promise, with their setups and payoffs, and most entries stay out (7,995 bytes; two parentheticals shortened).
+- **contract.md:** a project made before 0.12.0 takes streamed footage as one port, its own edits kept; each
+  frame is held whole, and a blend of neighbouring frames needs two Footage.
+- **youtube.md:** the "not realistic" reading for invented characters' voices, marked as a reading, not a stated
+  exemption, and the page's own words on reach and money.
+- **design.md,** in place: the voice check's bar and how to read its list, the checks' version, what the join
+  check can't hear, labels, the log as research, the voice's continuity and why `eleven.py` doesn't send context
+  yet, and old engines.
+
+Considered and left out:
+
+- **Sending the neighbours' text from `eleven.py tts`:** it changes the request a block's file is compared with.
+  A take picked with context would then read as stale on the next plain run and be paid for again, the kind of
+  cache change this release's first seed scheme was dropped for. Doc first; a feature that keeps each take's
+  context through `--pick` and later runs is its own piece of work.
+- **A same-window or word-by-word voice check** (Codex proposed the first; it withdrew it after the numbers above),
+  and a longer window: without recall data, any re-tuning would fit one approved mix.
+- **A spectral step at joins** (the harsh cut above 4 kHz): one case.
+
+What was checked:
+
+- **`uv run evals/tests/test_mix_measure.py`:** 21 tests pass. Two are new: the bar following a plan at 9, 11 and
+  12, and a record from before the checks going through up to date, `--force` (same bytes, the reminder) and up
+  to date again, then an older checks version, each also through `--json`. One is extended: "none declared" on a
+  rebuild. Run against this release's `mix.py` before these changes, each new test fails.
+- **Codex's last look** at the diff found five things, all fixed: `--json` silent about older or missing checks;
+  the approved-audio exception reading as a waiver for any measured flag (it covers the mix's listening lists
+  only, never verify or a wrong word); "only as continuous as its requests are long", stronger than the evidence;
+  "10 of 23" given as the whole voice check rather than its worst-window rule; and the bar's comment implying 11
+  conflicted with the old bar.
+- **The finished explainer's rebuild** with the changed `mix.py`: the same `mix.wav` and `music-only.wav`, 13 to
+  listen to (a paragraph at 9.7 LU no longer listed on median under its plan's 11), the plan's note, and "none
+  declared inside the music file".
+- **`test_eleven_pitch.py`** 13/13, **`test_footage.ts`** 23/23, **`test_render_inputs.ts`** 17/17, rerun unchanged.
+- **Codex's review of the whole PR** against `main` found one more, in streamed footage. In the preview,
+  `frameAt()` loaded a frame no prepare had asked for without marking it asked. After a few seeks, the four
+  protected look-aheads (about 136 proxies each) held more than the budget of 360. A step back of 0.4 s,
+  under the 0.5 s that starts another look-ahead, then loaded the frame, and the budget let it go at once as the
+  oldest. The stand-in stayed up and the frame was fetched again on every draw. It now counts as asked in the
+  latest round. `test_footage.ts` gains a check on the real `Footage` class (three, the video's settings, fetch
+  and the decoder stubbed) that fails before the fix ("frame 2376 was let go as soon as it arrived") and passes
+  after, the frame fetched once: 24/24. `test_render_inputs.ts` 17/17 and `test_render_failures.ts` 13/13. A
+  project made by init from the fixed template passes `bun run check` and `verify` (117 renders, 0 mismatched).
+- **Not run:** any task eval, routing on either tool (no description changed), and anyone listening.

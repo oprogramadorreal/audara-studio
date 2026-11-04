@@ -33,6 +33,12 @@ The treatment grows with the piece, not with this template:
 A short treatment goes into the message whole; for a long one, the idea, the song window and the storyboard
 with its rows whole, transitions out included. Analysis numbers, file lists and status stay out of it.
 
+A long narrated piece (several minutes) is mostly judged by ear and in motion, which a treatment can't show:
+once the voice exists, voice and roughly cut its least certain passage first (an explanation, a joke, a
+transition), and post its link while building on. In two long devlogs the director first saw and heard the cut
+once all of it was built, and many of his notes then were of the kind one voiced passage shows: explanations he
+couldn't follow, deliveries, music joins.
+
 ## What a video is for
 
 The director's words outrank all of this, and a script they give stays locked. Where the piece is yours,
@@ -58,15 +64,24 @@ events unfold for a better story, without every qualification. The limit is what
 away believing. The central point stays true, and so does anything that matters if they repeat it or act on
 it: a number, a cause, who did what, an instruction, what a product does. No invented quote, result or figure
 is presented as a real person's, company's or study's. The liberties go in Never claim; a label appears once,
-where the picture could mislead, never as a running disclaimer.
+where the picture could mislead, never as a running disclaimer. Lines the director wrote or approved for
+themselves are theirs, not invented quotes, and so are lines for characters plainly made up (a mascot, a talking
+graphics card); a scene staged for comedy that reads as one needs no tag either. Nor does an analogy, a
+thought experiment or an illustrative example that the narration already makes clear as one: one explainer's
+director took "exemplo", "experimento mental" and "analogia" off nine such scenes in two rounds. A made-up
+result or piece of evidence still mustn't look real. Words put in another real
+person's mouth stay under the limit above. Whether a re-staged demonstration (a fixed bug brought back for the
+camera) says so on screen is the director's call: ask once, then do the same everywhere.
 
 **The promise comes first.** For a video people choose to click, before outlining, write a working title and
 a thumbnail idea: what it shows, and the words it could carry (or none, when the picture says it). Together they make one clear promise,
 and it decides the opening: a surprising result is shown, or starts to be revealed, in the first seconds, in
 the picture, since those seconds also play muted on hover and in phone feeds. Someone who clicked recognizes
 what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
-happens next. A twist the piece depends on is promised as a question, not given away. A video a feed plays on
-its own (Shorts, Reels) has no click to answer, so its first seconds make the promise themselves. A loop, a
+happens next. The opening can be a trailer of the best moving shots from later in the piece, the payoff only
+glimpsed: a glimpse pays the promise, while showing it at length spends the reveal. A twist the piece depends
+on is promised as a question, not given away. A video a feed plays on its own (Shorts, Reels) has no click to
+answer, so its first seconds make the promise themselves. A loop, a
 sting, a slot ad or a stream background needs no promise; a song's opening is the song's. A later cut that takes
 out what was promised says so and offers the version that keeps it. It stays a working promise: the
 youtube-package skill makes the final title and thumbnails from the finished video.
@@ -209,7 +224,15 @@ several rows.
   or `0:01.50`, never `1:30` for 1.5 s.
 - **What the viewer sees,** concretely: what is where, how big, what moves.
 - **The moment's job:** what it tells, sets up or pays off. A row without one is filler. The first row
-  pays the Promise, when there is one.
+  pays the Promise, when there is one. A payoff needs a setup the viewer saw happen and will still hold when
+  it comes (a passing aside isn't one), and a callback to another video works for someone who never saw it.
+  When a setup is cut, its payoff goes too, or gets a setup that lands, or the director is asked.
+- **Stage,** a column of its own when the piece follows something changing over its story (a build's looks
+  in a devlog, a before and after, a tutorial's steps): which state the row shows. A state appears first in
+  the row that brings it, unless the piece is told out of order on purpose, and the opening may glimpse a
+  later one to pay the Promise. Check the column before building: no row outside the opening shows a state
+  before the row that brings it, and none lingers on an old state once its replacement has been revealed,
+  unless the row says why (a flashback, a before and after side by side).
 - **Transition out:** how it hands over: a hard cut (a montage's usual one, on the beat), or what crosses
   the cut: an object, a shape, a colour, a direction of motion, a word. Name what crosses, because the
   scene on the far side has to pick it up (a shared pose, `references/motion.md`).

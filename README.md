@@ -5,7 +5,7 @@ a script or nothing at all: what you decide is followed exactly, and what you le
 aiming for something worth watching. It builds the video in a live browser preview, takes your notes by time
 ("at 0:23 the title should land on the snare") and renders the MP4.
 
-audara-studio is a plugin for Claude Code and Codex with six skills:
+audara-studio is a plugin for Claude Code and Codex with seven skills:
 
 - **code-video**: music videos, lyric videos, motion graphics, explainers, title cards and loops, drawn
   with WebGL/GLSL, three.js and Canvas2D. Every frame is a function of time, so the preview matches the
@@ -15,6 +15,10 @@ audara-studio is a plugin for Claude Code and Codex with six skills:
   also for a video made elsewhere (filmed, or from AI video clips).
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
   one and writes it up as a prompt or a script, without building anything until you ask.
+- **devlog**: for when the video is about building something (a game, a physics simulation, a fractal explorer,
+  any prototype), or about a project you built. It builds in the order you set, keeping a development log, the
+  real bugs and their fixes, and a way to film any moment again, shows it to you as it goes, and hands that
+  material to code-video for the video about how it was made.
 - **video-repo**: for when you want a project in git, finished or not started yet. It keeps what someone
   else needs to clone it and render the video again, leaves renders and files too big for GitHub out (and
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is
@@ -86,6 +90,9 @@ Other ways in:
   design in every video; scenes flow into each other, and the score is cut from your own library (or generated,
   if you say yes to its cost). The style applies only when you name it, and anything you ask for differently
   wins over it.
+- **A devlog:** "I want to make a devlog: start by building a 3D Breakout for the browser, no engine". The thing
+  gets built and shown to you first, with a log of how it went and a way to film any moment again; the script
+  and the video come once you say it's ready, made from that material.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You

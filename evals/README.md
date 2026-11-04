@@ -53,6 +53,7 @@ bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/vi
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/video-repo.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/youtube-package.json
 bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/nutlight-style.json
+bun evals/harness/trigger.ts --tool claude --model opus   --set evals/trigger/devlog.json
 ```
 
 `--effort` sets the reasoning effort the user's settings would otherwise pick, as in `task.ts` below. Every run
@@ -81,6 +82,16 @@ session learns only from the project's files: a probe of discovery, since a run 
 fixture has no cast or references; ns-new-subject's third turn tests the later session's work). Its near-misses ask for squirrels, cute animals, a glowing
 night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
+
+devlog's set asks to build something and then a video of how it was built, in eleven requests: three in Portuguese,
+three that aren't games (a physics simulation, a fluid simulator, a fractal explorer), a devlog of a project
+already built (dl-05), and one made inside a devlog project whose `docs/DEVELOPMENT_LOG.md` comes from the
+fixtures (dl-08). Its near-misses are the neighbours a devlog skill could take by mistake: a game alone with no
+video, ideas for a devlog (video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being
+typed, a log with no video, and a pixel-art game animation with nothing built. dl-21 and dl-22 are the same
+request to start by building a game, without and with a devlog in view: an earlier description that quoted
+"start by building the game" loaded on dl-21 too (1 of 1), the current one 0 of 3, and on dl-22 3 of 3. It has no scripts, so, as with
+video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the load.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss
@@ -238,16 +249,51 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
 and three text files); preview's sheets; and what niche refuses before any network call.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
-with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints and piece
-boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
+included) and piece boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+`test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
+frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
+frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
+lets go (never the latest rounds', those of a prepare render.ts waits for, its clips asked one after another
+included, or the one on screen while its shot is in use; 150 shots played one after another stay within it,
+and a still back in the first loads it again). On the real `Footage` class, with three, fetch and the decoder
+stubbed: a frame the preview loads on demand after four seeks fill the budget stays, fetched once.
+`test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
+synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
+of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to
+catch a plainer picker (or this one without its octave guard); the distance from the kept blocks around a take
+and its "check by ear" mark; and, end to end against the mock ElevenLabs server (served in-process, its files in
+a temp folder), that the block's own file is found among its takes (take 1 after the first run, copied for
+free; the picked take after a pick) and labelled in the report, that the plan before `--yes` tells the new
+takes from those copied for free, that asking again for takes that exist buys nothing, and that after a
+paragraph is inserted before a block with takes they are reused for free and can be picked under its new
+number. It needs ffmpeg, and takes under a minute.
+
+`test_mix_measure.py` checks `mix.py build`'s two lists of moments to listen to, on synthetic stems built
+through a small mix.json (it needs ffmpeg). With a planned hole, a surge, a stop under the voice and its hard
+return, an intended silence, the music ending under the last line on purpose, a loud effect over one line and a
+loud section under another, each is listed or listed as intended. A clean variant lists nothing, with and without
+words.json: drums whose 100 ms windows swing 10 dB, a crossfade join, and an effect the solver levels. It also
+covers the two joins the devlogs measured, a ramp before a join that isn't a surge, an intended join inside a
+silence, a return listed in `music.joins` taking the stop's reason, the music's start and end intents apart, the
+median line over silence and room tone, a line at the plan's `under_voice`, the median bar following a plan
+under 12 LU (9, 11) with its note, a record from before the checks going through up to date, `--force` (the
+same bytes, the joins reminder) and up to date again, an older checks version named, "none declared" on every
+build without `music.joins`, a line shorter than a window, speech
+no words.json line reaches (a stretch the lines leave out; a second voice file under music, its masked regions
+listed and the file named), builds with no line over a bed (voice only, music only before the voice), plan
+mistakes as usage errors, and `measure` saying it needs the plan.
 
 ```sh
 uv run evals/tests/test_imagegen.py
+uv run evals/tests/test_eleven_pitch.py
+uv run evals/tests/test_mix_measure.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
 bun evals/tests/test_render_inputs.ts
+bun evals/tests/test_footage.ts
 ```
 
 ## Spec checks
@@ -264,6 +310,6 @@ PYTHONUTF8=1 uv run --with pyyaml python <skill-creator>/scripts/quick_validate.
 
 The second script comes with the Codex CLI (upstream: `codex-rs/skills/src/assets/samples/skill-creator/`
 in openai/codex), the third with Anthropic's skill-creator plugin. `PYTHONUTF8=1` stops them misreading
-UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo`, `skills/youtube-package` and `skills/nutlight-style`. Two checks no
+UTF-8 on Windows. Run the same three on `skills/soundtrack`, `skills/video-ideas`, `skills/video-repo`, `skills/youtube-package`, `skills/nutlight-style` and `skills/devlog`. Two checks no
 validator makes: SKILL.md stays under 8,000 bytes (Codex cuts an invoked skill there) and is saved without
 a byte-order mark.

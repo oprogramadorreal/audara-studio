@@ -14,6 +14,10 @@ with its exact request beside it, plus the timing data the code-video engine rea
                  with timestamps. Writes the blocks, narration.wav (blocks + gaps) and words.json,
                  measures every phrase edge against the waveform and moves it onto the sound
                  (the same method and code as align.py check --fix; --no-snap keeps the API's times).
+                 --takes K --block N makes alternatives of one block and reports each take's median
+                 pitch and voiced share beside the kept blocks around it, marking a take far off them
+                 "check by ear" (a measure for the ear, never a verdict: nothing is remade or picked
+                 on its own).
   music plan     A composition plan to review before paying (free endpoint).
   music compose  The music from a plan, as takes brought to the same loudness for comparison.
   sfx            Sound-effect candidates, screened by analysis before anyone listens.
@@ -177,6 +181,29 @@ MIN_WORD_S = 0.05  # shortest word kept after snapping ("a" spoken fast is ~50-8
 PAD_BEFORE = 0.05  # audio kept before a block's first sound when blocks are placed: soft attacks
 PAD_AFTER = 0.15  # ...and after its last sound: releases fade under the threshold while still audible
 TP_MAX = -1.0  # true-peak ceiling (dBTP) for anything this script levels: streaming platforms' bar
+
+# narration pitch: each take's median F0 beside the kept lines around it (a reason to listen, never a verdict).
+# Two devlogs' directors heard regenerated lines "sound different" from the lines around them: one sat at 218 Hz
+# among lines at 135 Hz, and new takes of that voice often came out 25-45 Hz high
+PITCH_SR = 16000  # F0 needs nothing above 8 kHz: about a third of the samples of 44.1 kHz
+PITCH_FMIN, PITCH_FMAX = 60.0, 400.0  # Hz: speech, from a deep male voice to an excited high one
+PITCH_WIN_S = 0.025  # YIN's integration window (its paper's 25 ms); with lags up to 1/60 s a frame spans 42 ms
+PITCH_HOP_S = 0.010  # one estimate every 10 ms
+YIN_DIP = 0.15  # the period is the first lag whose normalized difference dips under this (YIN's absolute
+#                 threshold): the first dip, not the deepest, so a multiple of the period (an octave low) never wins
+YIN_SLACK = 0.05  # a frame with no dip that deep takes the first lag within 0.05 of its deepest, for the same reason
+YIN_VOICED = 0.30  # a frame is voiced when its dip is under this (noise and whispers stay over 0.5)
+PITCH_RUN = 3  # voiced runs shorter than 3 frames (about 50 ms) are dropped: a vowel lasts longer
+OCTAVE_ST = 9.0  # a frame more than 9 semitones off its clip's median is tried an octave toward it, else dropped
+PITCH_MIN_SOUND_S = 0.5  # no verdict on less sound than this
+PITCH_MIN_VOICED = 0.30  # ...nor when under 30% of the sound is voiced (a whisper, breath, noise)
+PITCH_TOL_ST = 2.0  # a take more than 2 semitones off the kept lines around it is marked "check by ear": the
+#                     line heard as different was +8.3 st (218 Hz on 135), the high takes +3 to +5 st. Approved lines
+#                     of one narration spread about 3 st around their median, so a mark asks for an ear, not a take
+PITCH_AROUND = 2  # the lines around a block: the kept files of up to 2 blocks on each side
+PITCH_NOTE = ("Measured, not heard: nobody has listened to these takes yet, and pitch distance is not voice identity, "
+              "accent or naturalness. Nothing is remade or picked on its own: listen to a marked take between the "
+              "lines around it.")
 
 # music takes (reports, not gates)
 ARRIVE_LU = 10.0  # the music has arrived once a 400 ms window is within 10 LU of the integrated level
@@ -915,6 +942,173 @@ def edge_line(s: dict, when: str = "") -> str:
 
 
 # ---------------------------------------------------------------------------------------------
+# Pitch: a narration take's median F0 and voiced share, and its distance from the kept lines around it
+
+
+@dataclass
+class Pitch:
+    f0: float | None  # median F0 of the voiced frames (Hz); None: no verdict, `why` says why
+    voiced: float  # share of the frames with sound that are voiced, 0-1
+    sound_s: float  # seconds of sound (frames over the clip's silence threshold)
+    hz: np.ndarray  # every voiced frame's F0, for one median over several files
+    why: str = ""
+
+
+def yin_frames(x: np.ndarray, W: int, tmax: int) -> np.ndarray:
+    """YIN's cumulative-mean-normalized difference d'(tau), tau = 0..tmax+1, of each row of x (frames of W + tmax + 2
+    samples): d(tau) = sum over the first W samples of (x[j] - x[j + tau])^2, by FFT; d'(0) = 1 and
+    d'(tau) = d(tau) / mean(d(1..tau)). A periodic frame dips near 0 at its period; noise stays near 1."""
+    x = x - x.mean(1, keepdims=True)
+    nfft = 1 << int(math.ceil(math.log2(x.shape[1] + W)))
+    taus = np.arange(tmax + 2)
+    r = np.fft.irfft(np.fft.rfft(x, nfft) * np.conj(np.fft.rfft(x[:, :W], nfft)), nfft)[:, :tmax + 2]
+    c = np.concatenate([np.zeros((len(x), 1)), np.cumsum(x * x, 1)], 1)
+    e = c[:, taus + W] - c[:, taus]  # energy of the window shifted by tau
+    d = np.maximum(e[:, :1] + e - 2 * r, 0.0)
+    mean = np.cumsum(d[:, 1:], 1) / taus[1:]
+    dp = np.ones_like(d)
+    ok = mean > 1e-9 * np.maximum(e[:, :1], 1e-30)  # (a frame of digital silence has no period)
+    dp[:, 1:] = np.where(ok, d[:, 1:] / np.where(ok, mean, 1.0), 1.0)
+    return dp
+
+
+def pitch(y: np.ndarray, sr: int = PITCH_SR) -> Pitch:
+    """Median F0 and voiced share of a spoken clip by YIN (de Cheveigne and Kawahara, 2002), numpy only: per frame
+    the first lag whose d' dips under YIN_DIP is the period, refined by a parabola, and the depth of that dip says
+    whether the frame is voiced. Frames under the clip's silence threshold (analyze()'s rule) are not counted, voiced
+    runs shorter than PITCH_RUN are dropped, and a frame far off the clip's median is tried an octave toward it (an
+    octave error) or dropped. No verdict on too little sound, or when too little of it is voiced (a whisper)."""
+    y = np.asarray(y, np.float64)
+    W, hop = round(PITCH_WIN_S * sr), round(PITCH_HOP_S * sr)
+    tmin, tmax = int(sr / PITCH_FMAX), int(math.ceil(sr / PITCH_FMIN))
+    N = W + tmax + 2  # (lag tmax + 1 too: the parabola at the range's edge)
+    if len(y) < N:
+        return Pitch(None, 0.0, 0.0, np.zeros(0), f"only {len(y) / sr:.2f} s of audio")
+    fr = np.lib.stride_tricks.sliding_window_view(y, N)[::hop]
+    db = 10 * np.log10(np.maximum((fr[:, :W] ** 2).mean(1), 1e-12))
+    floor = float(np.percentile(db, FLOOR_PCT))
+    active = db[db > floor + 20]
+    level = float(np.percentile(active, LEVEL_PCT)) if len(active) > 5 else float(db.max())
+    # silence as analyze() has it, except that a clip with no silence at all (a floor near the level) is all sound
+    sound = db > max(level - BELOW_LEVEL_DB, min(floor + ABOVE_FLOOR_DB, level - MIN_GAP_DB))
+    idx = np.flatnonzero(sound)
+    n = len(fr)
+    f0 = np.full(n, np.nan)
+    dps: dict[int, np.ndarray] = {}  # d' of the voiced frames, for the octave check
+    for c0 in range(0, len(idx), 512):  # in chunks: a long paragraph has thousands of frames
+        ii = idx[c0:c0 + 512]
+        dp = yin_frames(np.array(fr[ii]), W, tmax)
+        seg = dp[:, tmin:tmax + 1]
+        lim = np.maximum(YIN_DIP, seg.min(1) + YIN_SLACK)
+        t = (seg < lim[:, None]).argmax(1) + tmin  # the first lag under the limit (the deepest always is)
+        rows = np.arange(len(ii))
+        for _ in range(tmax):  # down to the bottom of that dip
+            nxt = np.minimum(t + 1, tmax)
+            mv = (nxt > t) & (dp[rows, nxt] < dp[rows, t])
+            if not mv.any():
+                break
+            t = t + mv
+        lag = t + parabola(dp[rows, t - 1], dp[rows, t], dp[rows, t + 1])
+        hz = sr / lag
+        v = (dp[rows, t] < YIN_VOICED) & (hz >= PITCH_FMIN) & (hz <= PITCH_FMAX)
+        f0[ii[v]] = hz[v]
+        dps.update(zip(ii[v].tolist(), dp[v]))
+    for a, b in runs(np.isfinite(f0)):  # blips of "voice" in noise or at a consonant
+        if b - a < PITCH_RUN:
+            f0[a:b] = np.nan
+    vi = np.flatnonzero(np.isfinite(f0))
+    if len(vi):  # octave errors: a frame far off the median is tried at twice or half its lag
+        m = float(np.median(np.log2(f0[vi])))
+        for i in vi[np.abs(12 * (np.log2(f0[vi]) - m)) > OCTAVE_ST]:
+            f0[i] = octave_fix(dps[int(i)], sr / f0[i], 12 * (math.log2(f0[i]) - m) > 0, m, sr, tmin, tmax)
+    hz = f0[np.isfinite(f0)]
+    sound_s = len(idx) * PITCH_HOP_S
+    share = len(hz) / len(idx) if len(idx) else 0.0
+    if sound_s < PITCH_MIN_SOUND_S:
+        return Pitch(None, share, sound_s, hz, f"only {sound_s:.2f} s of sound")
+    if share < PITCH_MIN_VOICED:
+        return Pitch(None, share, sound_s, hz, f"{share:.0%} of its sound is voiced: a whisper, breath or noise")
+    return Pitch(float(np.median(hz)), share, sound_s, hz)
+
+
+def parabola(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """Where the parabola through (-1, a), (0, b), (1, c) has its minimum, within half a sample."""
+    den = a - 2 * b + c
+    safe = np.where(den > 1e-12, den, 1.0)
+    return np.where(den > 1e-12, np.clip(0.5 * (a - c) / safe, -0.5, 0.5), 0.0)
+
+
+def octave_fix(dp: np.ndarray, lag: float, high: bool, m: float, sr: int, tmin: int, tmax: int) -> float:
+    """A frame's F0 an octave toward the clip's median (log2 Hz `m`) when its d' dips there too, else NaN (dropped)."""
+    k0 = round(lag * (2 if high else 0.5))
+    lo, hi = max(tmin, k0 - max(2, round(0.03 * k0))), min(tmax, k0 + max(2, round(0.03 * k0)))
+    if lo > hi:
+        return float("nan")
+    k = lo + int(np.argmin(dp[lo:hi + 1]))
+    if dp[k] >= YIN_VOICED:
+        return float("nan")
+    hz = sr / (k + float(parabola(dp[k - 1:k], dp[k:k + 1], dp[k + 1:k + 2])[0]))
+    return hz if abs(12 * (math.log2(hz) - m)) <= OCTAVE_ST else float("nan")
+
+
+def pitch_of(path: Path) -> Pitch:
+    return pitch(decode(path, PITCH_SR), PITCH_SR)
+
+
+def semitones(f: float, ref: float) -> float:
+    return 12 * math.log2(f / ref)
+
+
+def same_narration(path: Path, voice: str, model: str, vs: dict) -> bool:
+    """`path` was made with this voice, model and settings, whatever its text: a line of the same narration."""
+    try:
+        rec = read_json(side(path, ".request.json"))
+    except Fail:  # (a broken record is state()'s to report; here it is just not a line to compare with)
+        return False
+    r = rec.get("request") if isinstance(rec, dict) else None
+    body = r.get("body") if isinstance(r, dict) else None
+    return (isinstance(body, dict) and r.get("path") == f"/v1/text-to-speech/{voice}/with-timestamps"
+            and body.get("model_id") == model and (body.get("voice_settings") or {}) == vs)
+
+
+@dataclass
+class Around:
+    """The kept lines around a block, for its takes' pitch to be read against."""
+    hz: float | None  # median F0 of their voiced frames taken together; None: nothing to compare with
+    files: list  # [(block, file, Pitch)], the ones with a verdict
+    tol: float = PITCH_TOL_ST
+
+
+def pitch_around(n: int, kept: list[tuple[int, Path]], tol: float = PITCH_TOL_ST) -> Around:
+    """Block n's surroundings from `kept`, the (block, file) pairs of the narration's kept files (same voice, model
+    and settings): those within PITCH_AROUND blocks of n, pooled frame by frame, so a long line counts for more than
+    a one-word one."""
+    files = []
+    for k, p in kept:
+        if k != n and abs(k - n) <= PITCH_AROUND:
+            pp = pitch_of(p)
+            if pp.f0 is not None:
+                files.append((k, p, pp))
+    hz = float(np.median(np.concatenate([pp.hz for *_, pp in files]))) if files else None
+    return Around(hz, files, tol)
+
+
+def pitch_vs(pp: Pitch, ar: Around) -> tuple[float | None, bool]:
+    """A take's distance in semitones from the lines around it (+ = higher), and whether it is past the tolerance."""
+    if pp.f0 is None or ar.hz is None:
+        return None, False
+    d = semitones(pp.f0, ar.hz)
+    return d, abs(d) > ar.tol
+
+
+def around_text(ar: Around) -> str:
+    """'blocks 2 (136 Hz) and 4 (134 Hz)'."""
+    parts = [f"{k} ({pp.f0:.0f} Hz)" for k, _, pp in ar.files]
+    return (f"block{'s' if len(parts) > 1 else ''} " + (", ".join(parts[:-1]) + " and " if len(parts) > 1 else "")
+            + parts[-1])
+
+
+# ---------------------------------------------------------------------------------------------
 # The API
 
 
@@ -1579,7 +1773,8 @@ def tts_flags(a) -> list[str]:
     f: list[str] = []
     for flag, v in (("--voice", a.voice), ("--model", a.model), ("--format", a.format), ("--seed", a.seed),
                     ("--gap", a.gap), ("--lead", a.lead), ("--tail", a.tail), ("--stability", a.stability),
-                    ("--similarity", a.similarity), ("--style", a.style), ("--speed", a.speed)):
+                    ("--similarity", a.similarity), ("--style", a.style), ("--speed", a.speed),
+                    ("--pitch-tolerance", a.pitch_tolerance)):
         if v is not None:
             f += [flag, f"{v:g}" if isinstance(v, float) else str(v)]
     for s in a.say or []:
@@ -1590,6 +1785,8 @@ def tts_flags(a) -> list[str]:
         f.append("--snap" if a.snap else "--no-snap")
     if a.speaker_boost is not None:
         f.append("--speaker-boost" if a.speaker_boost else "--no-speaker-boost")
+    if a.pitch is False:
+        f.append("--no-pitch")
     return f
 
 
@@ -1659,6 +1856,8 @@ def cmd_tts(a, out: Out) -> None:
             raise Fail(USAGE, f"{flag} {v}: the script has {N} paragraph{'s' if N != 1 else ''} (1-{N})")
     if a.takes is not None and not 2 <= a.takes <= 10:
         raise Fail(USAGE, "--takes K: from 2 to 10")
+    if a.pitch_tolerance is not None and not 0 < a.pitch_tolerance <= 24:
+        raise Fail(USAGE, f"--pitch-tolerance {a.pitch_tolerance:g}: semitones, more than 0 and at most 24")
 
     def req(b: Block, s: int) -> dict:
         body = {"text": b.spoken, "model_id": model, "voice_settings": dict(sorted(vs.items())), "seed": s}
@@ -1843,12 +2042,23 @@ def cmd_tts(a, out: Out) -> None:
     else:
         do_reuse()
 
+    def around(b: Block) -> Around | None:
+        """The kept lines around block b to read its takes' pitch against (None with --no-pitch): the files of the
+        blocks near it made with this voice, model and settings, whatever their text."""
+        if a.pitch is False:
+            return None
+        kept = [(x.n, main_path(x)) for x in blocks if x.n != b.n and abs(x.n - b.n) <= PITCH_AROUND
+                and main_path(x).is_file() and same_narration(main_path(x), voice, model, vs)]
+        return pitch_around(b.n, kept, PITCH_TOL_ST if a.pitch_tolerance is None else a.pitch_tolerance)
+
     # the block's main file: --takes fills a missing one with take 1; --pick copies the chosen take
     if a.takes is not None:
         b = blocks[a.block - 1]
         if not main_path(b).is_file():
             copy_set(take_path(b, 1), main_path(b), TTS_SIDES, {"take": 1})
-        report_takes(out, b, [take_path(b, k) for k in range(1, a.takes + 1)], base)
+        # the block's own file (the line already heard) is marked among its takes, or listed under them
+        mp = main_path(b) if state(main_path(b), b, None)[0] == "ok" else None
+        report_takes(out, b, [take_path(b, k) for k in range(1, a.takes + 1)], base, around=around(b), main=mp)
     if a.pick is not None:
         b = blocks[a.block - 1]
         tp = take_path(b, a.pick)
@@ -1859,6 +2069,9 @@ def cmd_tts(a, out: Out) -> None:
         keep_or_retire(main_path(b), tdir, TTS_SIDES)
         copy_set(tp, main_path(b), TTS_SIDES, {"take": a.pick, "picked": now()})
         out(f"Block {b.n}: take {a.pick} is now {rel(main_path(b))}.")
+        ar = around(b)
+        if ar is not None:
+            report_pick_pitch(out, b, a.pick, main_path(b), ar)
 
     # remember the narration's settings (flags change them; the next run reuses them)
     write_json(cfg_path, cfg_doc(cfg.get("words_sha256")))
@@ -1874,7 +2087,8 @@ def cmd_tts(a, out: Out) -> None:
             out(f"Block {b.n}'s timings (the API's, per character) are already in "
                 f"{rel(side(main_path(b), '.alignment.json'))}; {'snapped ' if snap_on else ''}word timings for every "
                 f"block come with the rest in {rel(w.data_dir / 'words.json')}, so nothing needs exporting now.")
-            report_takes(out, b, [main_path(b)], base, title=f"Block {b.n} (for approving the voice):")
+            report_takes(out, b, [main_path(b)], base, title=f"Block {b.n} (for approving the voice):",
+                         around=around(b))
             report_plan(out, "block", [(b.n, main_path(b))], "tts")
             out.data["names"] = names_to_hear(b)
             if out.data["names"]:  # (references/elevenlabs.md: "Listen to the names before approving a file")
@@ -1989,12 +2203,21 @@ def take_words(path: Path, b: Block) -> tuple[list[dict], np.ndarray]:
     return block_words(b, al), decode(path)
 
 
-def report_takes(out: Out, b: Block, paths: list[Path], base: list[str], title: str | None = None) -> None:
-    """Measured facts per take of one block, to choose by ear with numbers beside it."""
+def report_takes(out: Out, b: Block, paths: list[Path], base: list[str], title: str | None = None,
+                 around: Around | None = None, main: Path | None = None) -> None:
+    """Measured facts per take of one block, to choose by ear with numbers beside it. With `around` (the pitch
+    diagnostic), each take's median pitch and voiced share too, and its distance from the kept lines around the
+    block. `main`: the block's own file, the line already heard: the take that holds it is marked so (take 1 when
+    the takes were made after it), and when none does it gets a row of its own under them."""
     out(title or f"Takes of block {b.n} (same text and settings, different seeds):")
-    out(f"  {'take':5s} {'voice':>7s} {'words/min':>9s} {'loudness':>9s} {'worst edge':>11s}  file")
-    rows = []
-    for i, p in enumerate(paths, 1):
+    pc = around is not None
+    out(f"  {'take':5s} {'voice':>7s} {'words/min':>9s} {'loudness':>9s} {'worst edge':>11s}"
+        + (f" {'pitch':>7s} {'voiced':>6s} {'vs around':>9s}" if pc else "") + "  file")
+    msha = sha256_file(main) if main is not None and main.is_file() else None
+    holds = [i for i, p in enumerate(paths, 1) if msha and p.is_file() and sha256_file(p) == msha]
+    extra = [("file", main)] if msha and not holds else []
+    rows, marked, unmeasured = [], [], []
+    for i, p in [*enumerate(paths, 1), *extra]:
         if not p.is_file():
             continue
         words, y = take_words(p, b)
@@ -2005,14 +2228,90 @@ def report_takes(out: Out, b: Block, paths: list[Path], base: list[str], title: 
         wpm = len(words) / span * 60 if span > 0 else 0.0
         lo = loudness(y=y)
         rec = read_json(side(p, ".request.json")) or {}
-        rows.append({"take": i, "file": rel(p), "seed": ((rec.get("request") or {}).get("body") or {}).get("seed"),
-                     "voice_s": r3(span), "words_per_min": round(wpm), "lufs": round(lo["I"], 1) if math.isfinite(lo["I"]) else None,
-                     "worst_edge_ms": stt.get("worst_ms")})
-        out(f"  {i:<5d} {span:6.2f}s {wpm:9.0f} {fmt_lufs(lo['I']):>9s} "
-            f"{(format(stt['worst_ms'], '+.0f') + ' ms') if stt.get('edges') else '-':>11s}  {rel(p)}")
+        row = {"take": None if i == "file" else i, "file": rel(p),
+               "seed": ((rec.get("request") or {}).get("body") or {}).get("seed"),
+               "voice_s": r3(span), "words_per_min": round(wpm), "lufs": round(lo["I"], 1) if math.isfinite(lo["I"]) else None,
+               "worst_edge_ms": stt.get("worst_ms")}
+        if msha:
+            row["block_file"] = i in holds or i == "file"
+        cols = flag = ""
+        if pc:
+            pp = pitch_of(p)
+            d, check = pitch_vs(pp, around)
+            row.update({"f0_hz": round(pp.f0, 1) if pp.f0 is not None else None, "voiced_share": round(pp.voiced, 2),
+                        "pitch_st": st_round(d) if d is not None else None, "check_by_ear": check})
+            if pp.f0 is None:
+                row["pitch_why"] = pp.why
+                unmeasured.append((i, pp.why))
+            if check and i != "file":
+                marked.append(i)
+            cols = (f" {f'{pp.f0:.0f} Hz' if pp.f0 is not None else '-':>7s} {pp.voiced:6.0%}"
+                    f" {st_text(d) if d is not None else '-':>9s}")
+            flag = "  check by ear" if check else ""
+        if i == "file":
+            out.data["block_file"] = row
+        else:
+            rows.append(row)
+        own = " (the block's file)" if i in holds else ""
+        out(f"  {str(i):<5s} {span:6.2f}s {wpm:9.0f} {fmt_lufs(lo['I']):>9s} "
+            f"{(format(stt['worst_ms'], '+.0f') + ' ms') if stt.get('edges') else '-':>11s}{cols}  {rel(p)}{own}{flag}")
     out.data.setdefault("takes", []).extend(rows)
+    if pc:
+        for i, why in unmeasured:
+            who = "the block's file" if i == "file" else f"take {i}"
+            out(f"  {who}: no pitch verdict ({why}).")
+        if around.hz is not None:
+            out(f"Pitch around block {b.n}: {around.hz:.0f} Hz, the kept files of {around_text(around)} (same voice, "
+                f"model and settings). \"check by ear\": more than {around.tol:g} semitones off it "
+                f"(--pitch-tolerance).")
+            out(PITCH_NOTE)
+        elif len(paths) > 1:
+            out(f"No pitch to compare with: no block within {PITCH_AROUND} of block {b.n} has a kept file with this "
+                f"voice, model and settings and a pitch verdict.")
+        out.data["pitch"] = {"block": b.n, "around_hz": round(around.hz, 1) if around.hz is not None else None,
+                             "around": [{"block": k, "file": rel(p), "f0_hz": round(pp.f0, 1)}
+                                        for k, p, pp in around.files],
+                             "tolerance_st": around.tol, "check_by_ear": marked,
+                             "note": PITCH_NOTE if around.hz is not None else None}
     if len(paths) > 1:
         out(f"Listen, then keep one (no API call): {me(*base, '--pick', 'K', '--block', b.n)}")
+        if holds:  # (the take that is the block's file: take 1 on the seed that made it, the picked one after --pick)
+            more = (f"For another, ask for one more take: {me(*base, '--takes', len(paths) + 1, '--block', b.n)} "
+                    f"(these stay, free; it shows the cost first, add --yes). Or " if len(paths) < 10 else
+                    "For another, ")  # (10: the cap of --takes)
+            out(f"Take {holds[0]} is the block's file, the line it has now: the other {len(paths) - 1} are its "
+                f"alternatives. {more}--takes K with a --seed none of them has had (these then move to older/, and "
+                f"that seed is kept for the next runs).")
+
+
+def st_round(d: float) -> float:
+    """Semitones to a tenth, 0.0 rather than -0.0."""
+    return round(d, 1) + 0.0  # (-0.0 + 0.0 is 0.0)
+
+
+def st_text(d: float) -> str:
+    """'+1.2 st', '-0.4 st', and '0.0 st' for what rounds to zero (never '-0.0 st')."""
+    r = st_round(d)
+    return f"{r:+.1f} st" if r else "0.0 st"
+
+
+def report_pick_pitch(out: Out, b: Block, k: int, path: Path, ar: Around) -> None:
+    """The picked take's pitch against the kept lines around its block: a measure beside the director's ear."""
+    pp = pitch_of(path)
+    d, check = pitch_vs(pp, ar)
+    if pp.f0 is None:
+        out(f"  Its pitch: no verdict ({pp.why}).")
+    elif d is None:
+        out(f"  Its pitch: {pp.f0:.0f} Hz ({pp.voiced:.0%} voiced); no kept block around it to compare with.")
+    else:
+        out(f"  Its pitch: {pp.f0:.0f} Hz, {st_text(d)} from the {ar.hz:.0f} Hz of the kept files of {around_text(ar)}"
+            + (f": check by ear (more than {ar.tol:g} st off)" if check else "")
+            + ". Measured, not heard: pitch distance is not voice identity, accent or naturalness.")
+    out.data["pitch"] = {"block": b.n, "picked": k, "f0_hz": round(pp.f0, 1) if pp.f0 is not None else None,
+                         "voiced_share": round(pp.voiced, 2), "pitch_st": st_round(d) if d is not None else None,
+                         "check_by_ear": check, "around_hz": round(ar.hz, 1) if ar.hz is not None else None,
+                         "around": [{"block": n, "file": rel(p), "f0_hz": round(x.f0, 1)} for n, p, x in ar.files],
+                         "tolerance_st": ar.tol}
 
 
 def assemble_narration(out: Out, w: Where, script: Path, blocks: list[Block], paths: list[Path], voice: str,
@@ -3197,6 +3496,14 @@ pair 'IA=I-A'; words.json keeps w = shown and adds spoken. Phrase starts and end
 on narration.wav and moved onto the sound (free; --no-snap keeps the API's times). An edit made
 to words.json by hand is kept while nothing it is made from changes. The voice, model, settings,
 say map, gap, lead, tail, snap and loudness are kept in audio/narration/narration.json.
+Takes: --takes K asks for K takes, on seeds seed to seed+K-1 (1 to K until --seed sets another).
+A take whose request is unchanged is reused, free, the block's current file among them (the
+report marks it); the plan printed before --yes says which are new and what they cost.
+The takes report gives each take's median pitch (F0) and voiced share, and its distance in
+semitones from the kept files of up to 2 blocks on each side made with the same voice, model
+and settings; a take more than 2 st off (--pitch-tolerance) is marked "check by ear". Pitch is
+measured, not heard: it is not voice identity, accent or naturalness, and a short or whispered
+line gets no verdict.
 Writes audio/narration/NN-<slug>.mp3 with .request.json and .alignment.json, takes under
 audio/narration/takes/, audio/narration.wav and data/words.json.
 """,
@@ -3301,6 +3608,12 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--pick", type=int, help="make take K of --block N the block's file (no API call)")
     t.add_argument("--block", type=int, help="the block for --takes / --pick")
     t.add_argument("--seed", type=int, help="seed of the main takes (default 1; take k uses seed + k - 1)")
+    t.add_argument("--pitch", action=argparse.BooleanOptionalAction, default=None,
+                   help="the takes report's pitch diagnostic: each take's median F0 and voiced share, and its distance "
+                        "from the kept files of the blocks around it (the default; --no-pitch leaves it out)")
+    t.add_argument("--pitch-tolerance", type=float, metavar="ST",
+                   help=f"semitones off the blocks around it past which a take is marked \"check by ear\" "
+                        f"(default {PITCH_TOL_ST:g}; it never remakes or picks anything)")
     t.add_argument("--snap", action=argparse.BooleanOptionalAction, default=None,
                    help="move phrase starts and ends in words.json onto the measured sound (the default; "
                         "--no-snap keeps the API's times; kept for the next run)")

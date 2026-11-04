@@ -3,9 +3,19 @@
 // of throwaway folders, so this takes their entries out again: an entry with no files in it is deleted,
 // one that holds a transcript is moved next to the run's results.
 //   bun evals/harness/claude-projects-cleanup.ts [--dry-run]
-import { readdirSync, rmSync, statSync, renameSync, mkdirSync } from 'node:fs';
+import { cpSync, readdirSync, rmSync, statSync, renameSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+/** Move a folder; across drives (the config on C:, the repo on another drive) rename fails with EXDEV: copy, then delete. */
+function moveDir(from: string, to: string) {
+  try { renameSync(from, to); }
+  catch (e: any) {
+    if (e?.code !== 'EXDEV') throw e;
+    cpSync(from, to, { recursive: true });
+    rmSync(from, { recursive: true });
+  }
+}
 
 const hasFiles = (dir: string): boolean =>
   readdirSync(dir, { withFileTypes: true }).some((e) => e.isFile() || (e.isDirectory() && hasFiles(path.join(dir, e.name))));
@@ -26,7 +36,7 @@ export function cleanClaudeProjects(dryRun = false, keepIn?: string, under?: str
     const p = path.join(root, name);
     if (!statSync(p).isDirectory()) continue;
     if (dryRun) { hasFiles(p) ? moved++ : removed++; continue; }
-    if (hasFiles(p) && keepIn) { mkdirSync(keepIn, { recursive: true }); renameSync(p, path.join(keepIn, name)); moved++; }
+    if (hasFiles(p) && keepIn) { mkdirSync(keepIn, { recursive: true }); moveDir(p, path.join(keepIn, name)); moved++; }
     else if (!hasFiles(p)) { rmSync(p, { recursive: true }); removed++; }
   }
   return { removed, moved };

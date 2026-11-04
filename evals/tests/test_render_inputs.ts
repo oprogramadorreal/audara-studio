@@ -79,6 +79,11 @@ test('scene and other-video source edits invalidate resume', () => {
     check(fingerprint() !== before, `${name} was ignored`);
   }
 });
+test('a streamed footage frame captured again invalidates resume', () => {
+  const before = fingerprint();
+  edit('footage/shot/full/000001.jpg');
+  check(fingerprint() !== before, 'footage/ was ignored');
+});
 test('video notes and its YouTube package stay excluded', () => {
   const before = fingerprint();
   edit('videos/one/TREATMENT.md');
@@ -134,7 +139,7 @@ try {
   for (const name of [
     'src/look.ts', 'src/plate.md', 'videos/one/TREATMENT.md', 'videos/one/CRITIQUE.md',
     'videos/one/youtube/thumbnail.png', 'videos/one/assets/youtube/plate.png', 'videos/two/scenes/shared.ts',
-    'tsconfig.json', 'tsconfig.scripts.json', 'tsconfig.base.json', 'bun.lockb',
+    'tsconfig.json', 'tsconfig.scripts.json', 'tsconfig.base.json', 'bun.lockb', 'footage/shot/full/000001.jpg',
   ]) write(name, 'fixture');
   for (const [name, run] of cases) {
     try { run(); passed++; console.log('PASS ' + name); }

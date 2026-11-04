@@ -80,15 +80,27 @@ check go in `.audara-cache/`, never `out/`.
   thumbnails shrink to 383×215. Look at every page it lists.
 - A thumbnail is about what a phone shows; check type sizes on full-size stills against the minimums in
   `docs/STYLE.md`.
-- Stills can't show motion. Pace, smoothness and one-frame pops show in a clip
+- Stills can't show motion. Pace and smoothness show in a clip
   (`bun scripts/render.ts video --video <video> --from <a> --to <b> --draft --out out/<video>/wip/<clip>.mp4`:
-  one sub-frame per frame and a fast encode), in `qc.py` run on it, and in the director's preview, which
-  is theirs to watch: check motion with clips, not by driving their browser or desktop (a background tab
-  skips frames). Say which you used.
+  one sub-frame per frame and a fast encode), its holds in `qc.py` run on it, and both in the director's
+  preview, which is theirs to watch: check motion with clips, not by driving their browser or desktop (a
+  background tab skips frames). A one-frame pop or a flicker (leaves, water, far geometry, a layer that stops
+  drawing before the one over it is opaque, an image shown for a tenth of a second) shows only frame by frame:
+  every frame through the stretch on a sheet (`sheet --from <a> --to <b> --n <frames>`), or the clip stepped
+  through. `qc.py` doesn't look for them; eight such defects reached the director in two long videos. Say
+  which you used.
 
 **A round of notes** (one note or forty) is answered from this loop, not by a critic round (Cadence). A note
 that cuts or moves a setup or a payoff is read against the treatment's Promise: the cut still pays what it
-promised, or the reply says it doesn't. Check each note where the viewer meets it: its moment as rendered (a still, a sheet through the change, a clip
+promised, or the reply says it doesn't. Read a note for what it keeps too: what a rewrite doesn't mention
+(another voice's line, an effect, the timing around it) stays unless it removes it; something added "right at
+this point" over action the note keeps (its narration, effects, animation) lays over that action without
+lengthening it, while an addition that needs room (a pause, a reaction, a new shot) takes it, and the reply says
+what moved; "use your judgment on whether to remake it"
+asks about the scene's purpose, so the reply says what you decided and why, not only what you re-timed. A note
+that removes one instance of something (a tag, a caption, a recurring device, a mispronounced word) starts a
+search for the others: where its reason holds for them, change them too and list them; where it may not, ask
+once. Check each note where the viewer meets it: its moment as rendered (a still, a sheet through the change, a clip
 for motion), not in the code, since a change can be made and not show; on one video a critic found star
 dust too faint to see after the encode, music stopping where the director had said not to, and a line
 promised to the director and never drawn, each one after the code said done. Rebuild the mix when its
@@ -229,6 +241,9 @@ Check:
   that the treatment rules out?
 - Where the treatment has a Promise, does the first row pay it, in the picture, and leave a reason to stay?
   Which rows say in words what the picture could show?
+- Where the storyboard has a Stage column, does any row outside the opening show a state before the row
+  that brings it, or linger on an old one after its replacement is revealed, without saying why (a
+  flashback, a before and after)?
 - Are the format, length, sound and type size what the director asked for, where it will be watched?
 - Does the look come from this brief, or is it what any video like it would get? Will it make something a
   viewer remembers? Name the rows that would read as slides or as the literal illustration of their words,
@@ -274,8 +289,9 @@ second; a frame per bar for a long one) and, if you like, a clip. Write out/<vid
 in about six lines: what the video shows and says, in your words (what it says is in
 videos/<video>/data/words.json, if it has one); what you now believe is true because of it; whether its
 first seconds, sound off, show what you came for and give you a reason to stay; whether it would hold a
-stranger to the end, and why; its weakest stretch, with the time. Don't revise it afterwards: the treatment can
-explain a choice, not change what a viewer sees.
+stranger to the end, and why; its weakest stretch, with the time. Then, for each explanation (where the words
+say how or why something works), a line restating it from what was said and shown, or the moment you lost the
+thread. Don't revise it afterwards: the treatment can explain a choice, not change what a viewer sees.
 Then read the treatment and the look, and review the whole video: sheets (about five frames a second for
 a piece under a minute, a frame per beat or bar for a longer one), every frame through each cut and
 transition, frame 0 and the last, full-size stills wherever a sheet raises a doubt, and a clip or two for
@@ -305,12 +321,15 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    Rank what you find in this order: what loses the viewer (a lesson that stops the story without
    earning it, or repeats what it showed, counts: it feels like a class), then what is told that could
    be shown. A missing lesson is no finding unless the director asked for one; an explanation is judged
-   by what it gives this moment, not by the term it teaches. A belief in your first look that is false about the central point, or about anything
+   by what it gives this moment, not by the term it teaches. An explanation your first look couldn't
+   restate loses the viewer: say where the thread went (a concept used before it was shown, two ideas in
+   one line, a picture that didn't show what the line named) and how to make it plain. A belief in your first look that is false about the central point, or about anything
    that matters if repeated or acted on, outranks them all; a simplification that leaves those true is
    not a finding. Where the treatment has a Promise, say whether the opening pays it.
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
-   their beat or word (how many frames off)?
+   their beat or word (how many frames off)? Where a line asks the viewer to see something happen ("it
+   ran past every coin"), does the picture show it happening, or something standing still?
 3. Transitions and layout: empty or blinking frames at cuts, collisions and near-collisions (unrelated
    lines closer than about a third of their type size), marks an offset copy or a glow adds to letters
    (two i-dots read as ï), a carried element that jumps,
@@ -388,7 +407,13 @@ reply gives the director, every time:
   reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the last
   full-cut draft (by default `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of
   what it changed, each saying what it covers, with a `?t=` link to each hold the treatment doesn't mark;
-  and what wasn't checked;
+  and what wasn't checked. Each flag the measured checks raised (qc.py, verify, the mix's measures, a
+  transcript of the voice) is fixed, marked as meant with why, or listed here as open: one project measured
+  169 words under 3 dB of the music, handed the cut over without them, and the director then named the same
+  stretches by ear. On audio the director has already approved by ear (that version, or a passage a later round
+  left unchanged), a flag from the mix's listening lists alone is listed for them, not fixed: on a finished
+  explainer they had accepted, its voice check's worst-window rule listed 10 of 23 paragraphs. That covers
+  the mix's heuristics only, never a failed verify, a determinism error or a wrong word;
 - the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
   if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
   costs), the review it gets first when the picture changed since the last critic round (Delivery, step
@@ -396,6 +421,11 @@ reply gives the director, every time:
   the MP4 with motion blur, sheets, a poster and the QC report; and that the project's `README.md` has the
   commands to watch and render it without an agent;
 - when the round left a lot on disk, the line on what could go and what the next round needs (Disk).
+
+The link works when it's sent: after the preview restarted, or files it reads moved (footage re-captured, a
+folder renamed), open it once and read its console before posting it. One round's hand-off sent a preview
+that showed an error and a red final scene, because a shot's folder had been moved aside to re-film it while
+the preview restarted.
 
 ## Delivery
 

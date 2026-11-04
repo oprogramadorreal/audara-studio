@@ -185,6 +185,10 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   those true is no finding. The storyboard critic's "every claim true or labelled" was changed to match, since it
   read as a demand for literal accuracy. What a product does is unchanged: real screens, or a concept marked as one.
 - **Labels once.** About 25 honesty captions once piled up on one video until the user said "remove them all".
+  The tags directors went on removing were on what nobody would take as fact: their own lines, plainly invented
+  characters, staged comedy, and analogies, thought experiments and examples the narration already frames as
+  such ("exemplo", "experimento mental", "analogia", off nine scenes of one explainer in two rounds). Those need
+  none; a made-up result still mustn't look real, and a re-staged demonstration's tag is asked once.
 - **Not every form.** A loop, a sting, a slot ad or a stream background needs no promise; no piece owes a
   lesson; a song's opening is the song's; a feed that plays a video on its own has no click to
   answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
@@ -251,6 +255,55 @@ SKILL.md has no room left either. Considered and left out: documenting code-vide
 ideas), an interview inside production (the stop before building that round 4 removed), and a required
 fresh session. The research behind it is in `docs/research/` (dated snapshots), the decision in history.md
 (0.5.0).
+
+### A devlog: the build is the story
+
+Some videos are about making something: a game, a physics simulation, a fractal explorer, a tool, built by the
+agent (or by the user, earlier) and then told as how it was made. Their story happens during the build, and
+much of it is gone once the next change lands: the first attempt, the bug before its fix, the look the
+director rejected, his reaction. `devlog` covers that phase and what it keeps, then hands the material to
+code-video, which makes the video by its usual steps. It loads on a devlog request, or in a project whose
+`docs/DEVELOPMENT_LOG.md` feeds a video; tutorials, product demos and videos that only show code stay with
+code-video, and ideas for one with video-ideas.
+
+- **The director's order holds.** He may build first and approve the prototype before any script, script
+  while building, or bring a project already built; the skill's defaults (an early first look, the prototype
+  before the script, the script before production, the render on his yes) are offered in one opening message
+  that also asks for his scope, a working promise, and his own material (a music library and what each track
+  is for, characters from earlier videos, his photo, the voice, how far the video may tease him), and the
+  build starts without waiting. A project already built keeps its structure and starts from what it has.
+- **A log and a ledger as it goes.** `docs/DEVELOPMENT_LOG.md`: status, decisions and why, the versions with
+  their role in the video, known issues, next steps, and a timeline whose entries name their commit and
+  artifacts, with times from the session's messages. Its story ledger keeps his words that name a beat
+  verbatim, the struggles with their before and after, measured numbers, and joke ideas as options. An
+  AGENTS.md section carries the standing rules, so a later or compacted session keeps them.
+- **Any moment can be filmed again,** sized to the thing: replays on a fixed tick with seeded randomness for a
+  game or simulation, the camera path as data for an explorer, scripted input for a tool; a capture page
+  writes frames, a free camera moves nothing in the state, and a stage the video will show stays recoverable.
+  So only what a change will erase is filmed as it happens, and the rest at final quality against the script.
+  The engine streams minutes of such footage (code-video's contract.md).
+- **The build's own hand-offs:** an ETA per stage, one representative piece shown before a new look is rolled
+  out, the runner-up and close calls on an option sheet, a trade-off a check settled against his ask put to
+  him as a before and after, and at each milestone what the video could already be and what it lacks. When
+  his scope is met it says so and offers the script; he decides whether to push further, which may be the
+  beat he wants.
+- **Into the video:** the script comes from the log through code-video's treatment, the log as its research and
+  not its outline (the turns that carry the promise, with their setups and payoffs; most entries stay out: an
+  explainer adapted faithfully from a good article left its director unsure the adaptation made an interesting
+  video, and a log is a source text in the same way), its stages in story order
+  (the treatment's Stage column), the picture showing a line that asks the viewer to see something happen,
+  explanations a first-time viewer can restate, his lines verbatim, provenance for each claim. soundtrack,
+  nutlight-style (only when named: its look for the scenes around the footage), youtube-package and video-repo
+  work as they always do; video-repo keeps the build's recordings and captures as sources.
+
+Why a skill of its own: in two long devlogs the build ran for days before any video skill had anything to say
+(one loaded only video-repo for ten days, by the director's own order to load code-video at the script), and
+the director wrote the log, the recording rules and the gates into his prompts himself. code-video's Brief
+would start a treatment at once, and its SKILL.md has no room. What carried those videos stays the director's:
+what to build and how far, the looks he picks, the escalation, the beats he seeds, the jokes in his voice.
+Considered and left out: a fixed number of stages or required struggles as the test of enough (they could
+manufacture work), one capture architecture for every kind of thing, and an automatic point to stop building
+(history.md, 0.12.0).
 
 ### Coming back later
 
@@ -545,8 +598,9 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   would make every video sound the same. The order is the director's library, then generated music after a
   yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses
   when asked to, says it chose by measurement and offers a `?t=` link to every join. `mix.py` takes one music
-  file, so a score cut from several tracks is assembled by a script in the project. A cue list in `mix.py`
-  waits until runs show how much that assembly costs.
+  file, so a score cut from several tracks is assembled by a script in the project. The agent lists that
+  file's joins in mix.json's `music.joins`, so the build measures the bed around each ("What mix.py lists to
+  listen to", below). A cue list in `mix.py` waits until runs show how much that assembly costs.
 - **The images are the author's own,** made with ChatGPT's image model and shipped under the plugin's MIT
   license. They were re-encoded from 16 MB of PNG to 2.5 MB of JPEG, with no difference visible at 2x zoom.
   They guide the code and never appear in a video.
@@ -566,8 +620,9 @@ HyperFrames (free) first, Remotion (paid for companies) only as an optional last
 small plugin manifests, one for Claude Code and one for Codex. No MCP server; agents only as optional
 extras.
 
-It has six skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
-for deciding what to make, **`video-repo`** for handing a finished project on, **`youtube-package`** for
+It has seven skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
+for deciding what to make, **`devlog`** for a video about building something (the build and what it keeps,
+see "A devlog: the build is the story"), **`video-repo`** for handing a finished project on, **`youtube-package`** for
 publishing a finished video and **`nutlight-style`**, a house style the director can name (see "A house
 style you can name: Nutlight"). `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads, and does the sound of a video made
@@ -737,6 +792,44 @@ scenes through `remix`, audio by a relative path). But a video reads its timing 
 `data/`, and `verify` resolves a song window's audio relative to the folder that holds the data, so the
 copy would have needed the song's data and audio copied too, and the two would drift. A format that needs
 another edit (another length, other scenes) is still another video.
+
+### Footage: frames, streamed when long
+
+Footage plays as frames, never through a video element, which runs on the wall clock and seeks
+asynchronously: the preview, a still and the render would each show another frame for the same `t`. A few
+seconds of it are decoded at boot from the video's `assets/`. Minutes of it can't be: a minute at 1080p and
+60 fps is about 30 GB decoded. Two devlogs, each with many minutes of footage captured from a game the agent
+built, wrote their own streaming module, the second copying and extending the first, so the template has
+it (`src/engine/footage.ts`):
+
+- A shot is a folder at the project root, `footage/<shot>/`: `full/` frames for the render, `proxy/` frames at
+  half the size for the preview, and a `manifest.json` with their count and rate. The dev server serves the
+  root, so the preview and render.ts's own server reach it alike; the preview doesn't watch it.
+- Frames load ahead of need. A scene's `prepare(t0, t1)` asks for what a stretch shows (the frames its video
+  frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.
+  render.ts waits for it before every frame it renders, with the next half second of the range loading
+  alongside; a failure there is left to the frame's own prepare, so a missing frame past the range is no
+  error. The preview asks two seconds ahead without waiting and shows the nearest frame it has meanwhile;
+  a frame it refines at rest waits for its footage frame first.
+- One memory budget over every shot lets the least recently asked frames go, never one asked since a prepare
+  render.ts waits for began, until it settles and for a few prepares after, nor those of the latest rounds.
+  A scene may ask for its clips one after another, each once the last has loaded, while the look-ahead asks
+  for more: the frames about to be drawn still stay. So does a frame the preview loads on demand for the frame
+  it draws: unasked, it was the oldest the moment it arrived, and after a few seeks filled the budget with
+  protected look-aheads, a step back too short to start another left the stand-in up and fetched it on every
+  draw (Codex's review). The frame on a shot's texture stays only while that shot
+  is in use (asked for or drawn in the kept rounds): the engine keeps every scene loaded, so a shot that has
+  played lets its last frame and its GPU copy go, and is prepared again before it is drawn again (in the
+  preview it shows black until its frame is back).
+- In the render, a frame nobody prepared throws and one that fails to load stops the video, so a stale frame
+  never reaches the file; verify fails on either.
+- The frame is picked at `frameTime(t)`, as for frames decoded at boot, so every sub-frame of a frame shows
+  the same one.
+- `video --resume` counts `footage/` among a render's inputs, so a shot captured again isn't resumed over.
+- A project made earlier keeps its engine, since init never replaces `src/engine/`. `main.ts`, `render.ts` and
+  verify call `prepare` only where the engine has it, so old projects render as before. Taking streamed footage
+  is one port, which `contract.md` lists. Each footage frame is held whole: a project whose 24 fps clips juddered
+  in a 60 fps video blends neighbouring frames in its scene, which two Footage of a shot can still do.
 
 ### Photographic 3D: an optional kit, not a default
 
@@ -914,6 +1007,71 @@ no ElevenLabs"): one voice and the same settings for every file; one paragraph o
 the picture cuts in the silence between blocks; acronyms read better written as they appear on screen
 than spelled out; generate the key lines several times and keep the most natural take.
 
+Each request has a delivery of its own, so one paragraph per request also means a voice that can drift between
+paragraphs. Four long narrations drew that note, the two devlogs and two explainers. In one, the director asked
+for "larger portions of the script" and got a paragraph per chapter. In another, the agent wrote its own tool:
+long passages conditioned on their neighbours (`previous_text`/`next_text`, or request ids, which expire), cut
+back into blocks. `eleven.py` sends neither, so `elevenlabs.md` names longer paragraphs as the lever it has,
+and the pitch diagnostic as the check. Sending the neighbours' text from `eleven.py` waits: it changes the
+request a block's file is compared with, so a take picked with context would read as stale on the next plain
+run and be paid for again, the kind of cache change an earlier seed scheme was dropped for.
+
+### What mix.py lists to listen to
+
+`mix.py build` measures the whole mix (loudness, true peak, each hit and the build into it). From the stems it
+built, it also lists moments to listen to, each with its time for a `?t=` link. They are measurements, never a
+verdict on how it sounds, and never a failure:
+
+- **Voice over the bed, per narration line** (each `data/words.json` line timed to the voice, and each stretch of
+  speech no line reaches, such as a second voice file, which the report names as measured by region): the voice layer as mixed against everything else in the mix, K-weighted, in 100 ms windows. A line is
+  listed in three cases:
+  - the bed sits under 10 LU below the voice on median. Torcoli et al. (AES 2019) recommend at least 10 LU
+    between commentary and music; `under_voice`'s 12 is that plus a margin. A plan that asks for less moves the
+    bar to its `under_voice` less 2 and says once that it does (and, under 10, that the level is under the
+    recommendation): every plan in one user's projects that set it asked for 9 or 11, and at 9 the fixed bar
+    would have listed nearly every line for the level the plan chose.
+  - its worst 100 ms above 300 Hz comes within 3 LU, an effect over a word. One window is enough, so a short
+    event isn't averaged into the line. Above 300 Hz, because a kick under a word doesn't bury it.
+  - it sits 4 LU or more under the video's median line, while under the plan's `under_voice`. The median is
+    taken over the lines whose bed comes within 15 LU: lines over silence or room tone would pull it up until
+    lines at the default level were listed.
+
+  A line shorter than a 100 ms window, or with no speech in it, isn't measured.
+- **Music joins:** points around the music's start and end, each join the plan lists inside the music file
+  (`music.joins`), and each stop of the music under the voice and where it comes back. At each, the bed's energy
+  in 100 ms windows over ±1.5 s (dBFS RMS, not LUFS). Listed: a hole, a surge, a stop under the voice. Only the
+  arrangement knows where a spliced score's joins are, so the agent lists them, placed by the same anchors as an
+  effect. `"intended": "<why>"` on a join lists what is found there as intended, not as a candidate; on a join
+  anywhere inside a silence, it covers the stop and the return, a join listed at the return included. The music's own entrance and end take
+  `intended_start` and `intended_end`, apart, so excusing a hard entrance doesn't hide a stop at the end.
+
+Why: in two devlogs (one 16 minutes long, one 13) the director raised about a dozen music notes each. The music
+cut abruptly, a join left a hole or a surge, the music stopped under the narration, a line was buried by music
+or by a loud effect. The agent judged mixes by whole-mix loudness. It built a check of the voice against the rest
+in both projects, and 100 ms measures of a join in one, each only after a note. `measure` gets a finished file
+with no stems, so it says these need the plan and skips them.
+
+What a rebuild of a finished 14-minute explainer showed (its own build script, re-run on copies; its director had
+approved the mix by ear): the voice check lists 14 of its 30 lines and regions, 10 of its 23 paragraphs by the
+worst-window rule. Its lines are whole paragraphs, so each gets one loud moment in a minute of speech, and nothing
+in that video's notes after its music round says a word was lost. Measured on the same stems, a rule comparing voice and bed in the same 100 ms window listed all 23, and one
+word by word listed 16, mostly short unstressed words. So the window rule stays, and the guidance says how to
+read it: a flag on audio the director approved by ear is listed for them, not fixed by measurement alone. With
+the score's 40 joins declared, the join check found two of the four join notes its director gave next (a surge at
+an entrance "a little too loud", a hole before a track came in). It missed a late entrance and a harsh cut whose
+step was above 4 kHz: it hears energy, not timing or timbre. Without declared joins it measured only the music's
+ends, so every build now says when none are declared, and the first build that measures joins prints the reminder
+even when the music file is unchanged.
+
+The checks have a version of their own in the record (`STEM_CHECKS`), apart from `MIX_VERSION`: a change to them
+changes the report, not the audio, so an up-to-date mix isn't rebuilt for it. Its summary and `--json`'s
+`stem_checks` say when the record's lists are older or missing, and `--force` measures them again to the same
+bytes.
+
+Left out: finding joins inside a music file by analysis (the music's own section changes would read as joins),
+separating a finished file's voice from its music, any judgement of how it sounds, and re-tuning the window rule
+on one approved mix with no record of what its director would have flagged.
+
 ### Adding more tools later
 
 Add a tool only when it writes data the engine reads or does a step the model can't do by itself, and keep
@@ -925,7 +1083,7 @@ in play.)
 
 ## Writing the skills: Anthropic and OpenAI best practices
 
-All six skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
+All seven skills follow the skill-writing guidance of Anthropic and of OpenAI, and the open Agent Skills spec.
 The links are under Sources; read them before writing. The two companies agree on almost everything; where
 they differ, follow the stricter rule. What that means here:
 
@@ -934,7 +1092,7 @@ they differ, follow the stricter rule. What that means here:
 - **Frontmatter:** only `name` and `description`, the portable minimum.
   - Claude Code's extra fields (`when_to_use`, `allowed-tools`, `context: fork`…) are ignored by Codex, and
     the skills need none of them. Codex's optional `agents/openai.yaml` can add a display name and an icon.
-  - All six stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
+  - All seven stay model-invoked: no `disable-model-invocation`, and `allow_implicit_invocation` left at
     its default. The vision depends on them loading on their own. `video-repo` was the one in question,
     since Anthropic advises manual invocation for workflows with side effects (`/commit`, `/deploy`). It
     stays model-invoked because a repository is something the user asks for in words ("put this in git"),
@@ -1066,6 +1224,11 @@ audara-studio/
     │   └── assets/realism/           # the realism kit, copied into a project's src/realism/ on demand
     ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt or script out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
+    ├── devlog/                       # a video about building something: the build and what it keeps
+    │   ├── SKILL.md                  # text only: the opening message, the log, the build's hand-offs, enough
+    │   │                             # for the video, the hand-over to code-video
+    │   ├── references/capture.md     # filming the thing again: replays, shot folders, footage in the video
+    │   └── references/log-template.md  # DEVELOPMENT_LOG.md, the story ledger, the AGENTS.md section
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
@@ -1086,6 +1249,7 @@ audara-studio/
     └── soundtrack/                   # the sound: audio in, timing data out
         ├── SKILL.md                  # generate (ElevenLabs), stand in, or analyze the user's audio
         ├── references/elevenlabs.md  # read only when generating: key, costs, voice and music lessons
+        ├── references/score.md       # a score cut from several tracks: cue sheet, joins, under the voice
         └── scripts/                  # uv scripts with PEP 723 inline deps
             ├── eleven.py             # tts | music | sfx → audio + request record + word timings
             ├── standin.py            # a free local voice (Kokoro) in eleven.py's place
@@ -1144,6 +1308,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # tags.txt, NOTES.md and what rebuilds the thumbnails (kept in git)
 ├── videos/_shared/              # optional, made when needed: what several videos use (scenes/,
 │                                # assets/ with SOURCES.md); no video.json, so it isn't a video
+├── footage/<shot>/              # optional: long footage streamed as frames (full/, proxy/, manifest.json)
 ├── .audara-cache/               # caches and scratch work, git-ignored
 ├── out/<name>/                  # renders, sheets and reports, not committed
 └── docs/REPOSITORY.md           # once video-repo puts it in git: what's kept, what's left out and why

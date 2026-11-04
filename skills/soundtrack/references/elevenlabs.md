@@ -177,8 +177,39 @@ ElevenLabs"), and `tts` is built around them.
   `words.json` keeps `w` as shown and adds `spoken`, so scenes find `findWords('P(doom)')`. An
   all-capitals entry (`IA`) only matches all-capitals text, so the Portuguese verb "ia" stays as
   it is.
+- **Words from another language are where a voice slips:** English terms in a pt-BR narration ("bug",
+  "FPS", "devlog", "game engine"), a model number ("RTX 4090", said "quarenta noventa", not "40 e 90"), a
+  character's name. In two long pt-BR narrations the director corrected seven such words, some twice. Start from
+  the say map the director approved on an earlier project, respell what went wrong before, and test the rest
+  rather than respelling on a guess: a respelling can turn into another word ("bâgui" was heard as "bag").
+  After a respelling, transcribe the takes and check every occurrence of the word, not only the one flagged.
 - **Generate the key lines several times and keep the most natural take**: the opening line, the
-  reveal, a joke. `--takes 3 --block N --yes`, listen, then `--pick K --block N`.
+  reveal, a joke. `--takes 3 --block N --yes`, listen, then `--pick K --block N`. A line whose delivery
+  carries the moment (scared, sad, comic) is decided by ear in place: keep two or three takes and give the
+  director a link to each in the preview, rather than one pick per round of notes.
+- **A regenerated line is heard against the lines around it.** Single lines made again drew "my voice
+  sounds different here" in both long devlogs this plugin was studied on; one measured 218 Hz among
+  neighbours at 135 Hz. Make it in the narrator's own settings (a register for a scared or excited line kept
+  near them: low stability and high style took the clone's timbre away) and compare its takes with the kept
+  blocks beside it before picking: the takes report gives each take's median pitch, its distance in semitones
+  from those blocks, and "check by ear" past 2 (`--pitch-tolerance`). Pitch is a shortlist, not a verdict:
+  approved lines of one narration spread about 3 semitones, and a take within range can still sound wrong.
+  `--takes K` asks for K takes, on seeds `seed` to `seed+K-1` (1 to K until `--seed` sets another): one whose
+  request is unchanged is reused for free, the block's current file among them (the report marks it), and the
+  plan before `--yes` says which are new and what they cost. A clone speaking Brazilian Portuguese also
+  drifted toward European Portuguese on some takes, which pitch, timbre and two transcribers all passed; lines
+  made again in the base settings, on a new seed, drew no more accent notes, though few were made after that,
+  so the ear decides.
+- **Each request has a delivery of its own**, so short requests can break a narration's continuity, and longer
+  passages or context can help. Two narrated explainers made one request per paragraph drew notes like the
+  devlogs': a passage that "sounds different from the opening", and "disconnected pronunciation styles between
+  phrases that should be together. Maybe you need to regenerate some parts of the narration sending larger
+  portions of the script". One was remade with a paragraph per chapter. The other's agent remade its narration
+  as a few long passages, each conditioned on its neighbours (the API's `previous_text` and `next_text`, or the
+  ids of the requests around it, which expire after two hours), and cut them back into its blocks in the pauses:
+  one short paragraph went from 4.5 semitones above the approved opening to 2.2. `eleven.py tts` sends one
+  paragraph per request and no context, so paragraphs written longer are the lever it has, at a price: a note on
+  one line then remakes its whole paragraph. Say which you chose before spending.
 - **Listen to the names before approving a file**: people, products, foreign words.
 - Keep stage directions out of the text: the voice reads them aloud. Audio tags such as
   `[whispers]` exist only on v3 and v4, and go on the say map's spoken side (`Calma.`, a tab,
@@ -266,8 +297,10 @@ Also adapted from motion-video-kit (`references/audio.md`, `scripts/sfx-candidat
 ## Checking what was made
 
 - `stt` transcribes with Scribe v2 and compares the transcript with what was meant to be said
-  (`words.json`'s spoken words); it lists the differences with their times. Numbers and respelled
-  names can differ in spelling and still sound right: listen there.
+  (`words.json`'s spoken words); it lists the differences with their times. A transcript catches a wrong
+  word, not an accent, a stressed vowel or a flat delivery: a take it passes can still sound foreign or
+  unnatural, and a respelled word it reads differently may still be right. So a transcript is a check on
+  the words, and the lines and words nobody has listened to yet are named in the hand-off.
 - The numbers measure, they don't judge. The director approves the voice, the takes and the music
   by ear when they want to; say plainly what nobody has listened to yet.
 
