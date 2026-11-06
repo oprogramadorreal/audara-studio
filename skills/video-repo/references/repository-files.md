@@ -45,19 +45,24 @@ What a later session, human or agent, needs before adding, moving or deleting a 
 - **Left out:** duplicates, intermediates, rejected takes: the path, why, and how to rebuild it when it can
   be rebuilt.
 - **Too big for GitHub:** for each file over 100 MiB, its path, size in bytes, SHA-256, what it's for, how
-  to get it back (no credentials, private paths or expiring links), and whether a clone renders without it.
+  to get it back (where to fetch it, or the commands that rebuild it, in order from a fresh clone; no
+  credentials, private paths or expiring links), and whether a clone renders without it. An audara-studio
+  script those commands run (soundtrack's `mix.py` for a mix left out) goes in as a copy, unchanged, in
+  `tools/audara-studio/` with the plugin's LICENSE and the version it came from (its `plugin.json`), and the
+  commands run that copy: a clone may have another version of the plugin or none.
   When there are none, say so with the largest file kept and its size, so the next person knows the margin.
 - **Adding media:** keep what a video loads or needs to be changed, ignore what's made, check the size
   first (GitHub warns over 50 MiB and refuses over 100 MiB), add its line to `assets/SOURCES.md`, and look
   for keys and personal details before committing (audara-studio's video-repo skill and its audit do both).
-- **How it was checked:** the date, the clone check that ran and what it found.
+- **How it was checked:** the date, the clone check that ran and what it found, what was rebuilt there and
+  what wasn't.
 
 ## AGENTS.md: a Repository section
 
 Outside the `<!-- audara:begin -->` / `<!-- audara:end -->` markers, so init's reruns keep it, with a
 CLAUDE.md beside AGENTS.md that imports it (`@AGENTS.md`), as init writes one: Claude Code reads CLAUDE.md,
 Codex reads AGENTS.md. A few lines, for example (before a video exists, without the docs/REPOSITORY.md
-pointer, which comes with the full pass):
+pointer, which comes with the full pass, and with the line after the example):
 
 ```markdown
 ## Repository
@@ -67,6 +72,15 @@ pointer, which comes with the full pass):
 - Renders (`out/`), caches (`.audara-cache/`), dependencies and keys (`.env*`) stay out of git.
 - A file a video needs is committed unless it's over 100 MiB; then it stays out and gets its entry in
   `docs/REPOSITORY.md`. Generated or paid media is kept as a file.
+```
+
+A repository set up before its first video also gets a line for the session that delivers that video, which
+reads AGENTS.md whatever skill it loads, so it checks what production added. The full pass replaces it:
+
+```markdown
+- Set up before the first video: when it's delivered, run the rest of video-repo's pass if the user already
+  asked for it, else offer it (a README for people, docs/REPOSITORY.md with what's left out and how to get it
+  back, a fresh-clone check). The pass replaces this line; a no removes it.
 ```
 
 ## .gitignore

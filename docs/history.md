@@ -35,6 +35,7 @@ Contents
 - Streamed footage in the template (0.12.0, 2026-11-04)
 - The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
 - 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
+- What a clone lacked: the mix's own script, and the pass a repository made first still owed (0.12.1, 2026-11-06)
 
 ## Definition of done
 
@@ -4020,3 +4021,111 @@ What was checked:
   after, the frame fetched once: 24/24. `test_render_inputs.ts` 17/17 and `test_render_failures.ts` 13/13. A
   project made by init from the fixed template passes `bun run check` and `verify` (117 renders, 0 mismatched).
 - **Not run:** any task eval, routing on either tool (no description changed), and anyone listening.
+
+## What a clone lacked: the mix's own script, and the pass a repository made first still owed (0.12.1, 2026-11-06)
+
+The user cloned the finished platformer devlog (about 16 minutes, published) on another PC, and its preview had
+no game footage and no soundtrack. They asked that project's session whether something was missing from git.
+Then they asked it to fix the gaps it found in `docs/REPOSITORY.md`, to make sure git holds everything someone
+needs to rebuild the project, and to delete the many local branches, keeping only `main`. Then they asked this
+repository's session whether either issue showed a reusable improvement, "particularly `video-repo`", without
+taking one cleanup request for a rule. The session was read through Herdr and its transcript; the project wasn't
+changed. Codex (Herdr tab 2) advised over three rounds, and the Claude Code session decided and made the edits.
+
+What the project's session found and did (it ran plugin 0.8.1):
+
+- **Left out on purpose:** two things a render needs. The captured footage (141 folders, 68,162 JPEG frames, tens
+  of GB) is rebuilt by the project's capture scripts from tracked replays and recordings. Four derived audio
+  files are over GitHub's 100 MiB limit, among them `mix.wav` (274 MB, what `video.json` plays). All their
+  inputs are tracked. The footage was the project's own call on total size, which the skill doesn't cover.
+- **What git did lack:** the soundtrack's last rebuild step ran soundtrack's `mix.py build`, which existed only
+  in the plugin's install. The session copied it into the project unchanged, with the plugin's MIT LICENSE.
+  The written rebuild also skipped one of the project's own steps (the script that cuts the 36 effect parts the
+  plan plays). Its "files over 100 MB" section said nothing needed was over the limit. Nobody had ever run that
+  rebuild. The README never said what a clone lacks, and still doesn't: besides the copied mixer, the fix
+  changed only `docs/REPOSITORY.md` and the log.
+- **Rebuilt in a fresh clone:** the soundtrack came out byte-identical in about 8 minutes (the narration, the
+  bed, the 36 cuts, `mix.wav` and `music-only.wav`). 30 re-captured frames of two shots matched within JPEG
+  noise (53.6 dB PSNR at worst). A full capture takes about 3.4 hours on the GPU it was made on.
+- **Why:** video-repo ran on the build's first day, before the game and before any `videos/*/video.json`. The
+  director's prompt asked for that: the repository first, commits and pushes throughout, every omitted file
+  documented. The video started ten days later in the same repository. Production added the rows for what it
+  left out by hand, following the AGENTS.md rule. Nobody asked for video-repo's full pass again until the clone
+  came up short, and the skill's early path relied on that request.
+- **It recurs.** The block-world devlog (about 13 minutes) also left its mix (221 MB) out. Its README asks a
+  newcomer to point `AUDARA_SOUNDTRACK` at the plugin's scripts folder, with no version named. Its full pass
+  ran after the first preview, and the clone check rebuilt the soundtrack without being told to. `mix.py`
+  writes 24-bit, 48 kHz stereo (288,000 bytes a second), so any mix over about 6 minutes is past 100 MiB.
+  Since 0.8.1, `mix.py` grew from 2,824 to 3,486 lines. `MIX_VERSION` (still 2) is bumped when a change to the
+  mixer changes the audio a plan produces, so it is no source revision, and audara-studio has no tags.
+
+The branches:
+
+- **36 local stage branches, never pushed** (GitHub only ever had `main`). The session's own workflow scripts
+  made them, one per parallel layer of four game stages (`git worktree add -b ...`). It later removed the
+  worktrees but not the branches. Six were merged. For the other 30, every file they changed was in `main`,
+  identical or in a later integrated version, checked file by file before deleting, with each tip saved.
+  Nothing was lost.
+- **No skill prescribed them.** No audara-studio skill prescribed those branches or worktrees, or their cleanup.
+  video-repo keeps a project's branches as they are and isn't for everyday branch work. The other devlog has
+  one other branch, pushed and wanted. When asked "is anything missing from git?", the session looked at files
+  only; the user noticed the branches.
+
+What changed:
+
+- **video-repo's SKILL.md** (7,992 bytes):
+  - The early path ("No video project yet") tells the user that the README, docs and clone check wait for the
+    video, and adds the Repository section's line for its delivery. It used to say "ask again once a video
+    exists".
+  - The fresh-clone check runs the documented rebuild of what a render needs that git leaves out, before
+    `verify`, when that's quick and free. Otherwise it reports the rebuild unverified.
+  - To fit the bytes: the README parenthetical, the clone folder's reason and the audit's coverage list are
+    shorter, and `verify`'s parenthetical is gone. No command or check changed.
+- **references/repository-files.md:**
+  - A "too big" entry says where to fetch the file, or the commands that rebuild it, in order from a fresh clone.
+  - An audara-studio script those commands run goes in as an unchanged copy in `tools/audara-studio/`, with the
+    plugin's LICENSE and the version it came from, and the commands run the copy.
+  - "How it was checked" says what was rebuilt in the clone.
+  - The early Repository section gets its line: when the first video is delivered, run the rest of video-repo's
+    pass if the user already asked for it, else offer it. The pass replaces the line, and a no removes it.
+- **design.md,** in place ("Handing it on: a repository").
+- **vr-empty-first:** a render turn after the title card. The reply that hands it over offers the pass and makes
+  no commit, and the full pass (now turn 4) removes the line.
+- **The manifests:** 0.12.1.
+
+Codex's reviews changed these:
+
+- The rule is about a rebuild's dependency, not an absolute path: an environment variable pointing into the
+  plugin hides the same dependency.
+- "Unchanged" covers only the audara-studio scripts a documented rebuild runs, never project scripts, which may
+  need a key taken out (vr-first-repo's `make_sfx.py`).
+- Fetching stays an option beside rebuild commands, since an original recording can't be rebuilt (that case's
+  oversized take).
+- A rebuild that didn't run leaves the check unverified, not passed.
+- The early line runs the pass only when the user already asked for it, offers it otherwise, and is retired.
+  Neither SKILL.md nor the eval promises the pass will run on its own.
+- The first SKILL.md text came to 8,202 bytes.
+
+It corrected the evidence too: video-repo does mention branches, to keep them; the footage left out by total size
+was the project's call; copying `mix.py` removes the plugin, not uv, ffmpeg or its Python packages; and two
+projects aren't "most".
+
+Considered and left out:
+
+- **A branch step** (listing or deleting local-only branches): one project, branches its own orchestration made,
+  nothing lost, and a local-only branch isn't always disposable (the other devlog's is wanted). Codex agreed. A
+  request like "does main hold everything?" can look at branches without a standing step.
+- **Footage left out by total size, in the skill:** both devlogs already left their tens of GB out with a recipe.
+  The README's silence about it cost the user, not the skill's.
+- **A planted case:** a playback file the fixture's policy leaves out, rebuilt by a script from outside the
+  project (Codex's proposal, which needn't be long). It was deferred as a scope choice, so no task case yet
+  exercises the copied script or the clone check's rebuild.
+
+What was checked:
+
+- **Spec checks:** video-repo passes the three validators, at 7,992 bytes with no byte-order mark.
+- **The eval case:** `bun evals/tasks/cases.ts` regenerated the cases; only vr-empty-first's `case.json`
+  changed.
+- **Review:** `git diff --check` is clean, and Codex reviewed the diff ("No blocking findings"). Its two wording
+  notes were taken: the early line read as automatic, and the reference called the failure inevitable.
+- **Not run:** any task eval (an hour or more per case and tool) and routing (no description changed).
