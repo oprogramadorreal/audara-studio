@@ -25,32 +25,63 @@ export const segmentsEnd = (segs: Segment[]) => segs.reduce((m, s) => Math.max(m
 export const segmentGain = (s: Segment, t: number) =>
   s.fadeOut ? Math.max(0, Math.min(1, (s.at + s.dur - t) / s.fadeOut)) : 1;
 
-/** Length (s) of an audio file, from its metadata; null when it can't be read. */
-export function fileDuration(url: string, timeoutMs = 15000): Promise<number | null> {
-  return new Promise((resolve) => {
+/** Why an audio file's length wasn't read. */
+export type Unread = 'missing' | 'not audio' | 'not read yet';
+
+/**
+ * Length (s) of an audio file, from its metadata, or why it wasn't read: 'not read yet' when no answer
+ * came within `timeoutMs` or the read broke off (a dev server busy with a cold first load once took longer
+ * than 15 s to answer a file that was there). A file the browser refuses is asked for once more, a byte of
+ * it, to tell 'missing' (404, or a page served in its place) from 'not audio' (there, but nothing the
+ * browser plays: an empty file, whose byte the server can't give (416), or one still being written).
+ */
+export async function readLength(url: string, timeoutMs = 15000): Promise<number | Unread> {
+  const got = await new Promise<number | 'refused' | 'not read yet'>((resolve) => {
     const a = new Audio();
     a.preload = 'metadata';
-    const done = (d: number | null) => { clearTimeout(timer); a.onloadedmetadata = a.onerror = null; a.removeAttribute('src'); resolve(d); };
-    const timer = setTimeout(() => done(null), timeoutMs);
-    a.onloadedmetadata = () => done(Number.isFinite(a.duration) && a.duration > 0 ? a.duration : null);
-    a.onerror = () => done(null);
+    const done = (d: number | 'refused' | 'not read yet') => {
+      clearTimeout(timer);
+      a.onloadedmetadata = a.onerror = null;
+      a.removeAttribute('src');
+      a.load(); // (stops a read still under way, so a later try doesn't queue behind it)
+      resolve(d);
+    };
+    const timer = setTimeout(() => done('not read yet'), timeoutMs);
+    a.onloadedmetadata = () => done(Number.isFinite(a.duration) && a.duration > 0 ? a.duration : 'refused');
+    a.onerror = () => done(a.error?.code === 2 ? 'not read yet' : 'refused'); // (2: MEDIA_ERR_NETWORK, the read broke off)
     a.src = url;
   });
+  if (got !== 'refused') return got;
+  try {
+    const r = await fetch(url, { headers: { range: 'bytes=0-0' }, signal: AbortSignal.timeout(timeoutMs) });
+    void r.body?.cancel();
+    if (r.status === 404 || (r.headers.get('content-type') ?? '').includes('text/html')) return 'missing';
+    return r.ok || r.status === 416 ? 'not audio' : 'not read yet';
+  } catch {
+    return 'not read yet';
+  }
 }
+
+const UNREAD: Record<Unread, string> = {
+  missing: 'is missing',
+  'not audio': "isn't audio the browser can play",
+  'not read yet': "hasn't been read yet: the read didn't complete",
+};
 
 /**
  * The video's segments with every length known (a single file: its own length, from its metadata).
- * `problems` names the files that can't be read: the video plays silent there, and render.ts refuses.
+ * `problems` names each file not read and why (readLength): the video plays silent there, the preview
+ * (src/main.ts) reads it again until it is, and render.ts refuses.
  */
 export async function loadSegments(specs: SegmentSpec[] | null): Promise<{ segments: Segment[] | null; problems: string[] }> {
   if (!specs?.length) return { segments: null, problems: [] };
   const problems: string[] = [];
-  const lengths = new Map<string, number | null>();
-  for (const s of specs) if (!lengths.has(s.url)) lengths.set(s.url, await fileDuration(s.url));
+  const lengths = new Map<string, number | Unread>();
+  for (const s of specs) if (!lengths.has(s.url)) lengths.set(s.url, await readLength(s.url));
   const segments: Segment[] = [];
   for (const s of specs) {
-    const len = lengths.get(s.url);
-    if (len == null) { problems.push(`audio: cannot read ${s.file} (named in video.json): is the file there, and is it audio?`); continue; }
+    const len = lengths.get(s.url)!;
+    if (typeof len !== 'number') { problems.push(`audio: ${s.file} (named in video.json) ${UNREAD[len]}`); continue; }
     const dur = s.dur ?? Math.max(0, len - s.from);
     segments.push({ file: s.file, url: s.url, at: s.at, from: s.from, dur, ...(s.fadeOut ? { fadeOut: s.fadeOut } : {}) });
   }

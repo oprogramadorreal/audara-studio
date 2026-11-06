@@ -36,6 +36,7 @@ Contents
 - The mix's moments to listen to: voice over the bed and music joins (0.12.0, 2026-11-04)
 - 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
 - What a clone lacked: the mix's own script, and the pass a repository made first still owed (0.12.1, 2026-11-06)
+- A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
 
 ## Definition of done
 
@@ -4129,3 +4130,119 @@ What was checked:
 - **Review:** `git diff --check` is clean, and Codex reviewed the diff ("No blocking findings"). Its two wording
   notes were taken: the early line read as automatic, and the reference called the failure inevitable.
 - **Not run:** any task eval (an hour or more per case and tool) and routing (no description changed).
+
+## A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
+
+A preview page stayed silent, and nothing brought the sound back but a reload by hand. It happened once, on a
+cold first load of a video's preview: the dev server was optimizing dependencies, the scenes' shaders were
+compiling, and a second preview page of the same video was loading at the same time. The page's request for the
+soundtrack's metadata queued behind dozens of module requests past 15 s. The other page, opened a little later,
+played with sound. Once the server is warm the same read takes well under a second, so it can't be reproduced on
+demand.
+
+Why it stayed silent:
+
+- **The boot asks once.** `loadSegments` read each audio file's length with `fileDuration`, which gave up after
+  15 s and returned null. A null dropped the segment: `engine.soundtrack` was null, the `SoundtrackPlayer` got no
+  segments, and the whole page played silent.
+- **The message blamed the file.** `#errs` said "audio: cannot read <file> (named in video.json): is the file
+  there, and is it audio?" for a file that was fine and a read that had only timed out.
+- **Nothing tried again.** `vite.config.ts` reloads the page only when a file under `audio/` changes. A file that
+  was fine all along, or one that finished being written before the page read it, left the page silent. With no
+  `duration` in video.json and no `data/audio.json`, the same timeout stopped the page from starting at all
+  ("Nothing gives this video's length").
+
+Where the fix lives: `init` compares a project's `src/engine/` with the template's and never writes it, `--force`
+included (`copyTemplate`, `scripts/init.ts`). It does replace `src/main.ts` with `--force`, keeping the old one as
+`.orig`. `soundtrack.ts` was the same in every release up to 0.12.1, and so was `engine.init()`'s soundtrack code.
+So the retry went into `src/main.ts`, built only on `loadSegments`, `resolveDuration` and `SoundtrackPlayer`, and
+the wording went into the engine.
+
+What changed:
+
+- **`src/main.ts`, the preview only.** When the boot left audio problems, the preview calls `loadSegments` again
+  on every file video.json names. The first try comes once the player is up, after the shader warm-up, and the
+  next ones 1 s after a failed try, the wait doubling to 15 s. Each try's problems replace the last ones in
+  `engine.bootErrors`, each followed by "(trying again)", and the other boot problems stay after them. Once every
+  file is read:
+  - **Same length:** the player is first brought up to now, as the next frame would (a loop wraps, a clock past
+    the end stops there). Then a new `SoundtrackPlayer` takes over from where the old one was, playing or
+    paused (`takeOver`), `engine.soundtrack` and `durationSource` are updated, and the page says "soundtrack
+    loaded".
+  - **Another length:** the page reloads at its moment (`?t=`), since the timeline, the beat grid and the scrub
+    bar are made for the length. That happens only with a segment list and no `duration`: the list's end comes
+    from the segments read.
+  - **A page that couldn't start:** it lists the audio problems under its error and reloads once they are read.
+  - **The length check:** it uses the engine's `resolveDuration`, the page's own length standing in for
+    `data/audio.json`'s, which the boot overwrote. That length decides only a single file's, and there it's the
+    page's.
+- **`src/engine/soundtrack.ts`.** `readLength` replaces `fileDuration`. It says why a file wasn't read:
+  - **"missing":** the browser refused the file, and a one-byte probe of it got a 404 or a page served in its
+    place.
+  - **"not audio":** the file is there, but the browser can't play it: an empty file (the probe gets 416), or
+    one still being written, which can read so too.
+  - **"not read yet":** no answer within 15 s, the read broke off, or the probe failed.
+  `loadSegments` words each, as "is missing", "isn't audio the browser can play" and "hasn't been read yet: the
+  read didn't complete". A read that ends now stops the element's request, so a later try doesn't queue behind
+  it.
+- **The export doesn't change behavior.** It never tries again: its problems stay in `__audara.errors`, without
+  "(trying again)", `__audara.audio` stays null, and `render.ts` refuses, as before. Only the wording is new.
+- **Existing projects:** `init --force` brings the retry, which works with their engine. The plain wording needs
+  the template's `src/engine/soundtrack.ts` copied over theirs. That file hadn't changed since the first release,
+  so a project's copy is the template's unless the project edited it.
+- **Docs:** design.md ("Coming back later"), the engine guide's preview section, and soundtrack.ts's and
+  engine.ts's comments. The manifests are at 0.12.2.
+
+What was checked:
+
+- **In a browser,** against a project made by `init` from this branch, on a real dev server, with Chrome headless
+  and Playwright holding or answering the audio requests:
+  - **A read held past 15 s:** the page booted silent and `#errs` said "hasn't been read yet … (trying again)".
+    Played silent from 2 s, it went on with sound from where it was once the file answered (4.06 s, still
+    playing), with no reload and no errors left.
+  - **A 404, then the file:** "is missing (trying again)", then the sound, in place.
+  - **Bytes that aren't audio, then the file:** "isn't audio the browser can play (trying again)", then the sound,
+    in place.
+  - **A list of 8 + 7 s with no `duration`, its last file held:** it booted 8 s long. Once the file answered, it
+    reloaded at `?t=3.5`, 16 s long, with both segments.
+  - **One file, with no `duration` and no `data/audio.json`, held:** "could not start", with the audio problem
+    listed. Once the file answered, it reloaded and started, 17 s long, from the audio file.
+  - **The export page (`?export=1`), held:** after the hold was released, its one error stood without "(trying
+    again)", and `__audara.audio` stayed null.
+  - **An empty file on the server:** "isn't audio the browser can play (trying again)".
+- **On the old engine:** the new `main.ts` on 0.12.1's `engine.ts` and `soundtrack.ts` typechecks (`bun run
+  check`). The sound came back in place; meanwhile its message was the old question, followed by "(trying
+  again)". Copying only the new `soundtrack.ts` gave the new wording.
+- **`render.ts stills`, on a video whose file is gone:** it refused with "SCENE ERRORS: audio:
+  videos/gone/audio/demo.wav (named in video.json) is missing", exit 1.
+- **`evals/tests/test_soundtrack.ts`, new and offline:**
+  - `readLength`'s ten outcomes, with `Audio` and `fetch` stubbed, and `loadSegments`' wording;
+  - `main.ts`'s own `retrySoundtrack`: the latest problems shown, the other boot problems kept, waits of 1, 2, 4,
+    8 and then 15 s, and the segments handed on once;
+  - `main.ts`'s own `takeOver`, on the real `SoundtrackPlayer` with a hand-run clock: playing or paused at the
+    old player's moment, stopped at the end when its clock ran past it, and the old player's sound stopped;
+  - `main.ts`'s own length expression in seven cases: always a fresh boot's length, different from the boot's
+    only where the page reloads. Dropping the stand-in for `data/audio.json`'s length fails it.
+- **Not run:** any task eval (an hour or more per case and tool) and routing (no description changed).
+
+Codex (Herdr tab 2) reviewed the PR, and its first review changed two things:
+
+- **A video that had ended could start again from 0.** Recovery read the old player's moment before the frame's
+  `sync()` had run. A clock that had run past the end since the last frame (a background tab) was still
+  "playing": the new player's `seek()` clamped to the end, and `play()` at the end starts from 0. Codex reproduced
+  it with the real player: a 10 s video at 12 s came back at 0, playing. Recovery now brings the player up to now
+  first, with the frame's own steps (`advance`, which the frame loop uses too), and `takeOver` syncs the old player
+  before reading it. Without that sync, the new test fails the same way.
+- **An empty file read as "hasn't been read yet" forever.** Vite answers a one-byte range of a zero-byte file
+  with 416 (Range Not Satisfiable), which isn't `ok`. A 416 shows the file is there, so it now counts as "not
+  audio". Checked on the dev server (416 for an empty file, 206 for the soundtrack, 404 for a missing one) and in
+  the test.
+
+It found no reload loop, and confirmed the length parity, the swapped player's closures, the export's isolation,
+the compatibility history and the release bookkeeping.
+
+Its second review found the same restart one millisecond earlier. `sync()` stops the clock at the end, but
+`play()` starts again from 0 within the last millisecond (`t >= duration - 1e-3`), so a recovery at 9.9995 s of a
+10 s video still jumped to 0. `takeOver` no longer calls `play()`: it seeks the new player to the old one's moment
+and sets it playing, as `play()` does without that rule. The next frame then wraps a loop or stops at the end, as
+it would have. The test covers that millisecond and fails with `play()` ("got 0, playing").
