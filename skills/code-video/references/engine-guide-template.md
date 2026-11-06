@@ -36,7 +36,10 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),
   `video.json`, `src/` (but a module only scenes import, like `src/realism/`, swaps those scenes) and a new
   or changed file in the video's `data/`, `audio/` or `assets/` reload the page, at the moment it was
-  showing, as does a GL context lost and restored (a GPU reset). An error the page keeps showing that `stills` of the same moment
+  showing, as does a GL context lost and restored (a GPU reset). An audio file the page didn't read when it
+  opened (missing, not audio, or not read yet: no answer in 15 s, as on a cold first start) is listed on the
+  page and read again until it is; then it plays from where the player is, or the page reloads at its moment
+  when it gives the video another length. An error the page keeps showing that `stills` of the same moment
   don't (each run starts a fresh server) is a stale module in the preview's server, as when several
   authors save the same helpers at once: `bun scripts/render.ts preview --stop`, then `preview`, and reload.
 - **Stills** (the main way to check your work; then look at the PNGs):

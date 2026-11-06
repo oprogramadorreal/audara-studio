@@ -337,7 +337,19 @@ replaced, not even by `--force`, so a setting the engine gained later (the post'
 there: where the skill names one, it says how to tell and what to do instead (`references/images.md`; the
 realism kit's `SUBFRAME`, which the kit does without, in `references/realism.md`).
 The player outside it (`src/main.ts`) is updated by `--force`, so it checks what the engine has: on an
-engine from before 0.4.0 it skips the shader warm-up and plays as before.
+engine from before 0.4.0 it skips the shader warm-up and plays as before. So the preview's fix for a
+soundtrack the boot didn't read lives there too, built only on what every engine has (`loadSegments`,
+`resolveDuration`, `SoundtrackPlayer`): the boot asks once for each audio file's length and gives up after
+15 s, and a cold first load once queued that request past the limit and kept a page silent for good,
+with a file that was there. The preview then reads the soundtrack again, 1 s after each failed try and
+doubling to 15 s, each try's problems standing on the page with "(trying again)". Once every file is read,
+the new player takes over from where the old one was, playing or paused. When the soundtrack gives the video
+another length (a segment list's end, with no `duration`), or the page couldn't start without it, the page
+reloads at its moment instead, since the timeline, the beat grid and the scrub bar are made for the length.
+The export never tries again: an unread soundtrack stays an error there, and `render.ts` refuses. Why a file
+wasn't read (missing, not audio, not read yet) is the engine's `soundtrack.ts` (`readLength`); a project's
+copy from before 0.12.2 asks "is the file there, and is it audio?" for all three, and the template's copy
+replaces it as it is (that file hadn't changed since the first release).
 
 A later session in that folder then knows the conventions even when a request ("make the intro slower") is
 too small to load a skill. Skills tend not to load for simple one-step requests the model can handle
