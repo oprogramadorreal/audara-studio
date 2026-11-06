@@ -194,6 +194,16 @@ test('takeOver: the new player goes on from where the old one is, playing or pau
   clock = 4000;
   next = takeOver(old, [seg], 10);
   assert(next.now() === 10 && !next.playing, `at the end, stopped (got ${next.now()}, ${next.playing ? 'playing' : 'paused'})`);
+  // in its last millisecond: playing on, and stopped at the end by the next frame (play() would start again from 0)
+  clock = 0;
+  old = new SoundtrackPlayer([], 10);
+  old.seek(9); old.play();
+  clock = 999.5;
+  next = takeOver(old, [seg], 10);
+  assert(next.playing && Math.abs(next.now() - 9.9995) < 1e-9, `plays on from 9.9995 s (got ${next.now()}, ${next.playing ? 'playing' : 'paused'})`);
+  clock = 1016;
+  next.sync();
+  assert(next.now() === 10 && !next.playing, 'and stops at the end');
   // a partial soundtrack's own sound stops
   clock = 0;
   old = new SoundtrackPlayer([{ ...seg, url: '/b.wav', at: 5, dur: 5 }], 10);

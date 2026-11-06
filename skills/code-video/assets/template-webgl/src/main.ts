@@ -93,7 +93,9 @@ function takeOver(old: SoundtrackPlayer, segments: Segment[], D: number) {
   old.pause();
   const next = new SoundtrackPlayer(segments, D);
   next.seek(t);
-  if (playing) next.play();
+  // (not play(): in its last millisecond it starts again from 0. Playing on from t, the next frame wraps a
+  // loop or stops at the end as it would have.)
+  if (playing) { next.playing = true; next.sync(true); }
   return next;
 }
 

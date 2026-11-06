@@ -4240,3 +4240,9 @@ Codex (Herdr tab 2) reviewed the PR, and its first review changed two things:
 
 It found no reload loop, and confirmed the length parity, the swapped player's closures, the export's isolation,
 the compatibility history and the release bookkeeping.
+
+Its second review found the same restart one millisecond earlier. `sync()` stops the clock at the end, but
+`play()` starts again from 0 within the last millisecond (`t >= duration - 1e-3`), so a recovery at 9.9995 s of a
+10 s video still jumped to 0. `takeOver` no longer calls `play()`: it seeks the new player to the old one's moment
+and sets it playing, as `play()` does without that rule. The next frame then wraps a loop or stops at the end, as
+it would have. The test covers that millisecond and fails with `play()` ("got 0, playing").
