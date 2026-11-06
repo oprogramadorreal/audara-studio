@@ -385,8 +385,11 @@ made by hand (channel project 1, 2026-10-10) came out well but needed four follo
   the `.gitignore` and appends its section to AGENTS.md, but writes its README (the commands to watch and
   render) only where there's none, so the skill writes no README yet: one written first cost a test project
   init's. Nothing picks up files later on its own (neither git nor the other skills commit unless asked);
-  later sessions read the Repository section before committing, and asking again once a video exists brings
-  the full pass.
+  later sessions read the Repository section before committing, and its last line has the session that
+  delivers the first video run the rest of the pass if the user already asked for it, else offer it; the pass
+  replaces the line, and a no removes it. A 16-minute devlog whose repository came first never got that pass:
+  the rows production added for what it left out went untested (one rebuild step was missing) and its README
+  never said what a clone lacks, which the user found on another PC (history.md, 0.12.1).
 - **Files sorted by their role, not their type.** A generated or derived file the render loads (the final
   mix, extracted frames) is an input and stays, as do the sources someone needs to change the video (the
   mix's stems, the chosen takes, request records, the scripts that made a kept file). Generated and paid
@@ -396,7 +399,11 @@ made by hand (channel project 1, 2026-10-10) came out well but needed four follo
   out and named to the user.
 - **GitHub's limits, and what's left out written down.** GitHub warns over 50 MiB and refuses a file over
   100 MiB, so one over 100 MiB stays out and `docs/REPOSITORY.md` records its path, bytes, SHA-256, purpose,
-  how to get it back, and whether a clone renders without it. Git LFS is offered, never set up by default:
+  how to get it back (where to fetch it, or the commands that rebuild it from a fresh clone), and whether a
+  clone renders without it. A mix longer than about six minutes is over the limit (`mix.py` writes 24-bit,
+  48 kHz stereo), and its rebuild runs soundtrack's `mix.py`, which lives in the plugin: the project gets a
+  copy, unchanged, in `tools/audara-studio/` with the plugin's LICENSE and version, and the commands run
+  that copy, since a clone may have another version of the plugin or none (as init copies the engine). Git LFS is offered, never set up by default:
   the user asked to leave such files out, and its free quota (10 GiB of storage and of bandwidth on GitHub
   Free) counts every clone's download.
 - **Keys and personal details, checked before the first `git add`.** `scripts/audit.ts` (bun, read-only)
@@ -414,8 +421,9 @@ made by hand (channel project 1, 2026-10-10) came out well but needed four follo
 - **A fresh clone is the test.** The skill clones the repository into a new folder in the system's
   temporary folder, not inside the project, where Node would resolve a package missing from `package.json`
   from the project's own `node_modules`. It runs what a newcomer would: `bun install --frozen-lockfile`,
-  `bun run check`, `verify` for each video (every scene and the files it reads) and a three-second draft
-  with sound, which start and stop their own server, so no preview holds the folder. Then, passed or failed,
+  `bun run check`, the documented rebuild of what a render needs that git leaves out (when it's quick and
+  free; otherwise it's reported unverified, not passed), `verify` for each video (every scene and the files it
+  reads) and a three-second draft with sound, which start and stop their own server, so no preview holds the folder. Then, passed or failed,
   it deletes the clone and checks it's gone, or names its path. A sandbox can block the install's network
   (Codex's default) or the temporary folder: it asks, or reports the check as not run. It says what ran,
   without promising identical pixels on another machine.
