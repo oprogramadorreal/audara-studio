@@ -33,7 +33,7 @@ export type Unread = 'missing' | 'not audio' | 'not read yet';
  * came within `timeoutMs` or the read broke off (a dev server busy with a cold first load once took longer
  * than 15 s to answer a file that was there). A file the browser refuses is asked for once more, a byte of
  * it, to tell 'missing' (404, or a page served in its place) from 'not audio' (there, but nothing the
- * browser plays: a file still being written reads so too).
+ * browser plays: an empty file, whose byte the server can't give (416), or one still being written).
  */
 export async function readLength(url: string, timeoutMs = 15000): Promise<number | Unread> {
   const got = await new Promise<number | 'refused' | 'not read yet'>((resolve) => {
@@ -56,7 +56,7 @@ export async function readLength(url: string, timeoutMs = 15000): Promise<number
     const r = await fetch(url, { headers: { range: 'bytes=0-0' }, signal: AbortSignal.timeout(timeoutMs) });
     void r.body?.cancel();
     if (r.status === 404 || (r.headers.get('content-type') ?? '').includes('text/html')) return 'missing';
-    return r.ok ? 'not audio' : 'not read yet';
+    return r.ok || r.status === 416 ? 'not audio' : 'not read yet';
   } catch {
     return 'not read yet';
   }

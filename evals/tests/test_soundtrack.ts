@@ -65,6 +65,7 @@ test('readLength: a length, or why there is none', async () => {
   world.set('/gone.wav', { media: { error: 4 }, probe: { status: 404, type: 'text/plain' } });
   world.set('/page.wav', { media: { error: 4 }, probe: { status: 200, type: 'text/html' } }); // (a dev server's page in its place)
   world.set('/junk.wav', { media: { error: 4 }, probe: { status: 206, type: 'audio/wav' } });
+  world.set('/zero.wav', { media: { error: 4 }, probe: { status: 416, type: '' } }); // (an empty file: Vite can't give its byte)
   world.set('/empty.wav', { media: { length: Infinity }, probe: { status: 200, type: 'audio/wav' } });
   world.set('/broke.wav', { media: { error: 2 } }); // (MEDIA_ERR_NETWORK: the read broke off)
   world.set('/slow.wav', { media: 'hang' });
@@ -73,7 +74,7 @@ test('readLength: a length, or why there is none', async () => {
   const got: Record<string, number | Unread> = {};
   for (const u of world.keys()) got[u] = await ST.readLength(u, 30);
   assert.deepEqual(got, {
-    '/ok.wav': 17, '/gone.wav': 'missing', '/page.wav': 'missing', '/junk.wav': 'not audio', '/empty.wav': 'not audio',
+    '/ok.wav': 17, '/gone.wav': 'missing', '/page.wav': 'missing', '/junk.wav': 'not audio', '/zero.wav': 'not audio', '/empty.wav': 'not audio',
     '/broke.wav': 'not read yet', '/slow.wav': 'not read yet', '/flaky.wav': 'not read yet', '/teapot.wav': 'not read yet',
   });
   assert.deepEqual(released.sort(), [...world.keys()].sort(), 'every read lets its file go, the one that timed out too');
@@ -151,6 +152,57 @@ test('retrySoundtrack: tries until every file is read, the latest problems shown
   assert.deepEqual(read, [[seg]], 'onRead gets the segments once, when all are read');
   assert.deepEqual(engine.bootErrors, [timeline], 'and the audio problems are gone');
   assert.equal(timers.length, 0, 'no try after that');
+});
+
+// ------------------------------------------------------------------ the player that takes over
+/** soundtrack.ts again, its SoundtrackPlayer on a hand-run clock with audio elements that only keep state. */
+let clock = 0;
+class PlayerAudio {
+  preload = ''; paused = true; currentTime = 0; volume = 1; duration = NaN;
+  constructor(public url: string) {}
+  play() { this.paused = false; return Promise.resolve(); }
+  pause() { this.paused = true; }
+}
+const { SoundtrackPlayer } = new Function('Audio', 'fetch', 'AbortSignal', 'performance', `${engineJS}\nreturn { SoundtrackPlayer };`)(
+  PlayerAudio, fakeFetch, { timeout: () => undefined }, { now: () => clock },
+) as { SoundtrackPlayer: new (segs: Seg[], duration: number) => Player };
+type Player = { now(): number; playing: boolean; seek(t: number): void; play(): void; pause(): void; sync(): void };
+const { takeOver } = new Function('SoundtrackPlayer', `${transpiler.transformSync(slice(mainTS, 'function takeOver(', '\n}\n'))}\nreturn { takeOver };`)(SoundtrackPlayer) as
+  { takeOver(old: Player, segments: Seg[], D: number): Player };
+
+test('takeOver: the new player goes on from where the old one is, playing or paused', () => {
+  const seg: Seg = { file: 'videos/v/audio/a.wav', url: '/a.wav', at: 0, from: 0, dur: 10 };
+  const els = (p: Player) => (p as unknown as { els: PlayerAudio[] }).els;
+  // playing, mid-video
+  clock = 0;
+  let old = new SoundtrackPlayer([], 10);
+  old.seek(2); old.play();
+  clock = 1500;
+  let next = takeOver(old, [seg], 10);
+  assert.equal(next.now(), 3.5);
+  assert(next.playing && !els(next)[0]!.paused && els(next)[0]!.currentTime === 3.5, 'it plays, with sound, from 3.5 s');
+  // paused
+  clock = 0;
+  old = new SoundtrackPlayer([], 10);
+  old.seek(4);
+  next = takeOver(old, [seg], 10);
+  assert(next.now() === 4 && !next.playing && els(next)[0]!.paused, 'it stays paused, at 4 s');
+  // the clock ran past the end since the last frame (a background tab): stopped there, not played again from 0
+  clock = 0;
+  old = new SoundtrackPlayer([], 10);
+  old.seek(8); old.play();
+  clock = 4000;
+  next = takeOver(old, [seg], 10);
+  assert(next.now() === 10 && !next.playing, `at the end, stopped (got ${next.now()}, ${next.playing ? 'playing' : 'paused'})`);
+  // a partial soundtrack's own sound stops
+  clock = 0;
+  old = new SoundtrackPlayer([{ ...seg, url: '/b.wav', at: 5, dur: 5 }], 10);
+  old.seek(6); old.play(); old.sync();
+  assert(!els(old)[0]!.paused);
+  clock = 500;
+  next = takeOver(old, [seg, { ...seg, url: '/b.wav', at: 5, dur: 5 }], 10);
+  assert(els(old)[0]!.paused, "the old player's element is paused");
+  assert(next.playing && next.now() === 6.5);
 });
 
 // ------------------------------------------------------------------ the length a late read gives

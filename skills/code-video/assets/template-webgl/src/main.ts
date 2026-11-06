@@ -82,6 +82,21 @@ function retrySoundtrack(onRead: (segments: Segment[]) => void, shown = () => {}
   void attempt();
 }
 
+/**
+ * A player for `segments` that takes over from `old` where it is, playing or paused. `old` is synced first:
+ * a clock that ran past the end since the last frame (a background tab) stops there, as the next frame
+ * would have it, and isn't played again from 0.
+ */
+function takeOver(old: SoundtrackPlayer, segments: Segment[], D: number) {
+  old.sync();
+  const t = old.now(), playing = old.playing;
+  old.pause();
+  const next = new SoundtrackPlayer(segments, D);
+  next.seek(t);
+  if (playing) next.play();
+  return next;
+}
+
 // A lost GL context takes with it what scenes made on the GPU when they were built (a captured environment
 // light, a baked texture), and nothing makes it again: when the context comes back, the preview reloads at
 // the moment it was on, paused (the link's own while the scenes are still loading; the player sets these)
@@ -402,16 +417,18 @@ function setupPlayer() {
   // A soundtrack the boot didn't read, once read: heard from where the player is, playing or paused as it
   // was. One that gives the video another length (a segment list's end, with no "duration" in video.json)
   // reloads the page at this moment instead: the timeline, the beat grid and the scrub bar are made for it.
+  /** The player brought up to now (once per frame, before now()); the loop first: a loop that ends with the video must wrap before the player stops at the end. */
+  const advance = () => {
+    if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
+    track.sync();
+  };
   if (audioProblems().length) {
     retrySoundtrack((segments) => {
+      advance();
       // (the boot replaced data/audio.json's own length with D, and it decides only a single file's, which is D)
       const d = resolveDuration(VIDEO, segments, engine.audio.synthetic ? null : D);
       if (!d || d.duration !== D) return location.replace(link(track.now()));
-      const t = track.now(), playing = track.playing;
-      track.pause();
-      track = new SoundtrackPlayer(segments, D);
-      track.seek(t);
-      if (playing) track.play();
+      track = takeOver(track, segments, D);
       window.__audara.track = track;
       engine.soundtrack = segments;
       engine.durationSource = d.source;
@@ -447,9 +464,7 @@ function setupPlayer() {
     });
   };
   const tick = () => {
-    // (the loop first: a loop that ends with the video must wrap before the player stops at the end)
-    if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
-    track.sync();
+    advance();
     const t = track.now();
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;

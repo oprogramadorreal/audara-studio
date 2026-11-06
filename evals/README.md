@@ -259,11 +259,12 @@ included, or the one on screen while its shot is in use; 150 shots played one af
 and a still back in the first loads it again). On the real `Footage` class, with three, fetch and the decoder
 stubbed: a frame the preview loads on demand after four seeks fill the budget stays, fetched once.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
-stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio; not read yet: no answer,
-the read broken off, or a probe that fails) and the problem each gives; main.ts's retry, which shows the
-latest try's problems, keeps the other boot problems, waits 1 s doubling to 15 s and hands the segments on
-once; and the length a soundtrack read late gives (a fresh boot's, in seven cases), unchanged except where
-the page reloads.
+stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
+included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;
+main.ts's retry, which shows the latest try's problems, keeps the other boot problems, waits 1 s doubling to
+15 s and hands the segments on once; the player that takes over (the real `SoundtrackPlayer`, on a hand-run
+clock: playing or paused at the old one's moment, stopped at the end when its clock ran past it); and the
+length a soundtrack read late gives (a fresh boot's, in seven cases), unchanged except where the page reloads.
 `test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
 synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to
