@@ -99,7 +99,10 @@ export class Engine {
   private accum: FSPass;
   private lastT = -1;
   lastPost: PostParams = { ...DEFAULT_POST };
-  /** Problems found at boot that are not a scene's (an unreadable audio file); they stay until a reload. */
+  /**
+   * Problems found at boot that are not a scene's (an audio file not read); they stay until a reload, but
+   * for the audio ones in the preview, which src/main.ts replaces as it reads the soundtrack again.
+   */
   bootErrors: string[] = [];
   /** Notes about fallbacks in use (no analysis, no words): worth knowing, not errors. */
   warnings: string[] = [];

@@ -6,7 +6,7 @@
 import { Engine, type AdaptiveSampling, type TimelineEntry } from './engine/engine';
 import { PW, PH, W, H, SCALE } from './engine/gl';
 import { testCardNote } from './engine/palette';
-import { SoundtrackPlayer } from './engine/soundtrack';
+import { loadSegments, resolveDuration, SoundtrackPlayer, type Segment } from './engine/soundtrack';
 import { VIDEO, VIDEOS, VIDEO_ERROR, loadTimeline } from './video';
 
 const params = new URLSearchParams(location.search);
@@ -52,6 +52,35 @@ const link = (t: number) => {
   u.searchParams.set('t', String(+t.toFixed(3)));
   return u.toString();
 };
+
+/** The boot's problems with the soundtrack (loadSegments'): one per audio file it didn't read. */
+const audioProblems = () => (engine as Engine | undefined)?.bootErrors.filter((e) => e.startsWith('audio: ')) ?? [];
+
+/**
+ * The preview reads a soundtrack the boot didn't read again, until every file video.json names is read:
+ * the boot asks once and gives up after 15 s, and a cold first load once kept a page silent for good with a
+ * file that was there. Each try's problems replace the last ones on the page (`shown` redraws them), and
+ * `onRead` gets the segments as a fresh boot would have them. It uses only loadSegments, which every engine
+ * has: init --force updates this file but never src/engine/.
+ */
+function retrySoundtrack(onRead: (segments: Segment[]) => void, shown = () => {}) {
+  const list = (problems: string[]) => {
+    const rest = engine.bootErrors.filter((e) => !e.startsWith('audio: '));
+    engine.bootErrors.splice(0, engine.bootErrors.length, ...problems.map((p) => `${p} (trying again)`), ...rest);
+    engine.errorsVersion++;
+    shown();
+  };
+  let wait = 1000;
+  const attempt = async () => {
+    const { segments, problems } = await loadSegments(VIDEO.audio);
+    if (segments && !problems.length) { list([]); onRead(segments); return; }
+    list(problems);
+    setTimeout(attempt, wait);
+    wait = Math.min(2 * wait, 15000);
+  };
+  list(audioProblems());
+  void attempt();
+}
 
 // A lost GL context takes with it what scenes made on the GPU when they were built (a captured environment
 // light, a baked texture), and nothing makes it again: when the context comes back, the preview reloads at
@@ -252,7 +281,7 @@ function setupPlayer() {
   const ui = $('ui'), scrub = $<HTMLInputElement>('scrub'), info = $('info'), marks = $('marks'), errs = $('errs'), toast = $('toast');
   const TL = engine.timeline, D = engine.duration, fps = VIDEO.fps;
   const byStart = [...TL].sort((a, b) => a.start - b.start); // ([ and ] step through the entries in time)
-  const track = new SoundtrackPlayer(engine.soundtrack ?? [], D);
+  let track = new SoundtrackPlayer(engine.soundtrack ?? [], D);
   playhead = () => track.now();
   pausePlayer = () => track.pause();
   window.__audara = { preview: true, engine, track }; // (a handle for the browser console)
@@ -370,6 +399,26 @@ function setupPlayer() {
     hot.on('vite:beforeFullReload', () => history.replaceState(history.state, '', link(track.now())));
   }
 
+  // A soundtrack the boot didn't read, once read: heard from where the player is, playing or paused as it
+  // was. One that gives the video another length (a segment list's end, with no "duration" in video.json)
+  // reloads the page at this moment instead: the timeline, the beat grid and the scrub bar are made for it.
+  if (audioProblems().length) {
+    retrySoundtrack((segments) => {
+      // (the boot replaced data/audio.json's own length with D, and it decides only a single file's, which is D)
+      const d = resolveDuration(VIDEO, segments, engine.audio.synthetic ? null : D);
+      if (!d || d.duration !== D) return location.replace(link(track.now()));
+      const t = track.now(), playing = track.playing;
+      track.pause();
+      track = new SoundtrackPlayer(segments, D);
+      track.seek(t);
+      if (playing) track.play();
+      window.__audara.track = track;
+      engine.soundtrack = segments;
+      engine.durationSource = d.source;
+      say('soundtrack loaded');
+    });
+  }
+
   let frames = 0, fpsT = performance.now(), fpsNow = 0, wasPlaying = false, prefetchT = -Infinity;
   // A paused frame whose scenes all ask for it (`refine = true` on the scene: the realism kit's; none of them
   // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
@@ -444,7 +493,11 @@ boot().catch((e) => {
   const msg = String(e?.stack ?? e);
   if (EXPORT) { window.__audara = { error: msg }; return; }
   const errs = $('errs');
-  errs.textContent = `The preview could not start:\n\n${msg}`;
+  const show = () => { errs.textContent = [`The preview could not start:`, msg, ...audioProblems()].join('\n\n'); };
+  show();
   errs.style.display = 'block';
   setupPicker();
+  // (a soundtrack not read may be all that stopped it, when nothing else gives the video's length: once
+  // read, the page starts again at its moment)
+  if (audioProblems().length) retrySoundtrack(() => location.replace(link(playhead())), show);
 });
