@@ -18,7 +18,7 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   mistake (`preview --stop` ends the process it names).
  * - GET /__audara/formats answers with each video's other formats, the folders out/<video>/<W>x<H>/ that
  *   render.ts makes for --size, read when asked: the preview's format menu offers them. A page opened at
- *   another format POSTs its video and size there first, and its folder is made the same way.
+ *   another format POSTs its video and size there until its folder is listed, made the same way.
  * - A watcher error is logged, not fatal: on Windows a file being rewritten (Windows PowerShell's
  *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */

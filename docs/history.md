@@ -4272,8 +4272,9 @@ What changed:
   `out/<video>/<W>x<H>/`, read when asked, since the dev server doesn't watch `out/`. render.ts already writes a
   format's files there; it now makes the folder on any command given `--size`, `preview` and `link` included, so
   a format is listed from its first link, before anything is rendered for it. A page opened at `?size=` (a size
-  that was read, in another shape than the video's own) asks once with a POST, and the server makes its folder
-  the same way, for a video that exists and an even size of 16 px or more. The other way was a list in
+  that was read, in another shape than the video's own) asks with a POST until the folder is listed, and the
+  server makes it the same way, for a video that exists and an even size of 16 px or more. (Against a dev server
+  older than this, which never lists it, that page asks every 3 s, harmlessly.) The other way was a list in
   video.json: it would come with a clone, which leaves `out/` behind, but every agent making a format would have
   to remember to add to it. In a clone, the first command given `--size` lists the format again.
 - **Kept as they were:** `?size=`'s meaning, render.ts's output layout, the picker's rule. A dev server from before
@@ -4301,6 +4302,8 @@ in Chrome headless through the project's playwright-core:
   beside it, and the menu appeared 2.4 s later, listing 4:5, with no reload.
 - **The POST's guard:** `v=..`, `v=nope` (no such video), `v=example%2F..%2Fother`, `v=.hidden`, an odd width
   and 8x8 made no folder, and a GET with the same parameters made none either.
+- **A folder that couldn't be made** (a file in its place, at `&size=1080x1080`): asked for three times in 7 s;
+  once the file was removed, made on the next poll, and no POST after it was listed.
 - **A page that couldn't start** (`&size=abc`): its error shown, and the menu offering 1080x1920.
 - **An older server's answer** (`{"root","pid"}`), a 404, a page that isn't JSON, a size given as a string: no
   menu, no error.
@@ -4318,3 +4321,7 @@ same project:
 - **A page left open never saw a format made after it loaded.** The list was read once, and `out/` isn't
   watched, so a vertical started while the 16:9 page stayed open showed only after a reload by hand (a scene's
   hot swap doesn't reload the page). The page now reads the list again every 3 s.
+
+Its second review, of those fixes, found that a folder the server couldn't make was still answered with 200, and
+the page asked only once, so the format was lost again on leaving it (reproduced with a failing `mkdirSync`). The
+page now asks until its format is listed.

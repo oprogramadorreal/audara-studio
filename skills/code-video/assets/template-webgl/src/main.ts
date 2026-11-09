@@ -305,7 +305,7 @@ const formatName = (size: string) => {
  * The format menu (a video made in another format too, docs/ENGINE.md "Another format"): the video's own
  * format, each folder out/<video>/<W>x<H>/, which the dev server lists, and the one on screen. render.ts
  * makes such a folder for every --size, and a page opened at another format asks the server for its own
- * (once), so leaving it for another format doesn't lose it. The list is read again every few seconds: a
+ * until it is listed, so leaving it for another format doesn't lose it. The list is read again every few seconds: a
  * format made while the page is open shows up. Switching keeps the moment, the timeline being the same.
  */
 function setupFormats() {
@@ -319,7 +319,9 @@ function setupFormats() {
     let made: unknown = [];
     try {
       const r = await fetch(`/__audara/formats${ask}`, ask ? { method: 'POST' } : {});
-      if (r.ok) { made = ((await r.json()) as Record<string, unknown>)?.[VIDEO.name] ?? []; ask = ''; }
+      if (r.ok) made = ((await r.json()) as Record<string, unknown>)?.[VIDEO.name] ?? [];
+      // (asked until the folder is listed: one that couldn't be made is asked for again)
+      if (Array.isArray(made) && made.includes(on)) ask = '';
     } catch {}
     const sizes = [...new Set([own, ...(Array.isArray(made) ? made : []).filter((s): s is string => typeof s === 'string' && /^\d+x\d+$/.test(s)), on])];
     if (sizes.join() === listed) return;
