@@ -37,6 +37,7 @@ Contents
 - 0.12.0 against the projects on a second machine (0.12.0, 2026-11-04)
 - What a clone lacked: the mix's own script, and the pass a repository made first still owed (0.12.1, 2026-11-06)
 - A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
+- The preview's format menu (0.12.3, 2026-11-09)
 
 ## Definition of done
 
@@ -4246,3 +4247,81 @@ Its second review found the same restart one millisecond earlier. `sync()` stops
 10 s video still jumped to 0. `takeOver` no longer calls `play()`: it seeks the new player to the old one's moment
 and sets it playing, as `play()` does without that rule. The next frame then wraps a loop or stops at the end, as
 it would have. The test covers that millisecond and fails with `play()` ("got 0, playing").
+
+## The preview's format menu (0.12.3, 2026-11-09)
+
+A director asked, in a project with one 16:9 video: "Keep the current … video exactly as it is. Create a separate
+9:16 version for YouTube Shorts, preserving the same duration, music, content, and timing. Adapt only the
+animation and composition to fit the vertical format." The agent followed the engine guide's "Another format":
+the same video, `tall` branches in the scenes, its verify, sheets and draft in `out/<video>/1080x1920/`, and the
+vertical playing at `&size=1080x1920`. Read afterwards, without changing the project, the preview itself offered
+no way there: its picker listed the project's videos, never a video's formats, and switching videos dropped
+`size`. The vertical was reachable only through the link the agent printed or `?size=` typed by hand, so whoever
+closed that tab, or opened the preview later, saw the 16:9 alone and could think the vertical wasn't made.
+
+What changed:
+
+- **A format menu in the preview** (`src/main.ts`, `index.html`), beside the video picker: the video's own format
+  (`ownSize`, video.json's `size`, now kept on the selected video in `src/video.ts`), each format the dev server
+  lists for it, and the one on screen, labelled with its shape ("1080x1920 9:16"). It shows when there are two or
+  more. Switching keeps the moment (`?t=`), since the formats share the timeline, and leaves every other parameter
+  as it was; the video's own format drops `size`. The video picker still opens another video in its own format.
+  A page that couldn't start offers the menu too. The page reads the list again every 3 s and redraws the menu
+  only when it changed.
+- **Where the formats come from** (`vite.config.ts`): `GET /__audara/formats` lists the folders
+  `out/<video>/<W>x<H>/`, read when asked, since the dev server doesn't watch `out/`. render.ts already writes a
+  format's files there; it now makes the folder on any command given `--size`, `preview` and `link` included, so
+  a format is listed from its first link, before anything is rendered for it. A page opened at `?size=` (a size
+  that was read, in another shape than the video's own) asks with a POST until the folder is listed, and the
+  server makes it the same way, for a video that exists and an even size of 16 px or more. (Against a dev server
+  older than this, which never lists it, that page asks every 3 s, harmlessly.) The other way was a list in
+  video.json: it would come with a clone, which leaves `out/` behind, but every agent making a format would have
+  to remember to add to it. In a clone, the first command given `--size` lists the format again.
+- **Kept as they were:** `?size=`'s meaning, render.ts's output layout, the picker's rule. A dev server from before
+  this (an older `vite.config.ts`) answers `/__audara/formats` as `/__audara`, with no formats in it, and the menu
+  stays hidden; `init --force` replaces `src/main.ts`, `src/video.ts`, `index.html` and `vite.config.ts` together.
+- **Docs:** the engine guide's preview section and "Another format", the template's README, design.md ("Another
+  format"), render.ts's header. The manifests are at 0.12.3.
+
+What was checked, on a project made by `init` from this branch with a second video added, on a real dev server,
+in Chrome headless through the project's playwright-core:
+
+- **The endpoint:** `{}` with no `out/`; `{"example":["1080x1920"]}` right after `link --size 1080x1920`, which
+  made the folder and printed the link; a size with the video's own shape still refused, no folder made; then
+  `"other":["1080x1350"]` beside it after `stills --video other --size 1080x1350`, whose still landed in
+  `out/other/1080x1350/stills/`.
+- **The menu:** at `?v=example&t=3.5`, "1920x1080 16:9" (selected) and "1080x1920 9:16". Seeking to 4.25 s and
+  picking the vertical opened `?v=example&t=4.25&size=1080x1920`, a 1080x1920 canvas, the vertical selected;
+  picking 16:9 came back to `?v=example&t=4.25` at 1920x1080.
+- **The video picker, from the vertical:** `other` opened at 1920x1080, without `size`, from 0, with no menu (no
+  folder of its own then).
+- **A format opened by hand, with no folder** (`&size=1080x1350`): listed and selected as "1080x1350 4:5", its
+  folder made by the page; switching to 16:9 still listed it. `&size=3840x2160` (the video's own shape) was
+  listed while on screen, with no folder made.
+- **A page left open:** `?v=other`, with no folder and so no menu. `link --video other --size 1080x1350` run
+  beside it, and the menu appeared 2.4 s later, listing 4:5, with no reload.
+- **The POST's guard:** `v=..`, `v=nope` (no such video), `v=example%2F..%2Fother`, `v=.hidden`, an odd width
+  and 8x8 made no folder, and a GET with the same parameters made none either.
+- **A folder that couldn't be made** (a file in its place, at `&size=1080x1080`): asked for three times in 7 s;
+  once the file was removed, made on the next poll, and no POST after it was listed.
+- **A page that couldn't start** (`&size=abc`): its error shown, and the menu offering 1080x1920.
+- **An older server's answer** (`{"root","pid"}`), a 404, a page that isn't JSON, a size given as a string: no
+  menu, no error.
+- **The export page** (`?export=1`) never asks for the formats.
+- `bun run check` passes on the project; `test_soundtrack`, `test_render_failures`, `test_render_inputs`,
+  `test_init_gitignore` and `test_footage` pass.
+- **Not run:** any task eval (an hour or more per case and tool); no skill's instructions changed.
+
+Codex (Herdr tab 2) reviewed the branch before the PR. Its review changed two things, both reproduced on the
+same project:
+
+- **A format opened by hand dropped out of the menu once left.** At `&size=1080x1350`, with no folder, the menu
+  offered 4:5 because it was on screen; switching to 16:9 removed it, and the page offered no way back. The page
+  opened at another format now has the server make its folder.
+- **A page left open never saw a format made after it loaded.** The list was read once, and `out/` isn't
+  watched, so a vertical started while the 16:9 page stayed open showed only after a reload by hand (a scene's
+  hot swap doesn't reload the page). The page now reads the list again every 3 s.
+
+Its second review, of those fixes, found that a folder the server couldn't make was still answered with 200, and
+the page asked only once, so the format was lost again on leaving it (reproduced with a failing `mkdirSync`). The
+page now asks until its format is listed.

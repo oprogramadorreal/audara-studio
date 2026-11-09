@@ -27,10 +27,11 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   entry, `h` hide the UI, `c` copy a link to this moment. While paused or seeking, the address bar's `?t=`
   follows the playhead, so it is always a link to what is on screen. Paused on scenes that set
   `refine = true` (below), the frame is rendered again with the render's 12 sub-frames once the playhead
-  rests, and the info line says "refined". A project with several videos shows
-  a picker. While the page loads it draws every timeline entry once off screen, so each scene's shaders
-  are compiled before anything plays (a few seconds for heavy scenes, counted on the info line): without
-  it, a heavy scene froze the first play where it entered.
+  rests, and the info line says "refined". A project with several videos shows a picker, and a video
+  made in another format a menu of its formats (Another format). While the page loads it draws every
+  timeline entry once off screen, so each scene's shaders are compiled before anything plays (a few
+  seconds for heavy scenes, counted on the info line): without it, a heavy scene froze the first play
+  where it entered.
 - **Saving files while it plays:** a scene, or a helper a scene imports, swaps in place and the rest
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),
@@ -573,7 +574,13 @@ render.ts mode, and in the preview `?size=1080x1920` (`bun scripts/render.ts pre
 so a cut or a fix lands in both formats. Only the frame changes: `W`, `H`, `ctx.W` and `ctx.H` are the new
 size, and render.ts writes everything for it under `out/<video>/<W>x<H>/` (its `verify.json`, stills,
 sheets, `<video>.mp4`), beside the video's own format, never over it. A size with the video's own shape
-is refused: that is the same picture at another size, which `--scale` makes.
+is refused: that is the same picture at another size, which `--scale` makes. The preview offers the
+formats in a menu at the bottom of the page: the video's own and each `out/<video>/<W>x<H>/`, a folder
+every render.ts command given `--size` makes, `preview` and `link` included, as does the page opened at
+`?size=`. So a format is listed from its first link on, in a page already open too, which reads the
+list again every few seconds (a copy of the project without `out/` lists it again once one of them
+runs). Switching format keeps the moment, the timeline being the same; another video opens in its own
+format.
 
 - Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
   `H` and the format's safe area (`docs/STYLE.md`; for a format the project hasn't used yet, the Layout

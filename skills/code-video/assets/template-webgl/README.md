@@ -25,4 +25,4 @@ write, such as `1920x1080 at 60 fps, 20 s`: if that isn't what you want, stop it
 
 With several videos, add `--video <name>` (its folder in `videos/`) to either command. A video made in a
 second format too, a vertical version say, takes `--size 1080x1920` on either command; its render goes to
-`out/<video>/1080x1920/`.
+`out/<video>/1080x1920/`, and the preview's menu at the bottom of the page switches between the formats.

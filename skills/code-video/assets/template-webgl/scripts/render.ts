@@ -83,7 +83,8 @@
 //                   same timeline, sound and data, its scenes laid out for that frame (they read W and H, so
 //                   they recompose, never crop), and everything written under out/<video>/<W>x<H>/ (verify.json,
 //                   stills, sheets, <video>.mp4), so nothing of the video's own format is replaced. link and
-//                   preview give the preview's link to that format (&size=WxH). A size with the video's own
+//                   preview give the preview's link to that format (&size=WxH). Every mode makes that folder,
+//                   and the preview's format menu offers each one it finds. A size with the video's own
 //                   shape is refused: that is the same picture at another size (--scale), not a format
 //   --samples, --shutter  sub-frames per frame (default 1, but auto for video and poster) and the shutter
 //                   they spread over, as a fraction of the frame time (default 0.2); every mode but verify
@@ -1630,6 +1631,9 @@ async function main() {
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
   parseSize(name!);
+  // (the format's folder, made by whichever command names it first, preview and link too: the preview's format
+  // menu lists the folders it finds there)
+  if (SIZE) mkdirSync(path.join(PROJECT, 'out', name!, sizeTag()!), { recursive: true });
   if (mode === 'link') return link(name!);
   if (mode === 'preview') return preview(name!);
   const OUT = path.join(PROJECT, 'out', name!, ...(SIZE ? [sizeTag()!] : []));
