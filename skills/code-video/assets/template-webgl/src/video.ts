@@ -50,7 +50,10 @@ export interface VideoConfig {
   /** Project-relative folder ('videos/example'), which is also its URL path on the dev server. */
   dir: string;
   title: string;
+  /** The frame the scenes lay out in: `ownSize`, or another format's (?size=). */
   size: [number, number];
+  /** The video's own format, video.json's `size`. */
+  ownSize: [number, number];
   fps: number;
   audio: SegmentSpec[] | null;
   duration?: number;
@@ -133,13 +136,13 @@ function normalize(name: string, j: VideoJSON): VideoConfig {
     if (!audio.length) audio = null;
   } else if (j.audio !== undefined && j.audio !== null) bad.push(`"audio" must be a file ("audio/song.mp3"), a list of segments, or null`);
   if (bad.length) VIDEO_ERROR = `${where}:\n  ${bad.join('\n  ')}`;
-  return { name, dir, title: typeof j.title === 'string' && j.title ? j.title : name, size, fps, audio, duration, bpm };
+  return { name, dir, title: typeof j.title === 'string' && j.title ? j.title : name, size, ownSize: size, fps, audio, duration, bpm };
 }
 
 function select(): VideoConfig {
   const asked = params.get('v');
   const name = asked ?? defaultVideo(VIDEOS);
-  const placeholder: VideoConfig = { name: name ?? '', dir: `videos/${name ?? ''}`, title: 'audara', size: [1920, 1080], fps: 60, audio: null, bpm: 120 };
+  const placeholder: VideoConfig = { name: name ?? '', dir: `videos/${name ?? ''}`, title: 'audara', size: [1920, 1080], ownSize: [1920, 1080], fps: 60, audio: null, bpm: 120 };
   if (!VIDEOS.length) { VIDEO_ERROR = 'No videos in this project: add videos/<video>/video.json (see docs/ENGINE.md).'; return placeholder; }
   if (!name || !VIDEOS.includes(name)) {
     VIDEO_ERROR = `Unknown video ${JSON.stringify(asked)} (?v=). The videos here: ${VIDEOS.join(', ')}.`;

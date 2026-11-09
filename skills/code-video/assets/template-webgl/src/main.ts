@@ -294,6 +294,39 @@ function setupPicker() {
   };
 }
 
+/** '1080x1920' -> '1080x1920 9:16': a size, and its shape when that is in small numbers. */
+const formatName = (size: string) => {
+  const [w, h] = size.split('x').map(Number) as [number, number];
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a), d = gcd(w, h);
+  return w / d <= 32 && h / d <= 32 ? `${size} ${w / d}:${h / d}` : size;
+};
+
+/**
+ * The format menu (a video made in another format too, docs/ENGINE.md "Another format"): the video's own
+ * format, the ones render.ts has made folders for in out/<video>/ (the dev server lists them), and the one
+ * on screen. Switching keeps the moment, the timeline being the same in every format.
+ */
+async function setupFormats() {
+  const menu = document.getElementById('fmt') as HTMLSelectElement | null;
+  if (!menu || !VIDEOS.includes(VIDEO.name)) return;
+  let made: unknown = [];
+  try {
+    const r = await fetch('/__audara/formats');
+    if (r.ok) made = ((await r.json()) as Record<string, unknown>)?.[VIDEO.name] ?? [];
+  } catch {}
+  const own = VIDEO.ownSize.join('x'), on = `${W}x${H}`;
+  const sizes = [...new Set([own, ...(Array.isArray(made) ? made : []).filter((s): s is string => typeof s === 'string' && /^\d+x\d+$/.test(s)), on])];
+  if (sizes.length < 2) return;
+  for (const s of sizes) menu.add(new Option(formatName(s), s, false, s === on));
+  menu.style.display = 'block';
+  menu.onchange = () => {
+    const u = new URL(link(playhead()));
+    if (menu.value === own) u.searchParams.delete('size');
+    else u.searchParams.set('size', menu.value);
+    location.search = u.search;
+  };
+}
+
 function setupPlayer() {
   const ui = $('ui'), scrub = $<HTMLInputElement>('scrub'), info = $('info'), marks = $('marks'), errs = $('errs'), toast = $('toast');
   const TL = engine.timeline, D = engine.duration, fps = VIDEO.fps;
@@ -303,6 +336,7 @@ function setupPlayer() {
   pausePlayer = () => track.pause();
   window.__audara = { preview: true, engine, track }; // (a handle for the browser console)
   setupPicker();
+  void setupFormats();
   canvas.style.aspectRatio = `${W} / ${H}`;
   scrub.max = String(D);
   scrub.step = '0.001';
@@ -514,6 +548,7 @@ boot().catch((e) => {
   show();
   errs.style.display = 'block';
   setupPicker();
+  void setupFormats(); // (back to a format that starts, say)
   // (a soundtrack not read may be all that stopped it, when nothing else gives the video's length: once
   // read, the page starts again at its moment)
   if (audioProblems().length) retrySoundtrack(() => location.replace(link(playhead())), show);
