@@ -4266,11 +4266,14 @@ What changed:
   lists for it, and the one on screen, labelled with its shape ("1080x1920 9:16"). It shows when there are two or
   more. Switching keeps the moment (`?t=`), since the formats share the timeline, and leaves every other parameter
   as it was; the video's own format drops `size`. The video picker still opens another video in its own format.
-  A page that couldn't start offers the menu too.
+  A page that couldn't start offers the menu too. The page reads the list again every 3 s and redraws the menu
+  only when it changed.
 - **Where the formats come from** (`vite.config.ts`): `GET /__audara/formats` lists the folders
   `out/<video>/<W>x<H>/`, read when asked, since the dev server doesn't watch `out/`. render.ts already writes a
   format's files there; it now makes the folder on any command given `--size`, `preview` and `link` included, so
-  a format is listed from its first link, before anything is rendered for it. The other way was a list in
+  a format is listed from its first link, before anything is rendered for it. A page opened at `?size=` (a size
+  that was read, in another shape than the video's own) asks once with a POST, and the server makes its folder
+  the same way, for a video that exists and an even size of 16 px or more. The other way was a list in
   video.json: it would come with a clone, which leaves `out/` behind, but every agent making a format would have
   to remember to add to it. In a clone, the first command given `--size` lists the format again.
 - **Kept as they were:** `?size=`'s meaning, render.ts's output layout, the picker's rule. A dev server from before
@@ -4291,7 +4294,13 @@ in Chrome headless through the project's playwright-core:
   picking 16:9 came back to `?v=example&t=4.25` at 1920x1080.
 - **The video picker, from the vertical:** `other` opened at 1920x1080, without `size`, from 0, with no menu (no
   folder of its own then).
-- **A format on screen with no folder** (`&size=1080x1350`): listed third, selected, as "1080x1350 4:5".
+- **A format opened by hand, with no folder** (`&size=1080x1350`): listed and selected as "1080x1350 4:5", its
+  folder made by the page; switching to 16:9 still listed it. `&size=3840x2160` (the video's own shape) was
+  listed while on screen, with no folder made.
+- **A page left open:** `?v=other`, with no folder and so no menu. `link --video other --size 1080x1350` run
+  beside it, and the menu appeared 2.4 s later, listing 4:5, with no reload.
+- **The POST's guard:** `v=..`, `v=nope` (no such video), `v=example%2F..%2Fother`, `v=.hidden`, an odd width
+  and 8x8 made no folder, and a GET with the same parameters made none either.
 - **A page that couldn't start** (`&size=abc`): its error shown, and the menu offering 1080x1920.
 - **An older server's answer** (`{"root","pid"}`), a 404, a page that isn't JSON, a size given as a string: no
   menu, no error.
@@ -4299,3 +4308,13 @@ in Chrome headless through the project's playwright-core:
 - `bun run check` passes on the project; `test_soundtrack`, `test_render_failures`, `test_render_inputs`,
   `test_init_gitignore` and `test_footage` pass.
 - **Not run:** any task eval (an hour or more per case and tool); no skill's instructions changed.
+
+Codex (Herdr tab 2) reviewed the branch before the PR. Its review changed two things, both reproduced on the
+same project:
+
+- **A format opened by hand dropped out of the menu once left.** At `&size=1080x1350`, with no folder, the menu
+  offered 4:5 because it was on screen; switching to 16:9 removed it, and the page offered no way back. The page
+  opened at another format now has the server make its folder.
+- **A page left open never saw a format made after it loaded.** The list was read once, and `out/` isn't
+  watched, so a vertical started while the 16:9 page stayed open showed only after a reload by hand (a scene's
+  hot swap doesn't reload the page). The page now reads the list again every 3 s.

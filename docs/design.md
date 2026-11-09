@@ -817,12 +817,13 @@ The preview offers a video's formats in a menu beside the video picker. Without 
 made from one prompt was reachable only through the link the agent printed: the picker listed videos and
 dropped `?size=` on a switch, so a director who opened the preview later saw only the 16:9 and could
 think the vertical wasn't made. The menu lists the video's own format and each folder
-`out/<video>/<W>x<H>/`, which the dev server reads when the page asks (`/__audara/formats`); render.ts
-makes that folder on any command given `--size`, `preview` and `link` included. So a format is listed
-from its first link, and nobody has a list to keep. A list in video.json would come with a clone, which
-leaves `out/` behind, but every agent making a format would have to remember to add to it; in a clone,
-the first command given `--size` lists the format again. Switching keeps the moment, since the timeline
-is shared, while another video still opens in its own format.
+`out/<video>/<W>x<H>/`, which the dev server reads when the page asks (`/__audara/formats`, every few
+seconds, so a page left open sees a format made meanwhile); render.ts makes that folder on any command
+given `--size`, `preview` and `link` included, and the page makes its own when opened at `?size=` by
+hand. So a format is listed from its first link, and nobody has a list to keep. A list in video.json
+would come with a clone, which leaves `out/` behind, but every agent making a format would have to
+remember to add to it; in a clone, the first command given `--size` lists the format again. Switching
+keeps the moment, since the timeline is shared, while another video still opens in its own format.
 
 ### Footage: frames, streamed when long
 

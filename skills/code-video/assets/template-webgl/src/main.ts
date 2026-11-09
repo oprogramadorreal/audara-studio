@@ -303,22 +303,32 @@ const formatName = (size: string) => {
 
 /**
  * The format menu (a video made in another format too, docs/ENGINE.md "Another format"): the video's own
- * format, the ones render.ts has made folders for in out/<video>/ (the dev server lists them), and the one
- * on screen. Switching keeps the moment, the timeline being the same in every format.
+ * format, each folder out/<video>/<W>x<H>/, which the dev server lists, and the one on screen. render.ts
+ * makes such a folder for every --size, and a page opened at another format asks the server for its own
+ * (once), so leaving it for another format doesn't lose it. The list is read again every few seconds: a
+ * format made while the page is open shows up. Switching keeps the moment, the timeline being the same.
  */
-async function setupFormats() {
+function setupFormats() {
   const menu = document.getElementById('fmt') as HTMLSelectElement | null;
   if (!menu || !VIDEOS.includes(VIDEO.name)) return;
-  let made: unknown = [];
-  try {
-    const r = await fetch('/__audara/formats');
-    if (r.ok) made = ((await r.json()) as Record<string, unknown>)?.[VIDEO.name] ?? [];
-  } catch {}
-  const own = VIDEO.ownSize.join('x'), on = `${W}x${H}`;
-  const sizes = [...new Set([own, ...(Array.isArray(made) ? made : []).filter((s): s is string => typeof s === 'string' && /^\d+x\d+$/.test(s)), on])];
-  if (sizes.length < 2) return;
-  for (const s of sizes) menu.add(new Option(formatName(s), s, false, s === on));
-  menu.style.display = 'block';
+  const [ow, oh] = VIDEO.ownSize, own = `${ow}x${oh}`, on = `${W}x${H}`;
+  // (a size that was read, in another shape: the same shape at another size is no format, as render.ts says)
+  let ask = params.has('size') && !VIDEO_ERROR && Math.abs(W / H - ow / oh) >= 0.001 ? `?${new URLSearchParams({ v: VIDEO.name, size: on })}` : '';
+  let listed = '';
+  const read = async () => {
+    let made: unknown = [];
+    try {
+      const r = await fetch(`/__audara/formats${ask}`, ask ? { method: 'POST' } : {});
+      if (r.ok) { made = ((await r.json()) as Record<string, unknown>)?.[VIDEO.name] ?? []; ask = ''; }
+    } catch {}
+    const sizes = [...new Set([own, ...(Array.isArray(made) ? made : []).filter((s): s is string => typeof s === 'string' && /^\d+x\d+$/.test(s)), on])];
+    if (sizes.join() === listed) return;
+    listed = sizes.join();
+    menu.replaceChildren(...sizes.map((s) => new Option(formatName(s), s, false, s === on)));
+    menu.style.display = sizes.length > 1 ? 'block' : 'none';
+  };
+  void read();
+  setInterval(() => void read(), 3000);
   menu.onchange = () => {
     const u = new URL(link(playhead()));
     if (menu.value === own) u.searchParams.delete('size');
@@ -336,7 +346,7 @@ function setupPlayer() {
   pausePlayer = () => track.pause();
   window.__audara = { preview: true, engine, track }; // (a handle for the browser console)
   setupPicker();
-  void setupFormats();
+  setupFormats();
   canvas.style.aspectRatio = `${W} / ${H}`;
   scrub.max = String(D);
   scrub.step = '0.001';
@@ -548,7 +558,7 @@ boot().catch((e) => {
   show();
   errs.style.display = 'block';
   setupPicker();
-  void setupFormats(); // (back to a format that starts, say)
+  setupFormats(); // (back to a format that starts, say)
   // (a soundtrack not read may be all that stopped it, when nothing else gives the video's length: once
   // read, the page starts again at its moment)
   if (audioProblems().length) retrySoundtrack(() => location.replace(link(playhead())), show);

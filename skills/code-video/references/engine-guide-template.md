@@ -576,9 +576,11 @@ size, and render.ts writes everything for it under `out/<video>/<W>x<H>/` (its `
 sheets, `<video>.mp4`), beside the video's own format, never over it. A size with the video's own shape
 is refused: that is the same picture at another size, which `--scale` makes. The preview offers the
 formats in a menu at the bottom of the page: the video's own and each `out/<video>/<W>x<H>/`, a folder
-every render.ts command given `--size` makes, `preview` and `link` included, so a format is listed from
-its first link on (a copy of the project without `out/` lists it again once one of them runs). Switching
-format keeps the moment, the timeline being the same; another video opens in its own format.
+every render.ts command given `--size` makes, `preview` and `link` included, as does the page opened at
+`?size=`. So a format is listed from its first link on, in a page already open too, which reads the
+list again every few seconds (a copy of the project without `out/` lists it again once one of them
+runs). Switching format keeps the moment, the timeline being the same; another video opens in its own
+format.
 
 - Lay out from the frame, not from numbers typed for one shape: positions, sizes and margins from `W` and
   `H` and the format's safe area (`docs/STYLE.md`; for a format the project hasn't used yet, the Layout

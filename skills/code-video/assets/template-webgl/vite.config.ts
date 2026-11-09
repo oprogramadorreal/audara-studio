@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { defineConfig, normalizePath, type Plugin } from 'vite';
 
 /**
@@ -17,7 +17,8 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   find this project's preview, so another project's preview is never rendered, linked or stopped by
  *   mistake (`preview --stop` ends the process it names).
  * - GET /__audara/formats answers with each video's other formats, the folders out/<video>/<W>x<H>/ that
- *   render.ts makes for --size, read when asked: the preview's format menu offers them.
+ *   render.ts makes for --size, read when asked: the preview's format menu offers them. A page opened at
+ *   another format POSTs its video and size there first, and its folder is made the same way.
  * - A watcher error is logged, not fatal: on Windows a file being rewritten (Windows PowerShell's
  *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */
@@ -44,7 +45,12 @@ function audara(): Plugin {
     configureServer(server) {
       server.watcher.on('error', (e) => server.config.logger.warn(`audara: the file watcher reported ${String((e as Error)?.message ?? e)}; the preview goes on`));
       // (before /__audara, which would answer it too: a path is matched by its prefix)
-      server.middlewares.use('/__audara/formats', (_req, res) => {
+      server.middlewares.use('/__audara/formats', (req, res) => {
+        // (POST ?v=<video>&size=<W>x<H>: a page opened at that format, whose folder is made as render.ts makes it)
+        const q = new URLSearchParams(req.url?.split('?')[1] ?? '');
+        const v = q.get('v') ?? '', m = /^(\d+)x(\d+)$/.exec(q.get('size') ?? ''), w = m ? +m[1]! : 0, h = m ? +m[2]! : 0;
+        if (req.method === 'POST' && w >= 16 && h >= 16 && w % 2 === 0 && h % 2 === 0 && /^[^/\\.][^/\\]*$/.test(v) && existsSync(`${root}/videos/${v}/video.json`))
+          try { mkdirSync(`${root}/out/${v}/${w}x${h}`, { recursive: true }); } catch {}
         res.setHeader('content-type', 'application/json');
         res.end(JSON.stringify(formats(root)));
       });
