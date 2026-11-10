@@ -254,9 +254,9 @@ when no reader does worse with the new text than with the old one.
   down: `--until docs/STYLE.md` ends a run there, with the treatment, STYLE.md, `look.ts` and whatever
   frames exist by then. That is a fraction of a build's time only where a session writes the look down
   before it builds: in 0.13.0's two runs on Fable 5.2, STYLE.md was first written after the scene was
-  built, so check when a case's sessions write the file before relying on the cut. What only a build shows (the critic's findings and what the
-  session does about them, scene authors, the cut) takes whole runs: `cv-zero-asset` for one idea, a
-  showreel for many scenes.
+  built, so check when a case's sessions write the file before relying on the cut. What only a build shows
+  (the critic's findings and what the session does about them, scene authors, the cut) takes whole runs:
+  `cv-zero-asset` for one idea, a showreel for many scenes.
 - **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives
   each of three fresh sessions the two videos as X and Y (copied without their metadata, with sheets of
   their frames labelled by time and five full-size stills), swaps which is X from one judge to the next,

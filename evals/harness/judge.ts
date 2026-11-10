@@ -14,7 +14,8 @@
 // first one seen cancels out, and nothing in the folder or its path says which run is which. A judge is a
 // session with the machine's files in reach, not a sandbox: the folder above its own holds no verdict and no
 // other judge's transcript while it works (a folder that already has a judging is refused), and past that its
-// blindness rests on having no reason to look elsewhere.
+// blindness rests on having no reason to look elsewhere. One call at a time for an --out folder; and a judging
+// stopped by hand leaves no transcripts, since they are written when every judge is done.
 //
 // A judge can't reward taste past its own, and can't hear: verdict.json records the model each judge ran, as its
 // transcript names it, beside its vote, and says the picture alone was judged. For a comparison that decides
@@ -133,17 +134,22 @@ function pack(dir: string, s: Side) {
  */
 const packets = [path.join(OUT, 'p0'), path.join(OUT, 'p1')];
 const stamp = (s: Side) => { const st = statSync(s.video); return `${s.video}|${st.size}|${Math.round(st.mtimeMs)}`; };
+const inside = (dir: string, file: string) => { const rel = path.relative(dir, file); return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel); };
 for (const s of [a, b]) for (const dir of packets) {
-  if (s.video.startsWith(dir + path.sep)) fail(`${s.video} is inside ${dir}, a folder this builds: copy the video out of it, or give another --out`);
+  if (inside(dir, s.video)) fail(`${s.video} is inside ${dir}, a folder this builds: copy the video out of it, or give another --out`);
 }
+/** What --out already holds of a judging (set below, before the first packet): its packets are that judging's. */
+let judged: string[] = [];
 function packet(i: number) {
   const dir = packets[i]!, x = i === 0 ? a : b, y = i === 0 ? b : a;
   const mark = `${dir}.mark`, want = Bun.hash([stamp(x), stamp(y), RATE].join('\n')).toString(36);
   if (existsSync(dir)) {
     if (!existsSync(mark)) fail(`${dir} exists and judge.ts did not make it (no ${path.basename(mark)} beside it): give another --out, or remove the folder`);
     if (readFileSync(mark, 'utf8') === want) return dir;
-    rmSync(dir, { recursive: true, force: true });
   }
+  // (built or built again from here on: never under a verdict, which would then describe other videos)
+  if (judged.length) fail(`${OUT} holds a judging (${judged.join(', ')}) of other videos than these, or of packets no longer whole: give another --out`);
+  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
   writeFileSync(mark, 'building'); // (this tool's from here on, and not whole until the hash replaces the word)
   pack(path.join(dir, 'X'), x);
   pack(path.join(dir, 'Y'), y);
@@ -215,8 +221,9 @@ async function judge(i: number): Promise<Vote> {
 mkdirSync(OUT, { recursive: true });
 // (a judge works one folder below this one: a verdict or a transcript already here would tell it which run was
 // which, or what an earlier judge thought)
-const earlier = readdirSync(OUT).filter((n) => n === 'verdict.json' || n === 'claude-sessions' || /^judge-\d+\.jsonl$/.test(n));
-if (earlier.length && !argv.includes('--dry')) fail(`${OUT} already holds a judging (${earlier.join(', ')}): give another --out`);
+// (--dry may still look at such a folder's packets, as they are: packet() builds none there)
+judged = readdirSync(OUT).filter((n) => n === 'verdict.json' || n === 'claude-sessions' || /^judge-\d+\.jsonl$/.test(n));
+if (judged.length && !argv.includes('--dry')) fail(`${OUT} already holds a judging (${judged.join(', ')}): give another --out`);
 packet(0);
 packet(1); // (with one judge too: pick.ts draws either order for the director's page)
 // --dry: the packets and the prompt, and no judge (to look at what one would get, or to judge by eye)

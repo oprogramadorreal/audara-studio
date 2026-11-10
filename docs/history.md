@@ -4379,10 +4379,10 @@ sound effects", then "Go ahead. I want the MP4 and to see the files.", then "App
 Opus 5.5 and Claude Fable 5.2 (Claude Code 2.1.322, xhigh) and Codex (0.167.0, gpt-6-astra, ultra), one run
 each, plus Fable without the plugin. One machine, one day. Seven runs were started in the morning between
 11:28 and 12:17, up to five at a time; the machine ran out of memory at about 12:20, minutes after the last
-of them started, and the five still going were lost (the cause, found in another session that day, was an editor open
-on the repo starting a workspace search for each Python file a Codex run created). Those five were run again
-in the afternoon, two at a time. Codex on main's text and Fable without the plugin are the morning's, made
-beside three or four other runs.
+of them started, and the five still going were lost (the cause, found in another session that day, was an
+editor open on the repo starting a workspace search for each Python file a Codex run created). Those five
+were run again in the afternoon, two at a time. Codex on main's text and Fable without the plugin are the
+morning's, made beside three or four other runs.
 Each run had a fresh grader for the case's assertions (one grader stalled and was replaced).
 
 | Run | To the preview | To the MP4 | Output tokens | Assertions |
@@ -4451,14 +4451,13 @@ grain.
 
 **The decision.** No change was shown to help. The six ran as one text, so nothing above can be traced to a
 line: the gain on Fable (the only one of the three text pairs all its judges agreed on) may be the frame that
-rewrote the
-treatment, or the run; the sparser Opus 5.5 picture may be the list it could no longer cross out, the habit
-question, the post line, or the run. One run a side can't separate a slight difference from two runs of one
-text, and by the gate's own rule the two pairs that split two to one are no result. What there is on Opus
-5.5, the model the user asked about, points the wrong way (the director, two judges of three and the session
-preferred main's text, slightly), in the direction this history has seen it over-correct before. The user's
-instruction after seeing the pairs was to drop what couldn't be shown to improve the plugin. So all six were
-withdrawn, and the skills' text about taste is main's again.
+rewrote the treatment, or the run; the sparser Opus 5.5 picture may be the list it could no longer cross out,
+the habit question, the post line, or the run. One run a side can't separate a slight difference from two
+runs of one text, and by the gate's own rule the two pairs that split two to one are no result. What there is
+on Opus 5.5, the model the user asked about, points the wrong way (the director, two judges of three and the
+session preferred main's text, slightly), in the direction this history has seen it over-correct before. The
+user's instruction after seeing the pairs was to drop what couldn't be shown to improve the plugin. So all six
+were withdrawn, and the skills' text about taste is main's again.
 
 What stays in 0.13.0:
 
@@ -4493,8 +4492,9 @@ that the plugin might hold this model below what it does alone, did not show on 
 **What the runs showed that no text here changed,** each a candidate for its own change and its own run:
 
 - **Style frames come after the build.** In four of four Claude runs the look was chosen before a frame
-  existed and the alternatives were made afterwards; none was shown to the user. Codex made its two before
-  building on the branch's text and after on main's.
+  existed and the alternatives were made afterwards; none was shown before building, and two runs named the
+  frames' folder only in the turn's last reply. Codex made its two before building on the branch's text and
+  after on main's.
 - **A final render before the go-ahead.** Fable on the branch's text printed critique.md's Delivery section,
   and 110 seconds later started the full render, saying in its reply "I rendered the final file without waiting
   for your go-ahead, since it took 90 seconds". Nothing had been posted before that reply: no treatment, no
@@ -4556,9 +4556,10 @@ finding against the code or the run files and made every change. Their first rep
   blur goes. This entry and design.md said more than the votes: Codex's pair as "no difference" (its judges
   split two to one toward the branch's text), Fable's as "the only pair with a clear vote" (Codex's had two),
   Opus 5.5 doing worse "by every reading" (one judge of three preferred the branch's). They are corrected
-  above, with the smaller facts it listed (the times, Codex's sub-agents, the bloom the scenes set). The models the gate runs on were listed two ways: design.md's "Fresh sessions, every model" now
-  holds the one list, a smaller Claude model included, which this first run left out. And blender.md gave a
-  Blender layer a 0.2 shutter whatever the video's.
+  above, with the smaller facts it listed (the times, Codex's sub-agents, the bloom the scenes set). The
+  models the gate runs on were listed two ways: design.md's "Fresh sessions, every model" now holds the one
+  list, a smaller Claude model included, which this first run left out. And blender.md gave a Blender layer
+  a 0.2 shutter whatever the video's.
 - **How Opus 5.5 read the six changes.** Asked, as the model whose video came out sparser, it said it would
   have taken them together as a push toward a plainer picture: three name glow or texture as a cost ("glow
   over everything", the post line's "faint halo", a list that leaves "near-black ground ... often glowing"
@@ -4585,5 +4586,15 @@ Their second reports, on those changes:
   place of a mocked test, since the stills had eight sub-frames and the two shutters gave different hashes.
 - The two-judge run that tested the tool used a smaller model (claude-haiku-5-5) on Codex's pair, and both
   its judges preferred main's text, clearly, where two of the three Fable judges had preferred the
-  branch's: one more reason to read that pair as no result, and what "a judge can't reward taste past its
-  own" looks like.
+  branch's: one more reason to read that pair as no result. It was a test of the tool, and its folder was
+  not kept.
+
+Their third reports: Opus 5.5 called the PR ready, with three things worth making first, all made (the Haiku
+run above says its folder wasn't kept, and no longer claims to show whose taste is weaker; no style frame was
+"shown before building", where two runs did name the frames' folder in a turn's last reply; lines rewrapped).
+Codex found two more ways `judge.ts` could lose or misstate evidence: a video inside a packet folder passed
+the check when its path was typed in another case, and `--dry` could build other videos' packets under a
+verdict already there. The first now compares paths as the platform does; the second is refused, so a folder
+that holds a judging keeps that judging's packets. It named what it would accept as an eval tool's stated
+limits, which the header of `judge.ts` now states: one call at a time for a folder, no transcripts from a
+judging stopped by hand, and blindness that rests on the judge's folder holding nothing, not on a sandbox.
