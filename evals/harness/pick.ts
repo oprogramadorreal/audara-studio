@@ -26,19 +26,24 @@ const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&
 const swapXY = (s: string) => s.replace(/\b([XY])\b/g, (_, c) => (c === 'X' ? 'Y' : 'X'));
 const slash = (p: string) => p.replaceAll('\\', '/');
 
-// (the order a page already had, so building it again after a judge returns doesn't reshuffle what was watched)
-const before = new Map<string, number>();
-if (existsSync(path.join(OUT, 'key.json'))) for (const k of JSON.parse(readFileSync(path.join(OUT, 'key.json'), 'utf8'))) before.set(k.dir, k.packet);
+// (the order a page already had, so building it again after a judge returns doesn't reshuffle what was watched:
+// kept for each place a folder is listed, since one folder can be listed twice, in either order)
+const before = new Map<string, number[]>();
+if (existsSync(path.join(OUT, 'key.json'))) {
+  for (const k of JSON.parse(readFileSync(path.join(OUT, 'key.json'), 'utf8'))) before.set(k.dir, [...(before.get(k.dir) ?? []), k.packet]);
+}
 
 type Side = 'a' | 'b';
 const key: unknown[] = [];
 const sections: string[] = [];
 for (const [i, p] of cfg.pairs.entries()) {
-  const dir = path.resolve(p.dir), name = slash(path.relative(process.cwd(), dir));
-  const packet = p.packet ?? before.get(name) ?? (crypto.getRandomValues(new Uint8Array(1))[0]! & 1);
+  // (named by its whole path: the order kept, and the picks kept under it, don't depend on where this is run from)
+  const dir = path.resolve(p.dir), name = slash(dir);
+  const had = before.get(name)?.shift(); // (this place's, taken whether or not the config now fixes the order)
+  const packet = p.packet ?? had ?? (crypto.getRandomValues(new Uint8Array(1))[0]! & 1);
   const X: Side = packet === 0 ? 'a' : 'b', Y: Side = packet === 0 ? 'b' : 'a';
   const video = (side: string) => path.join(dir, `p${packet}`, side, 'video.mp4');
-  if (!existsSync(video('X'))) throw new Error(`${p.dir}: no packet p${packet} (judge.ts builds p1 when it has more than one judge)`);
+  if (!existsSync(video('X'))) throw new Error(`${p.dir}: no packet p${packet} (judge.ts builds both; a folder from before it did, judged by one judge, has only p0: give "packet": 0)`);
   const verdict = existsSync(path.join(dir, 'verdict.json')) ? JSON.parse(readFileSync(path.join(dir, 'verdict.json'), 'utf8')) : null;
   const letter = (side: Side | 'tie' | null) => (side === 'tie' ? 'a tie' : side === null ? 'no verdict' : side === X ? 'X' : 'Y');
   const votes = (verdict?.votes ?? []).map((v: any) => {

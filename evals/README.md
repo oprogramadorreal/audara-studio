@@ -264,7 +264,8 @@ when no reader does worse with the new text than with the old one.
   the busier nor the quieter video is better in itself. `verdict.json` holds each vote, with its reasons
   and the model that judge ran. A judge can't reward taste past its own, so for a comparison that decides
   something the judge is the strongest model there is, and the director too (`--dry` builds the packets
-  without judging). A judge is a session, not a sandbox: its folder holds nothing that names a run, and a
+  without judging). The two runs must have been asked the same, turn for turn: a run stopped early (by
+  `--until`, say) is compared with another stopped at the same turn, not with a whole one. A judge is a session, not a sandbox: its folder holds nothing that names a run, and a
   folder that already holds a judging is refused, so no earlier verdict sits one level above a judge at work.
 - **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs
   (or from `--dry` packets, before any judge has voted):
@@ -304,10 +305,12 @@ with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fi
 included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
 `shutter` a render takes or reports; neither needs Chrome or ffmpeg.
 `test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
-started: which video `judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to
-touch, two runs told different things at a later turn, a folder that already holds a judging, and what
-`pick.ts` puts on the director's page (every turn of the request, the order kept on a rebuild, picks kept
-apart when X and Y change places, the judges' letters turned to the page's).
+started (a stand-in for the judge's CLI comes first on PATH, so no failure reaches a model): which video
+`judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to touch, two runs told
+different things at a later turn or stopped at different ones, a folder that already holds a judging, and
+what `pick.ts` puts on the director's page (every turn of the request, the order kept on a rebuild, also
+where one folder is listed twice, picks kept apart when X and Y change places, the judges' letters turned
+to the page's).
 `test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
 frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget

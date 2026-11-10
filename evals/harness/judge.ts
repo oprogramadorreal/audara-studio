@@ -99,9 +99,14 @@ const a = side(A!, opt('a-video')), b = side(B!, opt('b-video'));
 const request = a.request.length ? a.request : b.request;
 if (!request.length) fail(`neither folder has a result.json with the request: judge.ts takes task runs' folders`);
 // (every turn: two runs that open alike and were then told different things were asked for different videos,
-// and a judge is given one request for both)
+// and a judge is given one request for both. A run stopped early, by --until or at a turn that was stopped,
+// has only the turns it was sent: it never got the direction the longer one did.)
 for (let i = 0; a.request.length && b.request.length && i < Math.max(a.request.length, b.request.length); i++) {
-  if (a.request[i] !== b.request[i]) fail(`the two runs were asked different things at turn ${i + 1}:\n  a: ${a.request[i] ?? '(no such turn)'}\n  b: ${b.request[i] ?? '(no such turn)'}`);
+  if (a.request[i] === b.request[i]) continue;
+  const [short, long] = a.request[i] === undefined ? ['a', 'b'] : ['b', 'a'];
+  if (a.request[i] === undefined || b.request[i] === undefined)
+    fail(`run ${short} stopped after turn ${i} (its result.json has ${i} turn${i === 1 ? '' : 's'}) and run ${long} went on to turn ${i + 1}: "${(a.request[i] ?? b.request[i])!}"\nThe two videos answer different amounts of the request.`);
+  fail(`the two runs were asked different things at turn ${i + 1}:\n  a: ${a.request[i]}\n  b: ${b.request[i]}`);
 }
 console.log(`a: ${path.relative(REPO, a.video)} (${a.duration.toFixed(1)} s)\nb: ${path.relative(REPO, b.video)} (${b.duration.toFixed(1)} s)`);
 

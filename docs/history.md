@@ -4609,4 +4609,16 @@ now, and a difference is refused. A page made from packets no judge had voted on
 writes the request beside the packets. And the page kept the director's picks under a key that ignored which
 video was X, so a page whose order changed would have shown an earlier "X" beside the other video: the order
 shown is part of the key. `evals/tests/test_judge_pick.ts` now covers both tools offline, on two one-second
-videos and with no judge started: 11 checks, four of which fail on the code before these three fixes.
+videos and with no judge started; four of its first eleven checks failed on the code before these three
+fixes.
+
+Both consultants then read those fixes and the test. Codex found that a config listing one folder twice lost
+the first place's order on a rebuild (the order is now kept for each place a folder is listed), and that only
+one of the test's calls was kept from a real model (a stand-in for the judge's CLI now comes first on PATH for
+all of them; with the refusal of a second judging taken out of a copy, the test fails and no model is called).
+Opus 5.5 asked for a plainer refusal of a run that stopped early ("run b stopped after turn 1 ... and run a
+went on to turn 2"), for the kept order not to depend on the folder the tool is run from (pairs are named by
+their whole path), and for checks that were looser than their names: the two packets are now compared byte
+for byte as the same two videos in opposite orders, a rebuild is repeated six times against the order first
+drawn, key.json's X and Y are read for both orders, and a verdict's request is shown over a stale one beside
+it. The test has 14 checks.
