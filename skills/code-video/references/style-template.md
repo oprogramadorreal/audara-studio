@@ -189,7 +189,11 @@ a contact sheet is usually shown scaled down, so its thumbnails understate what 
   the beat), so every scene author moves things alike. The craft behind it (eases from rest, moves
   through several keys, objects carried across a cut) is in `references/motion.md`.
 - **Post** is set once in `POST`; scenes return per-frame changes on top (a flash on a hit, a punch-in).
-  The engine's defaults are a clean image: a mild bloom above 1, everything else off.
+  The engine's defaults are a clean image: a mild bloom above 1, everything else off. They are still a
+  look, one that suits light: the bloom gives light type on a dark ground a faint halo, and the tone
+  shoulder lands white at 246 of 255. A flat graphic piece that wants its hexes exact and its edges hard
+  sets `{ bloom: 0, shoulder: 0 }` for the project (nothing then goes above 1 without clipping); a piece
+  made of light keeps them. Either is a choice: say which in STYLE.md.
 - **Grain** is a look like any other. Grain that changes every frame costs file size (about eight times
   a still grain's on one 15-second card), so when the look wants it, use the least that survives encoding.
 

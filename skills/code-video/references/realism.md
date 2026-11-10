@@ -43,10 +43,12 @@ engine (history.md, 0.8.0):
    build bracket sets, roof tiles, carvings, trees and lotus. Light and materials turned a simple close-up
    into a photograph in the port, while the wide shot of the same simple scene still read as CG: the
    geometry the camera resolves sets the ceiling.
-2. **Light that holds together.** One sun, low for long shadows and warm light; a physical sky; the
+2. **Light that holds together.** One sun; a physical sky; the
    environment light captured from that sky and then from the built scene (one bounce for free); the same
    haze inside every material, so far things go blue and soft as they do outdoors. One `Env` (the kit's
-   env.ts) feeds all of them, which is why they agree.
+   env.ts) feeds all of them, which is why they agree. golden-temple's sun is low, for long shadows that
+   show form and a warm light that forgives simple surfaces: that was its hour, not a rule, and another
+   time of day or weather is another `Env`, found on stills against the references.
 3. **Surfaces with history.** three's PBR materials with procedural wear on top: faded patches, worn edges,
    grime near the ground, moss on what faces up, tarnish, roughness that varies with all of it. Every fine
    term fades out as it shrinks below a pixel, or it shimmers in motion.

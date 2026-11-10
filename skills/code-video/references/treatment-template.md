@@ -59,6 +59,10 @@ a video should teach, is cut, shortened or turned into something that happens; b
 the director didn't lock doesn't earn it a place. Unless the director asked for a lesson, a piece without one
 lacks nothing; one forced in makes it feel like a class, and viewers leave.
 
+This order is a default like any other here, and some directors want the other one. Where it decides
+something they might have wanted differently (an explainer told as a story with no recap, a step of the
+argument left out for pace), the Assumed line says so in a few words, so one word from them turns it.
+
 **Licence, and its limit.** A video is an artistic work: it can simplify, leave things out or change how
 events unfold for a better story, without every qualification. The limit is what a reasonable viewer comes
 away believing. The central point stays true, and so does anything that matters if they repeat it or act on
@@ -141,7 +145,8 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
 - **Look:** <until the style frames are made, the two or three directions you'll try; then> `docs/STYLE.md`<,
   plus what this video changes and why>, and the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
-  lines, two colours>.
+  lines, two colours; so does how it is told, where that leaves out something they might expect (story
+  first, no recap)>.
 - **Never claim:** <what would be false or unprovable here, for a product a feature, result or figure it
   doesn't have, shown as its own (a concept the director asked for is marked as one); the liberties taken
   (simplified, merged, reordered) and the central point they leave true; how illustrative values are
