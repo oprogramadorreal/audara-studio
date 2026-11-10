@@ -143,24 +143,6 @@ const cases: Record<string, Case> = {
       "Turn 2's reply says what went and its total size, what stayed for the next round and why (the comparison draft, the 60 fps test, the render's pieces, the paid takes, the model and decoded music, at least), and what could go after a decision (the 60 fps test once it's picked, or the like).",
     ],
   },
-  // A review asked for after the build, in a later session on a finished project (run-tasks.sh gives it the
-  // title-card project, like the other later-session cases): the full-cut critic alone, on a draft the session
-  // renders, with nothing changed. It is also the short way to see what a change to the critic's prompt does on
-  // each model: the same project, the old text and the new (task.ts --skills), in minutes instead of a whole
-  // build (evals/README.md, "The gate for a change of taste"). Its last line is recorded for that comparison.
-  'cv-critic-on-request': {
-    skill: 'code-video', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 60,
-    turns: [
-      { prompt: "Have a fresh critic review the whole video and tell me what it finds. Don't change anything yet." },
-    ],
-    assertions: [
-      "A fresh critic ran: a subagent started without the session's conversation (or a new non-interactive session), given the director's words and a --draft render of the whole video made in this turn, and the session waited for its report before replying (the transcripts).",
-      "The critic wrote out/<video>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads; where a subagent's reads don't show, a first look that quotes or paraphrases the treatment fails, the working title and thumbnail its prompt gives aside), and full.md's item 0 quotes it.",
-      "Nothing in the picture changed: no file under videos/<video>/scenes/, src/ or docs/ differs from the setup commit (git status and git diff; a new row in videos/<video>/CRITIQUE.md and files under out/ and .audara-cache/ aside), and no full render (not a --draft) ran.",
-      "The reply gives the critic's verdict (SHIP or ONE MORE PASS) and its findings ranked, each with its time and what it costs a viewer, with a ?t= link on this project's preview to the top ones; it offers the fixes and doesn't make them.",
-      "Recorded for a comparison of two texts, not graded: what the viewer verdict (full.md, item 0) says about a plain or template picture, what it says about anything in the picture by habit (motion without a cause, glow over everything, words or chrome the idea doesn't use), and how many of its top changes add to the picture, take something out of it, or do neither.",
-    ],
-  },
   // creative range: run 3 times with the skills and 3 times without (--without); a blind judge compares
   // the two sets of contact sheets. The skills must not make the results narrower or plainer.
   'cv-range-loop': {
@@ -327,7 +309,6 @@ const cases: Record<string, Case> = {
     assertions: [
       'After turn 2 no serif face is loaded for this video (font files and font calls in src/look.ts and the scenes) and no still at the brief\'s beat times shows leaves or plants.',
       "Before turn 2 ends, both rejections are written in the director's words where a later session reads them: TREATMENT.md's Decisions or docs/STYLE.md's Decisions or Avoid.",
-      "docs/STYLE.md's Avoid list is the style template's (skills/code-video/references/style-template.md), with nothing added but what the director turned down, marked (director): no ban of the session's own invention (an item crossed out for a form or a style the director named is fine; a rule the look sets itself, written where the look is described, is not a ban).",
       "After turn 3 the title's first visible frame is at 6.00 +/- 0.05 s (the timecode kept as given, not moved to a beat), the key green's HSV saturation is lower than after turn 2 at the same pixel and time, and nothing else moved: stills at the brief's other beat times match turn 2's.",
       "With the skills, turns 2 and 3 run no critic round after the build's hand-off (no fresh critic subagent, no new round folder under out/<name>/critique/: the transcripts, file times; the build's own round in turn 2 passes when turn 1 ended before its hand-off); each answers its notes with stills of the moments they name and ?t= links, and its reply doesn't ask whether to run a critic round unless it says why (much of the cut rebuilt, or something its own checks couldn't settle) and about how long one takes. Turn 4 reviews the picture with a full-cut critic round on a draft before its render (Delivery), since turns 2 and 3 changed it; when its fixes change the picture, turn 4 hands them back in the preview with a ?t= link each and renders nothing, and turn 5's \"Approved.\" renders once with no new critic round.",
       'By the end of turn 5 the MP4 is 20.00 +/- 0.04 s, 1920x1080; render.ts verify passes.',
@@ -415,8 +396,7 @@ const cases: Record<string, Case> = {
       'The storyboard\'s first row pays that Promise, and stills from 0 to 3 s, with no sound, show the result or start revealing it (people in a room and a shared birthday, say): a title card alone, or a picture that only makes sense with the narration, fails.',
       'The picture carries the explanation through visible action or change, and narration adds what viewers still need (data/words.json beside the stills at the same times). Repetition that helps comprehension, rhythm or accessibility is fine; narration standing in for a demonstration the picture could carry fails.',
       'What is stated stays true: 23 people give about a 50% chance (50.7%, computed in code, not typed), and any simplification (ignoring leap years, assuming even birthdays) is named in Never claim; if a label appears, it appears once.',
-      "Where the piece leaves out, for the story's sake, something a director asking for an explainer might expect (a recap, a definition, a step of the argument), TREATMENT.md's Assumed line says so in a few words; a piece that keeps them needn't.",
-      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"), and each author was given TREATMENT.md to read whole before its brief (the prompts that started them). With the skills, a full-cut critic ran, its prompt gave it the working title and the thumbnail (what it shows, and its words), and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
+      'If several scene authors worked, the opening scene\'s brief carried the Promise ("Keeps true"). With the skills, a full-cut critic ran, its prompt gave it the working title and the thumbnail (what it shows, and its words), and it wrote first-look.md, saying what it now believes and whether the first seconds pay what it clicked for, before it opened TREATMENT.md.',
       'Turn 3, a new session, reads the video\'s Decisions, Promise and Never claim before its first edit (the transcript), and assesses the requested cut against that recorded promise.',
       'Compared with the cut at the end of turn 2, turn 3 takes out the moment the note names, as asked, and writes it in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It keeps a note\'s local checks: no critic round and no full render.',
     ],

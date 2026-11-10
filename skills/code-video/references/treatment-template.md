@@ -59,10 +59,6 @@ a video should teach, is cut, shortened or turned into something that happens; b
 the director didn't lock doesn't earn it a place. Unless the director asked for a lesson, a piece without one
 lacks nothing; one forced in makes it feel like a class, and viewers leave.
 
-This order is a default like any other here, and some directors want the other one. Where it decides
-something they might have wanted differently (an explainer told as a story with no recap, a step of the
-argument left out for pace), the Assumed line says so in a few words, so one word from them turns it.
-
 **Licence, and its limit.** A video is an artistic work: it can simplify, leave things out or change how
 events unfold for a better story, without every qualification. The limit is what a reasonable viewer comes
 away believing. The central point stays true, and so does anything that matters if they repeat it or act on
@@ -145,8 +141,7 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
 - **Look:** <until the style frames are made, the two or three directions you'll try; then> `docs/STYLE.md`<,
   plus what this video changes and why>, and the style frame it came from.
 - **Assumed:** <every decision the director didn't make; how their name is set counts: capitals, split over
-  lines, two colours; so does how it is told, where that leaves out something they might expect (story
-  first, no recap)>.
+  lines, two colours>.
 - **Never claim:** <what would be false or unprovable here, for a product a feature, result or figure it
   doesn't have, shown as its own (a concept the director asked for is marked as one); the liberties taken
   (simplified, merged, reordered) and the central point they leave true; how illustrative values are
@@ -299,14 +294,10 @@ set plainly) is the treatment's call.
 ## Scene briefs for scene authors
 
 When several scene authors work at once (subagents on your own model, each started with only its brief:
-in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone. Its author reads the whole
-treatment first, then the brief, `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md`
-and `references/motion.md` (give their full paths). The brief is what the author builds and answers for;
-the treatment is so they know the piece theirs is part of: what comes before and after it, what the other
-scenes show, what the whole promises. One video's critic found a world staged like its neighbour seen from
-higher up, in a piece whose authors had each read only their own brief. An author who sees a clash with a
-neighbour, or a better way to do the scene's job, says so to the lead before building it; the storyboard
-stays the lead's to change. Scene authors edit only their own files and ask
+in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
+treatment's Decisions,
+`docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
+(give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
 the lead for engine changes. Their verify runs write to their own folder
 (`--out out/<video>/wip/<owner>/verify.json`), since `out/<video>/verify.json` is the lead's record of what
 changed and a project's older render.ts writes even `--only` there. Scripts and data they write to check

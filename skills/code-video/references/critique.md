@@ -40,11 +40,7 @@ again. Most of the quality comes from it. Three habits make it catch what usuall
 **Look as a viewer, not as the author.** Before hunting defects, ask of each sheet whether a stranger
 would watch it to the end, and again. Frames that read as slides (type, boxes and icons on an empty ground), a
 picture that illustrates each line literally, or one that changes by the same amount where the music
-turns, are worth fixing before any critic sees them, unless the director's words call for it. Ask the
-same of what is there: whatever could go without a viewer missing it (motion that answers nothing in the
-sound or the story, glow over everything, words or labels the idea doesn't use) is in the frame by habit,
-as a slide is. Take it out or give it a cause, where the picture gains; that is never a reason to make a
-picture plainer than its idea.
+turns, are worth fixing before any critic sees them, unless the director's words call for it.
 
 **Look where videos break, not where they've settled.** A frame in the middle of a beat shows the scene
 doing what it was written to do. Defects sit at the edges: a scene that starts a few frames late, a
@@ -322,14 +318,6 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    aside. The stretch the first look called weakest is a finding too, ranked by what it costs a viewer.
    Glow, depth or a camera move added to a weak idea is not a fix; restraint that is the idea still has
    to hold attention.
-   Then the other side, by the same test: name what is in the picture by habit rather than for this
-   piece, whatever could go without a viewer missing it (motion that answers nothing in the sound or the
-   story, glow or texture laid over everything, words, labels or chrome the idea doesn't use). It is a
-   finding where it costs the viewer something (it hides the subject, splits attention from what the
-   moment is about, tires the eye), with its time and a fix that takes it out or gives it a cause. It is
-   never a reason to make a picture plainer than its idea, and what the piece is made of (type that is
-   the picture, a named style's excess) is not habit. Where you can't tell which of the two a stretch
-   is, plain costs a viewer more.
    Rank what you find in this order: what loses the viewer (a lesson that stops the story without
    earning it, or repeats what it showed, counts: it feels like a class), then what is told that could
    be shown. A missing lesson is no finding unless the director asked for one; an explanation is judged

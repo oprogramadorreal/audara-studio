@@ -19,7 +19,7 @@ splice landing in a louder section, music stopping under the voice, words lost u
   shared repository is the licence's question (video-repo asks).
 - **Choosing,** when it's left to you: measure the candidates (`beats.py <track> --out .audara-cache/music/<name>`
   gives tempo, downbeats, sections and energy, outside the video's data) and read their names and any notes the
-  director keeps. Where you can't listen to them, say the picks are by measurement and the director's ear decides. When the
+  director keeps. You can't listen, so say the picks are by measurement and the director's ear decides. When the
   director keeps the choice, offer two or three candidates for each stretch, each with what it brings. A track
   they assigned to a moment ("use this one for the coding sequence") goes there.
 

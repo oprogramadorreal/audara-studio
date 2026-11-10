@@ -145,9 +145,8 @@ Write it with code-video's `references/style-template.md`, filled from this styl
   translucent panels with luminous edges and starry skies are what define the style here. The rest of the list
   stands: slides, captions that repeat the voice, filler light, one composition for every scene, and stock
   AI imagery (brains, robots, circuit boards, code rain) unless the subject needs it or the director asks. Add
-  what the style rules out, marked (Nutlight): hard cuts, a subject on an empty ground, a reference image
-  used as a backdrop or panned across, static characters, black shadows and everything glowing. Beyond
-  those, the list takes only what the director turns down.
+  hard cuts, a subject on an empty ground, a reference image used as a backdrop or panned across, static
+  characters, black shadows and everything glowing.
 
 ## Checks
 
