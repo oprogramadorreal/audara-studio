@@ -149,7 +149,9 @@ video in the same project with a look of its own, which must leave the first one
 (`cv-second-video-own-look`: the plant `first-video-baseline` verifies the first video twice before the
 session, in `baseline/` beside `work/`, for the grader to compare with), a cleanup asked for mid-production
 that must leave what the next round needs (`cv-cleanup-keeps-next-round`: the plant `disk-cleanup` adds a
-production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a product film
+production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a critic's
+review asked for on a finished video, with nothing changed (`cv-critic-on-request`, also the short way to
+compare two versions of the critic's prompt: "The gate for a change of taste"), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
 a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
@@ -231,6 +233,40 @@ reach each other's. A Codex run also gets `codex-sessions/`, its session files f
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
 
+## The gate for a change of taste
+
+The skills are read by models whose leanings differ, and a line that corrects one can push another past
+the right answer (`docs/design.md`, "Text that serves any reader"). So a change to what the skills say
+about taste (the look, the pacing, the critic's bar, what counts as a finding) runs with the old text
+beside it before it merges, on the same day and machine, on each reader the plugin supports: the weakest
+in each tool, and the strongest. In 2026-11 that is Claude Opus 5.5 and Claude Fable 5.2 in Claude Code,
+and Codex's default model. It passes when no reader does worse with the new text than with the old one.
+
+- **Two texts at once.** `git archive <commit> skills | tar -x -C evals/results/skills-<name>` copies a
+  commit's skills, and `task.ts --skills evals/results/skills-<name>/skills` links that copy instead of the
+  repo's, its `init.ts` included. `result.json` records the folder and `skillsText`, a hash of every .md
+  file in it, which names the text a run had. The links are live: change nothing in a skills folder while
+  a run uses it, which is one more reason to run from copies.
+- **Where the change acts.** A change to the brief or the look shows by the time the look is written
+  down: `--until docs/STYLE.md` ends a run there, with the treatment, the style frames, STYLE.md and
+  `look.ts`, in a fraction of a build's time. A change to the critic's prompt shows in `cv-critic-on-request`, run
+  with each text on one finished project (`EVAL_PROJECT`). What only a build shows (scene authors, the cut)
+  takes whole runs: `cv-zero-asset` for one idea, a showreel for many scenes.
+- **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives
+  each of three fresh sessions the two videos as X and Y (copied without their metadata, with sheets of
+  their frames labelled by time and five full-size stills), swaps which is X from one judge to the next,
+  and asks which the person who asked would rather have. The question is fixed and two-sided: neither
+  the busier nor the quieter video is better in itself. `verdict.json` holds each vote, with its reasons
+  and the model that judge ran. A judge can't reward taste past its own, so for a comparison that decides
+  something the judge is the strongest model there is, or the director (`--dry` builds the packets to look
+  at).
+- **What it can't show.** A judge sees frames: no sound, and motion only as frames show it. One run per
+  arm is noisy (two runs of one text can differ by more than two texts do), so a split vote is no result,
+  and a change that matters gets more than one run per arm.
+- **A new model.** Before any text changes for it, run the cases with the skills as they are and
+  `--without`, and judge the pairs. What it now does well alone is a candidate to cut; what it still gets
+  wrong is the evidence a change needs.
+
 ## Script tests
 
 `evals/tests/` tests the scripts themselves, offline: no session, no network, no paid call. `imagegen.py`'s
@@ -250,7 +286,8 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 and three text files); preview's sheets; and what niche refuses before any network call.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
-included) and piece boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
+`shutter` a render takes; neither needs Chrome or ffmpeg.
 `test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
 frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget

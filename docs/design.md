@@ -98,7 +98,9 @@ The steps follow SKILL.md's session checklist, in its order:
    once, and again with the treatment. The preview command asks for that where it prints the link, since
    the skill's text alone didn't hold: Claude sessions held the link back for 20 to 90 minutes.
 3. **Look.** When the look is left to it, it renders two or three style frames of the key moment, each a
-   different idea, picks one by looking, and writes the shared look down (`docs/STYLE.md`, `src/look.ts`).
+   different idea (more while the idea is still open and a frame is cheap), picks one by looking, and writes
+   the shared look down (`docs/STYLE.md`, `src/look.ts`). A frame that shows a better piece than the
+   treatment describes changes the treatment.
 4. **Sound.** For a song, it analyzes the beats, sections and lyrics and cuts the window the video uses.
    For narration, it asks before spending ElevenLabs credits and makes the voice with its word timings,
    with a free stand-in voice meanwhile. Music and effects nobody gave are synthesized in code (free)
@@ -172,8 +174,9 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   code-video's SKILL.md, for a note or a cut in any session. In video-ideas' SKILL.md, which is text only and
   reads no reference. In a line of the AGENTS.md `init` writes, for a later session that loads no skill.
 - **Each video's decisions travel in its treatment:** the Promise line, and the liberties in Never claim, which
-  the description's credits already read. Scene authors read "not the rest of the treatment", so their briefs
-  carry "Keeps true"; a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
+  the description's credits already read. Scene authors' briefs carry "Keeps true", so what their scene owes
+  the Promise isn't lost in a long treatment (until 0.13.0 they read "not the rest of the treatment"; they
+  now read all of it first); a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
   (history.md, 0.8.2: clips cut too short for qc). A round of notes runs no critic, so the lead reads a cut
   against the Promise itself, and says so when the cut no longer pays it.
 - **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
@@ -654,7 +657,8 @@ finished video's thumbnails, title, description and tags (see "Publishing it: th
 
 ### Room for the model
 
-Opus 5.5 is good at motion graphics and finds approaches of its own. audara exists to give it a fast loop
+The models audara runs on are good at motion graphics and find approaches of their own, the newer ones more
+than Opus 5.5, which these skills were first written around. audara exists to give a model a fast loop
 with the director and hard-won craft, never to narrow what it can make. So the skills fix very little:
 
 - **Fixed,** because they protect the director's loop and the user:
@@ -703,6 +707,49 @@ How the skills could still limit it, and what prevents that:
   freeze the first play where it enters.
 
 The evals check this directly (see "Writing the skills").
+
+### Text that serves any reader
+
+The skills are read by models whose leanings differ: Opus 5.5 and Codex's GPT-6 Astra when most of this
+was written, stronger models since, and smaller ones too. A line written against one model's lean pushes a
+reader without that lean past the right answer, and it has done so to the model it was written for as well.
+The Avoid list first produced its own negative, a paper twin (round 4), then took a reel's labels and a
+psychedelic piece's colour splitting out (0.4.0), then ruled a red seal out of an ink-wash piece (0.8.2).
+"One persistent actor" built four showreels around one circle. "Its words included" came before a music
+video with its lyric in 18 of 24 frames. What held up on every model tried is of another kind: `verify`,
+`qc.py`, the stills loop, the fresh critic, style frames picked by looking, the preview. The difference:
+
+- **A steer** tells the model which way to lean before it has made anything. It is right only for a reader
+  with the lean it was written against.
+- **A check** holds something rendered against a bar. It bites only where the output falls short, so it
+  corrects each reader by as much as that reader is off.
+
+So a taste default is written, or changed, this way (0.13.0; history.md has the review it came from):
+
+- **Prefer the check.** What is known about a failure goes where a rendered frame is held against it (the
+  style-frame pick, the stills loop, the critic's prompt), not into something to design away from. The Avoid
+  list is that kind of knowledge: it stays, the critic holds the look against it, and a project's copy
+  takes additions only from the director, since bans a session wrote for itself are how the list went
+  against two briefs.
+- **A guard triggers on the output, never on the model's opinion of itself.** No text asks a reader
+  whether it is good enough to skip a step, and no skill names a model: a reader that isn't the one named
+  would exempt itself, and a smaller one would be wrong to.
+- **Add the missing side and keep the existing one.** Where a bar pushes one way ("a plain picture nobody
+  asked for is a finding"), the reader that needs the push keeps it, and the other side becomes a check too
+  (what is in the frame by habit, which the critic now names). Swapping the push for something neutral
+  loses it: before round 4, "derive the look from the subject's own material" drew props flat on paper.
+- **Anchors stay; ceilings go.** "Two or three style frames" holds a weaker reader at a number that
+  worked, where "at least two" would hold it at two. So the count stays, and the reference says it is
+  where to start, not a ceiling.
+- **Facts a reader may not share are written as conditions.** "Where you can't listen" stays true when a
+  model can.
+- **A change passes on the weakest reader.** The old text and the new run side by side on each model the
+  plugin supports, the weakest in each tool included, and the videos are judged blind in pairs
+  (`evals/README.md`, "The gate for a change of taste"). Which model and run each default was measured on is
+  in history.md, never in the skills.
+- **A new model starts with a baseline, not with new text:** the cases with the skills as they are, and
+  without them. What it now does well alone is a candidate to cut; what it still gets wrong is the evidence
+  a change needs.
 
 ## What made pdoom-video work (preserve these)
 
@@ -1211,6 +1258,10 @@ they differ, follow the stricter rule. What that means here:
   that shouldn't. Tune the description with the description optimizer in Anthropic's skill-creator.
 - **A creative-range eval:** the same open brief, with and without the skill, two or three times each. The
   skill must not make the results narrower or plainer; if it does, find what anchors them and cut it.
+- **A gate for a change of taste:** the old text and the new, side by side on every model the plugin
+  supports, judged blind in pairs with the judge's model recorded (`evals/README.md`, "The gate for a change
+  of taste"; `task.ts --skills` and `--until`, `judge.ts`, `cv-critic-on-request`). See "Text that serves any
+  reader".
 - **Fresh sessions, every model.** Compare with and without the skill (in Claude Code, `skillOverrides`
   turns a skill off), using every model the user will run: Claude Opus, a smaller Claude model, and Codex's
   default model.
