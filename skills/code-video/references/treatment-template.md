@@ -294,10 +294,14 @@ set plainly) is the treatment's call.
 ## Scene briefs for scene authors
 
 When several scene authors work at once (subagents on your own model, each started with only its brief:
-in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone: its author reads it, the
-treatment's Decisions,
-`docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md` and `references/motion.md`
-(give their full paths), not the rest of the treatment. Scene authors edit only their own files and ask
+in Codex, `fork_turns` `"none"`), each scene gets a brief that stands alone. Its author reads the whole
+treatment first, then the brief, `docs/STYLE.md`, `docs/ENGINE.md` and this skill's `references/contract.md`
+and `references/motion.md` (give their full paths). The brief is what the author builds and answers for;
+the treatment is so they know the piece theirs is part of: what comes before and after it, what the other
+scenes show, what the whole promises. One video's critic found a world staged like its neighbour seen from
+higher up, in a piece whose authors had each read only their own brief. An author who sees a clash with a
+neighbour, or a better way to do the scene's job, says so to the lead before building it; the storyboard
+stays the lead's to change. Scene authors edit only their own files and ask
 the lead for engine changes. Their verify runs write to their own folder
 (`--out out/<video>/wip/<owner>/verify.json`), since `out/<video>/verify.json` is the lead's record of what
 changed and a project's older render.ts writes even `--only` there. Scripts and data they write to check
