@@ -47,8 +47,10 @@ for (const [i, p] of cfg.pairs.entries()) {
     return { pick: letter(v.better), margin: v.margin ?? '', why: fix(v.why ?? v.error), X: { best: fix(v[X]?.best), worst: fix(v[X]?.worst) }, Y: { best: fix(v[Y]?.best), worst: fix(v[Y]?.worst) } };
   });
   const tally = verdict ? { X: verdict.tally[X], Y: verdict.tally[Y], tie: verdict.tally.tie, none: verdict.tally.none } : null;
-  // (every turn, as the judges had it: a later one can carry direction the first doesn't)
-  const turns: string[] = verdict?.request ?? [];
+  // (every turn, as the judges had it: a later one can carry direction the first doesn't. Packets no judge has
+  // voted on yet, from judge.ts --dry, have the request beside them.)
+  const asking = path.join(dir, 'request.json');
+  const turns: string[] = verdict?.request ?? (existsSync(asking) ? JSON.parse(readFileSync(asking, 'utf8')) : []);
   const asked = turns.length ? turns.map((t, k) => `${turns.length > 1 ? `<span class="dim">${k + 1}.</span> ` : ''}${esc(t)}`).join('<br>') : '(not recorded)';
   const reveal = { X: p[X], Y: p[Y], facts: p.facts ? { X: p.facts[X], Y: p.facts[Y] } : null, judge: verdict?.judge?.model ?? null, tally, votes };
   key.push({ pair: i + 1, title: p.title, dir: name, packet, X: { run: X, what: p[X], folder: verdict?.[X]?.run }, Y: { run: Y, what: p[Y], folder: verdict?.[Y]?.run } });
@@ -79,8 +81,9 @@ for (const [i, p] of cfg.pairs.entries()) {
 }
 writeFileSync(path.join(OUT, 'key.json'), JSON.stringify(key, null, 1));
 
-// (picks are kept in the browser under the pairs' folders, so another set of pairs starts empty)
-const PAGE = Bun.hash(cfg.pairs.map((p) => p.dir).join('|')).toString(36);
+// (picks are kept in the browser under the pairs' folders and the order each is shown in: another set of pairs
+// starts empty, and so does a page whose X and Y changed places, where a kept "X" would name the other video)
+const PAGE = Bun.hash((key as { dir: string; packet: number }[]).map((k) => `${k.dir}:${k.packet}`).join('|')).toString(36);
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blind pairs</title>

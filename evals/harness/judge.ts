@@ -98,7 +98,11 @@ function side(runDir: string, video?: string): Side {
 const a = side(A!, opt('a-video')), b = side(B!, opt('b-video'));
 const request = a.request.length ? a.request : b.request;
 if (!request.length) fail(`neither folder has a result.json with the request: judge.ts takes task runs' folders`);
-if (a.request.length && b.request.length && a.request[0] !== b.request[0]) fail(`the two runs answer different requests:\n  a: ${a.request[0]}\n  b: ${b.request[0]}`);
+// (every turn: two runs that open alike and were then told different things were asked for different videos,
+// and a judge is given one request for both)
+for (let i = 0; a.request.length && b.request.length && i < Math.max(a.request.length, b.request.length); i++) {
+  if (a.request[i] !== b.request[i]) fail(`the two runs were asked different things at turn ${i + 1}:\n  a: ${a.request[i] ?? '(no such turn)'}\n  b: ${b.request[i] ?? '(no such turn)'}`);
+}
 console.log(`a: ${path.relative(REPO, a.video)} (${a.duration.toFixed(1)} s)\nb: ${path.relative(REPO, b.video)} (${b.duration.toFixed(1)} s)`);
 
 // ---------------------------------------------------------------- what a judge gets
@@ -226,6 +230,9 @@ judged = readdirSync(OUT).filter((n) => n === 'verdict.json' || n === 'claude-se
 if (judged.length && !argv.includes('--dry')) fail(`${OUT} already holds a judging (${judged.join(', ')}): give another --out`);
 packet(0);
 packet(1); // (with one judge too: pick.ts draws either order for the director's page)
+// (what was asked, beside the packets: pick.ts shows it on a page made before any judge has voted. It says
+// nothing a judge isn't told, and a folder that holds a judging keeps the one in its verdict.)
+if (!judged.length) writeFileSync(path.join(OUT, 'request.json'), JSON.stringify(request, null, 1));
 // --dry: the packets and the prompt, and no judge (to look at what one would get, or to judge by eye)
 if (argv.includes('--dry')) { console.log(`\n${PROMPT}\n\n${OUT}`); process.exit(0); }
 const votes = await Promise.all(Array.from({ length: N }, (_, i) => judge(i)));

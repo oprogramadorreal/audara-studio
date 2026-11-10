@@ -266,7 +266,8 @@ when no reader does worse with the new text than with the old one.
   something the judge is the strongest model there is, and the director too (`--dry` builds the packets
   without judging). A judge is a session, not a sandbox: its folder holds nothing that names a run, and a
   folder that already holds a judging is refused, so no earlier verdict sits one level above a judge at work.
-- **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs:
+- **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs
+  (or from `--dry` packets, before any judge has voted):
   the prompt, the two videos as X and Y with sound, in an order drawn for each pair, the question, and a
   reveal that holds which was which and the judges' votes. The person who directs the project picks before
   opening it, and a button copies their picks as text; `key.json` beside the page says which was which.
@@ -301,7 +302,12 @@ and three text files); preview's sheets; and what niche refuses before any netwo
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
-`shutter` a render takes; neither needs Chrome or ffmpeg.
+`shutter` a render takes or reports; neither needs Chrome or ffmpeg.
+`test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
+started: which video `judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to
+touch, two runs told different things at a later turn, a folder that already holds a judging, and what
+`pick.ts` puts on the director's page (every turn of the request, the order kept on a rebuild, picks kept
+apart when X and Y change places, the judges' letters turned to the page's).
 `test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
 frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
@@ -351,6 +357,7 @@ bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
 bun evals/tests/test_render_inputs.ts
+bun evals/tests/test_judge_pick.ts
 bun evals/tests/test_footage.ts
 bun evals/tests/test_soundtrack.ts
 ```

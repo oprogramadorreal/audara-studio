@@ -4601,3 +4601,12 @@ limits, which the header of `judge.ts` now states: one call at a time for a fold
 judging stopped by hand, and blindness that rests on the judge's folder holding nothing, not on a sandbox.
 
 In a fourth round both read the result at 94eb17c and called it ready to merge.
+
+After that the user had Codex review the whole branch against main, and it found three more in the comparison
+tools. `judge.ts` compared only the first turn of the two runs' requests, so runs that opened alike and were
+then told different things passed, and a judge was given one run's request for both: every turn is compared
+now, and a difference is refused. A page made from packets no judge had voted on showed no prompt: `judge.ts`
+writes the request beside the packets. And the page kept the director's picks under a key that ignored which
+video was X, so a page whose order changed would have shown an earlier "X" beside the other video: the order
+shown is part of the key. `evals/tests/test_judge_pick.ts` now covers both tools offline, on two one-second
+videos and with no judge started: 11 checks, four of which fail on the code before these three fixes.
