@@ -46,7 +46,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import numpy as np
+# (before numpy: its OpenBLAS reserves a buffer per CPU thread when imported, 758 MB of a 24-thread laptop's
+# commit for a server that sits idle through an hour-long run, and Windows counts memory that is reserved,
+# not just what is touched; with one thread it is 19 MB, and nothing here multiplies matrices)
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
+import numpy as np  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SR = 44100

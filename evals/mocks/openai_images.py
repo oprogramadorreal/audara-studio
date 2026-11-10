@@ -42,8 +42,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-import numpy as np
-from PIL import Image
+# (before numpy: its OpenBLAS reserves a buffer per CPU thread when imported, 758 MB of a 24-thread laptop's
+# commit for a server that sits idle through an hour-long run; with one thread it is 19 MB: elevenlabs.py)
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
+import numpy as np  # noqa: E402
+from PIL import Image  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 # the request log stays out of the repo (evals/results/ is git-ignored)
