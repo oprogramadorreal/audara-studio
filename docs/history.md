@@ -4589,12 +4589,15 @@ Their second reports, on those changes:
   branch's: one more reason to read that pair as no result. It was a test of the tool, and its folder was
   not kept.
 
-Their third reports: Opus 5.5 called the PR ready, with three things worth making first, all made (the Haiku
+Their third reports: Opus 5.5 called the PR ready, with four things worth making first, all made (the Haiku
 run above says its folder wasn't kept, and no longer claims to show whose taste is weaker; no style frame was
-"shown before building", where two runs did name the frames' folder in a turn's last reply; lines rewrapped).
+"shown before building", where two runs did name the frames' folder in a turn's last reply; lines rewrapped;
+the PR's description names Codex's later rounds).
 Codex found two more ways `judge.ts` could lose or misstate evidence: a video inside a packet folder passed
 the check when its path was typed in another case, and `--dry` could build other videos' packets under a
 verdict already there. The first now compares paths as the platform does; the second is refused, so a folder
 that holds a judging keeps that judging's packets. It named what it would accept as an eval tool's stated
 limits, which the header of `judge.ts` now states: one call at a time for a folder, no transcripts from a
 judging stopped by hand, and blindness that rests on the judge's folder holding nothing, not on a sandbox.
+
+In a fourth round both read the result at 94eb17c and called it ready to merge.
