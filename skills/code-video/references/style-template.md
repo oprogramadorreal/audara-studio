@@ -32,8 +32,12 @@ for them
   subject's props drawn flat on a plain ground. Try two or three directions as style frames: the key moment
   in the engine, each made a different way (a lit form, a flat graphic field, a treated photograph, type
   alone: whatever the idea suggests), not one layout recoloured; one scene file and a still each, no sync.
+  Two or three is where to start, not a ceiling: while the idea is still open and a frame costs minutes,
+  another direction is cheaper than a build on the wrong one.
   Keep the one that carries the idea at a glance and that no other video of this subject would have; the
-  others go in the treatment's Also considered, so the director can switch.
+  others go in the treatment's Also considered, so the director can switch. A frame can change the idea
+  too: when the one you keep shows a better piece than the treatment describes, rewrite the treatment to it
+  (its idea, its rows) and say what changed in the message that posts the frames.
 
 Ask only for what's missing, such as the logo as a file or whether the brand's typeface may be used in
 video. The director's material wins over everything here, and what they decide or turn down for the whole
