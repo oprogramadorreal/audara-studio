@@ -12,7 +12,7 @@ TOOLS="${1:-both}"; shift || true
 [ "$TOOLS" = both ] && TOOLS="claude codex"
 MAX=4   # concurrent runs: each may start a browser and render on the GPU
 FIRST="cv-title-card cv-song-brief cv-vertical-explainer cv-zero-asset cv-direction-rejection cv-locked-script cv-visual-direction-no-script cv-product-real-screens cv-product-concept-mockup cv-images-offered cv-images-used cv-images-no-key cv-promise-opening cv-licence-keeps-facts cv-render-waits-for-yes cv-render-no-review st-beats-json st-voiceover-no-key st-music-no-key st-asks-before-spending vi-ideas-only vi-product-screens vi-refine-keeps-constraints vi-adapt-found-prompt vi-silent-long vi-improve-and-make vi-select-then-make vi-ideas-and-make vi-script-alone vi-teach-in-story vi-teach-asked vr-empty-first"
-LATER="cv-later-session-small-change cv-second-format cv-second-video-own-look cv-cleanup-keeps-next-round vi-existing-project vr-first-repo vr-existing-history"
+LATER="cv-later-session-small-change cv-second-format cv-second-video-own-look cv-cleanup-keeps-next-round cv-critic-on-request vi-existing-project vr-first-repo vr-existing-history"
 CASES="${CASES:-$FIRST $LATER}"
 for case in $CASES; do
   [ -f "evals/tasks/$case/case.json" ] || { echo "no case '$case' in evals/tasks/: CASES takes case folder names, e.g. CASES=\"cv-title-card cv-second-format\""; exit 1; }

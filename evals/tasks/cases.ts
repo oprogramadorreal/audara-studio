@@ -143,6 +143,24 @@ const cases: Record<string, Case> = {
       "Turn 2's reply says what went and its total size, what stayed for the next round and why (the comparison draft, the 60 fps test, the render's pieces, the paid takes, the model and decoded music, at least), and what could go after a decision (the 60 fps test once it's picked, or the like).",
     ],
   },
+  // A review asked for after the build, in a later session on a finished project (run-tasks.sh gives it the
+  // title-card project, like the other later-session cases): the full-cut critic alone, on a draft the session
+  // renders, with nothing changed. It is also the short way to see what a change to the critic's prompt does on
+  // each model: the same project, the old text and the new (task.ts --skills), in minutes instead of a whole
+  // build (evals/README.md, "The gate for a change of taste"). Its last line is recorded for that comparison.
+  'cv-critic-on-request': {
+    skill: 'code-video', setup: { from: '$EVAL_PROJECT', project: 'init' }, timeoutMinutes: 60,
+    turns: [
+      { prompt: "Have a fresh critic review the whole video and tell me what it finds. Don't change anything yet." },
+    ],
+    assertions: [
+      "A fresh critic ran: a subagent started without the session's conversation (or a new non-interactive session), given the director's words and a --draft render of the whole video made in this turn, and the session waited for its report before replying (the transcripts).",
+      "The critic wrote out/<video>/critique/r<N>/first-look.md before it opened TREATMENT.md or docs/STYLE.md (its reads; where a subagent's reads don't show, a first look that quotes or paraphrases the treatment fails, the working title and thumbnail its prompt gives aside), and full.md's item 0 quotes it.",
+      "Nothing in the picture changed: no file under videos/<video>/scenes/, src/ or docs/ differs from the setup commit (git status and git diff; a new row in videos/<video>/CRITIQUE.md and files under out/ and .audara-cache/ aside), and no full render (not a --draft) ran.",
+      "The reply gives the critic's verdict (SHIP or ONE MORE PASS) and its findings ranked, each with its time and what it costs a viewer, with a ?t= link on this project's preview to the top ones; it offers the fixes and doesn't make them.",
+      "Recorded for a comparison of two texts, not graded: what the viewer verdict (full.md, item 0) says about a plain or template picture, what it says about anything in the picture by habit (motion without a cause, glow over everything, words or chrome the idea doesn't use), and how many of its top changes add to the picture, take something out of it, or do neither.",
+    ],
+  },
   // creative range: run 3 times with the skills and 3 times without (--without); a blind judge compares
   // the two sets of contact sheets. The skills must not make the results narrower or plainer.
   'cv-range-loop': {
