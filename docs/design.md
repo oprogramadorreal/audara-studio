@@ -98,9 +98,7 @@ The steps follow SKILL.md's session checklist, in its order:
    once, and again with the treatment. The preview command asks for that where it prints the link, since
    the skill's text alone didn't hold: Claude sessions held the link back for 20 to 90 minutes.
 3. **Look.** When the look is left to it, it renders two or three style frames of the key moment, each a
-   different idea (more while the idea is still open and a frame is cheap), picks one by looking, and writes
-   the shared look down (`docs/STYLE.md`, `src/look.ts`). A frame that shows a better piece than the
-   treatment describes changes the treatment.
+   different idea, picks one by looking, and writes the shared look down (`docs/STYLE.md`, `src/look.ts`).
 4. **Sound.** For a song, it analyzes the beats, sections and lyrics and cuts the window the video uses.
    For narration, it asks before spending ElevenLabs credits and makes the voice with its word timings,
    with a free stand-in voice meanwhile. Music and effects nobody gave are synthesized in code (free)
@@ -174,9 +172,8 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   code-video's SKILL.md, for a note or a cut in any session. In video-ideas' SKILL.md, which is text only and
   reads no reference. In a line of the AGENTS.md `init` writes, for a later session that loads no skill.
 - **Each video's decisions travel in its treatment:** the Promise line, and the liberties in Never claim, which
-  the description's credits already read. Scene authors' briefs carry "Keeps true", so what their scene owes
-  the Promise isn't lost in a long treatment (until 0.13.0 they read "not the rest of the treatment"; they
-  now read all of it first); a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
+  the description's credits already read. Scene authors read "not the rest of the treatment", so their briefs
+  carry "Keeps true"; a critic gets it in its prompt. Guidance stated only to the lead doesn't reach them
   (history.md, 0.8.2: clips cut too short for qc). A round of notes runs no critic, so the lead reads a cut
   against the Promise itself, and says so when the cut no longer pays it.
 - **The limit is tested by someone who hasn't read the argument.** The full-cut critic's first look, written
@@ -724,32 +721,33 @@ video with its lyric in 18 of 24 frames. What held up on every model tried is of
 - **A check** holds something rendered against a bar. It bites only where the output falls short, so it
   corrects each reader by as much as that reader is off.
 
-So a taste default is written, or changed, this way (0.13.0; history.md has the review it came from):
+So a change to a taste default is weighed this way (0.13.0; history.md has the review it came from and the
+gate's first run):
 
 - **Prefer the check.** What is known about a failure goes where a rendered frame is held against it (the
-  style-frame pick, the stills loop, the critic's prompt), not into something to design away from. The Avoid
-  list is that kind of knowledge: it stays, the critic holds the look against it, and a project's copy
-  takes additions only from the director, since bans a session wrote for itself are how the list went
-  against two briefs.
+  style-frame pick, the stills loop, the critic's prompt), not into something to design away from.
 - **A guard triggers on the output, never on the model's opinion of itself.** No text asks a reader
   whether it is good enough to skip a step, and no skill names a model: a reader that isn't the one named
   would exempt itself, and a smaller one would be wrong to.
-- **Add the missing side and keep the existing one.** Where a bar pushes one way ("a plain picture nobody
-  asked for is a finding"), the reader that needs the push keeps it, and the other side becomes a check too
-  (what is in the frame by habit, which the critic now names). Swapping the push for something neutral
-  loses it: before round 4, "derive the look from the subject's own material" drew props flat on paper.
-- **Anchors stay; ceilings go.** "Two or three style frames" holds a weaker reader at a number that
-  worked, where "at least two" would hold it at two. So the count stays, and the reference says it is
-  where to start, not a ceiling.
-- **Facts a reader may not share are written as conditions.** "Where you can't listen" stays true when a
-  model can.
-- **A change passes on the weakest reader.** The old text and the new run side by side on each model the
-  plugin supports, the weakest in each tool included, and the videos are judged blind in pairs
-  (`evals/README.md`, "The gate for a change of taste"). Which model and run each default was measured on is
-  in history.md, never in the skills.
+- **Anchors stay.** A number or a bar that worked on a weaker reader ("two or three style frames", "a plain
+  picture nobody asked for is a finding") stays as it is. Swapping a push for something neutral loses it:
+  before round 4, "derive the look from the subject's own material" drew props flat on paper.
+- **Which kind a line is, only a run shows.** The first changes written under this rule were meant as
+  checks, facts and ceilings removed: the critic naming what is in the frame by habit, a project's Avoid
+  list taking bans only from the director, the engine's post defaults described as a look, a style frame
+  allowed to rewrite the treatment. Run beside the old text as one bundle, they were preferred on one model,
+  made no difference on a second, and lost slightly on the third, Opus 5.5, whose picture came out sparser.
+  With six changes in one bundle no result could be traced to a line, and all of them were withdrawn
+  (history.md, 0.13.0). A line's kind is a guess until it has run.
+- **A change passes on every reader, one change at a time.** The old text and the new run side by side on
+  each model the plugin supports, the weakest in each tool included, and the videos are judged blind in
+  pairs, by fresh judges and by the director (`evals/README.md`, "The gate for a change of taste"). It
+  passes when no reader does worse. Which model and run each default was measured on is in history.md,
+  never in the skills.
 - **A new model starts with a baseline, not with new text:** the cases with the skills as they are, and
   without them. What it now does well alone is a candidate to cut; what it still gets wrong is the evidence
-  a change needs.
+  a change needs. Fable 5.2's first baseline (0.13.0): the video it made with the skills was preferred to
+  the one it made alone, by the director and by three judges of three.
 
 ## What made pdoom-video work (preserve these)
 
@@ -1258,10 +1256,10 @@ they differ, follow the stricter rule. What that means here:
   that shouldn't. Tune the description with the description optimizer in Anthropic's skill-creator.
 - **A creative-range eval:** the same open brief, with and without the skill, two or three times each. The
   skill must not make the results narrower or plainer; if it does, find what anchors them and cut it.
-- **A gate for a change of taste:** the old text and the new, side by side on every model the plugin
-  supports, judged blind in pairs with the judge's model recorded (`evals/README.md`, "The gate for a change
-  of taste"; `task.ts --skills` and `--until`, `judge.ts`, `cv-critic-on-request`). See "Text that serves any
-  reader".
+- **A gate for a change of taste:** the old text and the new, one change at a time, side by side on every
+  model the plugin supports, judged blind in pairs by fresh judges (the judge's model recorded) and by the
+  director (`evals/README.md`, "The gate for a change of taste"; `task.ts --skills` and `--until`,
+  `judge.ts`, `pick.ts`). See "Text that serves any reader".
 - **Fresh sessions, every model.** Compare with and without the skill (in Claude Code, `skillOverrides`
   turns a skill off), using every model the user will run: Claude Opus, a smaller Claude model, and Codex's
   default model.
@@ -1379,7 +1377,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package;
 │                                # docs/style/nutlight/, the style's references, when a video names it
 ├── videos/<name>/
-│   ├── video.json               # title, size, fps, and its audio (or a duration)
+│   ├── video.json               # title, size, fps, shutter, and its audio (or a duration)
 │   ├── TREATMENT.md             # this video's idea, storyboard, scene briefs and Decisions
 │   ├── CRITIQUE.md              # the critic rounds' ledger
 │   ├── timeline.ts, scenes/     # its edit and its scene modules

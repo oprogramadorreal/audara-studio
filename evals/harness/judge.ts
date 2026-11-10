@@ -15,8 +15,9 @@
 //
 // A judge can't reward taste past its own, and can't hear: verdict.json records the model each judge ran, as its
 // transcript names it, beside its vote, and says the picture alone was judged. For a comparison that decides
-// something, the judge is the strongest model there is, or the director. The question is one fixed prompt (below),
-// two-sided on purpose: neither the busier nor the quieter video is better in itself.
+// something, the judge is the strongest model there is, and the director (pick.ts builds their page from the
+// folders this writes). The question is one fixed prompt (below), two-sided on purpose: neither the busier nor
+// the quieter video is better in itself.
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';

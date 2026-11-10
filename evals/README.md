@@ -149,9 +149,7 @@ video in the same project with a look of its own, which must leave the first one
 (`cv-second-video-own-look`: the plant `first-video-baseline` verifies the first video twice before the
 session, in `baseline/` beside `work/`, for the grader to compare with), a cleanup asked for mid-production
 that must leave what the next round needs (`cv-cleanup-keeps-next-round`: the plant `disk-cleanup` adds a
-production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a critic's
-review asked for on a finished video, with nothing changed (`cv-critic-on-request`, also the short way to
-compare two versions of the critic's prompt: "The gate for a change of taste"), a product film
+production's clutter, untracked, and `disk/manifest.json` beside `work/` says what should stay), a product film
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
 a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
@@ -242,6 +240,10 @@ beside it before it merges, on the same day and machine, on each reader the plug
 in each tool, and the strongest. In 2026-11 that is Claude Opus 5.5 and Claude Fable 5.2 in Claude Code,
 and Codex's default model. It passes when no reader does worse with the new text than with the old one.
 
+- **One change at a time.** The gate's first run (0.13.0) put six changes in one text. One model's video
+  was preferred with it, one's was no different and one's was slightly worse, and none of that could be
+  traced to a line, so all six were withdrawn. A change is one edit with one purpose; several run as
+  several texts.
 - **Two texts at once.** `git archive <commit> skills | tar -x -C evals/results/skills-<name>` copies a
   commit's skills, and `task.ts --skills evals/results/skills-<name>/skills` links that copy instead of the
   repo's, its `init.ts` included. `result.json` records the folder and `skillsText`, a hash of every .md
@@ -249,20 +251,28 @@ and Codex's default model. It passes when no reader does worse with the new text
   a run uses it, which is one more reason to run from copies.
 - **Where the change acts.** A change to the brief or the look shows by the time the look is written
   down: `--until docs/STYLE.md` ends a run there, with the treatment, the style frames, STYLE.md and
-  `look.ts`, in a fraction of a build's time. A change to the critic's prompt shows in `cv-critic-on-request`, run
-  with each text on one finished project (`EVAL_PROJECT`). What only a build shows (scene authors, the cut)
-  takes whole runs: `cv-zero-asset` for one idea, a showreel for many scenes.
+  `look.ts`, in a fraction of a build's time. What only a build shows (the critic's findings and what the
+  session does about them, scene authors, the cut) takes whole runs: `cv-zero-asset` for one idea, a
+  showreel for many scenes.
 - **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives
   each of three fresh sessions the two videos as X and Y (copied without their metadata, with sheets of
   their frames labelled by time and five full-size stills), swaps which is X from one judge to the next,
   and asks which the person who asked would rather have. The question is fixed and two-sided: neither
   the busier nor the quieter video is better in itself. `verdict.json` holds each vote, with its reasons
   and the model that judge ran. A judge can't reward taste past its own, so for a comparison that decides
-  something the judge is the strongest model there is, or the director (`--dry` builds the packets to look
-  at).
+  something the judge is the strongest model there is, and the director too (`--dry` builds the packets
+  without judging).
+- **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs:
+  the prompt, the two videos as X and Y with sound, in an order drawn for each pair, the question, and a
+  reveal that holds which was which and the judges' votes. The person who directs the project picks before
+  opening it, and a button copies their picks as text; `key.json` beside the page says which was which.
+  They hear the sound and see it move, which no judge does, so where the two differ theirs counts for
+  more. The config is `{ "out": <folder>, "pairs": [{ "dir": <a judge.ts folder>, "title", "a": <what run a
+  is>, "b": <what run b is>, "facts": { "a", "b" } }] }`.
 - **What it can't show.** A judge sees frames: no sound, and motion only as frames show it. One run per
   arm is noisy (two runs of one text can differ by more than two texts do), so a split vote is no result,
-  and a change that matters gets more than one run per arm.
+  and a change that matters gets more than one run per arm. Two runs of the old text, judged the same way,
+  show how far apart one text's runs land: a difference smaller than that one is not a result.
 - **A new model.** Before any text changes for it, run the cases with the skills as they are and
   `--without`, and judge the pairs. What it now does well alone is a candidate to cut; what it still gets
   wrong is the evidence a change needs.

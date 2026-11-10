@@ -31,9 +31,10 @@ them for the topic before changing a behavior, since most choices answer somethi
 - Eval cases live in `evals/tasks/cases.ts`; `bun evals/tasks/cases.ts` writes every `case.json`. Don't edit
   those by hand.
 - A change to what the skills say about taste (the look, pacing, the critic's bar) runs the gate in
-  `evals/README.md` first: the old text beside the new, on the weakest model the plugin supports as well as
-  the strongest. Prefer a check on something rendered to a line that says which way to lean, and name no
-  model in a skill (`docs/design.md`, "Text that serves any reader").
+  `evals/README.md` first, one change at a time: the old text beside the new on every model the plugin
+  supports, judged blind by fresh judges and by the director. Prefer a check on something rendered to a
+  line that says which way to lean, and name no model in a skill (`docs/design.md`, "Text that serves any
+  reader").
 - A behavior change updates every place that states it: SKILL.md and its references, the AGENTS.md section
   `skills/code-video/scripts/init.ts` writes into projects, the README, the eval cases, `docs/design.md`
   (edited in place) and `docs/history.md` (a dated entry with the evidence).
