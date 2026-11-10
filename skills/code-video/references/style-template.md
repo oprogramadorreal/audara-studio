@@ -104,7 +104,8 @@ in Avoid, marked (director).>
   as one where it could pass for the product (`references/images.md`).
 
 ## Avoid unless the piece calls for them
-<The list at the end of this template, with what this project adds or crosses out.>
+<The list at the end of this template, less what a form or a style the director named asks for, plus what
+the director turned down, marked (director). No bans of your own.>
 ```
 
 ## Palette: roles, glow, brand colours
@@ -190,13 +191,22 @@ a contact sheet is usually shown scaled down, so its thumbnails understate what 
 
 ## Avoid unless the piece calls for them
 
-Copy this list into `docs/STYLE.md` and adapt it. These are defaults, not choices: what models reach for
+Copy this list into `docs/STYLE.md`. These are defaults, not choices: what models reach for
 when nothing steers them, so each reads as generic. One is fine when the director asks for it or the
 treatment argues for it, except an item marked (director): that is their decision, and no treatment brings
 it back. A form or a style the director names asks for what defines it, so for that piece it is off the
 list: a showreel's chapter labels and timecodes, psychedelia's full spectrum and colour splitting,
 synthwave's grid and sun. The list says what is tired, not what is good: steering clear of all of it is not
 a look, and turning one item inside out gives its twin, which is listed too.
+
+The project's copy changes in two ways only. What a named form or style asks for is crossed out. What the
+director turns down is added, in their words, marked (director); a style they named adds what it rules
+out, marked with its name. Add no bans of your own: one written before a frame exists is a guess at what
+would be generic, and such guesses have gone against the brief itself (an ink-wash piece's list ruled out
+a red seal, which the same model painted in when it worked without the list; a psychedelic piece's ruled
+out a rainbow). A rule this look sets itself (flat fills, no outlines) is part of the look: it goes where
+the look is described, as what to make. The list is for holding a rendered frame against, when picking a
+style frame and in the critic's review, not a brief to design away from.
 
 - a navy or near-black ground with ivory or bone type and one warm accent, often glowing; or teal, amber
   and violet on navy;
