@@ -210,10 +210,16 @@ let SAMPLES: Sampling = 1;
  * "shutter", read in main() once the video is known), else 0.2 (sub-frames spread over a fifth of a frame).
  */
 let SHUTTER = 0.2;
-/** video.json's "shutter" when it is a number from 0 to 1 (the page reports any other value as the video's error). */
+/**
+ * video.json's "shutter": null when the video has none. Any other value than a number from 0 to 1 throws, as
+ * src/video.ts reports it on the page: checked here too, since a project's scripts and src can be of different
+ * versions, and an older page would let the value pass unread.
+ */
 function ownShutter(video: string): number | null {
   const s = (JSON.parse(projectText(`videos/${video}/video.json`)) as { shutter?: unknown } | null)?.shutter;
-  return typeof s === 'number' && s >= 0 && s <= 1 ? s : null;
+  if (s === undefined) return null;
+  if (typeof s === 'number' && s >= 0 && s <= 1) return s;
+  throw new Error(`videos/${video}/video.json: "shutter" must be a number from 0 to 1, the fraction of each frame's time the motion blur spans (0.2 by default; 0.5 is film's 180 degrees). It is ${JSON.stringify(s)}.`);
 }
 const SAMPLES_GIVEN = opt('samples') !== undefined;
 /** A range showing a stateful or a refine scene, rendered without --samples: this many fixed sub-frames instead of auto. */
@@ -1640,8 +1646,11 @@ async function main() {
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
-  // (the video's own shutter, where --shutter doesn't say otherwise for this run)
-  if (opt('shutter') === undefined) SHUTTER = ownShutter(name!) ?? SHUTTER;
+  // (the video's own shutter, where --shutter doesn't say otherwise for this run; a value that can't be one is
+  // reported either way)
+  let own: number | null = null;
+  try { own = ownShutter(name!); } catch (e) { fail((e as Error).message); }
+  if (opt('shutter') === undefined) SHUTTER = own ?? SHUTTER;
   parseSize(name!);
   // (the format's folder, made by whichever command names it first, preview and link too: the preview's format
   // menu lists the folders it finds there)

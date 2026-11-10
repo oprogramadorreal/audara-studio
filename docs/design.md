@@ -714,7 +714,8 @@ The Avoid list first produced its own negative, a paper twin (round 4), then too
 psychedelic piece's colour splitting out (0.4.0), then ruled a red seal out of an ink-wash piece (0.8.2).
 "One persistent actor" built four showreels around one circle. "Its words included" came before a music
 video with its lyric in 18 of 24 frames. What held up on every model tried is of another kind: `verify`,
-`qc.py`, the stills loop, the fresh critic, style frames picked by looking, the preview. The difference:
+`qc.py`, the stills loop, the fresh critic, the preview, and style frames picked by looking where they are
+made before the build (0.13.0's Claude runs made them after it). The difference:
 
 - **A steer** tells the model which way to lean before it has made anything. It is right only for a reader
   with the lean it was written against.
@@ -735,10 +736,12 @@ gate's first run):
 - **Which kind a line is, only a run shows.** The first changes written under this rule were meant as
   checks, facts and ceilings removed: the critic naming what is in the frame by habit, a project's Avoid
   list taking bans only from the director, the engine's post defaults described as a look, a style frame
-  allowed to rewrite the treatment. Run beside the old text as one bundle, they were preferred on one model,
-  made no difference on a second, and lost slightly on the third, Opus 5.5, whose picture came out sparser.
-  With six changes in one bundle no result could be traced to a line, and all of them were withdrawn
-  (history.md, 0.13.0). A line's kind is a guess until it has run.
+  allowed to rewrite the treatment. Run beside the old text as one bundle, they were preferred on one model
+  by every judge and by the director. On the other two the judges split two to one: Codex's toward the new
+  text, where the director saw no difference, and Opus 5.5's toward the old one, the director's pick too,
+  its picture sparser. A split is no result, and with six changes in one text nothing could be traced to a
+  line: no change was shown to help, and all of them were withdrawn (history.md, 0.13.0). A line's kind is
+  a guess until it has run.
 - **A change passes on every reader, one change at a time.** The old text and the new run side by side on
   each model the plugin supports, the weakest in each tool included, and the videos are judged blind in
   pairs, by fresh judges and by the director (`evals/README.md`, "The gate for a change of taste"). It
@@ -746,8 +749,9 @@ gate's first run):
   never in the skills.
 - **A new model starts with a baseline, not with new text:** the cases with the skills as they are, and
   without them. What it now does well alone is a candidate to cut; what it still gets wrong is the evidence
-  a change needs. Fable 5.2's first baseline (0.13.0): the video it made with the skills was preferred to
-  the one it made alone, by the director and by three judges of three.
+  a change needs. Fable 5.2's first baseline (0.13.0), one run a side: the video it made with the skills
+  was preferred to the one it made alone, slightly, by three judges of three and by the director, whose
+  pick was not blind.
 
 ## What made pdoom-video work (preserve these)
 
@@ -1261,8 +1265,9 @@ they differ, follow the stricter rule. What that means here:
   director (`evals/README.md`, "The gate for a change of taste"; `task.ts --skills` and `--until`,
   `judge.ts`, `pick.ts`). See "Text that serves any reader".
 - **Fresh sessions, every model.** Compare with and without the skill (in Claude Code, `skillOverrides`
-  turns a skill off), using every model the user will run: Claude Opus, a smaller Claude model, and Codex's
-  default model.
+  turns a skill off), using every model the user will run: Claude's strongest model (Fable 5.2 in 2026-11),
+  Claude Opus, a smaller Claude model, and Codex's default model. The gate for a change of taste runs on
+  the same list.
 - **Claude A and Claude B:** one session improves the skills while a fresh one uses them on real tasks.
   Watch which files it reads: a file never read is unnecessary or badly linked.
 - **Tools:** the evals run on their own harness (`evals/harness/`: trigger sets of about 20 requests per

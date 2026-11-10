@@ -60,8 +60,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   `--draft` takes one sub-frame per frame (no motion blur) and a fast encode (`--preset veryfast --crf 23`)
   and says so as it starts.
 - **The render**: `bun scripts/render.ts video --video <video>` → `out/<video>/<video>.mp4`, with motion
-  blur by default (`--samples auto --shutter 0.2`, or a fixed 12 sub-frames where a stateful or `refine`
-  scene shows: see "Motion blur and sampling") and a slow, fine encode
+  blur by default (`--samples auto` over the video's shutter, 0.2 unless `video.json` says otherwise, or a
+  fixed 12 sub-frames where a stateful or `refine` scene shows: see "Motion blur and sampling") and a slow,
+  fine encode
   (`--preset slow --crf 16`). Add `--scale 2` for 4K, `--noaudio` for the picture alone, `--fps 30` for
   another rate than `video.json`'s. Only the whole video, every entry, on the full-quality path takes the
   name `<video>.mp4`; anything less is named for what it is, so it can't replace the delivery: a range
@@ -107,7 +108,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   cheaper preview next to what the render will show.
 - `--samples` and `--shutter` work in stills, sheet, poster, video and perf: sub-frames per frame (default
   1; `auto` for `video` and `poster`, or a fixed 12 over a range showing a stateful or `refine` scene) and
-  the fraction of the frame time they spread over (default 0.2).
+  the fraction of the frame time they spread over (default: the video's `shutter`, 0.2 unless `video.json`
+  says otherwise).
   verify's renders are fixed.
 - Every option is in the header of `scripts/render.ts`; this list has the common ones. An option it doesn't
   know stops the run (an instruction written for a newer copy: the code-video skill's `init.ts --force`
@@ -166,9 +168,9 @@ footage and what the post does to an image are in the code-video skill's `refere
 - `size`: the logical frame `[width, height]` in even pixels (H.264 needs even sizes): `[1080, 1920]` for
   vertical, `[1080, 1080]` for square. `fps` (default 60): the export's rate and the one `frameIdx()`
   counts in. `title`: shown in the page title.
-- `shutter` (default 0.2): the fraction of each frame's time the render's motion blur spans, from 0 to 1.
-  It is part of the look, like `fps`: 0.2 at 60 fps is crisp, and 0.5 is film's 180 degrees, softer on
-  everything that moves ("Motion blur and sampling"). `--shutter` overrides it for one run.
+- `shutter` (default 0.2): the fraction of each frame's time the render's motion blur spans, from 0 to 1
+  (0.5 is film's 180 degrees). It belongs to the video, like `fps`: set it when the director asks for more
+  or less blur, and every render has it ("Motion blur and sampling"). `--shutter` overrides it for one run.
 - `audio`: one file played from 0 (`"audio/song.mp3"`), or a list of segments spliced together (each file
   trimmed and placed, silence between them, never mixed, so they must not overlap):
   `[{ "file": "audio/a.mp3", "at": 0, "from": 0, "dur": 30.5, "fadeOut": 1.2 }, ...]` (`at` = video time,

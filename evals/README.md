@@ -236,22 +236,24 @@ and view_image. A grader reads them, checks each assertion with evidence (runnin
 The skills are read by models whose leanings differ, and a line that corrects one can push another past
 the right answer (`docs/design.md`, "Text that serves any reader"). So a change to what the skills say
 about taste (the look, the pacing, the critic's bar, what counts as a finding) runs with the old text
-beside it before it merges, on the same day and machine, on each reader the plugin supports: the weakest
-in each tool, and the strongest. In 2026-11 that is Claude Opus 5.5 and Claude Fable 5.2 in Claude Code,
-and Codex's default model. It passes when no reader does worse with the new text than with the old one.
+beside it before it merges, on the same day and machine, on each model the evals cover (`docs/design.md`,
+"Fresh sessions, every model"): the weakest in each tool, and the strongest. In 2026-11 that is Claude
+Fable 5.2, Claude Opus 5.5 and a smaller Claude model in Claude Code, and Codex's default model. It passes
+when no reader does worse with the new text than with the old one.
 
-- **One change at a time.** The gate's first run (0.13.0) put six changes in one text. One model's video
-  was preferred with it, one's was no different and one's was slightly worse, and none of that could be
-  traced to a line, so all six were withdrawn. A change is one edit with one purpose; several run as
-  several texts.
+- **One change at a time.** The gate's first run (0.13.0) put six changes in one text, on three of those
+  models (no smaller Claude model). One model's video was preferred with it by every judge; the other two
+  pairs split two to one, one each way. None of that could be traced to a line, so all six were withdrawn.
+  A change is one edit with one purpose; several run as several texts.
 - **Two texts at once.** `git archive <commit> skills | tar -x -C evals/results/skills-<name>` copies a
   commit's skills, and `task.ts --skills evals/results/skills-<name>/skills` links that copy instead of the
   repo's, its `init.ts` included. `result.json` records the folder and `skillsText`, a hash of every .md
   file in it, which names the text a run had. The links are live: change nothing in a skills folder while
   a run uses it, which is one more reason to run from copies.
 - **Where the change acts.** A change to the brief or the look shows by the time the look is written
-  down: `--until docs/STYLE.md` ends a run there, with the treatment, the style frames, STYLE.md and
-  `look.ts`, in a fraction of a build's time. What only a build shows (the critic's findings and what the
+  down: `--until docs/STYLE.md` ends a run there, with the treatment, STYLE.md, `look.ts` and the style
+  frames where the session made them first (0.13.0's Claude runs wrote the look down before any frame), in
+  a fraction of a build's time. What only a build shows (the critic's findings and what the
   session does about them, scene authors, the cut) takes whole runs: `cv-zero-asset` for one idea, a
   showreel for many scenes.
 - **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives

@@ -18,7 +18,7 @@
 // something, the judge is the strongest model there is, and the director (pick.ts builds their page from the
 // folders this writes). The question is one fixed prompt (below), two-sided on purpose: neither the busier nor
 // the quieter video is better in itself.
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { cleanClaudeProjects } from './claude-projects-cleanup';
@@ -47,7 +47,12 @@ const run = (cmd: string[], cwd?: string) => {
 // ---------------------------------------------------------------- the two runs
 type Side = { run: string; video: string; request: string[]; duration: number; width: number; height: number };
 
-/** The video a run delivered: its full render when there is one, else its newest draft. */
+/**
+ * The video a run delivered: its full render when there is one, else its newest draft. A project made with the
+ * skills renders under out/, so an .mp4 anywhere else in it (footage the user gave, a generated clip in a
+ * video's assets) is not looked at when out/ has one. A run without the skills writes where it likes: every
+ * .mp4 counts there, and --a-video or --b-video names the one meant when that picks wrong.
+ */
 function findVideo(runDir: string): string {
   const work = existsSync(path.join(runDir, 'work')) ? path.join(runDir, 'work') : runDir;
   const found: { file: string; at: number; rank: number }[] = [];
@@ -62,13 +67,17 @@ function findVideo(runDir: string): string {
         const aside = /(^|[\\/])(wip|critique|stills|sheets)([\\/]|$)/.test(path.relative(work, p));
         const part = /-(preview|only-[^.]*|\d+(\.\d+)?-\d+(\.\d+)?)(-draft)?\.mp4$/i.test(e.name);
         const draft = /-draft\.mp4$/i.test(e.name);
-        found.push({ file: p, at: statSync(p).mtimeMs, rank: aside || part ? 0 : draft ? 1 : 2 });
+        // (render.ts's delivery is named for its folder, out/<video>/<video>.mp4: ahead of a check or an older
+        // version the session rendered beside it)
+        const named = e.name.toLowerCase() === `${path.basename(d).toLowerCase()}.mp4`;
+        found.push({ file: p, at: statSync(p).mtimeMs, rank: aside || part ? 0 : draft ? 1 : named ? 3 : 2 });
       }
     }
   };
-  walk(work);
+  if (existsSync(path.join(work, 'out'))) walk(path.join(work, 'out'));
+  if (!found.length) walk(work);
   if (!found.length) fail(`no .mp4 under ${work}: a run stopped before its first draft (--until) has no video to judge`);
-  // the full render, else the whole video's draft, else whatever is newest
+  // the delivery by its name, else another full render, else the whole video's draft, else whatever is newest
   return found.sort((x, y) => y.rank - x.rank || y.at - x.at)[0]!.file;
 }
 
@@ -111,11 +120,25 @@ function pack(dir: string, s: Side) {
   }
 }
 
-/** Packet 0 shows run a as X; packet 1 shows it as Y. */
+/**
+ * Packet 0 shows run a as X; packet 1 shows it as Y. One already in --out (a --dry before the judges, a second
+ * call) is used again only when it was built whole and from these same two files: its mark, written last and
+ * beside the packet, not in it, is a hash of the files' paths, sizes and times, which names no run to a judge.
+ * Any other packet there is built again.
+ */
 const packets = [path.join(OUT, 'p0'), path.join(OUT, 'p1')];
+const stamp = (s: Side) => { const st = statSync(s.video); return `${s.video}|${st.size}|${Math.round(st.mtimeMs)}`; };
 function packet(i: number) {
-  const dir = packets[i]!;
-  if (!existsSync(dir)) { pack(path.join(dir, 'X'), i === 0 ? a : b); pack(path.join(dir, 'Y'), i === 0 ? b : a); }
+  const dir = packets[i]!, x = i === 0 ? a : b, y = i === 0 ? b : a;
+  const mark = `${dir}.built`, want = Bun.hash(`${stamp(x)}
+${stamp(y)}
+${RATE}`).toString(36);
+  if (existsSync(mark) && existsSync(dir) && readFileSync(mark, 'utf8') === want) return dir;
+  rmSync(mark, { force: true });
+  rmSync(dir, { recursive: true, force: true });
+  pack(path.join(dir, 'X'), x);
+  pack(path.join(dir, 'Y'), y);
+  writeFileSync(mark, want);
   return dir;
 }
 
@@ -180,7 +203,7 @@ async function judge(i: number): Promise<Vote> {
 
 mkdirSync(OUT, { recursive: true });
 packet(0);
-if (N > 1) packet(1);
+packet(1); // (with one judge too: pick.ts draws either order for the director's page)
 // --dry: the packets and the prompt, and no judge (to look at what one would get, or to judge by eye)
 if (argv.includes('--dry')) { console.log(`\n${PROMPT}\n\n${OUT}`); process.exit(0); }
 const votes = await Promise.all(Array.from({ length: N }, (_, i) => judge(i)));

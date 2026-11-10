@@ -5,8 +5,8 @@
 //   compares, without saying which is which>, "note"?: <a line under the title>, "a": <what run a is>,
 //   "b": <what run b is>, "facts"?: { "a": <a line about run a>, "b": <one about run b> }, "packet"?: 0 | 1 }] }
 //
-// Each pair shows the prompt, the two videos from judge.ts's own packets (copied there without their
-// metadata) as X and Y with sound, and the question. Which is which is drawn for each pair (packet 0 shows run
+// Each pair shows what was asked (every turn), the two videos from judge.ts's own packets (copied there
+// without their metadata) as X and Y with sound, and the question. Which is which is drawn for each pair (packet 0 shows run
 // a as X, packet 1 as Y; "packet" fixes it, and a page built again keeps the order it had). What a and b
 // were, the facts and the judges' votes stay behind a button; key.json beside the page says which was which,
 // for reading the picks the page's button copies as text. The page works opened from disk.
@@ -47,13 +47,16 @@ for (const [i, p] of cfg.pairs.entries()) {
     return { pick: letter(v.better), margin: v.margin ?? '', why: fix(v.why ?? v.error), X: { best: fix(v[X]?.best), worst: fix(v[X]?.worst) }, Y: { best: fix(v[Y]?.best), worst: fix(v[Y]?.worst) } };
   });
   const tally = verdict ? { X: verdict.tally[X], Y: verdict.tally[Y], tie: verdict.tally.tie, none: verdict.tally.none } : null;
+  // (every turn, as the judges had it: a later one can carry direction the first doesn't)
+  const turns: string[] = verdict?.request ?? [];
+  const asked = turns.length ? turns.map((t, k) => `${turns.length > 1 ? `<span class="dim">${k + 1}.</span> ` : ''}${esc(t)}`).join('<br>') : '(not recorded)';
   const reveal = { X: p[X], Y: p[Y], facts: p.facts ? { X: p.facts[X], Y: p.facts[Y] } : null, judge: verdict?.judge?.model ?? null, tally, votes };
   key.push({ pair: i + 1, title: p.title, dir: name, packet, X: { run: X, what: p[X], folder: verdict?.[X]?.run }, Y: { run: Y, what: p[Y], folder: verdict?.[Y]?.run } });
   sections.push(`
 <section class="pair" data-pair="${i + 1}" data-title="${esc(p.title)}">
   <h2><span class="n">Pair ${i + 1}</span> ${esc(p.title)}</h2>
   ${p.note ? `<p class="note">${esc(p.note)}</p>` : ''}
-  <p class="request"><span class="dim">The prompt both were given:</span><br>${esc(verdict?.request?.[0] ?? '(not recorded)')}</p>
+  <p class="request"><span class="dim">${turns.length > 1 ? 'What both were asked, turn by turn:' : 'The prompt both were given:'}</span><br>${asked}</p>
   <div class="videos">
     <figure><figcaption>X</figcaption><video controls preload="metadata" src="${esc(slash(path.relative(OUT, video('X'))))}"></video></figure>
     <figure><figcaption>Y</figcaption><video controls preload="metadata" src="${esc(slash(path.relative(OUT, video('Y'))))}"></video></figure>

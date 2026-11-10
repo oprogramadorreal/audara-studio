@@ -457,14 +457,16 @@ for (const [i, t] of CASE.turns.entries()) {
     ...(ran?.model ? { model: ran.model } : {}), ...(timedOut ? { timedOut } : {}), ...(blocked ? { blocked } : {}), ...(reached ? { until: UNTIL! } : {}) });
   console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}${reached ? `, ended at --until ${UNTIL}` : ''}`);
   if (blocked) { console.error(`turn ${i + 1} stopped: ${blocked} put a browser or the desktop within the session's reach (see evals/README.md)`); break; }
-  if (reached) break; // (the stage asked for: the turns after it aren't run)
+  // (before the stage's break: a run ended at --until in its first turn still records its session, and so, for
+  // Codex, the model its session file names)
   if (first) {
     for (const line of out.split('\n')) {
       try { const ev = JSON.parse(line); session ??= ev.session_id ?? ev.thread_id ?? null; } catch { /* not json */ }
     }
-    if (!session) { console.error(`no session id in turn ${i + 1}'s output; see ${file}`); break; }
-    sessions.push(session);
+    if (session) sessions.push(session);
   }
+  if (reached) break; // (the stage asked for: the turns after it aren't run)
+  if (first && !session) { console.error(`no session id in turn ${i + 1}'s output; see ${file}`); break; }
 }
 
 // ---------------------------------------------------------------- what the folder looks like now
