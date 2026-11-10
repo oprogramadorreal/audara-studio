@@ -4627,3 +4627,6 @@ as this tool's first key files did: its order is kept, the folder read against w
 Its picks start empty once, since the name they are kept under changed with the path: nothing was written to
 carry them over, the tool being new in this PR and no page of that form existing outside this branch. The
 test has 15 checks.
+
+Both then read the result at b21f40e and called it ready to merge. Codex withdrew its last request, to carry
+saved picks over from the tool's earlier forms, on the facts above.
