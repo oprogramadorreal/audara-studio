@@ -4378,8 +4378,8 @@ sound effects", then "Go ahead. I want the MP4 and to see the files.", then "App
 (79ab8a6, text c76f3f228fa2) and the branch's (1cda473, text 035da0921e72, all six changes at once), on Claude
 Opus 5.5 and Claude Fable 5.2 (Claude Code 2.1.322, xhigh) and Codex (0.167.0, gpt-6-astra, ultra), one run
 each, plus Fable without the plugin. One machine, one day. Seven runs were started in the morning between
-11:28 and 12:21, up to five at a time; the machine ran out of memory at about 12:20, as the last of them
-started, and the five still going were lost (the cause, found in another session that day, was an editor open
+11:28 and 12:17, up to five at a time; the machine ran out of memory at about 12:20, minutes after the last
+of them started, and the five still going were lost (the cause, found in another session that day, was an editor open
 on the repo starting a workspace search for each Python file a Codex run created). Those five were run again
 in the afternoon, two at a time. Codex on main's text and Fable without the plugin are the morning's, made
 beside three or four other runs.
@@ -4450,7 +4450,8 @@ grain.
 - **The shutter:** no run set it, and `verify` passed in all three runs that had the new render.ts.
 
 **The decision.** No change was shown to help. The six ran as one text, so nothing above can be traced to a
-line: the gain on Fable (the only pair all three judges agreed on) may be the frame that rewrote the
+line: the gain on Fable (the only one of the three text pairs all its judges agreed on) may be the frame that
+rewrote the
 treatment, or the run; the sparser Opus 5.5 picture may be the list it could no longer cross out, the habit
 question, the post line, or the run. One run a side can't separate a slight difference from two runs of one
 text, and by the gate's own rule the two pairs that split two to one are no result. What there is on Opus
@@ -4527,9 +4528,11 @@ still with `"shutter": 0.6` in video.json has the same hash as one with `--shutt
 the field gives the default's, `"shutter": "0.5"` is reported by render.ts with and without `--shutter`,
 `verify` passes and `bun run check` is clean. `--until` ended a throwaway run in its first turn with its
 session and model recorded, and skipped the turns after it. `judge.ts --dry` built both orders for one judge,
-used them again on a second call, built them again for two other runs given the same folder, and again after
-one was cut short. `pick.ts` was used for the director's picks; a page built again kept its order and turned
-the judges' letters to the page's.
+used them again on a second call, built them again for two other runs given the same folder and again after
+one was cut short, refused a `p0` folder it hadn't made (leaving the file in it) and a video inside a packet,
+and took `work/final.mp4` over a clip under `work/out/`; a judging in a folder that already held one was
+refused; and two judges on a small model ran through to a verdict and a page. `pick.ts` was used for the
+director's picks; a page built again kept its order and turned the judges' letters to the page's.
 
 **Not run:** a second run of any arm, or two runs of main's text for the difference that means nothing; any
 other case (a showreel, `cv-direction-rejection`, `cv-promise-opening`); a smaller Claude model; the trigger
@@ -4546,15 +4549,14 @@ finding against the code or the run files and made every change. Their first rep
   first turn left a run without its session, and a Codex run without its model. render.ts let a `shutter` that
   isn't a number pass in silence when the project's page was older: it reports it itself now. The director's
   page showed only the first turn of what was asked: every turn now. And two lines of the engine guide and one
-  of motion.md still gave the default as a plain 0.2.
+  of motion.md still gave the default as a plain 0.2, which both consultants reported.
 - **From Opus 5.5, the record.** The shutter's paragraph in motion.md ("the piece's choice ... softer and
   heavier, and with 24 or 30 fps it reads as filmed ... choose it on frames") was a change of taste kept
   without a gate of its own: it is cut back to the setting and where a director's request for more or less
   blur goes. This entry and design.md said more than the votes: Codex's pair as "no difference" (its judges
   split two to one toward the branch's text), Fable's as "the only pair with a clear vote" (Codex's had two),
   Opus 5.5 doing worse "by every reading" (one judge of three preferred the branch's). They are corrected
-  above, with eight smaller facts: the times, the morning's seven runs, Codex's sub-agents, the bloom the
-  scenes set. The models the gate runs on were listed two ways: design.md's "Fresh sessions, every model" now
+  above, with the smaller facts it listed (the times, Codex's sub-agents, the bloom the scenes set). The models the gate runs on were listed two ways: design.md's "Fresh sessions, every model" now
   holds the one list, a smaller Claude model included, which this first run left out. And blender.md gave a
   Blender layer a 0.2 shutter whatever the video's.
 - **How Opus 5.5 read the six changes.** Asked, as the model whose video came out sparser, it said it would
@@ -4564,3 +4566,24 @@ finding against the code or the run files and made every change. Their first rep
   examples are concrete: "I'd act on the examples." It would not have read the style-frame line or the
   scene-author line that way. It agreed with withdrawing all six, on the ground that nothing was shown to
   help, more than that Opus 5.5 was shown to be hurt.
+
+Their second reports, on those changes:
+
+- **Opus 5.5** found a correction that had itself said too much: the README's line on `--until docs/STYLE.md`
+  now claimed the Claude runs wrote the look down before any frame, where both runs on Fable wrote STYLE.md
+  after the scene was built. It says that now, and that the cut is a fraction of a build's time only where a
+  session writes the look down first. Also the PR's description, which still carried the first wording, one
+  more stale shutter line (contract.md), the last morning run's start (12:17, not 12:21), and credit in the
+  section above given to the wrong reader. Asked to read the shutter text as it now stands, it found nothing
+  that would lead it to change the blur on a video nobody asked about.
+- **Codex** found that two of the fixes had opened new holes in `judge.ts`, and one older one. A rebuild
+  removed a `p0` or `p1` folder whether or not the tool had made it: a packet's mark is now written before it
+  is built, and a folder without one is refused, with nothing removed. A clip under `out/` hid a finished
+  video elsewhere in a project: `out/` counts only when it holds a whole video. And a second judging in the
+  same folder left the first verdict where a judge at work could read it: such a folder is refused, and each
+  judge's transcript is written when all are done. It accepted the precedence check in a real project in
+  place of a mocked test, since the stills had eight sub-frames and the two shutters gave different hashes.
+- The two-judge run that tested the tool used a smaller model (claude-haiku-5-5) on Codex's pair, and both
+  its judges preferred main's text, clearly, where two of the three Fable judges had preferred the
+  branch's: one more reason to read that pair as no result, and what "a judge can't reward taste past its
+  own" looks like.

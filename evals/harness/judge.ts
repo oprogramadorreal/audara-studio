@@ -11,7 +11,10 @@
 // name one instead). Each judge is a fresh headless Claude Code session that gets a folder with the two videos as
 // X and Y and nothing else: each video copied without its metadata, sheets of its frames labelled with their
 // times, and five full-size stills. Which run is X changes from one judge to the next, so a preference for the
-// first one seen cancels out, and nothing in the folder or its path says which run is which.
+// first one seen cancels out, and nothing in the folder or its path says which run is which. A judge is a
+// session with the machine's files in reach, not a sandbox: the folder above its own holds no verdict and no
+// other judge's transcript while it works (a folder that already has a judging is refused), and past that its
+// blindness rests on having no reason to look elsewhere.
 //
 // A judge can't reward taste past its own, and can't hear: verdict.json records the model each judge ran, as its
 // transcript names it, beside its vote, and says the picture alone was judged. For a comparison that decides
@@ -75,7 +78,8 @@ function findVideo(runDir: string): string {
     }
   };
   if (existsSync(path.join(work, 'out'))) walk(path.join(work, 'out'));
-  if (!found.length) walk(work);
+  // (an out/ with only a clip in it, as a run without the skills may have beside its video: the whole project)
+  if (!found.some((v) => v.rank >= 1)) { found.length = 0; walk(work); }
   if (!found.length) fail(`no .mp4 under ${work}: a run stopped before its first draft (--until) has no video to judge`);
   // the delivery by its name, else another full render, else the whole video's draft, else whatever is newest
   return found.sort((x, y) => y.rank - x.rank || y.at - x.at)[0]!.file;
@@ -121,21 +125,26 @@ function pack(dir: string, s: Side) {
 }
 
 /**
- * Packet 0 shows run a as X; packet 1 shows it as Y. One already in --out (a --dry before the judges, a second
- * call) is used again only when it was built whole and from these same two files: its mark, written last and
- * beside the packet, not in it, is a hash of the files' paths, sizes and times, which names no run to a judge.
- * Any other packet there is built again.
+ * Packet 0 shows run a as X; packet 1 shows it as Y. A packet folder is this tool's only while its mark stands
+ * beside it (<out>/p0.mark: never inside, where a judge works). The mark is written before the packet is built
+ * and holds, once the packet is whole, a hash of the two files' paths, sizes and times, which names no run. A
+ * whole packet of these same files is used again (a --dry before the judges); one cut short, or made from
+ * other files, is built again; and a p0 or p1 folder with no mark is somebody else's: nothing is removed.
  */
 const packets = [path.join(OUT, 'p0'), path.join(OUT, 'p1')];
 const stamp = (s: Side) => { const st = statSync(s.video); return `${s.video}|${st.size}|${Math.round(st.mtimeMs)}`; };
+for (const s of [a, b]) for (const dir of packets) {
+  if (s.video.startsWith(dir + path.sep)) fail(`${s.video} is inside ${dir}, a folder this builds: copy the video out of it, or give another --out`);
+}
 function packet(i: number) {
   const dir = packets[i]!, x = i === 0 ? a : b, y = i === 0 ? b : a;
-  const mark = `${dir}.built`, want = Bun.hash(`${stamp(x)}
-${stamp(y)}
-${RATE}`).toString(36);
-  if (existsSync(mark) && existsSync(dir) && readFileSync(mark, 'utf8') === want) return dir;
-  rmSync(mark, { force: true });
-  rmSync(dir, { recursive: true, force: true });
+  const mark = `${dir}.mark`, want = Bun.hash([stamp(x), stamp(y), RATE].join('\n')).toString(36);
+  if (existsSync(dir)) {
+    if (!existsSync(mark)) fail(`${dir} exists and judge.ts did not make it (no ${path.basename(mark)} beside it): give another --out, or remove the folder`);
+    if (readFileSync(mark, 'utf8') === want) return dir;
+    rmSync(dir, { recursive: true, force: true });
+  }
+  writeFileSync(mark, 'building'); // (this tool's from here on, and not whole until the hash replaces the word)
   pack(path.join(dir, 'X'), x);
   pack(path.join(dir, 'Y'), y);
   writeFileSync(mark, want);
@@ -173,6 +182,8 @@ delete env.OPENAI_API_KEY;
 
 type Vote = { judge: number; better: 'a' | 'b' | 'tie' | null; margin?: string; why?: string; seen: { X: 'a' | 'b'; Y: 'a' | 'b' }; a?: unknown; b?: unknown; model?: string; seconds: number; error?: string };
 
+/** Each judge's transcript, written once all are done: one still at work can't read another's a folder up. */
+const transcripts: string[] = [];
 async function judge(i: number): Promise<Vote> {
   const flip = i % 2 === 1, cwd = packet(flip ? 1 : 0);
   const seen = { X: flip ? 'b' : 'a', Y: flip ? 'a' : 'b' } as Vote['seen'];
@@ -183,7 +194,7 @@ async function judge(i: number): Promise<Vote> {
   const [out] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
   await p.exited;
   clearTimeout(timer);
-  writeFileSync(path.join(OUT, `judge-${i + 1}.jsonl`), out);
+  transcripts[i] = out;
   let model: string | undefined, reply = '';
   for (const line of out.split('\n')) {
     let ev: any;
@@ -202,11 +213,16 @@ async function judge(i: number): Promise<Vote> {
 }
 
 mkdirSync(OUT, { recursive: true });
+// (a judge works one folder below this one: a verdict or a transcript already here would tell it which run was
+// which, or what an earlier judge thought)
+const earlier = readdirSync(OUT).filter((n) => n === 'verdict.json' || n === 'claude-sessions' || /^judge-\d+\.jsonl$/.test(n));
+if (earlier.length && !argv.includes('--dry')) fail(`${OUT} already holds a judging (${earlier.join(', ')}): give another --out`);
 packet(0);
 packet(1); // (with one judge too: pick.ts draws either order for the director's page)
 // --dry: the packets and the prompt, and no judge (to look at what one would get, or to judge by eye)
 if (argv.includes('--dry')) { console.log(`\n${PROMPT}\n\n${OUT}`); process.exit(0); }
 const votes = await Promise.all(Array.from({ length: N }, (_, i) => judge(i)));
+for (const [i, out] of transcripts.entries()) writeFileSync(path.join(OUT, `judge-${i + 1}.jsonl`), out ?? '');
 cleanClaudeProjects(false, path.join(OUT, 'claude-sessions'), OUT);
 
 const tally = { a: 0, b: 0, tie: 0, none: 0 };

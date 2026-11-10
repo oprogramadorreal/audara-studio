@@ -33,9 +33,9 @@ adds is how much hangs on it:
 - **The preview is the render.** The director approves what the preview plays, and the render must be that
   picture, only cleaner. The same code runs live at one sample per frame and headless at up to 324.
 - **Every moment is a link.** `?t=` opens exactly that frame, so a note by time is checked in seconds.
-- **Motion blur.** The render averages 12 to 324 sub-frames per frame, spread over a fifth of the frame time
-  (the shutter, by default: `shutter` in `video.json`) and rendered out of time order: 4 evenly spread, then two more around each, until the
-  frame stops changing.
+- **Motion blur.** The render averages 12 to 324 sub-frames per frame, spread over the video's shutter (a
+  fifth of the frame time unless `video.json` says otherwise) and rendered out of time order: 4 evenly spread,
+  then two more around each, until the frame stops changing.
 - **Ranges render alone.** Stills, a `--from`/`--to` clip and pieces rendered separately are the frames the
   whole video has (measured: two halves rendered side by side and joined with ffmpeg's concat matched a
   single render frame for frame, to the encoder's precision; so did `video --jobs`, which renders in pieces,

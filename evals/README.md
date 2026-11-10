@@ -251,9 +251,10 @@ when no reader does worse with the new text than with the old one.
   file in it, which names the text a run had. The links are live: change nothing in a skills folder while
   a run uses it, which is one more reason to run from copies.
 - **Where the change acts.** A change to the brief or the look shows by the time the look is written
-  down: `--until docs/STYLE.md` ends a run there, with the treatment, STYLE.md, `look.ts` and the style
-  frames where the session made them first (0.13.0's Claude runs wrote the look down before any frame), in
-  a fraction of a build's time. What only a build shows (the critic's findings and what the
+  down: `--until docs/STYLE.md` ends a run there, with the treatment, STYLE.md, `look.ts` and whatever
+  frames exist by then. That is a fraction of a build's time only where a session writes the look down
+  before it builds: in 0.13.0's two runs on Fable 5.2, STYLE.md was first written after the scene was
+  built, so check when a case's sessions write the file before relying on the cut. What only a build shows (the critic's findings and what the
   session does about them, scene authors, the cut) takes whole runs: `cv-zero-asset` for one idea, a
   showreel for many scenes.
 - **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives
@@ -263,7 +264,8 @@ when no reader does worse with the new text than with the old one.
   the busier nor the quieter video is better in itself. `verdict.json` holds each vote, with its reasons
   and the model that judge ran. A judge can't reward taste past its own, so for a comparison that decides
   something the judge is the strongest model there is, and the director too (`--dry` builds the packets
-  without judging).
+  without judging). A judge is a session, not a sandbox: its folder holds nothing that names a run, and a
+  folder that already holds a judging is refused, so no earlier verdict sits one level above a judge at work.
 - **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs:
   the prompt, the two videos as X and Y with sound, in an order drawn for each pair, the question, and a
   reveal that holds which was which and the judges' votes. The person who directs the project picks before
