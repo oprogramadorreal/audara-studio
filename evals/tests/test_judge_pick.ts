@@ -171,6 +171,20 @@ test('one folder listed twice keeps the order of each place on a rebuild', () =>
   check(JSON.stringify(again.key.map((k) => k.packet)) === '[0,1]', `rebuilt as ${JSON.stringify(again.key.map((k) => k.packet))}`);
   check(first.store === again.store, 'the picks of an unchanged page were dropped');
 });
+test("a key.json that names its folder relative to where the tool is run, or isn't this tool's, is read without harm", () => {
+  // (the first key.json files this tool wrote had the folder relative to the working directory: each order is kept)
+  for (const packet of [0, 1]) {
+    const out = path.join(scratch, `page-older-${packet}`);
+    mkdirSync(out, { recursive: true });
+    writeFileSync(path.join(out, 'key.json'), JSON.stringify([{ pair: 1, dir: path.relative(REPO, OUT).replaceAll('\\', '/'), packet }]));
+    check(page(`page-older-${packet}`, [{}]).key[0]!.packet === packet, `an order of ${packet} kept under a relative folder was drawn again`);
+  }
+  // (another tool's key.json in the folder: no order to keep, and no failure)
+  const out = path.join(scratch, 'page-foreign');
+  mkdirSync(out, { recursive: true });
+  writeFileSync(path.join(out, 'key.json'), JSON.stringify([{ pair: 1, packet: 'p0', X: { arm: 'a' } }]));
+  check([0, 1].includes(page('page-foreign', [{}]).key[0]!.packet), 'a key.json of another shape broke the page');
+});
 test('a folder that holds a judging: its packets stay, and the page turns the judges to its own letters', () => {
   // (a judge that saw run a as Y, and preferred it)
   writeFileSync(path.join(OUT, 'verdict.json'), JSON.stringify({

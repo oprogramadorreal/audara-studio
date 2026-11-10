@@ -4618,7 +4618,12 @@ one of the test's calls was kept from a real model (a stand-in for the judge's C
 all of them; with the refusal of a second judging taken out of a copy, the test fails and no model is called).
 Opus 5.5 asked for a plainer refusal of a run that stopped early ("run b stopped after turn 1 ... and run a
 went on to turn 2"), for the kept order not to depend on the folder the tool is run from (pairs are named by
-their whole path), and for checks that were looser than their names: the two packets are now compared byte
-for byte as the same two videos in opposite orders, a rebuild is repeated six times against the order first
-drawn, key.json's X and Y are read for both orders, and a verdict's request is shown over a stale one beside
-it. The test has 14 checks.
+their whole path), and for checks that were looser than their names: a rebuild is repeated six times against
+the order first drawn, key.json's X and Y are read for both orders, and a verdict's request is shown over a
+stale one beside it. Codex asked for the same of others: the two packets are compared byte for byte as the
+same two videos in opposite orders, and a folder is seen to be left as it was by its videos' times, its marks
+and its verdict. Codex's last point was a page whose key named its folder relative to where the tool was run,
+as this tool's first key files did: its order is kept, the folder read against where the tool is run now.
+Its picks start empty once, since the name they are kept under changed with the path: nothing was written to
+carry them over, the tool being new in this PR and no page of that form existing outside this branch. The
+test has 15 checks.

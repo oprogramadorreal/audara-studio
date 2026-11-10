@@ -30,7 +30,13 @@ const slash = (p: string) => p.replaceAll('\\', '/');
 // kept for each place a folder is listed, since one folder can be listed twice, in either order)
 const before = new Map<string, number[]>();
 if (existsSync(path.join(OUT, 'key.json'))) {
-  for (const k of JSON.parse(readFileSync(path.join(OUT, 'key.json'), 'utf8'))) before.set(k.dir, [...(before.get(k.dir) ?? []), k.packet]);
+  for (const k of JSON.parse(readFileSync(path.join(OUT, 'key.json'), 'utf8'))) {
+    if (typeof k.dir !== 'string' || (k.packet !== 0 && k.packet !== 1)) continue; // (not a key this tool wrote)
+    // (a folder written relative to where the tool was run, as this tool's first key.json files had it, is read
+    // against where it is run now)
+    const was = slash(path.resolve(k.dir));
+    before.set(was, [...(before.get(was) ?? []), k.packet]);
+  }
 }
 
 type Side = 'a' | 'b';
