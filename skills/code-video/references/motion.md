@@ -213,6 +213,15 @@ preview. A fast move judders in the preview; before changing the motion for a no
 moment as the render will show it: `render.ts stills --t <t> --samples auto`, or a short clip without
 `--draft`.
 
+How much blur is the piece's choice, like its frame rate: `"shutter"` in `video.json` is the fraction of
+each frame's time the exposure spans. The default, 0.2 at 60 fps, is crisp; 0.5 is film's 180 degrees,
+softer and heavier, and with 24 or 30 fps it reads as filmed. It changes how everything that moves looks, so
+choose it on frames as the render shows them (`stills --t <t> --samples auto --shutter 0.5` beside the same
+still without it), name it in the treatment's Format line when it isn't the default, and tell the director,
+who sees no blur in the preview. A project whose `scripts/render.ts` header doesn't mention video.json's
+"shutter" (one made before 0.13.0) ignores the field: give `--shutter` on its renders, or update its scripts
+with init `--force`.
+
 Draw blur only when it is the look (smear frames, painted speed lines, a long-exposure trail), as a style the
 treatment names. A `stateful` scene can't be sampled adaptively: the render gives it a fixed 12 sub-frames
 (`--samples N` for another count).

@@ -34,7 +34,7 @@ adds is how much hangs on it:
   picture, only cleaner. The same code runs live at one sample per frame and headless at up to 324.
 - **Every moment is a link.** `?t=` opens exactly that frame, so a note by time is checked in seconds.
 - **Motion blur.** The render averages 12 to 324 sub-frames per frame, spread over a fifth of the frame time
-  (the shutter) and rendered out of time order: 4 evenly spread, then two more around each, until the
+  (the shutter, by default: `shutter` in `video.json`) and rendered out of time order: 4 evenly spread, then two more around each, until the
   frame stops changing.
 - **Ranges render alone.** Stills, a `--from`/`--to` clip and pieces rendered separately are the frames the
   whole video has (measured: two halves rendered side by side and joined with ffmpeg's concat matched a

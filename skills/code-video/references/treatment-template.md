@@ -139,8 +139,8 @@ names ("the receipt becomes the city map", not "a morph transition"); name the p
 
 - **Promise:** <working title> · <what the thumbnail shows>, <its words, or no words>: <what someone who clicked expects>. Opening:
   <what the first seconds show to pay it>. (When people choose to click it.)
-- **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps, <length: bars and seconds>; safe area per
-  `docs/STYLE.md`.
+- **Format:** <w>×<h> (<ratio>) for <platform>, <fps> fps<, shutter <x>, when it isn't the default 0.2>,
+  <length: bars and seconds>; safe area per `docs/STYLE.md`.
 - **Sound:** <the song window below | narration | music and effects synthesized in code | none: no audio track>.
 - **Look:** <until the style frames are made, the two or three directions you'll try; then> `docs/STYLE.md`<,
   plus what this video changes and why>, and the style frame it came from.

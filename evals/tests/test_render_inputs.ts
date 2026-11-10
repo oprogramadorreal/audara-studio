@@ -133,6 +133,17 @@ test('touching stateful stretches can split at a hard cut', () => {
   const pieces = plan([4, 8], [[0, 4], [4, 8]]);
   check(pieces.some(([, b]) => b === 240), 'touching hard-cut scenes were unnecessarily merged');
 });
+// The video's own shutter (video.json's "shutter"), which a render takes when --shutter doesn't say otherwise.
+test("a video's own shutter is read from video.json, and only a number from 0 to 1", () => {
+  const src = [declaration('const projectText = ', ';'), declaration('function ownShutter(', '\n}')].join('\n');
+  const own = new Function('path', 'readFileSync', 'PROJECT', `${new Bun.Transpiler({ loader: 'ts' }).transformSync(src)}\nreturn ownShutter;`)(path, readFileSync, scratch) as (video: string) => number | null;
+  const json = (text: string) => { write('videos/s/video.json', text); return own('s'); };
+  check(json('{ "fps": 60 }') === null, 'no field should give no shutter');
+  check(json('{ "shutter": 0.5 }') === 0.5, 'a shutter of 0.5 was not read');
+  check(json('{ "shutter": 0 }') === 0, 'a shutter of 0 (no blur) was not read');
+  check(json('﻿{ "shutter": 1 }') === 1, 'a shutter after a byte-order mark was not read');
+  for (const bad of ['2', '-0.1', '"0.5"', 'null', 'true']) check(json(`{ "shutter": ${bad} }`) === null, `a shutter of ${bad} was taken`);
+});
 
 let passed = 0;
 try {

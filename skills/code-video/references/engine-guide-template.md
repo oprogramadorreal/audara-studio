@@ -166,6 +166,9 @@ footage and what the post does to an image are in the code-video skill's `refere
 - `size`: the logical frame `[width, height]` in even pixels (H.264 needs even sizes): `[1080, 1920]` for
   vertical, `[1080, 1080]` for square. `fps` (default 60): the export's rate and the one `frameIdx()`
   counts in. `title`: shown in the page title.
+- `shutter` (default 0.2): the fraction of each frame's time the render's motion blur spans, from 0 to 1.
+  It is part of the look, like `fps`: 0.2 at 60 fps is crisp, and 0.5 is film's 180 degrees, softer on
+  everything that moves ("Motion blur and sampling"). `--shutter` overrides it for one run.
 - `audio`: one file played from 0 (`"audio/song.mp3"`), or a list of segments spliced together (each file
   trimmed and placed, silence between them, never mixed, so they must not overlap):
   `[{ "file": "audio/a.mp3", "at": 0, "from": 0, "dur": 30.5, "fadeOut": 1.2 }, ...]` (`at` = video time,
@@ -601,7 +604,8 @@ format.
 ## Motion blur and sampling
 
 `video` and `poster` render every frame as the average of many sub-frames spread over the shutter
-(`--shutter`, by default 0.2: a fifth of the frame time, centred on the frame's time), before
+(`video.json`'s `shutter`, or `--shutter` for one run; by default 0.2: a fifth of the frame time, centred
+on the frame's time), before
 post-processing, so the delivery gets real motion blur without anyone remembering a flag. By default they
 choose the count per frame (`--samples auto`), or take a fixed 12 over a range that shows a stateful scene
 or one with `refine = true` (below); `--samples N` takes N evenly spaced sub-frames. Stills,

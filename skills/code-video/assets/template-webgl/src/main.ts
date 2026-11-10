@@ -194,7 +194,7 @@ function setupExport() {
      * of t and its neighbours, the shutter's reach). Returns the sub-frames used. A scene whose prepare failed
      * has the error in `errors`, which render.ts reports, and draws what it can.
      */
-    async still(t: number, samples: number | AdaptiveSampling = 1, shutter = 0.2) {
+    async still(t: number, samples: number | AdaptiveSampling = 1, shutter = VIDEO.shutter) {
       await prepare(t - dt, t + dt).catch(() => {});
       return engine.render(t, dt, true, samples, shutter);
     },
@@ -231,7 +231,7 @@ function setupExport() {
       const n0 = Math.round(opts.from * opts.fps), n1 = Math.round(opts.to * opts.fps);
       const buf = new Uint8Array(PW * PH * 4);
       // warm-up: render one frame before the range so the first frame is sequential for stateful scenes
-      const S = opts.samples ?? 1, SH = opts.shutter ?? 0.2;
+      const S = opts.samples ?? 1, SH = opts.shutter ?? VIDEO.shutter;
       // (adaptive sampling only runs stateless scenes: one sample is enough for the warm-up)
       // (streamed footage: each prepare here reaches only frames this call renders, the warm-up's to the
       // last, so a range needs no footage frame outside it, the shutter's sub-frames staying within theirs)
@@ -492,7 +492,7 @@ function setupPlayer() {
   // a crossfade with any other scene included, is drawn as it always was. (Loaded: streamed footage shows the
   // nearest frame it has until the exact one arrives, and a frame refined before then would hold that one.)
   let rest = { t: NaN, since: 0, scenes: [] as unknown[], asked: false, loaded: false }, refined = false;
-  const half = (0.2 / fps) / 2; // (the render's default shutter, 0.2 of a frame, either side of t)
+  const half = (VIDEO.shutter / fps) / 2; // (the video's shutter, 0.2 of a frame by default, either side of t)
   // the entries the frame's sub-frames draw: its shutter, up to a hard cut, where the engine keeps every
   // sub-frame on the frame's side (an engine without sameSide: the whole shutter)
   const sameSide = (engine as unknown as { sameSide?: (t: number, ts: number) => number }).sameSide;
@@ -532,7 +532,7 @@ function setupPlayer() {
         prepare(tc - half, tc + half, true).catch(() => {}).then(() => { r.loaded = true; });
       }
       if (rest.loaded) {
-        engine.render(tc, 1 / fps, true, 12);
+        engine.render(tc, 1 / fps, true, 12, VIDEO.shutter);
         refined = true;
       }
     }
