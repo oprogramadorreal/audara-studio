@@ -29,6 +29,15 @@ one below the `CLAUDE.md` saw its import line; with it, neither. A Codex run saw
 still open them with a command of its own: on 2026-10-06 a Codex run without the skills read the repo's
 `AGENTS.md` with `Get-Content` (history.md, 0.4.0).
 
+An editor open on this repo is kept from watching the runs: `.vscode/settings.json` leaves `evals/results/`
+out of VS Code's file watching. A Codex run whose sandbox keeps uv from its cache puts one in its
+`work/.audara-cache/uv` (soundtrack's SKILL.md), thousands of Python files in a few minutes, and VS Code's
+Python Environments extension starts a search of the whole workspace for each Python file created in it
+(with `--no-ignore`, so `.gitignore` doesn't count). On 2026-11-10 that was 1,559 `rg.exe` at once and 0.1 GB
+left of 64, twice in a day (history.md). The setting holds where this repo's folder is the one open: with a
+folder above it open, or a checkout that lacks the file, put the same `files.watcherExclude` entry in the
+user's settings, or close the editor while Codex runs.
+
 Both runners record the model each run had as the transcripts name it (Claude's init event; Codex's
 session file, since its `--json` stream doesn't), and `modelArg`, what `--model` asked for.
 

@@ -43,4 +43,6 @@ them for the topic before changing a behavior, since most choices answer somethi
   for the user's yes; the evals mock both (`evals/README.md`).
 - Eval runs work inside `evals/results/`, below this file. The harness keeps this file and CLAUDE.md out of
   Claude Code's runs (`claudeMdExcludes` in `evals/harness/`); keep it that way.
+- `.vscode/settings.json` keeps VS Code from watching `evals/results/`: a Codex run's uv cache there set off
+  1,559 searches at once and left the machine no memory (`docs/history.md`, 2026-11-10); keep it that way.
 - In Git Bash on Windows, don't hand `/dev/null` to a native tool: bun wrote a file named `nul`.

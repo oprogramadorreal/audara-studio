@@ -39,6 +39,7 @@ Contents
 - A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
 - The preview's format menu (0.12.3, 2026-11-09)
 - A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
+- An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 
 ## Definition of done
 
@@ -4630,3 +4631,63 @@ test has 15 checks.
 
 Both then read the result at b21f40e and called it ready to merge. Codex withdrew its last request, to carry
 saved picks over from the tool's earlier forms, on the facts above.
+
+## An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
+
+Twice in one day a 64 GB Windows laptop ran out of memory while a Codex task eval ran with VS Code open on
+this repository. The first time was followed, twenty minutes on, by a bugcheck and a reboot (12:46). The
+second brought Windows' "virtual memory too low" notice (16:05:52) and the shell restarting (16:11:19). No
+render, encoder or script of the runs held the memory: watched afterwards, three renders at once left 45 GB
+free, the largest process an ffmpeg at 1.4 GB.
+
+What did, in order:
+
+- **Codex's sandbox keeps uv from its own cache**, so the session does what soundtrack's SKILL.md says and
+  sets `UV_CACHE_DIR` to `.audara-cache/uv` in the project: here the run's `work/`, under `evals/results/`,
+  inside the folder the editor has open.
+- **uv unpacks its packages there** (numpy, scipy, matplotlib and what they bring): 5,177 `.py` and `.pyi`
+  files between 12:19:43 and 12:21:35 in the first run; 8,324 between 16:01:34 and 16:05 in the second.
+- **VS Code's Python Environments extension** (ms-python.vscode-python-envs 1.42.0, read in its bundle)
+  watches the workspace for `**/{*.py,*.pyi,*.ipynb,pyproject.toml,requirements.txt,Pipfile,pyvenv.cfg,mspythonconfig.json}`
+  and, for every such file created or deleted, asks VS Code whether the workspace holds one (`findFiles`, to
+  set a context key): a new `rg.exe --files ... --no-ignore` over the whole folder each time. It doesn't wait
+  for the one before, and it skips only paths under `node_modules`, `.git` or `site-packages`; a uv cache
+  keeps its packages under `archive-v0/<hash>/`. With `--no-ignore`, `.gitignore`, which lists
+  `evals/results/`, isn't read.
+- **Counted during the first one**: 1,245 `rg.exe` at 12:25:24, every one a child of one `Code.exe`, the
+  oldest started at 12:20:20 and 482 of them in the last two minutes; 1,559 at 12:26:43, with 0.1 GB of memory
+  free and 0.5 GB of commit.
+- **The second wasn't counted while it lasted**, and is read from the same signs: the cache folder made at
+  16:01:33, the extension's log starting again at 16:01:35, its host unresponsive from 16:04:19, and
+  `spawn UNKNOWN` (Windows refusing a new process) at 16:05:59 and 16:13:08. VS Code then closed for an
+  update, and memory came back: 0.7 GB free at 16:19:58, 46 GB at 16:20:40.
+- **The control**: at 16:22, with VS Code closed, the same run wrote 1,368 more such files. Free memory stayed
+  above 41 GB for the hour after, sampled every few seconds.
+
+What changed:
+
+- **`.vscode/settings.json`** (new) leaves `evals/results/` out of VS Code's file watching
+  (`files.watcherExclude`). VS Code's API reference says events from an extension's recursive watcher are
+  dropped for the paths that setting names, so the extension is never told of the files. It holds where this
+  repository's folder is the one open: a folder above it, or a checkout without the file, needs the same
+  entry in the user's settings.
+- **Both eval mocks** (`evals/mocks/`) set `OPENBLAS_NUM_THREADS=1` before they import numpy. Found on the
+  way: a mock that had served no request held 766 MB of commit and 24 threads for its whole run. numpy's
+  OpenBLAS reserves a buffer per CPU thread when imported (`import numpy` alone, on that machine: 758 MB with
+  24 threads, 19 MB with one), and Windows refuses new memory by what is committed, not by what is touched.
+  The mocks only work on arrays element by element.
+
+What was checked: each mock started alone and answered a real request (the voices list and a text-to-speech
+call; an image generation), with 30 MB committed and one thread; `test_eleven_pitch.py` passes. **Not
+checked:** the setting against the extension itself, which means opening VS Code on the repository during a
+Codex run, the thing it is there to make safe; and no task eval was run.
+
+Left open: the same three can meet in a user's own project (Codex's sandbox, soundtrack's
+`.audara-cache/uv`, VS Code with that extension open on the project). Whether a project far smaller than
+this repository piles searches up the same way wasn't tried.
+
+Before the merge the branch was rebased onto 0.13.0, whose entry above refers to this one, and another session
+measured the mocks again on the same machine: the ElevenLabs mock as on main, idle, held 765 MB of commit and
+24 threads; from this branch 26 MB and one thread, and the image mock 32 MB and one. VS Code's API reference
+was read again for the setting: file events from an extension's recursive watcher "may be excluded" by
+`files.watcherExclude`. It is still untested against the extension itself. The manifests are at 0.13.1.

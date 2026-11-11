@@ -1,0 +1,9 @@
+{
+  // Eval runs write tens of thousands of files under evals/results/ (git-ignored, but an extension's own
+  // search doesn't read .gitignore). Left watched, a Codex run's uv cache there set off one search of the
+  // whole workspace per Python file in the Python Environments extension: 1,559 rg.exe at once and no
+  // memory left, twice in a day (docs/history.md, 2026-11-10).
+  "files.watcherExclude": {
+    "**/evals/results/**": true
+  }
+}
