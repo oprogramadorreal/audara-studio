@@ -39,7 +39,7 @@ Contents
 - A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
 - The preview's format menu (0.12.3, 2026-11-09)
 - A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
-- An editor watching the eval runs: 1,559 searches at once (2026-11-10)
+- An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 
 ## Definition of done
 
@@ -4632,7 +4632,7 @@ test has 15 checks.
 Both then read the result at b21f40e and called it ready to merge. Codex withdrew its last request, to carry
 saved picks over from the tool's earlier forms, on the facts above.
 
-## An editor watching the eval runs: 1,559 searches at once (2026-11-10)
+## An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 
 Twice in one day a 64 GB Windows laptop ran out of memory while a Codex task eval ran with VS Code open on
 this repository. The first time was followed, twenty minutes on, by a bugcheck and a reboot (12:46). The
@@ -4685,3 +4685,9 @@ Codex run, the thing it is there to make safe; and no task eval was run.
 Left open: the same three can meet in a user's own project (Codex's sandbox, soundtrack's
 `.audara-cache/uv`, VS Code with that extension open on the project). Whether a project far smaller than
 this repository piles searches up the same way wasn't tried.
+
+Before the merge the branch was rebased onto 0.13.0, whose entry above refers to this one, and another session
+measured the mocks again on the same machine: the ElevenLabs mock as on main, idle, held 765 MB of commit and
+24 threads; from this branch 26 MB and one thread, and the image mock 32 MB and one. VS Code's API reference
+was read again for the setting: file events from an extension's recursive watcher "may be excluded" by
+`files.watcherExclude`. It is still untested against the extension itself. The manifests are at 0.13.1.
