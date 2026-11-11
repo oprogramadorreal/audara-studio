@@ -204,14 +204,24 @@ holds as intended. Commercial pacing is an optional preset with numbers of its o
 
 ## Motion blur
 
-The final render averages sub-frames across the shutter (`render.ts video` does it by default:
-`--samples auto --shutter 0.2`; "Motion blur and sampling" in `docs/ENGINE.md`), so whatever moves fast gets
+The final render averages sub-frames across the shutter (`render.ts video` does it by default: `--samples
+auto`, over the video's shutter, 0.2 unless `video.json` says otherwise; "Motion blur and sampling" in
+`docs/ENGINE.md`), so whatever moves fast gets
 real blur there, a foreground flying through the camera included. The preview, single-sample stills and
 `--draft` clips stay crisp. So a scene draws where things are at t, sharp: smears, trails, ghost copies or a
 directional-blur pass meant to suggest speed would be blurred a second time in the render, and they slow the
 preview. A fast move judders in the preview; before changing the motion for a note like that, look at the
 moment as the render will show it: `render.ts stills --t <t> --samples auto`, or a short clip without
 `--draft`.
+
+The shutter is the video's own: `"shutter"` in `video.json`, the fraction of each frame's time the exposure
+spans, 0.2 unless the file says otherwise (0.5 is film's 180 degrees). When the director asks for more or
+less blur, set it there, so every later render has it without a flag, and show them the difference on frames
+as the render makes them (`stills --t <t> --samples auto`, with and without `--shutter <x>`): the preview
+shows no blur while it plays. The treatment's Format line names a shutter that isn't the default. A project
+whose `scripts/render.ts` header doesn't mention video.json's
+"shutter" (one made before 0.13.0) ignores the field: give `--shutter` on its renders, or update its scripts
+with init `--force`.
 
 Draw blur only when it is the look (smear frames, painted speed lines, a long-exposure trail), as a style the
 treatment names. A `stateful` scene can't be sampled adaptively: the render gives it a fixed 12 sub-frames

@@ -133,11 +133,32 @@ test('touching stateful stretches can split at a hard cut', () => {
   const pieces = plan([4, 8], [[0, 4], [4, 8]]);
   check(pieces.some(([, b]) => b === 240), 'touching hard-cut scenes were unnecessarily merged');
 });
+test("a change to a video's video.json (its shutter, say) invalidates resume", () => {
+  const before = fingerprint();
+  write('videos/one/video.json', '{ "shutter": 0.5 }');
+  check(fingerprint() !== before, 'video.json was ignored');
+});
+// The video's own shutter (video.json's "shutter"), which a render takes when --shutter doesn't say otherwise.
+test("a video's own shutter is read from video.json, and any value but a number from 0 to 1 is reported", () => {
+  const src = [declaration('const projectText = ', ';'), declaration('function ownShutter(', '\n}')].join('\n');
+  const own = new Function('path', 'readFileSync', 'PROJECT', `${new Bun.Transpiler({ loader: 'ts' }).transformSync(src)}\nreturn ownShutter;`)(path, readFileSync, scratch) as (video: string) => number | null;
+  const json = (text: string) => { write('videos/s/video.json', text); return own('s'); };
+  check(json('{ "fps": 60 }') === null, 'no field should give no shutter');
+  check(json('{ "shutter": 0.5 }') === 0.5, 'a shutter of 0.5 was not read');
+  check(json('{ "shutter": 0 }') === 0, 'a shutter of 0 (no blur) was not read');
+  check(json('﻿{ "shutter": 1 }') === 1, 'a shutter after a byte-order mark was not read');
+  // (reported by render.ts itself: a project's older src/video.ts would let the value pass unread)
+  for (const bad of ['2', '-0.1', '"0.5"', 'null', 'true']) {
+    let said = '';
+    try { json(`{ "shutter": ${bad} }`); } catch (e) { said = (e as Error).message; }
+    check(said.includes('videos/s/video.json') && said.includes('from 0 to 1') && said.includes(`It is ${bad}.`), `a shutter of ${bad} was not reported: ${said || '(nothing thrown)'}`);
+  }
+});
 
 let passed = 0;
 try {
   for (const name of [
-    'src/look.ts', 'src/plate.md', 'videos/one/TREATMENT.md', 'videos/one/CRITIQUE.md',
+    'src/look.ts', 'src/plate.md', 'videos/one/video.json', 'videos/one/TREATMENT.md', 'videos/one/CRITIQUE.md',
     'videos/one/youtube/thumbnail.png', 'videos/one/assets/youtube/plate.png', 'videos/two/scenes/shared.ts',
     'tsconfig.json', 'tsconfig.scripts.json', 'tsconfig.base.json', 'bun.lockb', 'footage/shot/full/000001.jpg',
   ]) write(name, 'fixture');

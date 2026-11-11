@@ -38,6 +38,7 @@ Contents
 - What a clone lacked: the mix's own script, and the pass a repository made first still owed (0.12.1, 2026-11-06)
 - A preview silent for good: the soundtrack read again (0.12.2, 2026-11-06)
 - The preview's format menu (0.12.3, 2026-11-09)
+- A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
 
 ## Definition of done
 
@@ -4325,3 +4326,307 @@ same project:
 Its second review, of those fixes, found that a folder the server couldn't make was still answered with 200, and
 the page asked only once, so the format was lost again on leaving it (reproduced with a failing `mkdirSync`). The
 page now asks until its format is listed.
+
+## A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
+
+Anthropic released Claude Fable 5.2, whose taste the user judges better than Opus 5.5's, the model these skills
+were written around. They asked a Fable session (Claude Code, xhigh) to review the whole project from that
+side: where it helps a stronger model realise a director's intent, and where its instructions, defaults,
+examples or tools would give a weaker video than the model would make alone. Before any change they asked a
+second question: would Opus 5.5 still work with what the review proposed, and is there a way to write the
+skills that serves any model.
+
+**The review** was a read (the seven skills and their references, the template's defaults, the eval cases,
+design.md, and this history's round 4, 0.4.0, 0.8.2 and 0.9.0), with nothing run. It found the director's loop,
+direction kept exactly, facts a model can't get alone, the fresh critic and style frames picked by looking
+worth keeping for any model, and proposed six changes: take the Avoid list out of projects and let the critic's
+first look decide what is generic; state the bar as fit rather than "impress"; sketch before the brief; make
+the split into scene authors a judgment; split the eval assertions into the director's control and taste; and
+treat some engine defaults (post, the shutter, the type shelf, the guide's example scene) as looks nobody
+chose.
+
+**The second look** withdrew about half of that before anything was written, each against a record here: "fit"
+instead of "impress" (round 4's "derive the look from the subject's own material" drew props flat on paper);
+the critic's first look alone deciding what is generic (Codex's critics "shipped all of it as justified", round
+4); sketching before the brief (with the brief first, Opus 5.5 still posted the treatment late or never in two
+of five runs, 0.8.2); a discretionary split (the lead alone lost on both reels, 0.4.0); replacing the guide's
+example scene (no run shows it anchoring); and naming models in the skills (a reader that isn't the one named
+would exempt itself). What it kept is design.md's "Text that serves any reader": a steer tells a model which
+way to lean before it has made anything, a check holds something rendered against a bar, every
+over-correction recorded here was a steer, and a change is run beside the old text on every model the plugin
+supports before it merges.
+
+**What was written under that rule,** each in its own commit, as text meant to be a check, a fact or a ceiling
+removed:
+
+1. **The Avoid list:** a project's copy crosses out only what a named form or style asks for and adds only what
+   the director turns down; a session adds no bans of its own (the seal and the rainbow were such bans).
+2. **What is in the frame by habit:** the stills loop and the full-cut critic name what could go without a
+   viewer missing it, beside "a plain picture nobody asked for is a finding", which stayed word for word.
+3. **Style frames:** "two or three is where to start, not a ceiling", and a frame that shows a better piece
+   than the treatment describes rewrites the treatment, said in the message that posts the frames.
+4. **Scene authors read the whole treatment** before their brief.
+5. **The engine's post defaults described as a look** (a halo on light type, white at 246 of 255), with the
+   flat alternative named.
+6. **Small ones:** the Assumed line says how a piece is told where that leaves something out; "where you can't
+   listen"; golden-temple's low sun as that piece's hour.
+
+Beside them: **a video's shutter in `video.json`**, which ran in the same text, and the gate's tools.
+
+**The gate's first run.** `cv-zero-asset` ("make a 20-second video showing why the sky is blue, with music and
+sound effects", then "Go ahead. I want the MP4 and to see the files.", then "Approved."), with main's skills
+(79ab8a6, text c76f3f228fa2) and the branch's (1cda473, text 035da0921e72, all six changes at once), on Claude
+Opus 5.5 and Claude Fable 5.2 (Claude Code 2.1.322, xhigh) and Codex (0.167.0, gpt-6-astra, ultra), one run
+each, plus Fable without the plugin. One machine, one day. Seven runs were started in the morning between
+11:28 and 12:17, up to five at a time; the machine ran out of memory at about 12:20, minutes after the last
+of them started, and the five still going were lost (the cause, found in another session that day, was an
+editor open on the repo starting a workspace search for each Python file a Codex run created). Those five
+were run again in the afternoon, two at a time. Codex on main's text and Fable without the plugin are the
+morning's, made beside three or four other runs.
+Each run had a fresh grader for the case's assertions (one grader stalled and was replaced).
+
+| Run | To the preview | To the MP4 | Output tokens | Assertions |
+|---|---|---|---|---|
+| Opus 5.5, main's text | 46.0 min | 15.1 min | 271,608 | 6 of 6 |
+| Opus 5.5, the branch's | 54.2 min | 15.9 min, and a third turn of 2.8 that rendered it again | 315,053 | 6 of 6 |
+| Fable 5.2, main's text | 66.2 min | 35.6 min | 383,211 | 6 of 6 |
+| Fable 5.2, the branch's | 64.9 min, the MP4 already rendered | 0.8 min | 324,782 | 5 of 6 |
+| Codex, main's text | 17.5 min | 19.0 min | 33,660 | 5 of 6 |
+| Codex, the branch's | 35.3 min | 14.8 min | 46,976 | 6 of 6 |
+| Fable 5.2, no plugin | 26.2 min, to a finished MP4 | | 140,021 | 4 of the 4 that apply |
+
+The two failures: Fable on the branch's text ran the full render in its first turn (below), and Codex's critic
+on main's text wrote its first look as a `.txt` that its report never quotes.
+
+Each pair went to three blind judges (`judge.ts`, claude-fable-5-2 at high effort, frames only), and then to the
+director on one page: the prompt, the two videos as X and Y with sound, the order drawn per pair, and the
+reveal after their pick.
+
+| Pair | Judges | The director |
+|---|---|---|
+| Opus 5.5: main's text or the branch's | main's 2, the branch's 1, all slight | main's, slightly |
+| Fable 5.2: main's text or the branch's | the branch's 3 (one slight, two clear) | the branch's, slightly |
+| Codex: main's text or the branch's | the branch's 2 (clear), main's 1 (slight) | about the same |
+| Fable 5.2: the plugin (main's text) or none | the plugin 3, all slight | the plugin, slightly (not blind: one video was in the pair above) |
+| Fable 5.2: the plugin (the branch's text) or none | the plugin 3, all clear | not shown |
+
+The session's own reading of the frames agreed with the director's on all four. Opus 5.5's video on the
+branch's text had the better opening idea (the air taken away, the sky gone black) and a sparser picture:
+smaller captions, a mechanism drawn as one soft shape, a thin beam in an empty sky for three seconds, and a
+project bloom of 0.3 (0.22 in its skies) with no vignette or grain, where main's text had 0.55, a vignette and
+grain.
+
+**What the graders saw of each change:**
+
+- **The Avoid list.** On main's text Opus 5.5 took the list by reference and crossed out two parts of its
+  first item, each with a reason (a near-black ground: it is airless space; glowing lines: light is the
+  subject). Fable rewrote it to
+  seven items after its first frames existed, dropped the item its video most resembles and added bans of its
+  own (a prism or a rainbow as the emblem of light, captions that repeat the picture); no message, treatment
+  line or critic's report cites any of them, and its critic caught the one typeface for everything from the
+  template's own list. Codex wrote no Avoid section. On the branch's text Opus copied 13 of the 14 items and
+  crossed out nothing, Fable copied the list whole, and Codex wrote one line of seven phrases. No run shows a
+  ban a session wrote for itself changing a video, and the branch's text took away the crossing out that Opus
+  had done well.
+- **By habit.** One finding in each Claude run on the branch's text. Opus 5.5's critic: "64 molecules that
+  never move are spread around the beam and read as a starfield"; the session cut them to 30 and gave the rest
+  a thermal jiggle. Fable's: "ray fan and rings run at one strength from 10 s on, burying the 2 px dashes ...
+  and veiling the dusk gradient"; the session cut both back from 12.5 s, the picture is plainer at 13.5 to
+  14.5 s and at 19 s than the draft, and qc.py on the final flags a still stretch at 17.37 to 19.77 s that the
+  reviewed draft didn't have and no critic saw. Codex's critic didn't answer that part of its prompt. Critics
+  on main's text already asked for things to come out where they cost the viewer (Opus 5.5: shrink the warm
+  rings, dim the tally's violet dots, the rays near the sun, the molecules under the captions; Fable: drop
+  three colours of bounces, the comets under the caption), so the side this added was not missing.
+- **Style frames.** Three, two, two, three, two and two frames, in the table's order: the line about a ceiling
+  changed nothing. All four Claude runs, on either text, built the scene first, made the alternatives
+  afterwards and showed none before building. On the branch's text both Claude sessions changed the treatment
+  after the pick (Fable rewrote it: one figure became two, five lines became eight) and neither said so in a
+  message; on main's text Fable's idea did not change at the pick (it was rewritten later, after the critic's
+  round).
+- **Post.** Codex on the branch's text set bloom and shoulder to 0 and wrote why.
+- **Scene authors, and the small ones:** no Claude run split the work. Codex gave scenes to sub-agents on both
+  texts, and their prompts are encrypted in its session files, so what they were given to read can't be seen.
+  Fable's Assumed line on the branch's text says "told as one continuous shot, no recap".
+- **The shutter:** no run set it, and `verify` passed in all three runs that had the new render.ts.
+
+**The decision.** No change was shown to help. The six ran as one text, so nothing above can be traced to a
+line: the gain on Fable (the only one of the three text pairs all its judges agreed on) may be the frame that
+rewrote the treatment, or the run; the sparser Opus 5.5 picture may be the list it could no longer cross out,
+the habit question, the post line, or the run. One run a side can't separate a slight difference from two
+runs of one text, and by the gate's own rule the two pairs that split two to one are no result. What there is
+on Opus 5.5, the model the user asked about, points the wrong way (the director, two judges of three and the
+session preferred main's text, slightly), in the direction this history has seen it over-correct before. The
+user's instruction after seeing the pairs was to drop what couldn't be shown to improve the plugin. So all six
+were withdrawn, and the skills' text about taste is main's again.
+
+What stays in 0.13.0:
+
+- **A video's shutter** is kept with the video: `"shutter"` in `video.json` (0.2 by default, as before), read by
+  render.ts wherever `--shutter` doesn't say otherwise and by the preview's refined frame. The amount of blur
+  had lived in a flag someone had to remember at every render. That it is a choice came from the baseline:
+  without the plugin, Fable rendered at 30 fps with a shutter of 0.55. It ran in the gate's text with a
+  paragraph that told a session to choose the blur for each piece; no run set it, and the paragraph was cut
+  back afterwards to the setting and where a director's request for more or less blur goes (below).
+  The treatment's Format line names it, and a project made before 0.13.0 ignores the field (motion.md says
+  so, rather than a line in every older project's AGENTS.md). render.ts reports a value that isn't a number
+  from 0 to 1 itself, whatever the version of the project's page.
+- **The gate** (evals/README.md, "The gate for a change of taste"; AGENTS.md has a line for it): `task.ts
+  --skills <dir>` runs a copy of another commit's skills, so two texts run side by side, and `result.json`
+  records a hash of the text; `--until <file>` ends a run at a stage; `judge.ts` judges two runs blind, in
+  pairs, and records the judge's model; `pick.ts` builds the page for the director's own picks. Its rules
+  after this run: one change at a time, every supported model, no reader worse, and two runs of the old text
+  when a difference is slight.
+- **design.md's "Text that serves any reader",** with what this run added to it: which kind a line is, only a
+  run shows. Each of the six was written as a check or a fact, and as one text they still read, to at least
+  one model, as a lean toward less.
+
+**A baseline for the new model.** The video Fable made with the plugin (main's text) was preferred to the one
+it made alone, slightly, by three judges of three and by the director (whose pick was not blind: one of the
+two was in the pair before), for an idea that belongs to the question (take the air away and the sky goes
+black) against a clear, friendly explainer with a prism and caption pills. It cost 2.7 times the output
+tokens, and 66 minutes to the preview and 102 to the approved file against 26 to a finished one (the run
+without the plugin was the morning's, beside other runs). Alone, the session stopped for nothing, had no
+review but its own, and read "Go ahead" as leave to make a git commit nobody asked for. The review's worry,
+that the plugin might hold this model below what it does alone, did not show on this prompt.
+
+**What the runs showed that no text here changed,** each a candidate for its own change and its own run:
+
+- **Style frames come after the build.** In four of four Claude runs the look was chosen before a frame
+  existed and the alternatives were made afterwards; none was shown before building, and two runs named the
+  frames' folder only in the turn's last reply. Codex made its two before building on the branch's text and
+  after on main's.
+- **A final render before the go-ahead.** Fable on the branch's text printed critique.md's Delivery section,
+  and 110 seconds later started the full render, saying in its reply "I rendered the final file without waiting
+  for your go-ahead, since it took 90 seconds". Nothing had been posted before that reply: no treatment, no
+  preview link, no frames. The branch changed nothing in that text and the run on main's text waited.
+- **The preview link came late:** in Fable's run on main's text it reached the user in the first turn's final
+  reply, 59 minutes after the preview started, though the preview's own output asks for it at once (0.9.0).
+- **Delivered frames no critic saw,** in five of the six runs with the plugin (all but Codex on main's text):
+  a fix made after the last review and rendered into the MP4. The replies say so, Codex's on the branch's
+  text only at the preview and, at delivery, through the notes it links.
+- **Windows on the user's desktop:** File Explorer opened on the MP4 by Fable on the branch's text, by Codex on
+  both, and by Fable without the plugin.
+- **Codex, main's text:** after its critic found hard cuts where the treatment promised transitions, the session
+  rewrote the treatment's column to "Hard cut", and the verification critic accepted the cuts as matching it;
+  its hand-off said nothing remained while two findings were still listed as present.
+
+**Considered, left out, with what a run of each alone should look for:**
+
+- **A frame that rewrites the treatment** has the one hint in its favour (Fable's rewritten piece won its
+  pair), and one against: the treatment changed with no word to the director.
+- **The Avoid list with no bans of the session's own, and crossing out kept** where the treatment argues for
+  an item, the reason beside it: main's Opus 5.5 behaviour and the branch's whole list together. Not run.
+- **The critic naming what is there by habit:** critics already ask for removals that cost the viewer, and the
+  one fix that followed a habit finding on Fable left a plainer stretch. A critic alone on one finished project
+  with each text would show the findings without a build.
+- **Scene authors reading the whole treatment:** needs a case with several authors whose prompts can be read
+  (Codex's are encrypted).
+
+**Checks.** `test_render_inputs.ts` passes, 19 checks, two of them new (a video's own shutter read or reported,
+and a video.json edit ending a resume), and the other script tests pass. In a project made from the template a
+still with `"shutter": 0.6` in video.json has the same hash as one with `--shutter 0.6`, `--shutter 0.2` beside
+the field gives the default's, `"shutter": "0.5"` is reported by render.ts with and without `--shutter`,
+`verify` passes and `bun run check` is clean. `--until` ended a throwaway run in its first turn with its
+session and model recorded, and skipped the turns after it. `judge.ts --dry` built both orders for one judge,
+used them again on a second call, built them again for two other runs given the same folder and again after
+one was cut short, refused a `p0` folder it hadn't made (leaving the file in it) and a video inside a packet,
+and took `work/final.mp4` over a clip under `work/out/`; a judging in a folder that already held one was
+refused; and two judges on a small model ran through to a verdict and a page. `pick.ts` was used for the
+director's picks; a page built again kept its order and turned the judges' letters to the page's.
+
+**Not run:** a second run of any arm, or two runs of main's text for the difference that means nothing; any
+other case (a showreel, `cv-direction-rejection`, `cv-promise-opening`); a smaller Claude model; the trigger
+evals (no SKILL.md changed). The judges could not hear the sound or watch the motion; the director could.
+
+**Two consultants read the PR before it merged:** an Opus 5.5 session (Claude Code, xhigh) and a Codex session
+(gpt-6-astra, ultra), each given its own part and told to read and report only. The Fable session checked each
+finding against the code or the run files and made every change. Their first reports changed these:
+
+- **From Codex, the code.** `judge.ts` could take a clip elsewhere in a project for the run's video: it now
+  looks under `out/` first, and for the file named for its folder. A packet cut short, or built from other
+  files, was used again: a mark written last now says what a packet was built from. With one judge only one
+  order was built, and the director's page failed half the time: both always are. `--until` reached in the
+  first turn left a run without its session, and a Codex run without its model. render.ts let a `shutter` that
+  isn't a number pass in silence when the project's page was older: it reports it itself now. The director's
+  page showed only the first turn of what was asked: every turn now. And two lines of the engine guide and one
+  of motion.md still gave the default as a plain 0.2, which both consultants reported.
+- **From Opus 5.5, the record.** The shutter's paragraph in motion.md ("the piece's choice ... softer and
+  heavier, and with 24 or 30 fps it reads as filmed ... choose it on frames") was a change of taste kept
+  without a gate of its own: it is cut back to the setting and where a director's request for more or less
+  blur goes. This entry and design.md said more than the votes: Codex's pair as "no difference" (its judges
+  split two to one toward the branch's text), Fable's as "the only pair with a clear vote" (Codex's had two),
+  Opus 5.5 doing worse "by every reading" (one judge of three preferred the branch's). They are corrected
+  above, with the smaller facts it listed (the times, Codex's sub-agents, the bloom the scenes set). The
+  models the gate runs on were listed two ways: design.md's "Fresh sessions, every model" now holds the one
+  list, a smaller Claude model included, which this first run left out. And blender.md gave a Blender layer
+  a 0.2 shutter whatever the video's.
+- **How Opus 5.5 read the six changes.** Asked, as the model whose video came out sparser, it said it would
+  have taken them together as a push toward a plainer picture: three name glow or texture as a cost ("glow
+  over everything", the post line's "faint halo", a list that leaves "near-black ground ... often glowing"
+  standing and can't be crossed out), and each hedge ("never plainer than its idea") is abstract where the
+  examples are concrete: "I'd act on the examples." It would not have read the style-frame line or the
+  scene-author line that way. It agreed with withdrawing all six, on the ground that nothing was shown to
+  help, more than that Opus 5.5 was shown to be hurt.
+
+Their second reports, on those changes:
+
+- **Opus 5.5** found a correction that had itself said too much: the README's line on `--until docs/STYLE.md`
+  now claimed the Claude runs wrote the look down before any frame, where both runs on Fable wrote STYLE.md
+  after the scene was built. It says that now, and that the cut is a fraction of a build's time only where a
+  session writes the look down first. Also the PR's description, which still carried the first wording, one
+  more stale shutter line (contract.md), the last morning run's start (12:17, not 12:21), and credit in the
+  section above given to the wrong reader. Asked to read the shutter text as it now stands, it found nothing
+  that would lead it to change the blur on a video nobody asked about.
+- **Codex** found that two of the fixes had opened new holes in `judge.ts`, and one older one. A rebuild
+  removed a `p0` or `p1` folder whether or not the tool had made it: a packet's mark is now written before it
+  is built, and a folder without one is refused, with nothing removed. A clip under `out/` hid a finished
+  video elsewhere in a project: `out/` counts only when it holds a whole video. And a second judging in the
+  same folder left the first verdict where a judge at work could read it: such a folder is refused, and each
+  judge's transcript is written when all are done. It accepted the precedence check in a real project in
+  place of a mocked test, since the stills had eight sub-frames and the two shutters gave different hashes.
+- The two-judge run that tested the tool used a smaller model (claude-haiku-5-5) on Codex's pair, and both
+  its judges preferred main's text, clearly, where two of the three Fable judges had preferred the
+  branch's: one more reason to read that pair as no result. It was a test of the tool, and its folder was
+  not kept.
+
+Their third reports: Opus 5.5 called the PR ready, with four things worth making first, all made (the Haiku
+run above says its folder wasn't kept, and no longer claims to show whose taste is weaker; no style frame was
+"shown before building", where two runs did name the frames' folder in a turn's last reply; lines rewrapped;
+the PR's description names Codex's later rounds).
+Codex found two more ways `judge.ts` could lose or misstate evidence: a video inside a packet folder passed
+the check when its path was typed in another case, and `--dry` could build other videos' packets under a
+verdict already there. The first now compares paths as the platform does; the second is refused, so a folder
+that holds a judging keeps that judging's packets. It named what it would accept as an eval tool's stated
+limits, which the header of `judge.ts` now states: one call at a time for a folder, no transcripts from a
+judging stopped by hand, and blindness that rests on the judge's folder holding nothing, not on a sandbox.
+
+In a fourth round both read the result at 94eb17c and called it ready to merge.
+
+After that the user had Codex review the whole branch against main, and it found three more in the comparison
+tools. `judge.ts` compared only the first turn of the two runs' requests, so runs that opened alike and were
+then told different things passed, and a judge was given one run's request for both: every turn is compared
+now, and a difference is refused. A page made from packets no judge had voted on showed no prompt: `judge.ts`
+writes the request beside the packets. And the page kept the director's picks under a key that ignored which
+video was X, so a page whose order changed would have shown an earlier "X" beside the other video: the order
+shown is part of the key. `evals/tests/test_judge_pick.ts` now covers both tools offline, on two one-second
+videos and with no judge started; four of its first eleven checks failed on the code before these three
+fixes.
+
+Both consultants then read those fixes and the test. Codex found that a config listing one folder twice lost
+the first place's order on a rebuild (the order is now kept for each place a folder is listed), and that only
+one of the test's calls was kept from a real model (a stand-in for the judge's CLI now comes first on PATH for
+all of them; with the refusal of a second judging taken out of a copy, the test fails and no model is called).
+Opus 5.5 asked for a plainer refusal of a run that stopped early ("run b stopped after turn 1 ... and run a
+went on to turn 2"), for the kept order not to depend on the folder the tool is run from (pairs are named by
+their whole path), and for checks that were looser than their names: a rebuild is repeated six times against
+the order first drawn, key.json's X and Y are read for both orders, and a verdict's request is shown over a
+stale one beside it. Codex asked for the same of others: the two packets are compared byte for byte as the
+same two videos in opposite orders, and a folder is seen to be left as it was by its videos' times, its marks
+and its verdict. Codex's last point was a page whose key named its folder relative to where the tool was run,
+as this tool's first key files did: its order is kept, the folder read against where the tool is run now.
+Its picks start empty once, since the name they are kept under changed with the path: nothing was written to
+carry them over, the tool being new in this PR and no page of that form existing outside this branch. The
+test has 15 checks.
+
+Both then read the result at b21f40e and called it ready to merge. Codex withdrew its last request, to carry
+saved picks over from the tool's earlier forms, on the facts above.

@@ -231,6 +231,58 @@ reach each other's. A Codex run also gets `codex-sessions/`, its session files f
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
 
+## The gate for a change of taste
+
+The skills are read by models whose leanings differ, and a line that corrects one can push another past
+the right answer (`docs/design.md`, "Text that serves any reader"). So a change to what the skills say
+about taste (the look, the pacing, the critic's bar, what counts as a finding) runs with the old text
+beside it before it merges, on the same day and machine, on each model the evals cover (`docs/design.md`,
+"Fresh sessions, every model"): the weakest in each tool, and the strongest. In 2026-11 that is Claude
+Fable 5.2, Claude Opus 5.5 and a smaller Claude model in Claude Code, and Codex's default model. It passes
+when no reader does worse with the new text than with the old one.
+
+- **One change at a time.** The gate's first run (0.13.0) put six changes in one text, on three of those
+  models (no smaller Claude model). One model's video was preferred with it by every judge; the other two
+  pairs split two to one, one each way. None of that could be traced to a line, so all six were withdrawn.
+  A change is one edit with one purpose; several run as several texts.
+- **Two texts at once.** `git archive <commit> skills | tar -x -C evals/results/skills-<name>` copies a
+  commit's skills, and `task.ts --skills evals/results/skills-<name>/skills` links that copy instead of the
+  repo's, its `init.ts` included. `result.json` records the folder and `skillsText`, a hash of every .md
+  file in it, which names the text a run had. The links are live: change nothing in a skills folder while
+  a run uses it, which is one more reason to run from copies.
+- **Where the change acts.** A change to the brief or the look shows by the time the look is written
+  down: `--until docs/STYLE.md` ends a run there, with the treatment, STYLE.md, `look.ts` and whatever
+  frames exist by then. That is a fraction of a build's time only where a session writes the look down
+  before it builds: in 0.13.0's two runs on Fable 5.2, STYLE.md was first written after the scene was
+  built, so check when a case's sessions write the file before relying on the cut. What only a build shows
+  (the critic's findings and what the session does about them, scene authors, the cut) takes whole runs:
+  `cv-zero-asset` for one idea, a showreel for many scenes.
+- **Judged blind, in pairs.** `bun evals/harness/judge.ts --a <run> --b <run> --model <id> --n 3` gives
+  each of three fresh sessions the two videos as X and Y (copied without their metadata, with sheets of
+  their frames labelled by time and five full-size stills), swaps which is X from one judge to the next,
+  and asks which the person who asked would rather have. The question is fixed and two-sided: neither
+  the busier nor the quieter video is better in itself. `verdict.json` holds each vote, with its reasons
+  and the model that judge ran. A judge can't reward taste past its own, so for a comparison that decides
+  something the judge is the strongest model there is, and the director too (`--dry` builds the packets
+  without judging). The two runs must have been asked the same, turn for turn: a run stopped early (by
+  `--until`, say) is compared with another stopped at the same turn, not with a whole one. A judge is a session, not a sandbox: its folder holds nothing that names a run, and a
+  folder that already holds a judging is refused, so no earlier verdict sits one level above a judge at work.
+- **The director's picks.** `bun evals/harness/pick.ts <config.json>` builds one page from judged pairs
+  (or from `--dry` packets, before any judge has voted):
+  the prompt, the two videos as X and Y with sound, in an order drawn for each pair, the question, and a
+  reveal that holds which was which and the judges' votes. The person who directs the project picks before
+  opening it, and a button copies their picks as text; `key.json` beside the page says which was which.
+  They hear the sound and see it move, which no judge does, so where the two differ theirs counts for
+  more. The config is `{ "out": <folder>, "pairs": [{ "dir": <a judge.ts folder>, "title", "a": <what run a
+  is>, "b": <what run b is>, "facts": { "a", "b" } }] }`.
+- **What it can't show.** A judge sees frames: no sound, and motion only as frames show it. One run per
+  arm is noisy (two runs of one text can differ by more than two texts do), so a split vote is no result,
+  and a change that matters gets more than one run per arm. Two runs of the old text, judged the same way,
+  show how far apart one text's runs land: a difference smaller than that one is not a result.
+- **A new model.** Before any text changes for it, run the cases with the skills as they are and
+  `--without`, and judge the pairs. What it now does well alone is a candidate to cut; what it still gets
+  wrong is the evidence a change needs.
+
 ## Script tests
 
 `evals/tests/` tests the scripts themselves, offline: no session, no network, no paid call. `imagegen.py`'s
@@ -250,7 +302,15 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 and three text files); preview's sheets; and what niche refuses before any network call.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
-included) and piece boundaries around stateful scenes' shutter exposures; neither needs Chrome or ffmpeg.
+included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
+`shutter` a render takes or reports; neither needs Chrome or ffmpeg.
+`test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
+started (a stand-in for the judge's CLI comes first on PATH, so no failure reaches a model): which video
+`judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to touch, two runs told
+different things at a later turn or stopped at different ones, a folder that already holds a judging, and
+what `pick.ts` puts on the director's page (every turn of the request, the order kept on a rebuild, also
+where one folder is listed twice, picks kept apart when X and Y change places, the judges' letters turned
+to the page's).
 `test_footage.ts` checks the engine's streamed footage without a browser: which frame of a shot each video
 frame and each of its sub-frames shows (rates, offsets, an entry starting between frames, 29.97 fps), which
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
@@ -300,6 +360,7 @@ bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
 bun evals/tests/test_render_inputs.ts
+bun evals/tests/test_judge_pick.ts
 bun evals/tests/test_footage.ts
 bun evals/tests/test_soundtrack.ts
 ```

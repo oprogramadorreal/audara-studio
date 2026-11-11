@@ -35,6 +35,11 @@ export interface VideoJSON {
   duration?: number;
   /** Tempo of the beat grid used when data/audio.json is missing (default 120). */
   bpm?: number;
+  /**
+   * The render's shutter: the fraction of each frame's time its motion blur spans, 0 to 1 (default 0.2, crisp
+   * at 60 fps; 0.5 is film's 180 degrees). scripts/render.ts --shutter overrides it for one run.
+   */
+  shutter?: number;
 }
 
 /**
@@ -58,6 +63,8 @@ export interface VideoConfig {
   audio: SegmentSpec[] | null;
   duration?: number;
   bpm: number;
+  /** The fraction of a frame's time the render's motion blur spans (video.json's `shutter`, default 0.2). */
+  shutter: number;
 }
 
 /** A video's timeline: the default export of videos/<video>/timeline.ts. */
@@ -107,6 +114,11 @@ function normalize(name: string, j: VideoJSON): VideoConfig {
   if (j.fps !== undefined) { if (pos(j.fps)) fps = j.fps; else bad.push(`"fps" must be a positive number, e.g. 60`); }
   let bpm = 120;
   if (j.bpm !== undefined) { if (pos(j.bpm)) bpm = j.bpm; else bad.push(`"bpm" must be a positive number`); }
+  let shutter = 0.2;
+  if (j.shutter !== undefined) {
+    if (typeof j.shutter === 'number' && j.shutter >= 0 && j.shutter <= 1) shutter = j.shutter;
+    else bad.push(`"shutter" must be a number from 0 to 1: the fraction of each frame's time the motion blur spans (0.2 by default; 0.5 is film's 180 degrees)`);
+  }
   let duration: number | undefined;
   if (j.duration !== undefined && j.duration !== null) { if (pos(j.duration)) duration = j.duration; else bad.push(`"duration" must be a positive number of seconds`); }
   const seg = (file: unknown, at: number, from: number, dur?: number, fadeOut?: number): SegmentSpec | null => {
@@ -136,13 +148,13 @@ function normalize(name: string, j: VideoJSON): VideoConfig {
     if (!audio.length) audio = null;
   } else if (j.audio !== undefined && j.audio !== null) bad.push(`"audio" must be a file ("audio/song.mp3"), a list of segments, or null`);
   if (bad.length) VIDEO_ERROR = `${where}:\n  ${bad.join('\n  ')}`;
-  return { name, dir, title: typeof j.title === 'string' && j.title ? j.title : name, size, ownSize: size, fps, audio, duration, bpm };
+  return { name, dir, title: typeof j.title === 'string' && j.title ? j.title : name, size, ownSize: size, fps, audio, duration, bpm, shutter };
 }
 
 function select(): VideoConfig {
   const asked = params.get('v');
   const name = asked ?? defaultVideo(VIDEOS);
-  const placeholder: VideoConfig = { name: name ?? '', dir: `videos/${name ?? ''}`, title: 'audara', size: [1920, 1080], ownSize: [1920, 1080], fps: 60, audio: null, bpm: 120 };
+  const placeholder: VideoConfig = { name: name ?? '', dir: `videos/${name ?? ''}`, title: 'audara', size: [1920, 1080], ownSize: [1920, 1080], fps: 60, audio: null, bpm: 120, shutter: 0.2 };
   if (!VIDEOS.length) { VIDEO_ERROR = 'No videos in this project: add videos/<video>/video.json (see docs/ENGINE.md).'; return placeholder; }
   if (!name || !VIDEOS.includes(name)) {
     VIDEO_ERROR = `Unknown video ${JSON.stringify(asked)} (?v=). The videos here: ${VIDEOS.join(', ')}.`;

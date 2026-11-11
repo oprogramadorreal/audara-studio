@@ -73,7 +73,8 @@ camera and the look are baked in, and every change costs a re-render (EEVEE on a
 frame at 1600×600; Cycles about 2.5 s).
 
 - RGBA PNGs at the video's fps, `film_transparent`, the Standard view transform (AgX would be tone-mapped
-  twice), Blender's motion blur on with a 0.2 shutter centred on the frame, so the layer blurs like the rest.
+  twice), Blender's motion blur on, its shutter the video's (0.2 unless `video.json` says otherwise) and
+  centred on the frame, so the layer blurs like the rest.
 - Played through the footage path (`references/contract.md`, "Images and footage"): frames picked by
   `frameTime(t)`, drawn at 1:1. Crop to the object: each frame costs width × height × 4 bytes of GPU memory
   (60 frames at 1600×600: 230 MB; full-frame 1080p: about 500 MB a second). 4K means rendering at 2×.

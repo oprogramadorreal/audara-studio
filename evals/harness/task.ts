@@ -4,9 +4,16 @@
 // the folder as it ends up, and timings. Grading is separate (evals/README.md).
 //
 //   bun evals/harness/task.ts --case evals/tasks/<id> --tool claude|codex [--model <id>] [--effort <level>]
-//       [--without] [--work <dir>] [--keep-sessions]
+//       [--without] [--work <dir>] [--keep-sessions] [--skills <dir>] [--until <file> [--grace <seconds>]]
 // --effort sets the reasoning effort the user's settings would otherwise pick: Claude Code's --effort (low ..
 // max), Codex's model_reasoning_effort (low .. ultra), e.g. --effort ultra for a Codex run like the user's own.
+// --skills <dir> links the skills in that folder instead of this repo's, and runs its init.ts: a copy of another
+// commit's (`git archive <commit> skills | tar -x -C <somewhere>`), so two versions of the text can run side by
+// side on the same day and machine (evals/README.md, "The gate for a change of taste"). result.json records the
+// folder and a hash of every .md file in it, which names the text that ran.
+// --until <file> ends the run once that file exists in the work folder and --grace seconds (120) have passed,
+// skipping the turns after it: `--until docs/STYLE.md` stops a code-video run at its look (the treatment, the
+// style frames and the pick), where most of a change of taste shows, in minutes instead of an hour or more.
 //
 // A case folder holds case.json:
 //   { "id", "skill", "setup": { "files": [fixture name | "<path, $ENV allowed> => <name>"], "project": "init" | null,
@@ -38,6 +45,7 @@
 // init event; Codex's session file). A Codex run's session files, its sub-agents' included, are copied to
 // codex-sessions/: `codex exec --json` leaves some tool calls out of the transcripts.
 import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, cpSync, existsSync, readdirSync, statSync, renameSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { ensureFixtures } from './fixtures';
@@ -66,6 +74,23 @@ const T0 = Date.now();
 const RUN = path.resolve(opt('work', path.join(REPO, 'evals', 'results', 'tasks', `${CASE.id}-${TOOL}${MODEL ? '-' + MODEL : ''}${EFFORT ? '-' + EFFORT : ''}-${ARM}-${STAMP}`))!);
 const WORK = path.join(RUN, 'work');
 const TIMEOUT_MS = (CASE.timeoutMinutes ?? 45) * 60_000;
+// The skills under test: this repo's, or a copy of another commit's (--skills), so two texts run side by side.
+const SKILLS = path.resolve(opt('skills', path.join(REPO, 'skills'))!);
+if (!existsSync(path.join(SKILLS, 'code-video', 'SKILL.md'))) throw new Error(`--skills ${SKILLS}: no code-video/SKILL.md there (it takes a skills folder, this repo's or a copy of one)`);
+/** A hash of every .md file under the skills folder, by sorted path: the text a run had, whatever its folder. */
+function skillsText(): string {
+  const files: string[] = [];
+  const walk = (d: string) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p); } else if (e.name.endsWith('.md')) files.push(p); } };
+  walk(SKILLS);
+  const h = createHash('sha256');
+  // (line endings aside: a copy made with git archive has the repository's, a checkout may have the platform's)
+  for (const f of files.sort()) h.update(path.relative(SKILLS, f).replaceAll('\\', '/')).update('\0').update(readFileSync(f, 'utf8').replaceAll('\r\n', '\n')).update('\0');
+  return h.digest('hex').slice(0, 12);
+}
+// A stage to stop at: once this file exists in the work folder, the run ends --grace seconds later.
+const UNTIL = opt('until');
+const GRACE_MS = Number(opt('grace', '120')) * 1000;
+if (UNTIL && !(GRACE_MS >= 0)) throw new Error(`--grace ${opt('grace')}: seconds to keep running after --until's file appears`);
 // (a dev server or Codex may spell the folder's path in another case, which names the same folder on Windows)
 const isWork = (p: string) => {
   const n = (x: string) => path.resolve(x).replace(/[\\/]+$/, '');
@@ -91,7 +116,7 @@ for (const f of CASE.setup?.files ?? []) {
   copyFileSync(path.isAbsolute(from) ? from : existsSync(path.join(CASE_DIR, from)) ? path.join(CASE_DIR, from) : path.join(fixtures, from), path.join(WORK, as));
 }
 if (CASE.setup?.project === 'init') {
-  const p = Bun.spawnSync(['bun', path.join(REPO, 'skills', 'code-video', 'scripts', 'init.ts'), WORK], { stdout: 'pipe', stderr: 'pipe' });
+  const p = Bun.spawnSync(['bun', path.join(SKILLS, 'code-video', 'scripts', 'init.ts'), WORK], { stdout: 'pipe', stderr: 'pipe' });
   if (p.exitCode !== 0) throw new Error(`init failed:\n${p.stdout}\n${p.stderr}`);
 }
 if (CASE.setup?.from || CASE.setup?.project === 'init') {
@@ -119,8 +144,8 @@ else {
 if (ARM === 'with') {
   const link = TOOL === 'claude' ? path.join(WORK, '.claude', 'skills') : path.join(WORK, '.agents', 'skills');
   mkdirSync(link, { recursive: true });
-  for (const s of readdirSync(path.join(REPO, 'skills'))) {
-    if (existsSync(path.join(REPO, 'skills', s, 'SKILL.md'))) symlinkSync(path.join(REPO, 'skills', s), path.join(link, s), 'junction');
+  for (const s of readdirSync(SKILLS)) {
+    if (existsSync(path.join(SKILLS, s, 'SKILL.md'))) symlinkSync(path.join(SKILLS, s), path.join(link, s), 'junction');
   }
   // the links are the harness's, not the work's: keep them out of git status
   if (!NO_GIT) writeFileSync(path.join(WORK, '.git', 'info', 'exclude'), '.claude/skills/\n.agents/skills/\n');
@@ -371,7 +396,7 @@ if (decoy) {
 let session: string | null = null;
 const sessions: string[] = []; // every session the run started, in order (a newSession turn starts another)
 const turns: { prompt: string; newSession?: boolean; started: string; ended: string; exit: number | null; seconds: number; transcript: string;
-  model?: string; effort?: string; timedOut?: boolean; blocked?: string }[] = [];
+  model?: string; effort?: string; timedOut?: boolean; blocked?: string; until?: string }[] = [];
 const alsoRan = new Set<string>(); // every model the transcripts name, sub-agents' included
 // (no quotes around the value: codex is a .cmd shim, which Bun won't hand a quote; Codex reads a bare word as a string)
 const CODEX_EFFORT = EFFORT ? ['-c', `model_reasoning_effort=${EFFORT}`] : [];
@@ -391,6 +416,12 @@ for (const [i, t] of CASE.turns.entries()) {
   // (the whole tree: stopping codex's .cmd shim alone leaves the session running, and the turn waiting for it)
   const timer = setTimeout(() => { timedOut = true; try { stopTree(p.pid); } catch { /* it ended meanwhile */ } }, TIMEOUT_MS);
   const watch = setInterval(() => void lookForPreviews(i + 1), 10_000);
+  // (--until: the stage's file, then the grace, so what the session writes right after it is there too)
+  let reachedAt = 0, reached = false;
+  const stage = UNTIL ? setInterval(() => {
+    if (!reachedAt && existsSync(path.join(WORK, UNTIL))) reachedAt = Date.now();
+    if (reachedAt && !reached && Date.now() - reachedAt >= GRACE_MS) { reached = true; try { stopTree(p.pid); } catch { /* it ended meanwhile */ } }
+  }, 2000) : undefined;
   const errText = new Response(p.stderr).text();
   // (read as it comes: a browser or the desktop within the session's reach stops the turn there)
   let out = '';
@@ -412,6 +443,9 @@ for (const [i, t] of CASE.turns.entries()) {
   const ended = new Date().toISOString();
   clearTimeout(timer);
   clearInterval(watch);
+  clearInterval(stage);
+  // (a turn that ended by itself after the file appeared reached the stage too)
+  if (UNTIL && !reached && existsSync(path.join(WORK, UNTIL))) reached = true;
   const file = path.join(RUN, `turn-${i + 1}.jsonl`);
   writeFileSync(file, out);
   if (err.trim()) writeFileSync(path.join(RUN, `turn-${i + 1}.stderr.txt`), err);
@@ -420,16 +454,19 @@ for (const [i, t] of CASE.turns.entries()) {
   for (const m of ran?.used ?? []) alsoRan.add(m);
   // (marked: a turn stopped at the timeout has no reply, and the next prompt answers one nobody saw)
   turns.push({ prompt: t.prompt, ...(i > 0 && first ? { newSession: true } : {}), started, ended, exit, seconds: Math.round((performance.now() - t0) / 1000), transcript: path.basename(file),
-    ...(ran?.model ? { model: ran.model } : {}), ...(timedOut ? { timedOut } : {}), ...(blocked ? { blocked } : {}) });
-  console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}`);
+    ...(ran?.model ? { model: ran.model } : {}), ...(timedOut ? { timedOut } : {}), ...(blocked ? { blocked } : {}), ...(reached ? { until: UNTIL! } : {}) });
+  console.log(`turn ${i + 1}/${CASE.turns.length}: exit ${exit}, ${turns.at(-1)!.seconds}s${timedOut ? ', stopped at the timeout' : ''}${reached ? `, ended at --until ${UNTIL}` : ''}`);
   if (blocked) { console.error(`turn ${i + 1} stopped: ${blocked} put a browser or the desktop within the session's reach (see evals/README.md)`); break; }
+  // (before the stage's break: a run ended at --until in its first turn still records its session, and so, for
+  // Codex, the model its session file names)
   if (first) {
     for (const line of out.split('\n')) {
       try { const ev = JSON.parse(line); session ??= ev.session_id ?? ev.thread_id ?? null; } catch { /* not json */ }
     }
-    if (!session) { console.error(`no session id in turn ${i + 1}'s output; see ${file}`); break; }
-    sessions.push(session);
+    if (session) sessions.push(session);
   }
+  if (reached) break; // (the stage asked for: the turns after it aren't run)
+  if (first && !session) { console.error(`no session id in turn ${i + 1}'s output; see ${file}`); break; }
 }
 
 // ---------------------------------------------------------------- what the folder looks like now
@@ -482,6 +519,9 @@ writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
   // (the model as the transcripts name it, each turn's in turns[]; modelArg is what --model asked for)
   model: ranModels.join(', ') || null, ...(efforts.length ? { effort: efforts.join(', ') } : {}), modelArg: MODEL ?? null, effortArg: EFFORT ?? null,
   ...(otherModels.length ? { otherModels } : {}), arm: ARM, session: sessions[0] ?? null, ...(sessions.length > 1 ? { sessions } : {}),
+  // (the text the run had: the folder its skills were linked from, and a hash of every .md file in it)
+  ...(ARM === 'with' ? { skills: path.relative(REPO, SKILLS).replaceAll('\\', '/') || '.', skillsText: skillsText() } : {}),
+  ...(UNTIL ? { until: { file: UNTIL, graceSeconds: GRACE_MS / 1000, reached: turns.some((u) => u.until) } } : {}),
   ...(CASE.setup?.from ? { from: path.resolve(CASE_DIR, expand(CASE.setup.from)) } : {}), desktopOff: OFF, turns,
   ...(decoy ? { decoy } : {}), previews: [...previews.values()],
   gitStatus: status.split('\n').filter(Boolean), files: tree(WORK), assertions: CASE.assertions,

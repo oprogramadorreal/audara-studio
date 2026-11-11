@@ -29,7 +29,8 @@
 //            isn't compared), and the timeline entries added, removed or moved
 //   video:   bun scripts/render.ts video [--from 0] [--to <end>] [--out out/<video>/<video>.mp4]
 //            first prints the file it will write: its size (the video's, times --scale), fps and length
-//            the final render: --samples auto --shutter 0.2 --crf 16 --preset slow --tune grain --x264 aq-mode=3
+//            the final render: --samples auto --shutter 0.2 (or video.json's "shutter") --crf 16 --preset slow
+//            --tune grain --x264 aq-mode=3
 //            [--noaudio] [--fps <video's>]. Only the whole video, with every entry and the full-quality path, is
 //            written to <video>.mp4 by default; anything less says what it is in its name, so it can't replace
 //            the final render: <video>-<from>-<to>.mp4 for a range, -only-<ids> with --only, -draft, -preview
@@ -87,7 +88,8 @@
 //                   and the preview's format menu offers each one it finds. A size with the video's own
 //                   shape is refused: that is the same picture at another size (--scale), not a format
 //   --samples, --shutter  sub-frames per frame (default 1, but auto for video and poster) and the shutter
-//                   they spread over, as a fraction of the frame time (default 0.2); every mode but verify
+//                   they spread over, as a fraction of the frame time (default: video.json's "shutter", else
+//                   0.2; 0.5 is film's 180 degrees: more blur); every mode but verify
 //   --as-preview    draw the scenes' preview path (ctx.export false, as the live preview does) instead of their
 //                   full-quality one: put a heavy scene's cheaper preview beside its render, which must show the
 //                   same picture, only cleaner (perf times both paths either way). Its output gets names of its
@@ -203,8 +205,22 @@ type Sampling = number | { min: number; max: number; tol: number };
  * looking (stills, sheet, verify, perf) to 1: crisp, and fast. Set in main(), where a bad value can be reported.
  */
 let SAMPLES: Sampling = 1;
-/** The shutter, as a fraction of the frame time: 0.2 in every mode (sub-frames spread over a fifth of a frame). */
+/**
+ * The shutter, as a fraction of the frame time, in every mode: --shutter, else the video's own (video.json's
+ * "shutter", read in main() once the video is known), else 0.2 (sub-frames spread over a fifth of a frame).
+ */
 let SHUTTER = 0.2;
+/**
+ * video.json's "shutter": null when the video has none. Any other value than a number from 0 to 1 throws, as
+ * src/video.ts reports it on the page: checked here too, since a project's scripts and src can be of different
+ * versions, and an older page would let the value pass unread.
+ */
+function ownShutter(video: string): number | null {
+  const s = (JSON.parse(projectText(`videos/${video}/video.json`)) as { shutter?: unknown } | null)?.shutter;
+  if (s === undefined) return null;
+  if (typeof s === 'number' && s >= 0 && s <= 1) return s;
+  throw new Error(`videos/${video}/video.json: "shutter" must be a number from 0 to 1, the fraction of each frame's time the motion blur spans (0.2 by default; 0.5 is film's 180 degrees). It is ${JSON.stringify(s)}.`);
+}
 const SAMPLES_GIVEN = opt('samples') !== undefined;
 /** A range showing a stateful or a refine scene, rendered without --samples: this many fixed sub-frames instead of auto. */
 const FIXED_SAMPLES = 12;
@@ -1630,6 +1646,11 @@ async function main() {
   if (!name) fail(`no videos in ${PROJECT}: add videos/<video>/video.json`);
   if (!videos.includes(name!)) fail(`unknown video '${name}' (--video): the videos here are ${videos.join(', ') || 'none'}`);
   checkVideoJson(name!);
+  // (the video's own shutter, where --shutter doesn't say otherwise for this run; a value that can't be one is
+  // reported either way)
+  let own: number | null = null;
+  try { own = ownShutter(name!); } catch (e) { fail((e as Error).message); }
+  if (opt('shutter') === undefined) SHUTTER = own ?? SHUTTER;
   parseSize(name!);
   // (the format's folder, made by whichever command names it first, preview and link too: the preview's format
   // menu lists the folders it finds there)

@@ -654,7 +654,8 @@ finished video's thumbnails, title, description and tags (see "Publishing it: th
 
 ### Room for the model
 
-Opus 5.5 is good at motion graphics and finds approaches of its own. audara exists to give it a fast loop
+The models audara runs on are good at motion graphics and find approaches of their own, the newer ones more
+than Opus 5.5, which these skills were first written around. audara exists to give a model a fast loop
 with the director and hard-won craft, never to narrow what it can make. So the skills fix very little:
 
 - **Fixed,** because they protect the director's loop and the user:
@@ -703,6 +704,54 @@ How the skills could still limit it, and what prevents that:
   freeze the first play where it enters.
 
 The evals check this directly (see "Writing the skills").
+
+### Text that serves any reader
+
+The skills are read by models whose leanings differ: Opus 5.5 and Codex's GPT-6 Astra when most of this
+was written, stronger models since, and smaller ones too. A line written against one model's lean pushes a
+reader without that lean past the right answer, and it has done so to the model it was written for as well.
+The Avoid list first produced its own negative, a paper twin (round 4), then took a reel's labels and a
+psychedelic piece's colour splitting out (0.4.0), then ruled a red seal out of an ink-wash piece (0.8.2).
+"One persistent actor" built four showreels around one circle. "Its words included" came before a music
+video with its lyric in 18 of 24 frames. What held up on every model tried is of another kind: `verify`,
+`qc.py`, the stills loop, the fresh critic, the preview, and style frames picked by looking where they are
+made before the build (0.13.0's Claude runs made them after it). The difference:
+
+- **A steer** tells the model which way to lean before it has made anything. It is right only for a reader
+  with the lean it was written against.
+- **A check** holds something rendered against a bar. It bites only where the output falls short, so it
+  corrects each reader by as much as that reader is off.
+
+So a change to a taste default is weighed this way (0.13.0; history.md has the review it came from and the
+gate's first run):
+
+- **Prefer the check.** What is known about a failure goes where a rendered frame is held against it (the
+  style-frame pick, the stills loop, the critic's prompt), not into something to design away from.
+- **A guard triggers on the output, never on the model's opinion of itself.** No text asks a reader
+  whether it is good enough to skip a step, and no skill names a model: a reader that isn't the one named
+  would exempt itself, and a smaller one would be wrong to.
+- **Anchors stay.** A number or a bar that worked on a weaker reader ("two or three style frames", "a plain
+  picture nobody asked for is a finding") stays as it is. Swapping a push for something neutral loses it:
+  before round 4, "derive the look from the subject's own material" drew props flat on paper.
+- **Which kind a line is, only a run shows.** The first changes written under this rule were meant as
+  checks, facts and ceilings removed: the critic naming what is in the frame by habit, a project's Avoid
+  list taking bans only from the director, the engine's post defaults described as a look, a style frame
+  allowed to rewrite the treatment. Run beside the old text as one bundle, they were preferred on one model
+  by every judge and by the director. On the other two the judges split two to one: Codex's toward the new
+  text, where the director saw no difference, and Opus 5.5's toward the old one, the director's pick too,
+  its picture sparser. A split is no result, and with six changes in one text nothing could be traced to a
+  line: no change was shown to help, and all of them were withdrawn (history.md, 0.13.0). A line's kind is
+  a guess until it has run.
+- **A change passes on every reader, one change at a time.** The old text and the new run side by side on
+  each model the plugin supports, the weakest in each tool included, and the videos are judged blind in
+  pairs, by fresh judges and by the director (`evals/README.md`, "The gate for a change of taste"). It
+  passes when no reader does worse. Which model and run each default was measured on is in history.md,
+  never in the skills.
+- **A new model starts with a baseline, not with new text:** the cases with the skills as they are, and
+  without them. What it now does well alone is a candidate to cut; what it still gets wrong is the evidence
+  a change needs. Fable 5.2's first baseline (0.13.0), one run a side: the video it made with the skills
+  was preferred to the one it made alone, slightly, by three judges of three and by the director, whose
+  pick was not blind.
 
 ## What made pdoom-video work (preserve these)
 
@@ -1211,9 +1260,14 @@ they differ, follow the stricter rule. What that means here:
   that shouldn't. Tune the description with the description optimizer in Anthropic's skill-creator.
 - **A creative-range eval:** the same open brief, with and without the skill, two or three times each. The
   skill must not make the results narrower or plainer; if it does, find what anchors them and cut it.
+- **A gate for a change of taste:** the old text and the new, one change at a time, side by side on every
+  model the plugin supports, judged blind in pairs by fresh judges (the judge's model recorded) and by the
+  director (`evals/README.md`, "The gate for a change of taste"; `task.ts --skills` and `--until`,
+  `judge.ts`, `pick.ts`). See "Text that serves any reader".
 - **Fresh sessions, every model.** Compare with and without the skill (in Claude Code, `skillOverrides`
-  turns a skill off), using every model the user will run: Claude Opus, a smaller Claude model, and Codex's
-  default model.
+  turns a skill off), using every model the user will run: Claude's strongest model (Fable 5.2 in 2026-11),
+  Claude Opus, a smaller Claude model, and Codex's default model. The gate for a change of taste runs on
+  the same list.
 - **Claude A and Claude B:** one session improves the skills while a fresh one uses them on real tasks.
   Watch which files it reads: a file never read is unnecessary or badly linked.
 - **Tools:** the evals run on their own harness (`evals/harness/`: trigger sets of about 20 requests per
@@ -1328,7 +1382,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package;
 │                                # docs/style/nutlight/, the style's references, when a video names it
 ├── videos/<name>/
-│   ├── video.json               # title, size, fps, and its audio (or a duration)
+│   ├── video.json               # title, size, fps, shutter, and its audio (or a duration)
 │   ├── TREATMENT.md             # this video's idea, storyboard, scene briefs and Decisions
 │   ├── CRITIQUE.md              # the critic rounds' ledger
 │   ├── timeline.ts, scenes/     # its edit and its scene modules
