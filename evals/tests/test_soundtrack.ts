@@ -253,6 +253,174 @@ test('a soundtrack read late gets the length a fresh boot gives; only a changed 
   assert.equal(ST.resolveDuration({ audio: one }, null, null), null);
 });
 
+// ------------------------------------------------------------------ the clock at the display's refresh
+type Steered = Player & { now(at?: number): number; sync(force?: boolean, at?: number): void };
+const rateOf = (p: Player) => (p as unknown as { rate: number }).rate;
+
+test('now(at): the time at a given moment, never before the clock was set; now() reads its own', () => {
+  clock = 1000;
+  const p = new SoundtrackPlayer([], 60) as Steered;
+  p.seek(2); p.play();
+  assert.equal(p.now(1500), 2.5);
+  assert.equal(p.now(990), 2, 'a moment before play() (a refresh that began before the click) is its start');
+  clock = 1250;
+  assert.equal(p.now(), 2.25);
+  p.pause();
+  assert.equal(p.now(5000), 2.25, 'paused, the time stays');
+});
+
+/**
+ * Plays one segment for `seconds` at 60 refreshes a second: the sound at `offset` s from the clock's start, its
+ * element reporting the position in 10 ms steps (Chrome's are coarse) a refresh late or not. Returns each
+ * refresh's clock time and rate.
+ */
+function playAgainst(offset: number, seconds: number, drift = 0) {
+  clock = 1000; // (a page open a second: performance.now() is never 0)
+  const seg: Seg = { file: 'a.wav', url: '/a.wav', at: 0, from: 0, dur: 600 };
+  const p = new SoundtrackPlayer([seg], 600) as Steered;
+  const el = (p as unknown as { els: PlayerAudio[] }).els[0]!;
+  p.seek(10); p.play();
+  const out: { t: number; rate: number }[] = [];
+  let started = -1;
+  for (let k = 1; k <= seconds * 60; k++) {
+    const ts = 1000 + (k * 1000) / 60;
+    clock = ts + 3; // (the callback runs a little after the refresh began)
+    // the sound starts two refreshes after play(); then it runs at its own pace (1 + drift)
+    if (k === 2) started = ts;
+    if (started >= 0) el.currentTime = Math.floor((10 + offset + ((ts - started) / 1000) * (1 + drift)) * 100) / 100;
+    p.sync(false, ts);
+    out.push({ t: p.now(ts), rate: rateOf(p) });
+  }
+  return out;
+}
+
+test('a clock within 20 ms of the sound runs at its own pace, whatever the noise in the reported position', () => {
+  for (const offset of [0, -0.012, 0.015]) {
+    const run = playAgainst(offset, 20);
+    const rates = new Set(run.slice(3).map((r) => r.rate));
+    assert.deepEqual([...rates], [1], `offset ${offset * 1000} ms: the clock ran at ${[...rates].join(', ')}`);
+  }
+});
+
+test('a clock 40 ms off is steered back at 0.5%, a frame at a time, and runs at its own pace once within 5 ms', () => {
+  for (const offset of [0.04, -0.04]) {
+    const run = playAgainst(offset, 20);
+    // (the rates in turn)
+    const rates = run.slice(3).map((r) => r.rate).filter((r, k, all) => k === 0 || r !== all[k - 1]);
+    assert.deepEqual(rates, [1, 1 + Math.sign(offset) * 0.005, 1], `offset ${offset * 1000} ms: rates ${rates.join(', ')}`);
+    const end = run.at(-1)!, heard = 10 + offset + (20 * 60 - 2) / 60;
+    assert(Math.abs(heard - end.t) < 0.012, `offset ${offset * 1000} ms: ${((heard - end.t) * 1000).toFixed(1)} ms off after 20 s`);
+    for (let k = 1; k < run.length; k++) assert(run[k]!.t >= run[k - 1]!.t, 'the clock stepped back');
+  }
+});
+
+test('a sound running 0.1% fast is followed; one 0.2 s away is jumped to', () => {
+  const run = playAgainst(0, 60, 0.001);
+  const heard = 10 + (60 * 60 - 2) / 60 * 1.001;
+  assert(Math.abs(heard - run.at(-1)!.t) < 0.025, `${((heard - run.at(-1)!.t) * 1000).toFixed(1)} ms off after a minute`);
+  assert(run.filter((r, k) => k > 0 && r.rate !== run[k - 1]!.rate).length <= 8, 'the steering came and went more than a few times');
+  const far = playAgainst(0.2, 1);
+  assert(Math.abs(far.at(-1)!.t - (10.2 + 58 / 60)) < 0.02, `0.2 s off: at ${far.at(-1)!.t}`);
+});
+
+// ------------------------------------------------------------------ the frame the player shows
+const { frameLock } = new Function(`${transpiler.transformSync(slice(mainTS, 'function frameLock(', '\n}\n'))}\nreturn { frameLock };`)() as
+  { frameLock(fps: number): (t: number, ts: number, playing: boolean) => number };
+
+/** A seeded random in [0, 1) (the same jitter every run). */
+function rng(seed: number) { return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32); }
+
+/**
+ * A display at `hz` refreshing `n` times while playing (after a second paused), the clock's time at each refresh
+ * clock(ts): the frames frameLock shows (time x fps), and, beside them, the frames rounding the clock gave.
+ */
+function show(fps: number, hz: number, n: number, clock: (ts: number, k: number) => number, gapAt: (k: number) => number = () => 1000 / hz) {
+  const lock = frameLock(fps), shown: number[] = [], rounded: number[] = [], times: number[] = [];
+  let ts = 0;
+  for (let k = 0; k < hz; k++) { ts += 1000 / hz; lock(clock(0, 0), ts, false); }
+  for (let k = 0; k < n; k++) {
+    ts += gapAt(k);
+    const t = clock(ts, k), at = lock(t, ts, true);
+    times.push(at); shown.push(Math.round(at * fps)); rounded.push(Math.round(t * fps));
+  }
+  return { shown, rounded, times };
+}
+/** How many times each step (frames from one refresh to the next) happens. */
+const steps = (ns: number[]) => {
+  const h: Record<string, number> = {};
+  for (let k = 1; k < ns.length; k++) h[ns[k]! - ns[k - 1]!] = (h[ns[k]! - ns[k - 1]!] ?? 0) + 1;
+  return h;
+};
+/** How many refreshes each frame is held, start and end left out. */
+const holds = (ns: number[]) => {
+  const out: number[] = [];
+  for (let k = 1, run = 1; k < ns.length; k++) {
+    if (ns[k] === ns[k - 1]) run++;
+    else { out.push(run); run = 1; }
+  }
+  return new Set(out.slice(1));
+};
+
+test('60 fps at 60 Hz: one frame a refresh, where rounding a jittery clock that sits on a boundary repeated and skipped', () => {
+  // the clock read when the callback runs, up to 3 ms either side of the refresh (an engine before 0.13.2 reads
+  // its own), with the frame boundary half way: as the measured preview did, 5-15% of its refreshes
+  const r = rng(7), start = 100.5 / 60;
+  const { shown, rounded } = show(60, 60, 1200, (ts) => start + (ts + (r() - 0.5) * 6) / 1000);
+  assert.deepEqual(steps(shown), { 1: 1199 }, `frameLock stepped ${JSON.stringify(steps(shown))}`);
+  const old = steps(rounded);
+  assert((old[0] ?? 0) > 100 && (old[2] ?? 0) > 100, `rounding gave ${JSON.stringify(old)}`);
+});
+
+test('a 59.94 Hz display: the drift made up by single skips, the picture within ~0.75 frame of the clock', () => {
+  const { shown, times } = show(60, 60000 / 1001, 3600, (ts) => 20 + ts / 1000);
+  const h = steps(shown);
+  assert(Object.keys(h).every((s) => s === '1' || s === '2') && (h[2] === 3 || h[2] === 4), `steps ${JSON.stringify(h)}`);
+  for (let k = 1; k < times.length; k++) {
+    const t = 20 + (k + 61) * 1001 / 60000;
+    assert(Math.abs(times[k]! - t) <= 0.76 / 60, `refresh ${k}: shown ${times[k]} for ${t}`);
+  }
+});
+
+test('a clock steered 0.5% slow: single repeats, never a skip', () => {
+  const { shown } = show(60, 60, 1200, (ts) => 5 + (ts / 1000) * 0.995);
+  const h = steps(shown);
+  assert(!h[2] && (h[0] === 6 || h[0] === 5), `steps ${JSON.stringify(h)}`);
+});
+
+test('120 Hz, and a 30 fps video at 60 Hz: every frame held exactly two refreshes', () => {
+  const r = rng(3);
+  for (const [fps, hz] of [[60, 120], [30, 60]] as const) {
+    const { shown } = show(fps, hz, 600, (ts) => 7.3 + (ts + (r() - 0.5) * 2) / 1000);
+    assert.deepEqual([...holds(shown)], [2], `${fps} fps at ${hz} Hz held frames ${[...holds(shown)].join(', ')} refreshes`);
+  }
+});
+
+test('144 Hz at 60 fps (no whole number of refreshes a frame): the frame the clock rounds to', () => {
+  const { shown, rounded } = show(60, 144, 600, (ts) => 3 + ts / 1000);
+  assert.deepEqual(shown, rounded);
+  assert.deepEqual([...holds(shown)].sort(), [2, 3]);
+});
+
+test('a hold for the sound to start, a missed refresh, a seek: never before the moment played from, then one a refresh', () => {
+  // paused at 10.004 s (between frames); play holds the clock 10 refreshes, then it runs (show() plays from
+  // ts 1000 + 1000/60, so the 11th refresh is at 1000 + 11000/60)
+  const t0 = 10.004, { times, shown } = show(60, 60, 300, (ts, k) => (k < 10 ? t0 : t0 + (ts - 1000 - 11000 / 60) / 1000 + 0.001),
+    (k) => (k === 100 ? 2000 / 60 : 1000 / 60)); // (refresh 100 missed)
+  assert(times.slice(0, 10).every((x) => x === t0), 'the held frames were not the moment played from');
+  assert(times.every((x) => x >= t0), 'a frame before the moment played from was shown');
+  const h = steps(shown.slice(10));
+  assert(h[1] === 288 && h[2] === 1 && !h[0], `after the hold: ${JSON.stringify(h)}`);
+  // a seek, playing: from where it lands, one a refresh
+  const lock = frameLock(60);
+  let ts = 0;
+  for (let k = 0; k < 60; k++) lock(4, (ts += 1000 / 60), true);
+  const jumped = lock(50.0123, (ts += 1000 / 60), true);
+  assert(jumped >= 50.0123 && jumped <= 50.0123 + 0.5 / 60, `the first frame after a seek is ${jumped}, not the one at 50.0123`);
+  const after = Array.from({ length: 60 }, (_, k) => Math.round(lock(50.0123 + (k + 1) / 60, (ts += 1000 / 60), true) * 60));
+  assert.deepEqual(steps(after), { 1: 59 });
+  assert.equal(lock(7.25, (ts += 1000 / 60), false), 7.25, 'paused, the time as it is');
+});
+
 let failed = 0;
 for (const [name, run] of cases) {
   try { await run(); console.log(`ok   ${name}`); }

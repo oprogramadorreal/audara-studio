@@ -12,17 +12,26 @@ function declaration(start: string) {
   if (a < 0 || b < 0) throw new Error(`footage.ts helper not found: ${start}`);
   return source.slice(a, b + 2);
 }
+/** A one-line declaration (`export const x = ...;`). */
+function line(start: string) {
+  const a = source.indexOf(start), b = source.indexOf(';\n', a);
+  if (a < 0 || b < 0) throw new Error(`footage.ts helper not found: ${start}`);
+  return source.slice(a, b + 2);
+}
 const compiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(
-  ['export function shotFrame(', 'export function framesShown(', 'export function keptFrom(', 'export function framesToDrop<K>(']
-    .map(declaration).join('\n').replace(/^export /gm, ''));
+  [...['export function shotFrame(', 'export function framesShown(', 'export function keptFrom(', 'export function framesToDrop<K>(', 'export function nextJob<J extends Job>(']
+    .map(declaration), line('export const stale = ')].join('\n').replace(/^export /gm, ''));
 type Shot = { start: number; fps: number; rate: number; offset: number; frames: number };
 /** (`used`: the latest round its Footage was asked for or drawn in; 0 when left out) */
 type Held = { key: string; asked: number; shown: boolean; used?: number };
-const { shotFrame, framesShown, keptFrom, framesToDrop } = new Function(`${compiled}\nreturn { shotFrame, framesShown, keptFrom, framesToDrop };`)() as {
+type Job = { asked: number; seq: number; urgent: boolean; ahead: boolean };
+const { shotFrame, framesShown, keptFrom, framesToDrop, nextJob, stale } = new Function(`${compiled}\nreturn { shotFrame, framesShown, keptFrom, framesToDrop, nextJob, stale };`)() as {
   shotFrame(t: number, videoFps: number, o: Shot): number;
   framesShown(t0: number, t1: number, videoFps: number, o: Shot, max: number): number[];
   keptFrom(round: number, protect: number, waited: number[], pending: Iterable<number>): number;
   framesToDrop<K>(held: { key: K; asked: number; shown: boolean; used: number }[], cap: number, from: number): K[];
+  nextJob<J extends Job>(jobs: Iterable<J>): J | null;
+  stale(j: Job, from: number): boolean;
 };
 /** framesToDrop with keptFrom's answer: the latest round `round`, the latest 4 kept (PROTECT). */
 const drop = (held: Held[], cap: number, round: number, waited: number[] = [], pending: number[] = []) =>
@@ -39,27 +48,40 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
  * class and its budget, for what only they decide together (which frames stay when one arrives). A frame's
  * "bitmap" is its URL.
  */
-function realFootage() {
+function realFootage(o: { rendering?: boolean; manual?: boolean } = {}) {
   const ts = source
     .replace("import * as THREE from 'three';", "const THREE = { Texture: class { image: unknown = null; needsUpdate = false; version = 0; colorSpace = ''; minFilter = 0; magFilter = 0; generateMipmaps = true; flipY = true; dispose() {} }, SRGBColorSpace: 'srgb', NearestFilter: 1, LinearFilter: 2 };")
     .replace("import { VIDEO } from '../video';", 'const VIDEO = { fps: 60 };')
     .replace('import.meta.env.BASE_URL', "'/'");
   check(!/^import /m.test(ts), 'footage.ts has an import this test does not stub');
   const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(ts).replace(/^export /gm, '');
-  const fetched: string[] = [];
-  const fetchStub = async (url: string) => { fetched.push(url); return { ok: true, status: 200, blob: async () => url }; };
+  /** Every fetch started, in order; `manual`: each waits until the test answers it (answer()). */
+  const fetched: string[] = [], waiting: { url: string; answer(): void }[] = [];
+  const fetchStub = (url: string) => {
+    fetched.push(url);
+    const r = { ok: true, status: 200, blob: async () => url };
+    if (!o.manual) return Promise.resolve(r);
+    return new Promise((resolve) => waiting.push({ url, answer: () => resolve(r) }));
+  };
   const decode = async (blob: string) => ({ url: blob, close() {} });
-  const mod = new Function('fetch', 'createImageBitmap', `${js}\nreturn { Footage, footageRound, BUDGET };`)(fetchStub, decode);
-  return { ...mod, fetched } as {
+  // (render.ts's page has ?export=1)
+  const location = o.rendering ? { search: '?export=1' } : undefined;
+  const mod = new Function('fetch', 'createImageBitmap', 'location', `${js}\nreturn { Footage, footageRound, BUDGET, FETCHES, footageStats };`)(fetchStub, decode, location);
+  return { ...mod, fetched, waiting } as {
     Footage: new (o: { base: string; frames: number; fps?: number; full: boolean }) => {
-      prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; index(t: number): number;
-      has(i: number): boolean; held(): unknown[];
+      prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; frameAt(i: number): { image: unknown }; index(t: number): number;
+      has(i: number): boolean; held(): unknown[]; dispose(): void;
     };
     footageRound(ask: () => void, waited?: boolean): () => void;
     BUDGET: { full: number; proxy: number };
+    FETCHES: number;
+    footageStats: { draws: number; standIns: number; blank: number };
     fetched: string[];
+    waiting: { url: string; answer(): void }[];
   };
 }
+/** The frame number in a stub frame's URL (…/000123.jpg is frame 122). */
+const frameOf = (url: string) => Number(/(\d{6})\.jpg$/.exec(url)![1]) - 1;
 const settle = () => new Promise((r) => setTimeout(r, 20));
 const shot = (o: Partial<Shot> = {}): Shot => ({ start: 0, fps: 60, rate: 1, offset: 0, frames: 100000, ...o });
 /** The frame shown at video frame n of a video at `fps`, and at every sub-frame of it (offsets -0.5..0.5 at shutter 1). */
@@ -262,11 +284,11 @@ test('150 shots played one after another stay within the budget, and a still bac
 test('a frame the preview loads on demand stays: a step back after four seeks shows it', async () => {
   const { Footage, footageRound, BUDGET, fetched } = realFootage();
   const clip = new Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
-  // the preview's look-ahead after four seeks (main.ts: prepare(t - 0.25, t + 2, true)), a round each: about 136
-  // proxies apiece, all four protected, past the budget of 360 together
+  // the preview's look-ahead after four seeks (main.ts: prepare(t, t + 2, true)), a round each: 121 proxies
+  // apiece, all four protected, past the budget of 360 together
   for (const t of [10, 20, 30, 40]) {
     let p: Promise<void> = Promise.resolve();
-    footageRound(() => { p = clip.prepare(t - 0.25, t + 2); });
+    footageRound(() => { p = clip.prepare(t, t + 2); });
     await p;
   }
   check(clip.held().length > BUDGET.proxy, `the four look-aheads held ${clip.held().length} proxies, within ${BUDGET.proxy}`);
@@ -279,6 +301,95 @@ test('a frame the preview loads on demand stays: a step back after four seeks sh
   check((clip.frame(39.6).image as { url: string }).url === url, 'the texture does not show it');
   await settle();
   check(fetched.filter((u) => u === url).length === 1, `frame ${i} was fetched ${fetched.filter((u) => u === url).length} times`);
+});
+
+test('the fetch queue: a frame a draw waits for first (the latest first), then the latest round in its order, then older rounds', () => {
+  const jobs = [
+    { key: 'old-a', asked: 3, seq: 1, urgent: false, ahead: true },
+    { key: 'old-b', asked: 3, seq: 2, urgent: false, ahead: true },
+    { key: 'draw-1', asked: 4, seq: 5, urgent: true, ahead: false },
+    { key: 'new-a', asked: 5, seq: 10, urgent: false, ahead: true },
+    { key: 'new-b', asked: 5, seq: 11, urgent: false, ahead: false },
+    { key: 'draw-2', asked: 5, seq: 12, urgent: true, ahead: false },
+  ];
+  const left = new Set(jobs), order: string[] = [];
+  while (left.size) { const j = nextJob(left)!; order.push(j.key); left.delete(j); }
+  check(order.join(',') === 'draw-2,draw-1,new-a,new-b,old-a,old-b', `fetched ${order.join(',')}`);
+  check(nextJob([]) === null, 'an empty queue gave a job');
+});
+test('a waiting frame is stale only when look-aheads alone asked for it, before the rounds the budget keeps', () => {
+  const j = (o: Partial<Job>): Job => ({ asked: 3, seq: 1, urgent: false, ahead: true, ...o });
+  check(stale(j({}), 4), 'an old look-ahead frame was kept');
+  check(!stale(j({ asked: 4 }), 4), 'a kept round was dropped');
+  check(!stale(j({ ahead: false }), 4), 'a frame a prepare that is waited for (or no round) asked was dropped');
+  check(!stale(j({ urgent: true }), 4), 'a frame a draw waits for was dropped');
+});
+
+/** Answers every fetch under way, and those it starts, until none is left. */
+async function drain(w: { waiting: { answer(): void }[] }) {
+  for (let k = 0; k < 1000 && w.waiting.length; k++) {
+    for (const x of w.waiting.splice(0)) x.answer();
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+test('six frames are fetched at once; after a seek the frames there go before the rest of the look-ahead before it', async () => {
+  const w = realFootage({ manual: true });
+  const clip = new w.Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
+  let first: Promise<void> = Promise.resolve();
+  w.footageRound(() => { first = clip.prepare(10, 12); }); // (the look-ahead at 10 s: 121 frames from 600)
+  check(w.FETCHES === 6 && w.fetched.length === 6, `${w.fetched.length} fetches at once`);
+  check(w.fetched.map(frameOf).join(',') === range(600, 605).join(','), `the first fetches were ${w.fetched.map(frameOf).join(',')}`);
+  w.footageRound(() => { void clip.prepare(50, 52); }); // (a seek to 50 s)
+  for (const x of w.waiting.splice(0)) x.answer();
+  await settle();
+  check(w.waiting.length === 6, `${w.waiting.length} fetches at once`);
+  check(w.fetched.slice(6).map(frameOf).join(',') === range(3000, 3005).join(','), `after the seek: ${w.fetched.slice(6).map(frameOf).join(',')}`);
+  await drain(w);
+  await first;
+  check(w.fetched.length === 242, `${w.fetched.length} fetched (two look-aheads of 121)`);
+});
+
+test('in the preview, a look-ahead four rounds old leaves its waiting frames unfetched; render.ts fetches every one', async () => {
+  for (const rendering of [false, true]) {
+    const w = realFootage({ manual: true, rendering });
+    const clip = new w.Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
+    const asked: Promise<void>[] = [];
+    // a scrub: five look-aheads, one after another, the first one's frames still waiting; one of those frames is
+    // asked for by a prepare outside the look-aheads too (a scene's init), so it is fetched whatever happens
+    w.footageRound(() => { asked.push(clip.prepare(10, 12)); });
+    asked.push(clip.prepare(11, 11));
+    for (const t of [20, 30, 40, 50]) w.footageRound(() => { asked.push(clip.prepare(t, t + 2)); });
+    await drain(w);
+    await Promise.all(asked); // (none of them hangs)
+    const firstOnes = w.fetched.map(frameOf).filter((i) => i >= 600 && i <= 720);
+    if (rendering) check(firstOnes.length === 121 && w.fetched.length === 605, `render.ts fetched ${w.fetched.length}, ${firstOnes.length} of the first look-ahead`);
+    else {
+      // (the six under way when the others came, and frame 660, the other prepare's)
+      check(firstOnes.join(',') === [...range(600, 605), 660].join(','), `the preview fetched ${firstOnes.length} of the first look-ahead: ${firstOnes.join(',')}`);
+      check(w.fetched.length === 6 + 1 + 4 * 121, `the preview fetched ${w.fetched.length}`);
+    }
+  }
+});
+
+test('a frame not decoded yet: the latest one before it stands in, one after it only when none is before', async () => {
+  const w = realFootage();
+  const clip = new w.Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
+  const shows = (i: number) => frameOf((clip.frameAt(i).image as { url: string }).url);
+  check(clip.frameAt(5).image === null && w.footageStats.blank === 1, 'with nothing loaded, the texture did not stay empty');
+  await settle(); // (frame 5, asked for by that draw, arrives)
+  await clip.prepare(1, 1); // (frame 60)
+  await clip.prepare(2, 2); // (frame 120)
+  const at100 = shows(100), at30 = shows(30), at3 = shows(3);
+  check(at100 === 60, `frame 100 showed ${at100}, not 60, the latest before it`); // (the nearest is 120)
+  check(at30 === 5, `frame 30 showed ${at30}, not 5`);
+  check(at3 === 5, `frame 3 showed ${at3}: with none before it, the first after it stands in`);
+  const s = w.footageStats;
+  check(s.draws === 4 && s.standIns === 3 && s.blank === 1, `counted ${JSON.stringify(s)}`);
+  await settle();
+  check(shows(100) === 100 && shows(30) === 30 && shows(3) === 3, 'the frames asked for did not arrive');
+  check(s.draws === 7 && s.standIns === 3, `counted ${JSON.stringify(s)} once they arrived`);
+  clip.dispose();
 });
 
 let passed = 0;

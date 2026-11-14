@@ -99,6 +99,54 @@ function takeOver(old: SoundtrackPlayer, segments: Segment[], D: number) {
   return next;
 }
 
+/**
+ * The time the player shows at each refresh of the display, from the clock's time t there (the soundtrack's
+ * at requestAnimationFrame's timestamp ts). Playing, it is a frame of the video's own, n/fps as render.ts
+ * renders it: round(t·fps + phase), the phase (within half a frame) keeping the frame boundaries midway
+ * between refreshes, so a display that shows a whole number of refreshes per frame (60 Hz at 60 fps, 120 Hz,
+ * a 30 fps video at 60 Hz) holds every frame exactly that long, however much the moment the callback runs
+ * wavers. Rounding the clock alone, a clock that sat near a boundary flickered between a frame repeated and
+ * one skipped: measured on a project's live preview of 60 fps footage, 5-15% of the refreshes stepped 0 or
+ * 2 frames. When the clock drifts from the refreshes (a 59.94 Hz display, the clock steered to the sound),
+ * the phase follows it until it would pass half a frame, and then one frame is held one refresh longer or
+ * shorter: a single repeat or skip. A jump (a seek, the clock set to the sound, a loop, a background tab)
+ * starts it again, never before t; a display whose refreshes don't line up with the frames (144 Hz at
+ * 60 fps) gets round(t·fps). Paused, it is t as it is. A slow frame still drops frames: the time is the clock's.
+ */
+function frameLock(fps: number) {
+  const gaps: number[] = []; // (the latest refresh intervals, ms)
+  let phase = 0, lastX = NaN, lastTs = NaN, from = 0;
+  /** The part of a frame one refresh takes when they line up (1/2 at 120 Hz and 60 fps; 1 when a refresh takes a frame or more), else 0. */
+  const cell = () => {
+    if (gaps.length < 8) return 0;
+    const g = ([...gaps].sort((a, b) => a - b)[gaps.length >> 1]! * fps) / 1000; // (frames per refresh)
+    const k = g < 1 ? 1 / g : g, whole = Math.round(k);
+    return Math.abs(k - whole) < 0.03 * whole ? (g < 1 ? 1 / whole : 1) : 0;
+  };
+  return (t: number, ts: number, playing: boolean) => {
+    const gap = ts - lastTs, x = t * fps;
+    if (gap > 2 && gap < 100) { gaps.push(gap); if (gaps.length > 15) gaps.shift(); }
+    // (a steady clock moves about as far as the refresh: a hold for the sound to start moves it 0)
+    const steady = gap > 0 && gap < 250 && Math.abs(x - lastX - (gap * fps) / 1000) <= 2;
+    lastTs = ts;
+    lastX = playing ? x : NaN;
+    if (!playing) return t;
+    if (!steady) { from = t; phase = 0; }
+    const u = cell();
+    if (!u) phase = 0;
+    else {
+      const d = ((((x + 0.5 + phase) / u) % 1) + 1) % 1; // (where in its refresh's part of a frame the clock is, 0..1)
+      if (!steady || d < 0.25 || d > 0.75) phase += (0.5 - d) * u; // (back to the middle: the same frame)
+      if (phase > 0.5) phase -= u; // (the picture half a frame ahead: one refresh more on this frame)
+      else if (phase < -0.5) phase += u; // (behind: one less)
+    }
+    return Math.max(from, Math.floor(x + 0.5 + phase) / fps);
+  };
+}
+
+/** The player's clock: an engine's SoundtrackPlayer from before 0.13.2 takes no time and reads its own (init --force updates this file but never src/engine/). */
+type Clock = { now(at?: number): number; sync(force?: boolean, at?: number): void };
+
 // A lost GL context takes with it what scenes made on the GPU when they were built (a captured environment
 // light, a baked texture), and nothing makes it again: when the context comes back, the preview reloads at
 // the moment it was on, paused (the link's own while the scenes are still loading; the player sets these)
@@ -400,8 +448,11 @@ function setupPlayer() {
   };
 
   let loop: [number, number] | null = null;
+  /** The time of the frame on screen (frameLock's, while playing). */
+  let shown = 0;
   const seek = (x: number) => { track.seek(Math.max(0, Math.min(D - 0.001, x))); syncUrl(track.now()); };
-  const toggle = () => { if (track.playing) { track.pause(); syncUrl(track.now()); } else track.play(); };
+  // (paused, the player stays on the frame it was showing, not the clock's moment within it)
+  const toggle = () => { if (track.playing) { track.pause(); seek(shown); } else track.play(); };
   /** The entry on screen at t (the player stops at D, where the last frame shown is D - 0.001's). */
   const entryAt = (t: number) => { const c = Math.min(t, D - 0.001); return TL.find((x) => c >= x.start && c < x.end); };
   seek(FROM ?? 0);
@@ -465,10 +516,14 @@ function setupPlayer() {
   // A soundtrack the boot didn't read, once read: heard from where the player is, playing or paused as it
   // was. One that gives the video another length (a segment list's end, with no "duration" in video.json)
   // reloads the page at this moment instead: the timeline, the beat grid and the scrub bar are made for it.
-  /** The player brought up to now (once per frame, before now()); the loop first: a loop that ends with the video must wrap before the player stops at the end. */
-  const advance = () => {
-    if (loop && track.playing && track.now() >= loop[1]) track.seek(loop[0]);
-    track.sync();
+  /**
+   * The player brought up to `ts` (once per frame, before now(); requestAnimationFrame's timestamp, or now);
+   * the loop first: a loop that ends with the video must wrap before the player stops at the end.
+   */
+  const advance = (ts = performance.now()) => {
+    const clock: Clock = track;
+    if (loop && track.playing && clock.now(ts) >= loop[1]) track.seek(loop[0]);
+    clock.sync(false, ts);
   };
   if (audioProblems().length) {
     retrySoundtrack((segments) => {
@@ -489,8 +544,8 @@ function setupPlayer() {
   // stateful) is rendered once more with the render's sampling, 12 sub-frames over the shutter, when the
   // playhead has rested 0.3 s and what the frame shows is loaded, then held until something changes (the
   // playhead, or a scene it shows hot-swapped; one saved elsewhere in the video leaves it). Every other frame,
-  // a crossfade with any other scene included, is drawn as it always was. (Loaded: streamed footage shows the
-  // nearest frame it has until the exact one arrives, and a frame refined before then would hold that one.)
+  // a crossfade with any other scene included, is drawn as it always was. (Loaded: streamed footage shows
+  // another frame it has until the exact one arrives, and a frame refined before then would hold that one.)
   let rest = { t: NaN, since: 0, scenes: [] as unknown[], asked: false, loaded: false }, refined = false;
   const half = (VIDEO.shutter / fps) / 2; // (the video's shutter, 0.2 of a frame by default, either side of t)
   // the entries the frame's sub-frames draw: its shutter, up to a hard cut, where the engine keeps every
@@ -511,14 +566,16 @@ function setupPlayer() {
       return s?.refine === true && !s.stateful;
     });
   };
-  const tick = () => {
-    advance();
-    const t = track.now();
+  const lock = frameLock(fps);
+  const tick = (ts: number) => {
+    advance(ts);
+    const t = (shown = lock((track as Clock).now(ts), ts, track.playing));
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;
-    // streamed footage: the next two seconds loading, without holding up playback (a frame not there yet
-    // shows the nearest one loaded until it arrives); again once the playhead has moved half a second
-    if (Math.abs(t - prefetchT) > 0.5) { prefetchT = t; prepare(t - 0.25, t + 2, true).catch(() => {}); }
+    // streamed footage: the next two seconds loading, from the frame on screen, without holding up playback
+    // (a frame not there yet shows the latest one loaded before it until it arrives); again once the
+    // playhead has moved half a second
+    if (Math.abs(t - prefetchT) > 0.5) { prefetchT = t; prepare(t, t + 2, true).catch(() => {}); }
     const tc = Math.min(t, D - 0.001), scenes = scenesAt(tc);
     if (track.playing || tc !== rest.t || !same(scenes, rest.scenes)) {
       rest = { t: tc, since: performance.now(), scenes, asked: false, loaded: false };

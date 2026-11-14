@@ -11,7 +11,7 @@ import { loadFonts } from './type';
 import { loadStrokeFonts } from './stroke';
 import { loadSegments, resolveDuration, type DurationSource, type Segment } from './soundtrack';
 import { testCardNote } from './palette';
-import { footageRound, RENDERING } from './footage';
+import { footageRound, footageStats, RENDERING } from './footage';
 import { DATA_URLS, VIDEO, type MakeTimeline } from '../video';
 
 export interface TimelineEntry {
@@ -116,6 +116,12 @@ export class Engine {
   cuts: number[] = [];
   /** The entries composited by the last render() (any sub-frame): verify checks that none leaks across a cut. */
   lastEntries = new Set<string>();
+  /**
+   * Streamed footage drawn since the page opened: `draws`, and of those `standIns` (another frame shown, the one
+   * asked for not decoded yet) and `blank` (nothing to show yet). The preview's own count of late frames, for a
+   * tool that plays it (window.__audara.engine.footage); render.ts never draws a frame that isn't loaded.
+   */
+  readonly footage = footageStats;
   /** Render no scene at all: the engine's own cost (post, HUD), the baseline `render.ts perf` prints. */
   bare = false;
   private px1 = new Uint8Array(4);
@@ -212,7 +218,8 @@ export class Engine {
     this.checkTimeline();
     this.cuts = this.findCuts();
     this.ctx = { renderer: this.renderer, audio: this.audio, words: this.words, comp: this.comp, W, H, id: '', params: {}, start: 0, end: 0, export: this.exporting };
-    this.post = new Post();
+    // (the live preview skips a bloom pyramid a frame multiplies by 0; render.ts always runs it: Post)
+    this.post = new Post(!RENDERING);
     this.hud = new Hud();
     const entries = only ? this.timeline.filter(only) : this.timeline;
     await Promise.all(entries.map(async (e) => { this.loaded.set(e.id, await this.loadEntry(e)); }));

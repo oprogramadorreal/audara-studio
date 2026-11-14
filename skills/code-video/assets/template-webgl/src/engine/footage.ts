@@ -12,10 +12,12 @@
 //
 // Frames load asynchronously (fetch, then createImageBitmap) and render() can't wait, so the engine calls each
 // scene's prepare(t0, t1) before it renders that stretch (Engine.prepare): render.ts waits for it before every
-// frame, and the preview calls it ahead of the playhead without waiting, showing the nearest frame it has
-// until the exact one arrives. When render.ts renders (?export=1), a frame that wasn't prepared throws
-// (strict), so a missing prepare is an error, never a stale frame in the video; a frame that fails to load
-// fails the run.
+// frame, and the preview calls it ahead of the playhead without waiting, showing the latest frame it has
+// before the one asked for until that one arrives. When render.ts renders (?export=1), a frame that wasn't
+// prepared throws (strict), so a missing prepare is an error, never a stale frame in the video; a frame that
+// fails to load fails the run. Frames are fetched FETCHES at a time, the frame a draw waits for first, then
+// the latest prepare's in the order asked (nextJob); the preview lets a look-ahead's frames go unfetched once
+// the budget would let them go first (stale).
 //
 // Time: the shot's frame at video time t is picked at frameTime(t), the time of the video frame t falls in,
 // so every motion-blur sub-frame of a frame shows the same footage frame (its motion is in the picture
@@ -58,7 +60,7 @@ export interface FootageOptions {
   full: boolean;
   /** Nearest-neighbour sampling instead of linear (pixel art shown bigger). */
   nearest?: boolean;
-  /** A frame not prepared throws instead of showing the nearest one (default: when render.ts renders, ?export=1). */
+  /** A frame not prepared throws instead of showing another one (default: when render.ts renders, ?export=1). */
   strict?: boolean;
 }
 
@@ -73,8 +75,8 @@ export const PROTECT = 4;
  */
 export const RENDERING = typeof location !== 'undefined' && new URLSearchParams(location.search).has('export');
 const LIVE = new Set<Footage>();
-/** The latest prepare round, and whether one is open (footageRound). */
-let ROUND = 0, inRound = false;
+/** The latest prepare round, whether one is open (footageRound), and whether that one is a look-ahead (not waited). */
+let ROUND = 0, inRound = false, inAhead = false;
 /** The latest PROTECT waited rounds (footageRound's `waited`), and the waited rounds not settled yet. */
 const WAITED: number[] = [], PENDING = new Set<number>();
 
@@ -97,7 +99,8 @@ export function footageRound(ask: () => void, waited = false): () => void {
   }
   const settled = () => { PENDING.delete(round); };
   inRound = true;
-  try { ask(); } catch (e) { settled(); throw e; } finally { inRound = false; }
+  inAhead = !waited;
+  try { ask(); } catch (e) { settled(); throw e; } finally { inRound = false; inAhead = false; }
   return settled;
 }
 
@@ -112,6 +115,38 @@ export function keptFrom(round: number, protect: number, waited: number[], pendi
   for (const r of pending) k = Math.min(k, r);
   return k;
 }
+
+/** Frames fetched at once over every Footage (a browser opens 6 connections to a server): the rest wait their turn. */
+export const FETCHES = 6;
+
+/** A frame waiting to be fetched: `asked`, the latest round that asked for it; `seq`, when it was last asked. */
+export interface Job { asked: number; seq: number; urgent: boolean; ahead: boolean }
+
+/**
+ * The frame to fetch next: one a draw is waiting for (frameAt's, the latest first), then the latest round's
+ * frames in the order they were asked (a look-ahead asks from the playhead on), then each older round's. So
+ * after a seek the frames there go before those a look-ahead asked for where the playhead was: they all used
+ * to start at once, and the browser served them in that order.
+ */
+export function nextJob<J extends Job>(jobs: Iterable<J>): J | null {
+  let best: J | null = null;
+  for (const j of jobs) {
+    if (!best) { best = j; continue; }
+    const first = j.urgent !== best.urgent ? j.urgent : j.urgent ? j.seq > best.seq : j.asked !== best.asked ? j.asked > best.asked : j.seq < best.seq;
+    if (first) best = j;
+  }
+  return best;
+}
+
+/**
+ * Whether a frame waiting to be fetched is no longer worth it: asked only by look-aheads, none of the rounds
+ * the budget keeps (`from`, keptFrom), so it would be the first to go if it arrived. The preview drops those:
+ * a scrub asked for two seconds of frames on every refresh. When render.ts renders, every one is fetched.
+ */
+export const stale = (j: Job, from: number) => j.ahead && !j.urgent && j.asked < from;
+
+/** Draws of streamed footage since the page opened, and how many showed another frame (a stand-in) or nothing, the frame asked for not being decoded yet. */
+export const footageStats = { draws: 0, standIns: 0, blank: 0 };
 
 /**
  * The shot's frame (0-based) at video time t, in a video at `videoFps`: t is taken at its video frame's time
@@ -161,6 +196,8 @@ export class Footage {
   /** (frame -> the round that last asked for it) */
   private asked = new Map<number, number>();
   private loading = new Map<number, Promise<void>>();
+  /** (the frames waiting their turn to be fetched, in QUEUE) */
+  private queued = new Map<number, QueuedJob>();
   /** (the frame on the texture, -1 for none) */
   private shown = -1;
   /** (the latest round this Footage was asked for frames or drawn in: while it is kept, so is `shown`) */
@@ -226,27 +263,59 @@ export class Footage {
     const round = inRound ? ROUND : ++ROUND;
     this.used = round;
     for (const k of ks) this.asked.set(k, round);
-    await Promise.all(ks.map((k) => this.load(k)));
+    const ahead = inRound && inAhead;
+    await Promise.all(ks.map((k) => this.load(k, false, ahead)));
   }
 
-  private load(i: number): Promise<void> {
+  /** The round that last asked for frame i (what the fetch queue orders by). */
+  askedIn(i: number) { return this.asked.get(i) ?? 0; }
+
+  /**
+   * Frame i, decoded, once it is fetched in its turn (nextJob). `urgent`: a draw waits for it; `ahead`: a
+   * look-ahead asks for it (a frame asked otherwise too is fetched whatever happens).
+   */
+  private load(i: number, urgent = false, ahead = false): Promise<void> {
     if (this.cache.has(i)) return Promise.resolve();
-    let p = this.loading.get(i);
-    if (!p) {
-      const url = this.url(i);
-      p = (async () => {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`footage ${url}: HTTP ${r.status} (frame ${i + 1} of ${this.o.frames})`);
-        let bmp: ImageBitmap;
-        try { bmp = await createImageBitmap(await r.blob(), { imageOrientation: 'flipY' }); }
-        catch (e) { throw new Error(`footage ${url}: can't decode it (${(e as Error).message})`); }
-        if (this.disposed) return void bmp.close();
-        this.cache.set(i, bmp);
-        evict(this.o.full);
-      })().finally(() => this.loading.delete(i));
-      this.loading.set(i, p);
+    const q = this.queued.get(i);
+    if (q) {
+      // (asked again: in its latest round's order, or first of all for a draw)
+      q.seq = ++SEQ;
+      q.urgent ||= urgent;
+      q.ahead &&= ahead;
+      pump();
     }
+    let p = this.loading.get(i);
+    if (p) return p;
+    let job!: QueuedJob;
+    p = new Promise<void>((resolve, reject) => {
+      job = {
+        f: this, i, asked: 0, seq: ++SEQ, urgent, ahead,
+        start: () => { this.queued.delete(i); this.fetchFrame(i).then(resolve, reject); },
+        // (let go before it resolves, so whoever asks for it again starts a fetch of their own)
+        skip: () => { this.queued.delete(i); this.loading.delete(i); resolve(); },
+      };
+    }).finally(() => { if (this.loading.get(i) === p) this.loading.delete(i); });
+    this.loading.set(i, p);
+    this.queued.set(i, job);
+    QUEUE.add(job);
+    pump();
     return p;
+  }
+
+  private async fetchFrame(i: number) {
+    const url = this.url(i);
+    let blob: Blob;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`footage ${url}: HTTP ${r.status} (frame ${i + 1} of ${this.o.frames})`);
+      blob = await r.blob();
+    } finally { fetching--; pump(); }
+    let bmp: ImageBitmap;
+    try { bmp = await createImageBitmap(blob, { imageOrientation: 'flipY' }); }
+    catch (e) { throw new Error(`footage ${url}: can't decode it (${(e as Error).message})`); }
+    if (this.disposed) return void bmp.close();
+    this.cache.set(i, bmp);
+    evict(this.o.full);
   }
 
   /** The texture, showing the frame at video time t (see frameAt). */
@@ -254,25 +323,33 @@ export class Footage {
 
   /**
    * The texture, showing frame i (0-based, clamped). One not loaded: with `strict` (render.ts) it throws, since
-   * the scene's prepare() should have asked for it; otherwise the nearest loaded frame stands in, and frame i
-   * starts loading. With none loaded (a shot that played long ago, its frames let go), the texture has no
-   * picture until one arrives, and draws black.
+   * the scene's prepare() should have asked for it; otherwise the latest loaded frame before it stands in (one
+   * after it only when there is none: playing on, a later frame shown before i would look like a step back),
+   * and frame i is fetched before anything else. With none loaded (a shot that played long ago, its frames let
+   * go), the texture has no picture until one arrives, and draws black. footageStats counts both.
    */
   frameAt(index: number, strict = this.o.strict): THREE.Texture {
     const i = this.clamp(index);
     this.used = ROUND;
+    footageStats.draws++;
     let use = this.cache.has(i) ? i : -1;
     if (use < 0) {
       if (strict)
         throw new Error(`footage ${this.o.base}: frame ${i + 1} (${this.url(i)}) wasn't prepared: the scene's prepare() must ask for every time it shows (a stateful scene's preroll too, unless it skips the footage while f.preroll is true), and one call loads at most ${this.cap} frames (BUDGET)`);
-      let best = Infinity;
-      for (const k of this.cache.keys()) if (Math.abs(k - i) < best) { best = Math.abs(k - i); use = k; }
+      let before = -1, after = Infinity;
+      for (const k of this.cache.keys()) {
+        if (k < i) before = Math.max(before, k);
+        else after = Math.min(after, k);
+      }
+      use = before >= 0 ? before : after < Infinity ? after : -1;
+      if (use < 0) footageStats.blank++;
+      else footageStats.standIns++;
       // (asked in the latest round, as a prepare's frames are: unasked, it would be the oldest the moment it
       // arrives, and let go at once whenever the protected rounds fill the budget, say after a few seeks in the
       // preview and a step back too short to start another look-ahead, leaving the stand-in up and the frame
       // fetched again on every draw)
       this.asked.set(i, ROUND);
-      this.load(i).catch(() => {});
+      this.load(i, true).catch(() => {});
     }
     if (use >= 0 && use !== this.shown) {
       this.texture.image = this.cache.get(use)!;
@@ -310,12 +387,35 @@ export class Footage {
 
   dispose() {
     this.disposed = true;
+    for (const j of this.queued.values()) { QUEUE.delete(j); j.skip(); }
     for (const b of this.cache.values()) b.close();
     this.cache.clear();
     this.asked.clear();
     this.shown = -1;
     this.texture.dispose();
     LIVE.delete(this);
+  }
+}
+
+/** A frame of a Footage waiting in QUEUE: start() fetches it, skip() lets it go unfetched. */
+interface QueuedJob extends Job { f: Footage; i: number; start(): void; skip(): void }
+const QUEUE = new Set<QueuedJob>();
+/** Fetches under way, and the order frames were asked in. */
+let fetching = 0, SEQ = 0;
+
+/** Starts the next frames in QUEUE while fewer than FETCHES are being fetched; the preview first lets the stale ones go. */
+function pump() {
+  for (const j of QUEUE) j.asked = j.f.askedIn(j.i);
+  if (!RENDERING) {
+    const from = keptFrom(ROUND, PROTECT, WAITED, PENDING);
+    for (const j of QUEUE) if (stale(j, from)) { QUEUE.delete(j); j.skip(); }
+  }
+  while (fetching < FETCHES) {
+    const j = nextJob(QUEUE);
+    if (!j) return;
+    QUEUE.delete(j);
+    fetching++;
+    j.start();
   }
 }
 

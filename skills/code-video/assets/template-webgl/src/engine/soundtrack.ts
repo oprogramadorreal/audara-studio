@@ -104,15 +104,25 @@ export function resolveDuration(v: VideoConfig, segments: Segment[] | null, anal
   return null;
 }
 
+/** Seconds the clock may be off the sound before it is steered: about the noise in the audio element's position. */
+export const STEER_DEADBAND = 0.02;
+/** How much faster or slower the clock runs while it is steered back (0.005: a frame at 60 fps in 3.3 s). */
+export const STEER_RATE = 0.005;
+
 /**
- * Preview playback of the segments against one clock: performance.now(), steered by the audio. While
- * playing, the picture's time only moves forward (a step back would count as a seek: stateful scenes
- * would re-simulate mid-play). While a segment plays, each new position its audio element reports steers
- * the clock: it runs up to 5% faster or slower until it agrees with what is heard (over about half a
- * second). A segment asked to play but not audible yet (play()'s start-up delay, a seek) holds the picture
- * where its sound will start, for up to a second. A clock more than 0.15 s off jumps to the audio (a
- * stall or a skip, the one case where time steps back). In silence (no audio, gaps, past a file's end)
- * the clock runs on its own.
+ * Preview playback of the segments against one clock: performance.now(), or the time the caller gives
+ * (the player passes requestAnimationFrame's timestamp, the display's refresh, which doesn't jitter the
+ * way the moment a callback runs does), steered by the audio. While playing, the picture's time only
+ * moves forward (a step back would count as a seek: stateful scenes would re-simulate mid-play). While a
+ * segment plays, the positions its audio element reports are averaged (each is late by up to one of the
+ * element's coarse steps), and only when the average is more than STEER_DEADBAND off does the clock run
+ * STEER_RATE faster or slower, until it is back within a quarter of that: the picture's own pace never
+ * wavers with the noise, and a drift is made up a frame at a time. (It ran up to 5% faster or slower on
+ * every new position before: a preview that played 60 fps footage repeated or skipped a frame on 10-15%
+ * of its refreshes.) A segment asked to play but not audible yet (play()'s start-up delay, a seek) holds
+ * the picture where its sound will start, for up to a second. A clock more than 0.15 s off jumps to the
+ * audio (a stall or a skip, the one case where time steps back). In silence (no audio, gaps, past a
+ * file's end) the clock runs on its own.
  */
 export class SoundtrackPlayer {
   private els: HTMLAudioElement[];
@@ -122,6 +132,9 @@ export class SoundtrackPlayer {
   private t0 = 0;
   private p0 = 0;
   private rate = 1;
+  /** The clock's average error against the sound (s, + when the sound is ahead), and how many positions it averages so far. */
+  private err = 0;
+  private errN = 0;
   playing = false;
 
   constructor(private segs: Segment[], public duration: number) {
@@ -129,9 +142,13 @@ export class SoundtrackPlayer {
     this.seen = segs.map(() => ({ pos: -1, starting: 0, hold: 0 }));
   }
 
-  /** The video time now. */
-  now() { return this.playing ? this.t0 + ((performance.now() - this.p0) / 1000) * this.rate : this.t0; }
-  private anchor(t: number, p = performance.now(), rate = 1) { this.t0 = t; this.p0 = p; this.rate = rate; }
+  /** The video time now, or at `at` (a performance.now() time; never before the clock was last set). */
+  now(at = performance.now()) { return this.playing ? this.t0 + (Math.max(0, at - this.p0) / 1000) * this.rate : this.t0; }
+  /** Set the clock (t at p, at `rate`); `fresh`: the sound is heard from another place, so its error is averaged anew. */
+  private anchor(t: number, p = performance.now(), rate = 1, fresh = true) {
+    this.t0 = t; this.p0 = p; this.rate = rate;
+    if (fresh) this.errN = 0;
+  }
   seek(t: number) { this.anchor(Math.max(0, Math.min(this.duration, t))); this.sync(true); }
   play() {
     this.anchor(this.t0 >= this.duration - 1e-3 ? 0 : this.t0); // (at the end: play from the start)
@@ -139,10 +156,13 @@ export class SoundtrackPlayer {
   }
   pause() { this.anchor(this.now()); this.playing = false; this.sync(true); }
 
-  /** Keep the elements in step with the clock and the clock on the audio (call once per frame before now()). */
-  sync(force = false) {
-    const p = performance.now();
-    let t = this.now();
+  /**
+   * Keep the elements in step with the clock and the clock on the audio (call once per frame before now(),
+   * with the same `at`: the player gives both requestAnimationFrame's timestamp).
+   */
+  sync(force = false, at?: number) {
+    const p = Math.max(at ?? performance.now(), this.playing ? this.p0 : -Infinity);
+    let t = this.now(p);
     if (this.playing && t >= this.duration) { this.anchor(this.duration, p); this.playing = false; t = this.duration; }
     let steered = false, audible = false;
     this.segs.forEach((s, i) => {
@@ -168,12 +188,20 @@ export class SoundtrackPlayer {
         seen.starting = 0;
         this.anchor(t, p); // the sound started, or a second passed without it: the clock runs on from here
       }
-      if (pos === seen.pos) return; // (the position moves in coarse steps: steer on each new one)
+      if (pos === seen.pos) return; // (the position moves in coarse steps: average each new one)
       seen.pos = pos;
-      const heard = s.at + pos - s.from, err = heard - t;
-      if (Math.abs(err) > 0.15) this.anchor(heard, p);
-      else this.anchor(t, p, 1 + Math.max(-0.05, Math.min(0.05, err / 0.5)));
       steered = true;
+      const heard = s.at + pos - s.from, err = heard - t;
+      if (Math.abs(err) > 0.15) { this.anchor(heard, p); return; }
+      // (the mean of the first positions, then of about the latest 32)
+      this.errN++;
+      this.err = this.errN === 1 ? err : this.err + (err - this.err) / Math.min(this.errN, 32);
+      if (this.errN < 8) return;
+      const off = Math.abs(this.err), dir = Math.sign(this.err);
+      const rate = off > STEER_DEADBAND ? 1 + dir * STEER_RATE // (off: steered back)
+        : this.rate !== 1 && Math.sign(this.rate - 1) === dir && off > STEER_DEADBAND / 4 ? this.rate // (on its way back)
+        : 1;
+      if (rate !== this.rate) this.anchor(t, p, rate, false);
     });
     if (!audible && this.rate !== 1) this.anchor(t, p); // (silence: the clock's own pace)
   }
