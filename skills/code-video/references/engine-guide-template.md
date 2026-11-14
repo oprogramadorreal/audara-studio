@@ -355,9 +355,11 @@ can't ("Stateful scenes"). What the example's `three.ts` found out:
   frame before encoding: on a dark ground even 0.02 reads as a grey veil, so flash the drawing itself
   (brighter lines, a thicker outline) unless the whole frame is meant to flare.
 - Performance: the preview plays in real time while a frame costs under ~16 ms (60 Hz; 33 ms still
-  plays, at 30). `render.ts perf` prints that cost and its parts: on an integrated GPU at 1920×1080 the
-  engine's own post-processing takes about 1.6 ms (4 ms at `--scale 2`), the example's scenes 0.3–2.6 ms
-  each. At `--scale 2` a fullscreen pass and a Canvas2D upload cost about four times as much (four times
+  plays, at 30). It plays the video's own frames, one per refresh when the display's rate is a whole
+  multiple of the video's (a 30 fps video steps at 30 fps there, as in its MP4), and a frame that costs
+  more than a refresh drops frames to stay with the sound. `render.ts perf` prints that cost and its
+  parts: on an integrated GPU at 1920×1080 the engine's own post-processing takes about 1.6 ms (4 ms at
+  `--scale 2`), the example's scenes 0.3–2.6 ms each. At `--scale 2` a fullscreen pass and a Canvas2D upload cost about four times as much (four times
   the pixels). The costly thing in a scene is usually that upload, in proportion to the layer's area:
   about 9 ms for a full-frame layer redrawn every frame (40 ms at 4K), 1.5 ms for a 1728×255 strip (7–8 ms
   at 4K). So draw and upload what never changes once, in `init()`; redraw a layer only when what it

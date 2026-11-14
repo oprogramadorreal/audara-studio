@@ -121,8 +121,8 @@ each part:
   steps. Give a higher count for the whole render (`--samples 36`), or render the stateful stretch as a
   piece of its own (end of this section).
 - **Its own fixed step, not `f.dt`.** `f.dt` is the video time since the scene's last render, and that
-  depends on how the frames are drawn: the display's rate in the preview, the frame grid after a seek, the
-  sub-frame spacing in the render. Added up, it keeps the right speed but takes different steps in each,
+  depends on how the frames are drawn: the frame grid in the preview too, but with a frame held or skipped
+  there to keep up with the sound, the grid after a seek, the sub-frame spacing in the render. Added up, it keeps the right speed but takes different steps in each,
   and a simulation that isn't linear (a bounce, a collision, a stiff spring, flocking) ends up somewhere
   else in each (measured: a ball bouncing under gravity, 2.9 s into its entry, was drawn 18 px away from
   where a seek put it after playback at 240 frames a second, and 9.5 px away after a 12-sub-frame render;
@@ -341,9 +341,9 @@ override dispose() { this.clip.dispose(); }
 - **Loading.** `Scene.prepare(t0, t1)` does nothing by default. The engine calls it for every entry on screen
   in a window, over the entry's part of it (`Engine.prepare`). render.ts waits for it before every frame it
   renders (stills, sheets, posters, verify, the video and each `--jobs` piece, with the next half second of
-  the range loading meanwhile; a range needs no frame outside it). The preview calls it two seconds ahead of
-  the playhead without waiting, and shows the nearest frame it has until the exact one arrives (a frame
-  refined at rest, `refine = true`, waits for it). A scene with several clips asks for them in one call, so
+  the range loading meanwhile; a range needs no frame outside it). The preview calls it for the next two
+  seconds without waiting, and shows the latest frame it has before the exact one until that arrives (a
+  frame refined at rest, `refine = true`, waits for it). A scene with several clips asks for them in one call, so
   they load together (the hook takes any promise):
   `override prepare(t0: number, t1: number) { return Promise.all(this.clips.map((c) => c.prepare(t0, t1))); }`.
 - **Proxies.** The preview reads `proxy/`, a quarter of the pixels to fetch, decode and upload; the render

@@ -40,6 +40,7 @@ Contents
 - The preview's format menu (0.12.3, 2026-11-09)
 - A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
 - An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
+- The preview's frames: one a refresh, and footage after a seek (0.13.2, 2026-11-13)
 
 ## Definition of done
 
@@ -4691,3 +4692,103 @@ measured the mocks again on the same machine: the ElevenLabs mock as on main, id
 24 threads; from this branch 26 MB and one thread, and the image mock 32 MB and one. VS Code's API reference
 was read again for the setting: file events from an extension's recursive watcher "may be excluded" by
 `files.watcherExclude`. It is still untested against the extension itself. The manifests are at 0.13.1.
+
+## The preview's frames: one a refresh, and footage after a seek (0.13.2, 2026-11-13)
+
+A project's live preview stuttered on fast camera moves over streamed 60 fps footage, though its renders were
+clean; its `src/engine/` and `src/main.ts` were the template's 0.13.1, byte for byte. Another session measured it
+read-only, in Chrome on the plain preview page (a window on screen, so the page ran at the display's 60 Hz), by
+wrapping `engine.render` to count how many video frames each refresh advanced (`Math.round(t * 60)`), over 12 s of
+playback from two moments of the video: 85-92% of the refreshes advanced one frame, 4-8% none (a frame shown
+again), 1.4-5% two, and 2-3% three to five, with refreshes of 56-82 ms among them. Its reading of the code:
+
+- **The frame's time.** The player rendered once a refresh at the soundtrack clock's time, read with
+  `performance.now()` when the callback ran rather than at the refresh. `SoundtrackPlayer` re-steered the clock on
+  every new position the audio element reported, up to 5% faster or slower (since the first release), and the
+  footage rounds the time to its frame. A clock near a frame boundary flickered between a repeat and a skip, and
+  the steering's noise moved it there and away again.
+- **The look-ahead.** Every half second of play the player asked for 2.25 s of frames per stream, from 0.25 s
+  behind the playhead, and each Footage started every fetch at once. After a seek, the frames there waited behind
+  the old position's on the browser's six connections, and the nearest frame loaded stood in, a later one too.
+- **The post.** The bloom pyramid (prefilter, six down, six up) ran on frames whose bloom and halation were 0.
+
+What changed:
+
+- **The clock** (`soundtrack.ts`): `now(at)` and `sync(force, at)` take the time, and the player passes
+  requestAnimationFrame's timestamp; with no argument they read `performance.now()` as before. The positions the
+  audio element reports are averaged (each is late by up to one of its coarse steps), and the clock is steered only
+  when the average is more than 20 ms off, at 0.5% (a frame at 60 fps in 3.3 s), until it is back within 5 ms. A
+  clock 0.15 s off still jumps to the sound, and the start-up hold is as it was.
+- **The frame** (`main.ts`, `frameLock`): while playing, the player shows the video's own frame, `n/fps` as render.ts
+  renders it: round(t·fps + phase), the phase (within half a frame) keeping frame boundaries midway between
+  refreshes, re-centred when the clock comes within a quarter of a refresh of one, and wrapped by one refresh when
+  it passes half a frame. So a display whose rate is a whole multiple of the video's, or a whole fraction of it,
+  holds every frame the same number of refreshes, and a drift costs a single repeat or skip. Any other ratio (144 Hz
+  at 60 fps) gets the frame the clock rounds to. A jump starts it again and never shows a frame before the moment
+  played from (a step back would re-simulate stateful scenes). Pausing stays on the frame on screen. A 30 fps
+  video now steps at 30 fps in the preview, as in its MP4, where it used to draw at the display's rate.
+- **Footage** (`footage.ts`, `main.ts`): the look-ahead starts at the playhead. Frames are fetched six at a time
+  over every Footage: the one a draw waits for first (the latest first), then the latest prepare round's in the
+  order asked, then older rounds' (`nextJob`). In the preview, a frame only look-aheads asked for is let go
+  unfetched once its round is older than those the budget keeps (`stale`), so a scrub doesn't leave thousands
+  queued; a frame anything else asked for (a scene's init, a prepare render.ts waits for) is always fetched, and
+  render.ts's page fetches every one. A frame not decoded yet shows the latest loaded before it, one after it only
+  when there is none. `footageStats` (`engine.footage` on the page) counts draws, stand-ins and blanks.
+- **The post** (`post.ts`): in the preview only, a frame with bloom and halation both 0 skips the pyramid, the final
+  pass reading a black texture there. The pixels are the same for any frame without a NaN or an infinity (x·0 is
+  0); with a NaN, the pyramid spreads it into a black disc even at 0, so render.ts, which must stay bit for bit what
+  it was, always runs it.
+- **Kept:** `window.__audara`'s `preview`, `engine` and `track`, `track.now()` with no argument, `playing`,
+  `play()`, `pause()`, `seek(t)`, `engine.render(t, ...)`, `duration`, `timeline`, `loaded`, `errors`, and the
+  keys. The render path: `still()` and `stream()` step `t = n/fps` as before, and the fetch order changes only when
+  a frame arrives, never which.
+- **Docs:** contract.md (the look-ahead, `f.dt` in the preview), the engine guide's performance note, realism.md,
+  design.md ("Footage" and a new "The preview's frames: one a refresh"), evals/README.md. The manifests are at
+  0.13.2.
+
+Measured on the same project, read-only: a second dev server over it (its cache in a scratch folder, nothing in
+the project written), serving the project as it is or the branch's `main.ts` and `src/engine/` in its place, the
+same page and wrapper, Chrome at 60 Hz with the GPU, 12 s from each moment:
+
+| | one frame | none | two | three to six | refreshes/s | longest refresh |
+|---|---|---|---|---|---|---|
+| 0.13.1, moment A (2 runs) | 92.2%, 90.3% | 3.8%, 4.5% | 1.4%, 2.9% | 2.5%, 2.3% | 57.8, 57.6 | 82, 79 ms |
+| 0.13.1, moment B (2 runs) | 83.9%, 85.9% | 8.3%, 7.1% | 4.6%, 3.8% | 3.1%, 3.2% | 58.1, 57.4 | 76, 76 ms |
+| this branch, A (2 runs) | 99.7%, 99.7% | 0.3%, 0.3% | 0 | 0 | 60, 60 | 40, 42 ms |
+| this branch, B (3 runs) | 99.6, 99.6, 99.7% | 0.4, 0.3, 0.3% | 0, 0.1%, 0 | 0 | 60, 59.9, 60 | 39, 46, 43 ms |
+
+- **Which change did what**, the branch's files served a few at a time: the clock and `main.ts` alone took the
+  repeats to 0.3-0.4%, but the 56-77 ms refreshes stayed and with them 2-4% of steps of two or three (96.2% and
+  96.7% one frame); adding `footage.ts` took the longest refresh to 31 ms and the one-frame steps to 99.7%. The
+  stalls were the look-ahead's fetches all starting at once.
+- **What the repeats left are:** a probe of the clock in one run put both at the clock being steered back from
+  31 ms ahead of the sound after the start-up hold (rate 0.995, two changes of rate in 12 s): a drift made up a
+  frame at a time, as designed.
+- **`main.ts` alone on the 0.13.1 engine** (what `init --force` updates) was no better: 85.3% and 86.7% one frame,
+  6.1-7.7% none, 3.8-4.7% two. The old clock's steering and late reading swamp the lock, so a project made
+  earlier takes the fix by copying the template's `src/engine/soundtrack.ts` and `footage.ts` as they are
+  (`post.ts` and `engine.ts` too for the bloom skip and the counts).
+- **Seeks while playing**, eight to places across the video, footage draws in the second after each (two runs a
+  side): with 0.13.1, 122 of 460 and 123 of 304 draws showed another frame, until 130-850 ms after the seek, and the
+  page drew 23-44 frames a second there; with the branch, 28 of 697 and 39 of 691, mostly gone within 2-65 ms
+  (one seek 220-294 ms, one 584 ms once), at the full rate. A later frame stood in 8 and 6 times before, 2 and 2
+  after, all at a seek where no earlier frame of the shot was loaded.
+- **The bloom skip**, on the branch at a paused frame with bloom and halation 0, 300 renders each waited for on the
+  GPU: 0.65-0.80 ms a frame with the pyramid, 0.38-0.43 ms without (an RTX laptop GPU). At nine moments across the
+  video, the frame read back with the skip and without was the same, 0 of 8,294,400 bytes different.
+- **Renders unchanged:** the export page (`?export=1`, what render.ts drives) of 0.13.1 and of the branch, `still()`
+  at nine moments with 1 and with 4 sub-frames: the same SHA-256 for all 18 frames, no errors.
+- **Offline:** `test_soundtrack.ts` adds the clock (`now(at)`; a clock within 20 ms of a sound reported in 10 ms
+  steps runs at its own pace, one 40 ms off is steered at 0.5% and comes back within 12 ms, a sound 0.1% fast is
+  followed, one 0.2 s off jumped to) and `frameLock` (one frame a refresh at 60 fps and 60 Hz with the clock read
+  up to 3 ms either side, where rounding stepped 0 or 2 over a hundred times each in 1,200 refreshes; 3 or 4 single
+  skips a minute at 59.94 Hz with the picture within 0.76 frame of the clock; single repeats on a clock steered
+  slow; two refreshes a frame at 120 Hz and for 30 fps at 60 Hz; 144 Hz rounded; never before the moment played
+  from, a missed refresh one step of two). `test_footage.ts` adds the fetch order, the stale rule, six at once and
+  a seek's frames first on the real class, a scrub's first look-ahead left unfetched in the preview and fetched by
+  render.ts's page, and the stand-in. Against 0.13.1's `soundtrack.ts` the four clock checks fail, and the footage
+  test doesn't load. `bun run check` passes on a project made by `init` from the branch, and with `main.ts` from
+  the branch over 0.13.1's engine.
+- **Not measured:** displays other than 60 Hz (120 and 144 Hz, 59.94 Hz and a 30 fps video are covered offline
+  only), browsers other than Chrome, a scrub dragged by hand (covered offline), and no task eval (no skill's
+  instructions changed).

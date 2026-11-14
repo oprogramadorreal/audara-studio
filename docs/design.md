@@ -890,8 +890,12 @@ it (`src/engine/footage.ts`):
   frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.
   render.ts waits for it before every frame it renders, with the next half second of the range loading
   alongside; a failure there is left to the frame's own prepare, so a missing frame past the range is no
-  error. The preview asks two seconds ahead without waiting and shows the nearest frame it has meanwhile;
-  a frame it refines at rest waits for its footage frame first.
+  error. The preview asks for the next two seconds without waiting and shows the latest frame it has before
+  the one asked for meanwhile (a later one would look like a step back as it plays on); a frame it refines
+  at rest waits for its footage frame first. Frames are fetched six at a time, the one a draw waits for
+  first, then the latest prepare's from the playhead on: all of a look-ahead's used to start at once, and
+  after a seek the frames there waited behind the old position's, which the preview now drops once the
+  budget would let them go first. render.ts fetches every frame it asks for.
 - One memory budget over every shot lets the least recently asked frames go, never one asked since a prepare
   render.ts waits for began, until it settles and for a few prepares after, nor those of the latest rounds.
   A scene may ask for its clips one after another, each once the last has loaded, while the look-ahead asks
@@ -911,6 +915,26 @@ it (`src/engine/footage.ts`):
   verify call `prepare` only where the engine has it, so old projects render as before. Taking streamed footage
   is one port, which `contract.md` lists. Each footage frame is held whole: a project whose 24 fps clips juddered
   in a 60 fps video blends neighbouring frames in its scene, which two Footage of a shot can still do.
+
+### The preview's frames: one a refresh
+
+The render steps `t = n/fps` exactly; the preview plays the same frames. At each display refresh the player
+reads the soundtrack's clock at requestAnimationFrame's timestamp, the refresh's own time, and shows the
+video frame nearest it, with a phase (under half a frame) that keeps the frame boundaries midway between
+refreshes. So a 60 fps video on a 60 Hz display advances exactly one frame a refresh, a 120 Hz display holds
+each frame two, and a 30 fps video steps at 30 fps, as in its MP4. The clock follows the audio element only
+when the average of its reported positions is more than 20 ms off, and then runs 0.5% faster or slower, so
+a drift is made up by a single held or skipped frame. Before, the clock was read when the callback ran,
+re-steered up to 5% on every new audio position, and rounded to the frame grid: on a project's live preview
+of 60 fps footage, 5-15% of the refreshes repeated or skipped a frame, and look-ahead fetches in bursts
+stalled frames for 50-80 ms (history.md, 0.13.2). A slow frame still drops frames, since time is the
+sound's, and a display whose refreshes don't line up with the frames (144 Hz at 60 fps) gets the frame the
+clock rounds to. The player keeps what tools drive it by (`window.__audara`'s `track.now()`, `play()`,
+`seek()`, `engine.render()`). An older engine's clock ignores the timestamp and steers as it did, and
+`main.ts` alone (what `init --force` updates) measured no better on it, so a project made earlier takes the
+fix by copying the template's `src/engine/soundtrack.ts` and `footage.ts` as they are (`post.ts` and
+`engine.ts` too for the bloom skip below). In the preview alone, a frame whose bloom and halation are both 0
+skips the bloom pyramid, the same pixels for any frame without a NaN; render.ts always runs it.
 
 ### Photographic 3D: an optional kit, not a default
 

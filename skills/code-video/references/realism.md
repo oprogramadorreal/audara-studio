@@ -116,7 +116,7 @@ measured each on footage, not stills):
 A photographic scene plays in the live preview like any other, but two things change: how fast it plays,
 and what it can show.
 
-- **How fast.** The player draws each frame at the soundtrack's time, so a slow scene drops frames and
+- **How fast.** The player draws the video's frame at the soundtrack's time, so a slow scene drops frames and
   stutters rather than drifting out of sync (its fps is on the info line). Measured at 1080p: the kit's
   example takes 3.8 ms a frame on a laptop RTX 5070 and 26 ms on its integrated Intel GPU (38 fps). A world
   at golden-temple's scale (23 million triangles, in its own preview with no depth of field) played at 21-44
