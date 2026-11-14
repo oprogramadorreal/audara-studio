@@ -349,7 +349,8 @@ frame a refresh at 60 fps and 60 Hz where rounding a jittery clock on a boundary
 skips on a 59.94 Hz display, single repeats on a clock steered slow, two refreshes a frame at 120 Hz and for
 30 fps at 60 Hz, the rounded frame at 144 Hz, never a frame before the moment played from, never a step back
 when the refresh rate changes mid-play; and main.ts's `showAt` on the real player, whose loop wraps on the
-frame shown, where the lock alone showed the frame on the loop's end.
+frame shown, where the lock alone showed the frame on the loop's end, and whose picture follows a seek back
+while playing however small (the , key, a scrub back 10 ms a refresh at 60 and 120 Hz).
 `test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
 synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to

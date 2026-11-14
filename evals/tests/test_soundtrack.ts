@@ -466,6 +466,43 @@ test('a loop wraps on the frame shown: the scene after its end never shows', () 
   assert(loopPlay(true).some((t) => t >= 1), 'the lock alone never reached the loop end: this test checks nothing');
 });
 
+test('a seek back while playing shows where it lands, however small (the , key, a scrub back)', () => {
+  // (Codex's second review: a step back within the lock's tolerance passed for a steady clock, and the floor
+  // that keeps a change of refresh rate from stepping back held the frame instead)
+  for (const hz of [60, 120]) {
+    clock = 1000;
+    const p = new SoundtrackPlayer([], 60) as Steered, lock = frameLock(60), dt = 1000 / hz;
+    let ts = 1000;
+    const refresh = () => { ts += dt; clock = ts; return showAt(p, lock, ts, null); };
+    p.seek(10);
+    for (let k = 0; k < 60; k++) refresh(); // (paused a second)
+    p.play();
+    let shown = 0;
+    for (let k = 0; k < hz; k++) shown = refresh();
+    // the , key, a little after a refresh: one frame back from the frame on the clock (main.ts's keydown)
+    clock = ts + dt / 3;
+    const target = (Math.round(p.now() * 60) - 1) / 60;
+    p.seek(target);
+    // (playing, the clock runs on from the target until the next refresh: that frame is shown again, or the one
+    // before it, where without the seek the next would show)
+    const after = refresh(), next = refresh();
+    assert(after <= shown && after >= target && after - target <= 1 / 60 + 1e-9, `${hz} Hz: showed ${after} after a step back from ${shown} to ${target}`);
+    // (two refreshes on, a frame behind where it would be without the seek, within the lock's half frame)
+    const without = shown + (2 * dt) / 1000;
+    assert(next <= without - 0.5 / 60 + 1e-9, `${hz} Hz: two refreshes on it showed ${next}, where without the seek ${without}: the step back was lost`);
+    // a scrub back while playing: 10 ms further back before each refresh
+    const from = p.now(ts), out: number[] = [];
+    for (let k = 0; k < 60; k++) {
+      clock = ts + dt / 3;
+      p.seek(from - (k + 1) * 0.01);
+      out.push(refresh());
+    }
+    const end = p.now(ts);
+    assert(Math.abs(out.at(-1)! - end) < 1 / 60, `${hz} Hz: the scrub ended on ${out.at(-1)}, the clock at ${end}`);
+    assert(out.every((x, k) => k === 0 || x < out[k - 1]!), `${hz} Hz: the picture stopped following the scrub back`);
+  }
+});
+
 let failed = 0;
 for (const [name, run] of cases) {
   try { await run(); console.log(`ok   ${name}`); }

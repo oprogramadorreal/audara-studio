@@ -109,8 +109,8 @@ function takeOver(old: SoundtrackPlayer, segments: Segment[], D: number) {
  * one skipped: measured on a project's live preview of 60 fps footage, 5-15% of the refreshes stepped 0 or
  * 2 frames. When the clock drifts from the refreshes (a 59.94 Hz display, the clock steered to the sound),
  * the phase follows it until it would pass half a frame, and then one frame is held one refresh longer or
- * shorter: a single repeat or skip. A jump (a seek, the clock set to the sound, a loop, a background tab)
- * starts it again, never before t; a display whose refreshes don't line up with the frames (144 Hz at
+ * shorter: a single repeat or skip. A jump (a seek, the clock set to the sound, a loop, a background tab;
+ * any step back of the clock, however small, as the , key's one frame) starts it again, never before t; a display whose refreshes don't line up with the frames (144 Hz at
  * 60 fps) gets round(t·fps). Between jumps it never goes back, so a change of refresh rate (the window
  * moved to another screen) at worst holds a frame: a step back would re-simulate stateful scenes. Paused,
  * it is t as it is. A slow frame still drops frames: the time is the clock's.
@@ -128,8 +128,9 @@ function frameLock(fps: number) {
   return (t: number, ts: number, playing: boolean) => {
     const gap = ts - lastTs, x = t * fps;
     if (gap > 2 && gap < 100) { gaps.push(gap); if (gaps.length > 15) gaps.shift(); }
-    // (a steady clock moves about as far as the refresh: a hold for the sound to start moves it 0)
-    const steady = gap > 0 && gap < 250 && Math.abs(x - lastX - (gap * fps) / 1000) <= 2;
+    // (a steady clock moves about as far as the refresh, a hold for the sound to start 0, and never back: the
+    // clock steps back only for a seek, a loop or the sound, however small, as the , key's one frame)
+    const steady = gap > 0 && gap < 250 && x >= lastX - 1e-6 && Math.abs(x - lastX - (gap * fps) / 1000) <= 2;
     lastTs = ts;
     lastX = playing ? x : NaN;
     if (!playing) return t;

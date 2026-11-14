@@ -4812,3 +4812,11 @@ It also named tests the branch lacked, now added: a frame that fails to load (it
 turn freed for the rest), a Footage disposed with frames waiting (they go unfetched, its prepare settles, another
 Footage fetches on), and a frame let go unfetched asked for again. After the fixes, on the same project: 99.7% of
 refreshes one frame at both moments, the longest 31 ms, and 24 of 695 draws standing in after the eight seeks.
+
+Its second review found the floor too wide: a jump was a clock off its expected step by more than two frames,
+so a seek back by less than that while playing passed for steady play and the floor held the frame. With the
+real player, sixty seeks back of 10 ms, one a refresh, left the picture on 11 s while the clock went to 10.40 s.
+While playing, the clock steps back only for a seek, a loop or the sound, so any step back is now a jump; a
+change of refresh rate never moves it back and keeps the floor. The new test (the , key, and that scrub back at
+60 and 120 Hz) fails without that condition, the scrub ending on 11.017 s with the clock at 10.42 s. Measured
+again on the project: 99.7% one frame at both moments, the longest refresh 36 ms.
