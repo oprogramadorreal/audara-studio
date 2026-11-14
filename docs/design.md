@@ -929,7 +929,9 @@ re-steered up to 5% on every new audio position, and rounded to the frame grid: 
 of 60 fps footage, 5-15% of the refreshes repeated or skipped a frame, and look-ahead fetches in bursts
 stalled frames for 50-80 ms (history.md, 0.13.2). A slow frame still drops frames, since time is the
 sound's, and a display whose refreshes don't line up with the frames (144 Hz at 60 fps) gets the frame the
-clock rounds to. The player keeps what tools drive it by (`window.__audara`'s `track.now()`, `play()`,
+clock rounds to. Between jumps the frame shown never goes back (a window moved to a screen of another rate
+at worst holds one), and a loop wraps on the frame shown, which can be half a frame past the clock, so the
+scene after the loop never flashes. The player keeps what tools drive it by (`window.__audara`'s `track.now()`, `play()`,
 `seek()`, `engine.render()`). An older engine's clock ignores the timestamp and steers as it did, and
 `main.ts` alone (what `init --force` updates) measured no better on it, so a project made earlier takes the
 fix by copying the template's `src/engine/soundtrack.ts` and `footage.ts` as they are (`post.ts` and

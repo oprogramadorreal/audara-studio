@@ -48,7 +48,7 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
  * class and its budget, for what only they decide together (which frames stay when one arrives). A frame's
  * "bitmap" is its URL.
  */
-function realFootage(o: { rendering?: boolean; manual?: boolean } = {}) {
+function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<number> } = {}) {
   const ts = source
     .replace("import * as THREE from 'three';", "const THREE = { Texture: class { image: unknown = null; needsUpdate = false; version = 0; colorSpace = ''; minFilter = 0; magFilter = 0; generateMipmaps = true; flipY = true; dispose() {} }, SRGBColorSpace: 'srgb', NearestFilter: 1, LinearFilter: 2 };")
     .replace("import { VIDEO } from '../video';", 'const VIDEO = { fps: 60 };')
@@ -59,7 +59,8 @@ function realFootage(o: { rendering?: boolean; manual?: boolean } = {}) {
   const fetched: string[] = [], waiting: { url: string; answer(): void }[] = [];
   const fetchStub = (url: string) => {
     fetched.push(url);
-    const r = { ok: true, status: 200, blob: async () => url };
+    const gone = o.missing?.has(frameOf(url));
+    const r = { ok: !gone, status: gone ? 404 : 200, blob: async () => url };
     if (!o.manual) return Promise.resolve(r);
     return new Promise((resolve) => waiting.push({ url, answer: () => resolve(r) }));
   };
@@ -70,7 +71,7 @@ function realFootage(o: { rendering?: boolean; manual?: boolean } = {}) {
   return { ...mod, fetched, waiting } as {
     Footage: new (o: { base: string; frames: number; fps?: number; full: boolean }) => {
       prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; frameAt(i: number): { image: unknown }; index(t: number): number;
-      has(i: number): boolean; held(): unknown[]; dispose(): void;
+      has(i: number): boolean; held(): unknown[]; dispose(): void; askedIn(i: number): number;
     };
     footageRound(ask: () => void, waited?: boolean): () => void;
     BUDGET: { full: number; proxy: number };
@@ -390,6 +391,54 @@ test('a frame not decoded yet: the latest one before it stands in, one after it 
   check(shows(100) === 100 && shows(30) === 30 && shows(3) === 3, 'the frames asked for did not arrive');
   check(s.draws === 7 && s.standIns === 3, `counted ${JSON.stringify(s)} once they arrived`);
   clip.dispose();
+});
+
+test('a frame that fails to load fails its prepare with the reason, and frees its turn for the rest', async () => {
+  for (const rendering of [false, true]) {
+    const w = realFootage({ manual: true, rendering, missing: new Set([603]) });
+    const clip = new w.Footage({ base: '/footage/s', frames: 100000, fps: 60, full: true });
+    let failure: unknown = null;
+    const p = clip.prepare(10, 10.5).catch((e) => { failure = e; });
+    await drain(w);
+    await p;
+    check(/footage \/footage\/s\/full\/000604\.jpg: HTTP 404/.test(String((failure as Error)?.message)), `the prepare gave ${String(failure)}`);
+    check(range(600, 630).every((i) => i === 603 || clip.has(i)), 'the other frames did not load');
+    // (every turn free again: six of the next prepare's frames start at once)
+    void clip.prepare(20, 21);
+    check(w.waiting.length === 6, `${w.waiting.length} fetches started after the failure`);
+    await drain(w);
+    check(range(1200, 1260).every((i) => clip.has(i)), 'a prepare after the failure did not load');
+  }
+});
+
+test('a disposed Footage lets its waiting frames go; another Footage fetches on', async () => {
+  const w = realFootage({ manual: true });
+  const a = new w.Footage({ base: '/footage/a', frames: 100000, fps: 60, full: false });
+  const b = new w.Footage({ base: '/footage/b', frames: 100000, fps: 60, full: false });
+  const p = a.prepare(10, 12); // (121 frames: six under way, the rest waiting)
+  a.dispose(); // (a hot-swapped scene)
+  void b.prepare(10, 10.2);
+  await drain(w);
+  await p; // (settles: nobody waits for a disposed shot forever)
+  const fromA = w.fetched.filter((u) => u.startsWith('/footage/a/')).length, fromB = w.fetched.filter((u) => u.startsWith('/footage/b/')).length;
+  check(fromA === 6 && fromB === 13, `fetched ${fromA} of the disposed one's frames, ${fromB} of the other's`);
+  check(!a.has(600) && b.has(612), 'the disposed one kept a frame, or the other did not load');
+});
+
+test('a frame let go unfetched is fetched when asked again; its mark goes with it', async () => {
+  const w = realFootage({ manual: true });
+  const clip = new w.Footage({ base: '/footage/s', frames: 100000, fps: 60, full: false });
+  for (const t of [10, 20, 30, 40, 50]) w.footageRound(() => { void clip.prepare(t, t + 2); });
+  await drain(w);
+  check(!clip.has(650) && clip.askedIn(650) === 0, `frame 650: ${clip.has(650) ? 'fetched' : 'not fetched'}, marked in round ${clip.askedIn(650)}`);
+  // (only decoded frames keep a mark: a scrub's let-go frames left thousands)
+  const marks = (clip as unknown as { asked: Map<number, number> }).asked.size;
+  check(marks === clip.held().length, `${marks} marks for ${clip.held().length} decoded frames`);
+  let again: Promise<void> = Promise.resolve();
+  w.footageRound(() => { again = clip.prepare(10, 12); });
+  await drain(w);
+  await again;
+  check(range(600, 720).every((i) => clip.has(i)), 'the frames let go were not fetched when asked again');
 });
 
 let passed = 0;

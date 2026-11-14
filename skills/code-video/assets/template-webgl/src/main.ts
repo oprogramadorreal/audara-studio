@@ -111,7 +111,9 @@ function takeOver(old: SoundtrackPlayer, segments: Segment[], D: number) {
  * the phase follows it until it would pass half a frame, and then one frame is held one refresh longer or
  * shorter: a single repeat or skip. A jump (a seek, the clock set to the sound, a loop, a background tab)
  * starts it again, never before t; a display whose refreshes don't line up with the frames (144 Hz at
- * 60 fps) gets round(t·fps). Paused, it is t as it is. A slow frame still drops frames: the time is the clock's.
+ * 60 fps) gets round(t·fps). Between jumps it never goes back, so a change of refresh rate (the window
+ * moved to another screen) at worst holds a frame: a step back would re-simulate stateful scenes. Paused,
+ * it is t as it is. A slow frame still drops frames: the time is the clock's.
  */
 function frameLock(fps: number) {
   const gaps: number[] = []; // (the latest refresh intervals, ms)
@@ -140,12 +142,35 @@ function frameLock(fps: number) {
       if (phase > 0.5) phase -= u; // (the picture half a frame ahead: one refresh more on this frame)
       else if (phase < -0.5) phase += u; // (behind: one less)
     }
-    return Math.max(from, Math.floor(x + 0.5 + phase) / fps);
+    return (from = Math.max(from, Math.floor(x + 0.5 + phase) / fps));
   };
 }
 
 /** The player's clock: an engine's SoundtrackPlayer from before 0.13.2 takes no time and reads its own (init --force updates this file but never src/engine/). */
 type Clock = { now(at?: number): number; sync(force?: boolean, at?: number): void };
+type Player = Clock & { playing: boolean; seek(t: number): void };
+
+/**
+ * The player brought up to ts (once per frame, before now(); requestAnimationFrame's timestamp, or now), the
+ * loop first: a loop that ends with the video must wrap before the player stops at the end.
+ */
+function bringUp(track: Player, ts: number, loop: [number, number] | null) {
+  if (loop && track.playing && track.now(ts) >= loop[1]) track.seek(loop[0]);
+  track.sync(false, ts);
+}
+
+/**
+ * The time the player shows at refresh ts: frameLock's, the player brought up to ts first. A loop wraps on the
+ * frame shown too, since frameLock may put it up to half a frame past the clock: on the loop's end, where the
+ * next scene starts, it would show that scene for a refresh.
+ */
+function showAt(track: Player, lock: (t: number, ts: number, playing: boolean) => number, ts: number, loop: [number, number] | null) {
+  bringUp(track, ts, loop);
+  const t = lock(track.now(ts), ts, track.playing);
+  if (!(loop && track.playing && t >= loop[1])) return t;
+  track.seek(loop[0]);
+  return lock(track.now(ts), ts, true);
+}
 
 // A lost GL context takes with it what scenes made on the GPU when they were built (a captured environment
 // light, a baked texture), and nothing makes it again: when the context comes back, the preview reloads at
@@ -516,15 +541,8 @@ function setupPlayer() {
   // A soundtrack the boot didn't read, once read: heard from where the player is, playing or paused as it
   // was. One that gives the video another length (a segment list's end, with no "duration" in video.json)
   // reloads the page at this moment instead: the timeline, the beat grid and the scrub bar are made for it.
-  /**
-   * The player brought up to `ts` (once per frame, before now(); requestAnimationFrame's timestamp, or now);
-   * the loop first: a loop that ends with the video must wrap before the player stops at the end.
-   */
-  const advance = (ts = performance.now()) => {
-    const clock: Clock = track;
-    if (loop && track.playing && clock.now(ts) >= loop[1]) track.seek(loop[0]);
-    clock.sync(false, ts);
-  };
+  /** The player brought up to now (bringUp). */
+  const advance = () => bringUp(track, performance.now(), loop);
   if (audioProblems().length) {
     retrySoundtrack((segments) => {
       advance();
@@ -568,8 +586,7 @@ function setupPlayer() {
   };
   const lock = frameLock(fps);
   const tick = (ts: number) => {
-    advance(ts);
-    const t = (shown = lock((track as Clock).now(ts), ts, track.playing));
+    const t = (shown = showAt(track, lock, ts, loop));
     if (wasPlaying && !track.playing) syncUrl(t); // (reached the end)
     wasPlaying = track.playing;
     // streamed footage: the next two seconds loading, from the frame on screen, without holding up playback

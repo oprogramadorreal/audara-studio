@@ -421,6 +421,51 @@ test('a hold for the sound to start, a missed refresh, a seek: never before the 
   assert.equal(lock(7.25, (ts += 1000 / 60), false), 7.25, 'paused, the time as it is');
 });
 
+test('a change of refresh rate while playing never steps the picture back', () => {
+  // (a window moved to another screen: 120 Hz to 144 Hz with a 30 fps video, 60 Hz to 75 Hz and back at 60 fps)
+  for (const [fps, a, b] of [[30, 120, 144], [60, 60, 75], [60, 75, 60], [30, 144, 120]] as const) {
+    for (const start of [11.3, 11.31, 11.32, 11.333]) {
+      const { times } = show(fps, a, 900, (ts) => start + ts / 1000, (k) => (k < 450 ? 1000 / a : 1000 / b));
+      const back = times.findIndex((x, k) => k > 0 && x < times[k - 1]!);
+      assert(back < 0, `${fps} fps, ${a} to ${b} Hz from ${start}: refresh ${back} went from ${times[back - 1]} back to ${times[back]}`);
+    }
+  }
+});
+
+// main.ts's bringUp and showAt, on the real SoundtrackPlayer and frameLock
+const { bringUp, showAt } = new Function(`${transpiler.transformSync([slice(mainTS, 'function bringUp(', '\n}\n'), slice(mainTS, 'function showAt(', '\n}\n')].join('\n'))}\nreturn { bringUp, showAt };`)() as {
+  bringUp(track: Steered, ts: number, loop: [number, number] | null): void;
+  showAt(track: Steered, lock: (t: number, ts: number, playing: boolean) => number, ts: number, loop: [number, number] | null): number;
+};
+
+test('a loop wraps on the frame shown: the scene after its end never shows', () => {
+  /** Plays a silent video looping [0, 1) for 5 s at 60 Hz, from 0.7 of a frame in: the frames shown, by showAt or by the lock on the clock alone. */
+  const loopPlay = (alone: boolean) => {
+    clock = 1000;
+    const p = new SoundtrackPlayer([], 60) as Steered, lock = frameLock(60), loop: [number, number] = [0, 1];
+    const at = (ts: number) => {
+      if (!alone) return showAt(p, lock, ts, loop);
+      bringUp(p, ts, loop);
+      return lock(p.now(ts), ts, p.playing);
+    };
+    let ts = 1000;
+    p.seek(0.7 / 60);
+    for (let k = 0; k < 60; k++) { ts += 1000 / 60; clock = ts; at(ts); } // (paused a second)
+    p.play();
+    const out: number[] = [];
+    for (let k = 0; k < 300; k++) { ts += 1000 / 60; clock = ts; out.push(at(ts)); }
+    return out;
+  };
+  const shown = loopPlay(false);
+  assert(shown.every((t) => t < 1), `showed ${shown.find((t) => t >= 1)}, the loop's end`);
+  const wraps = shown.filter((t, k) => k > 0 && t < shown[k - 1]!).length;
+  // (the first loop is short, from 0.7 of a frame in: five ends in 5 s)
+  assert(wraps === 5, `wrapped ${wraps} times in 5 s`);
+  assert.deepEqual(steps(shown.map((t) => Math.round(t * 60))), { 1: 294, [-59]: 5 }, 'one frame a refresh between wraps, frame 59 to 0 at each');
+  // (the lock alone, the loop checked on the clock: its phase put the loop's end on screen)
+  assert(loopPlay(true).some((t) => t >= 1), 'the lock alone never reached the loop end: this test checks nothing');
+});
+
 let failed = 0;
 for (const [name, run] of cases) {
   try { await run(); console.log(`ok   ${name}`); }

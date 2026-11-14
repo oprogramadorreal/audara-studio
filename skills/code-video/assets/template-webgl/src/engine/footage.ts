@@ -291,8 +291,9 @@ export class Footage {
       job = {
         f: this, i, asked: 0, seq: ++SEQ, urgent, ahead,
         start: () => { this.queued.delete(i); this.fetchFrame(i).then(resolve, reject); },
-        // (let go before it resolves, so whoever asks for it again starts a fetch of their own)
-        skip: () => { this.queued.delete(i); this.loading.delete(i); resolve(); },
+        // (let go before it resolves, so whoever asks for it again starts a fetch of their own; its mark too,
+        // which only a decoded frame's eviction would clear: a scrub left thousands)
+        skip: () => { this.queued.delete(i); this.loading.delete(i); this.asked.delete(i); resolve(); },
       };
     }).finally(() => { if (this.loading.get(i) === p) this.loading.delete(i); });
     this.loading.set(i, p);

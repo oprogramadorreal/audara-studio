@@ -4792,3 +4792,23 @@ same page and wrapper, Chrome at 60 Hz with the GPU, 12 s from each moment:
 - **Not measured:** displays other than 60 Hz (120 and 144 Hz, 59.94 Hz and a 30 fps video are covered offline
   only), browsers other than Chrome, a scrub dragged by hand (covered offline), and no task eval (no skill's
   instructions changed).
+
+Codex (Herdr tab 2) reviewed the branch before the PR, read-only, with both offline tests passing on its side. It
+found two regressions in the frame lock and a leak, each reproduced by calling the code, and the branch takes all
+three:
+
+- **A loop flashed the scene after it.** The loop wrapped when the clock reached its end, but the frame shown can
+  be half a frame past the clock: looping [0, 1) at 60 fps, a clock at 0.9953 s showed t = 1, the next scene, for a
+  refresh. `showAt` now wraps on the frame shown too. Its test plays a silent loop on the real player and lock, and
+  checks the lock alone does show the loop's end, so the test can fail.
+- **A change of refresh rate stepped the picture back.** When the measured cadence changed (a 30 fps video, 120 Hz
+  to 144 Hz), the phase reset could show the frame before the last one, which also re-simulates stateful scenes.
+  Between jumps the frame shown now never goes back; with that line removed, the new test fails on that case
+  (16.133 s back to 16.1 s).
+- **Look-ahead frames let go unfetched kept their marks**, which only a decoded frame's eviction clears: 12,094
+  after 100 distant look-aheads. A skipped frame's mark now goes with it.
+
+It also named tests the branch lacked, now added: a frame that fails to load (its prepare fails with the URL, its
+turn freed for the rest), a Footage disposed with frames waiting (they go unfetched, its prepare settles, another
+Footage fetches on), and a frame let go unfetched asked for again. After the fixes, on the same project: 99.7% of
+refreshes one frame at both moments, the longest 31 ms, and 24 of 695 draws standing in after the eight seeks.
