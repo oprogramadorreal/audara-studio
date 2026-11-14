@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "audara-studio",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "Make videos from code: a deterministic WebGL/GLSL, three.js and Canvas2D engine with a live browser preview you direct by time and an offline render to MP4, plus a soundtrack skill that turns a song or a script into audio and timing data, a video-ideas skill that helps choose what to make and writes the starting prompt or script, a devlog skill that builds something worth watching being built and keeps the material for the video about how it was made, a video-repo skill that puts a project in git for someone else to clone and render, a youtube-package skill that makes a finished video's thumbnails, title, description and tags, and a nutlight-style skill, a house style for explainers (squirrel characters in luminous geometric worlds) that loads when it is named.",
   "author": {
     "name": "oprogramadorreal",

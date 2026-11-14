@@ -325,8 +325,16 @@ frame and each of its sub-frames shows (rates, offsets, an entry starting betwee
 frames a prepare loads (only those shown, at rates 4 and 8 too), and which decoded frames the memory budget
 lets go (never the latest rounds', those of a prepare render.ts waits for, its clips asked one after another
 included, or the one on screen while its shot is in use; 150 shots played one after another stay within it,
-and a still back in the first loads it again). On the real `Footage` class, with three, fetch and the decoder
-stubbed: a frame the preview loads on demand after four seeks fill the budget stays, fetched once.
+and a still back in the first loads it again), and the order frames are fetched in (the one a draw waits
+for first, the latest first, then the latest round's in the order asked, then older rounds') and which a
+preview lets go unfetched (only a look-ahead's, older than the rounds the budget keeps). On the real `Footage`
+class, with three, fetch and the decoder stubbed: a frame the preview loads on demand after four seeks fill
+the budget stays, fetched once; six fetches at once, and after a seek the frames there go before the old
+look-ahead's; a scrub of five look-aheads leaves the first one's waiting frames unfetched in the preview, but
+for one a scene's own prepare asked for too, and render.ts's page fetches them all; and a frame not decoded
+yet shows the latest one before it (one after it only when there is none), counted in `footageStats`; a frame
+that fails to load fails its prepare with its URL and frees its turn; a disposed Footage lets its waiting
+frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;
@@ -334,6 +342,15 @@ main.ts's retry, which shows the latest try's problems, keeps the other boot pro
 15 s and hands the segments on once; the player that takes over (the real `SoundtrackPlayer`, on a hand-run
 clock: playing or paused at the old one's moment, stopped at the end when its clock ran past it); and the
 length a soundtrack read late gives (a fresh boot's, in seven cases), unchanged except where the page reloads.
+It also checks the preview's clock and frames: `now(at)` at a given moment, never before the clock was set; a
+clock within 20 ms of a sound reported in coarse steps runs at its own pace, one 40 ms off is steered at 0.5%
+until within 5 ms, a sound 0.1% fast is followed and one 0.2 s off jumped to; and main.ts's `frameLock`: one
+frame a refresh at 60 fps and 60 Hz where rounding a jittery clock on a boundary repeated and skipped, single
+skips on a 59.94 Hz display, single repeats on a clock steered slow, two refreshes a frame at 120 Hz and for
+30 fps at 60 Hz, the rounded frame at 144 Hz, never a frame before the moment played from, never a step back
+when the refresh rate changes mid-play; and main.ts's `showAt` on the real player, whose loop wraps on the
+frame shown, where the lock alone showed the frame on the loop's end, and whose picture follows a seek back
+while playing however small (the , key, a scrub back 10 ms a refresh at 60 and 120 Hz).
 `test_eleven_pitch.py` checks `eleven.py tts`'s pitch diagnostic for narration takes: the F0 estimator on
 synthetic voices at 110, 135 and 220 Hz with vibrato, jitter, pauses and noise (within a quarter of a semitone
 of the true median), a whisper and a clip too short that get no verdict, and three octave traps, each shown to

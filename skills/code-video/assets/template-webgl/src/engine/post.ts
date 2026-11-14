@@ -84,8 +84,20 @@ export class Post {
   private final: FSPass;
   private mips: THREE.WebGLRenderTarget[] = [];
   private ups: THREE.WebGLRenderTarget[] = [];
+  /** (what the final pass reads for bloom and halation when the pyramid is skipped: black, so it adds exactly 0) */
+  private black = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+  /** Bloom pyramids skipped (see `lean`). */
+  skipped = 0;
 
-  constructor() {
+  /**
+   * `lean` (the live preview): a frame whose bloom and halation are both 0 (footage shown as it was filmed)
+   * skips the bloom pyramid, 14 passes that the final pass would multiply by 0. Its pixels are the same as
+   * with the pyramid for every frame without a NaN or an infinity in it (x · 0 is 0 for any finite x); a NaN
+   * spreads through the pyramid and turns a disc black even at 0, so render.ts, which must stay bit for bit
+   * what it was, always runs it.
+   */
+  constructor(private lean = false) {
+    this.black.needsUpdate = true;
     // the bloom pyramid stays at the logical resolution at every output scale (same radii, same look)
     let w = W >> 1, h = H >> 1;
     for (let i = 0; i < MIPS; i++) {
@@ -185,7 +197,33 @@ ${SCALE === 1 ? `        float g1 = hash12(gl_FragCoord.xy + fract(time * 13.37)
 
   /** Apply the chain: src (HDR linear) -> out (sRGB 8-bit target or screen). */
   render(renderer: THREE.WebGLRenderer, src: THREE.Texture, hud: THREE.Texture, out: THREE.WebGLRenderTarget | null, p: PostParams, time: number) {
-    // bloom pyramid
+    const glow = !(this.lean && p.bloom === 0 && p.halation === 0);
+    if (glow) this.pyramid(renderer, src, p);
+    else this.skipped++;
+    const f = this.final.u;
+    f.src!.value = src;
+    f.bloomTex!.value = glow ? this.ups[0]!.texture : this.black;
+    f.haloTex!.value = glow ? this.ups[3]!.texture : this.black;
+    f.hudTex!.value = hud;
+    f.exposure!.value = p.exposure;
+    f.shoulderAmt!.value = p.shoulder;
+    f.bloom!.value = p.bloom / 3; // pyramid sums ~MIPS levels; normalize
+    f.halation!.value = p.halation;
+    f.ca!.value = p.ca;
+    f.grain!.value = p.grain;
+    f.vignette!.value = p.vignette;
+    f.hud!.value = p.hud;
+    f.fade!.value = p.fade;
+    f.flash!.value = p.flash;
+    f.time!.value = time;
+    f.zoom!.value = p.zoom;
+    f.invert!.value = p.invert;
+    (f.shake!.value as THREE.Vector2).set(p.shake[0], p.shake[1]);
+    this.final.render(renderer, out);
+  }
+
+  /** The bloom pyramid: src's highlights, blurred at 7 sizes and summed into ups[0] (ups[3]: the wider ones, halation's). */
+  private pyramid(renderer: THREE.WebGLRenderer, src: THREE.Texture, p: PostParams) {
     this.prefilter.u.src!.value = src;
     (this.prefilter.u.texel!.value as THREE.Vector2).set(1 / W, 1 / H);
     this.prefilter.u.threshold!.value = p.bloomThreshold;
@@ -208,25 +246,5 @@ ${SCALE === 1 ? `        float g1 = hash12(gl_FragCoord.xy + fract(time * 13.37)
       this.up.render(renderer, this.ups[i]!);
       prevTex = this.ups[i]!.texture;
     }
-    const f = this.final.u;
-    f.src!.value = src;
-    f.bloomTex!.value = this.ups[0]!.texture;
-    f.haloTex!.value = this.ups[3]!.texture;
-    f.hudTex!.value = hud;
-    f.exposure!.value = p.exposure;
-    f.shoulderAmt!.value = p.shoulder;
-    f.bloom!.value = p.bloom / 3; // pyramid sums ~MIPS levels; normalize
-    f.halation!.value = p.halation;
-    f.ca!.value = p.ca;
-    f.grain!.value = p.grain;
-    f.vignette!.value = p.vignette;
-    f.hud!.value = p.hud;
-    f.fade!.value = p.fade;
-    f.flash!.value = p.flash;
-    f.time!.value = time;
-    f.zoom!.value = p.zoom;
-    f.invert!.value = p.invert;
-    (f.shake!.value as THREE.Vector2).set(p.shake[0], p.shake[1]);
-    this.final.render(renderer, out);
   }
 }
