@@ -5104,13 +5104,13 @@ for an independent view before seeing this one, then reviewed each step, read-on
 **The verdict: skipping devlog was right.** devlog is for a video about how something was built (design.md, "A
 devlog: the build is the story"); this video is about the fractals and how a renderer draws them, and the
 prototype is where its shots are found. The session built it that way: the explorer is "where the video's shots are
-found, and its code is the video's renderer in waiting", with the distance estimators, the light and camera paths
-as pure functions of time in shared source for the video's scenes, a way for the director to save views and
-flight paths to `explorer/shots.json` (named in the project's `AGENTS.md` as a source to commit), and the video held
-back until the director's word. Loaded, devlog would have added
-a development log and a story ledger the video won't use, a prototype folder of its own with a capture page writing
-frames for streamed footage (a detour when the shader can run in an f(t) scene), and a script taken from the log,
-which bends the piece toward a making-of nobody asked for. What it would have given that the session lacked was
+found, and its code is the video's renderer in waiting", with the distance estimators and the light in shared
+source for the video's scenes and camera paths sampled as pure functions of time, a way for the director to save
+views and flight paths to `explorer/shots.json` (named in the project's `AGENTS.md` as a source to commit), and the
+video held back until the director's word. Loaded, devlog would have added a development log and a story ledger the
+video won't use, put the prototype in a folder of its own (its Setup's default), could have led to a capture page
+writing frames for streamed footage (one of its capture techniques; a detour when the shader can run in an f(t)
+scene), and would have taken the script from the log, which bends the piece toward a making-of nobody asked for. What it would have given that the session lacked was
 little: re-filmable camera paths were already there. Codex added one thing worth keeping in mind: a discarded look
 can earn a place when it shows a rendering principle. A comparison the explanation needs, such as a surface with
 and without its light, can be rendered from the code when the video starts; a look discarded without a commit
