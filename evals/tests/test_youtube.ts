@@ -350,9 +350,10 @@ try {
   mkdirSync(path.join(ev, 'data'), { recursive: true });
   mkdirSync(path.join(ev, 'youtube', 'ja'), { recursive: true });
   writeFileSync(path.join(ev, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
-  const E1 = 'The planet turns.', E2 = 'And the night falls over the cities.', E3 = 'Bye.';
+  // ("Bye." far enough from the line before not to join it: codex's reproduction, which 0.14.0's first fix dropped)
+  const E1 = 'The planet turns.', E2 = 'Hello.', E3 = 'Bye.';
   writeFileSync(path.join(ev, 'data', 'words.json'), JSON.stringify({ lines: [
-    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 7.5, 1.8) }, { text: E3, words: timed(E3, 9.7, 0.2) }] }));
+    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 6, 1) }, { text: E3, words: timed(E3, 9.7, 0.2) }] }));
   writeFileSync(path.join(ev, 'youtube', 'ja', 'narration.txt'), '惑星は回ります。\n\nそして街の上に夜が来て、すべての明かりが一つずつ灯っていきます。\n\nまたね。\n');
   writeFileSync(path.join(ev, 'youtube', 'notes.en.tsv'), '0:00\t2\t[day]\n0:08.5\t3\t[night]\n0:03\t2\t[noon]\n');
   r = inSub(['srt', '--video', 'e', '--lang', 'ja']);

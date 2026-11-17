@@ -18,7 +18,7 @@ package · Subtitles · The dubbed tracks · Where each file goes · The hand-of
   Nothing is generated, so no credits: say "no generation credits", not "free" (it takes their time and
   yours).
 - **Dubbed audio** (a separate choice in the same question, only when the narration was made with an
-  ElevenLabs voice in their account): a complete audio track per language, `youtube/<code>/mix.wav`, their
+  ElevenLabs voice the account owns or one of ElevenLabs' premade voices): a complete audio track per language, `youtube/<code>/mix.wav`, their
   voice speaking that language over the video's own music and effects, as long as the video. It spends
   credits: one yes covers the whole batch, up to a cap they agree.
 
