@@ -551,10 +551,13 @@ def msg_of(j: dict) -> str:
     return str(j.get("message") or j.get("error") or "")
 
 
-def may_be_billed(code: int, j: dict) -> bool:
-    m = msg_of(j).lower()
-    return code == ERROR and ("may have been billed" in m or "may still have been billed" in m
-                              or "it was billed" in m or "check the account's history" in m)
+def surely_not_billed(code: int, j: dict) -> bool:
+    """A paid command that failed without its file: billed only if the request may have reached ElevenLabs and been
+    processed. An answer with a 4xx status (out of credits, a voice not found, too many requests) or a refusal before
+    anything was sent (usage, no key, no yes) is not; anything else (a timeout, a dropped connection, a crash, a 5xx)
+    may have been, and counts as spent."""
+    m = msg_of(j)
+    return code in (USAGE, NO_KEY, CONFIRM) or bool(re.search(r"failed: HTTP 4\d\d|still busy after", m))
 
 
 def tts_args(lang: Lang, job: dict, extra: list[str]) -> list[str]:
@@ -851,8 +854,8 @@ def cmd_plan(a) -> dict:
         if total + spent > float(job["cap"]):
             raise Fail(SCOPE, f"the updated estimate ({num(total)} credits, plus {num(spent)} spent) passes the approved "
                               f"cap of {num(job['cap'])}: ask the director before spending")
-        for r in rows:
-            job["languages"][r["lang"]]["estimate"] = r["estimate"]
+        for r in rows:  # (what a language has spent or reserved stays in its share)
+            job["languages"][r["lang"]]["estimate"] = r["estimate"] + r["spent_or_reserved"]
         share_out(job)
         write_json(v.job_path, job)
         say(f"Within the approved cap of {num(job['cap'])} credits; each language's share updated in {v.rel(v.job_path)}.")
@@ -889,8 +892,7 @@ def cmd_speak(a) -> dict:
     lang = Lang(v, a.lang)
     o = Original(v)
     job = load_job(v)
-    settle_pending(v, job)
-    ls = check_scope(v, job, lang)
+    check_scope(v, job, lang)
     notes = check_translation(o, lang)
     if job.get("sources") != o.fingerprint():
         note("the video's words, mix or render changed since the job was approved: placement and mixes are made "
@@ -905,6 +907,8 @@ def cmd_speak(a) -> dict:
         return assemble(v, lang, job, j)
     with PaidLock(v):
         job = load_job(v)
+        if settle_pending(v, job):  # (a run that died mid-request: only now, holding the lock, is that certain)
+            check_scope(v, job, lang)
         if a.takes is not None:
             if a.block is None:
                 raise usage("--takes K needs --block N")
@@ -979,7 +983,7 @@ def run_paid(v: Video, job: dict, lang: Lang, e: dict, extra: list[str], files: 
     if made == len(files):  # the files arrived: what went wrong came after them
         settle(v, job, e, "done", billed, why=msg_of(j)[:300])
         return
-    if may_be_billed(rc, j) or rc == ERROR and made:
+    if not surely_not_billed(rc, j):
         settle(v, job, e, "possibly charged", why=msg_of(j)[:300])
         stop_lang(job, lang.code, f"{e['what']}: {msg_of(j)[:200]} (counted as spent: up to {num(e['max'])} credits; "
                                   "never sent again by itself)")
@@ -1007,7 +1011,6 @@ def cmd_hear(a) -> dict:
     v = Video(a.video)
     lang = Lang(v, a.lang)
     job = load_job(v)
-    settle_pending(v, job)
     check_scope(v, job, lang)
     if not lang.voice.is_file() or not lang.placed.is_file():
         raise usage(f"place the voice first: dub.py place --video {v.name} --lang {lang.code}")
@@ -1017,12 +1020,14 @@ def cmd_hear(a) -> dict:
         secs = float(sf.info(str(lang.voice)).duration)
         with PaidLock(v):
             job = load_job(v)
+            if settle_pending(v, job):
+                check_scope(v, job, lang)
             e = reserve(v, job, lang.code, f"{lang.code} transcription of the placed voice", "stt",
                         math.ceil(STT_CREDITS_PER_MIN * secs / 60))
             rc, j = eleven(args + ["--yes"], v)
             if rc == OK:
                 settle(v, job, e, "done", float(e["max"]))
-            elif may_be_billed(rc, j):
+            elif not surely_not_billed(rc, j):
                 settle(v, job, e, "possibly charged", why=msg_of(j)[:300])
                 stop_lang(job, lang.code, f"{e['what']}: {msg_of(j)[:200]} (counted as spent)")
                 write_json(v.job_path, job)
@@ -1184,6 +1189,12 @@ def cmd_place(a) -> dict:
                           f"push {where} {slip_next:.2f} s late, past {SLIP_MAX:g} s, even {int(round((tempo - 1) * 100))}% "
                           f"faster): about {max(1, int(round(need * cps * tempo)))} characters shorter, or anchors that "
                           "give it room")
+        peak_db = float(frame_db(y, int(s0 * SR), int(s1 * SR)).max()) if s1 > s0 + 0.01 else 0.0
+        for edge, t_ in (("start", cin), ("end", cout)):
+            at_db = frame_db(y, int(t_ * SR) - SR // 200, int(t_ * SR) + SR // 200)
+            if len(at_db) and float(at_db.max()) > peak_db - 30:
+                notes.append(f"line {row['line']}: \"{short(row['text'], 30)}\" is cut at its {edge} where the voice still "
+                             f"sounds ({float(at_db.max()) - peak_db:+.0f} dB from its loudest): listen there")
         placed.append(row)
         p["placed"] = row
         cursor = end + gap

@@ -1445,6 +1445,15 @@ class TimingData:
             raise usage(f"{why}: data/audio.json has {len(arr)} {kind}s; index {i} is out of range")
 
 
+def read_record(p: Path) -> dict:
+    """A mix record, or {} when there is none or it can't be read."""
+    try:
+        j = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+    except (OSError, ValueError):
+        return {}
+    return j if isinstance(j, dict) else {}
+
+
 def layer_shift(data: TimingData, name: str, plan: dict, shas: dict) -> tuple[float, str | None, dict | None]:
     """Where data/<name>'s times sit in the mix: its audioSha256 names the plan file it was timed to (a voice block,
     or the music), and its times move with that layer's placement (at - from). Returns (shift, layer, document);
@@ -2542,7 +2551,16 @@ def cmd_build(args) -> dict:
     notes: list[str] = []
     data.shift_audio, audio_layer, _ = layer_shift(data, "audio.json", plan, shas)
     data.shift_words, words_layer, words_doc = layer_shift(data, "words.json", plan, shas)
-    # The words the voice checks read: the video's, or the plan's voice_words (already in mix time).
+    # The words the voice checks read: the video's, or the plan's voice_words (already in mix time). With another
+    # voice, data/words.json no longer matches a layer of this plan, so its times sit where the video's own mix put
+    # them (its record's shift): joins and hits anchored on words land as they do there.
+    if plan["voice_words"] is not None and ctx["vdir"] is not None and words_layer is None:
+        own = read_record(ctx["vdir"] / "audio" / "mix.wav.request.json")
+        try:
+            data.shift_words = float(((own.get("resolved") or {}).get("timing_data") or {}).get("words.json", {})
+                                     .get("shift_s") or 0.0)
+        except (AttributeError, TypeError, ValueError):
+            pass
     if plan["voice_words"] is not None:
         v_doc = load_json(plan["voice_words"], "voice_words")
         if not isinstance(v_doc, dict) or not isinstance(v_doc.get("lines"), list):

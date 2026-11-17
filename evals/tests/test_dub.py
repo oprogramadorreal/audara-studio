@@ -155,6 +155,14 @@ class DubTest(unittest.TestCase):
         self.assertEqual(dub.model_for("vi", "eleven_multilingual_v2"), "eleven_v4")
         self.assertEqual(dub.model_for("es-419", "eleven_multilingual_v2"), "eleven_multilingual_v2")
         self.assertEqual(dub.model_for("bn", "eleven_v3"), "eleven_v3")
+        # what failed without its audio counts as spent unless the server answered no, or nothing was sent
+        self.assertTrue(dub.surely_not_billed(1, {"error": "text-to-speech for 02 failed: HTTP 402 insufficient_credits"}))
+        self.assertTrue(dub.surely_not_billed(1, {"error": "text-to-speech for 02 failed: HTTP 404 voice_not_found"}))
+        self.assertTrue(dub.surely_not_billed(4, {"error": "needs --yes"}))
+        self.assertFalse(dub.surely_not_billed(1, {"error": "no answer from https://api.elevenlabs.io in time. If the "
+                                                            "request reached ElevenLabs it may have been billed"}))
+        self.assertFalse(dub.surely_not_billed(1, {"error": "failed: HTTP 502 bad gateway"}))
+        self.assertFalse(dub.surely_not_billed(1, {"error": "Traceback (most recent call last): ..."}))
         job = {"cap": 1000, "languages": {"a": {"estimate": 300}, "b": {"estimate": 100}}}
         dub.share_out(job)
         self.assertEqual((job["languages"]["a"]["share"], job["languages"]["b"]["share"]), (750.0, 250.0))
