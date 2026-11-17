@@ -5066,3 +5066,9 @@ Its ninth look found one. A voice block placed after a shorter render's end (`at
 block's start passed both and came out from 5.1 to 5.0 s: "Hello." and "Hola." were shown from 4.17 s, and the dub
 placed the word and reported that it couldn't fit. An empty window now holds no word, in `srt` and in `dub.py`
 alike. `test_youtube.ts` has 77 tests, and test_17 places nothing for such a block.
+
+Its tenth look found that such a video's package could never pass `check --full`: `srt` wrote an empty file, which
+check refuses ("no subtitles in it"), and without the file check asked for it, since it wanted subtitles whenever
+`data/words.json` exists. Subtitles are now wanted when the video plays some of its narration, as `srt` measures it,
+and `srt` writes no file when there is nothing to show (and removes one left from before).
+`test_youtube.ts` has 78 tests.

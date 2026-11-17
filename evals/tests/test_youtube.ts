@@ -365,10 +365,19 @@ try {
     writeFileSync(path.join(lv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 10,
       voice: [{ file: 'videos/late/audio/narration.wav', at: 5.1, end: 7.1 }], timing_data: { 'words.json': { layer: 'voice', shift_s: 4.6 } } } }));
     writeFileSync(path.join(lv, 'youtube', 'es', 'narration.txt'), 'Hola.\n');
-    const late = (code: string, f: string) => { const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'late', '--lang', code], { cwd: kp }); return p.exitCode === 0 && existsSync(f) ? readFileSync(f, 'utf8') : null; };
-    const l1 = late('en', path.join(lv, 'youtube', 'subtitles.en.srt')), l2 = late('es', path.join(lv, 'youtube', 'es', 'subtitles.es.srt'));
-    expect('srt: a voice block after the video\'s end has no subtitle, not even a word crossing its start',
-      l1 !== null && l2 !== null && !/Hello/.test(l1) && !/Hola/.test(l2), JSON.stringify([l1, l2]));
+    // (an empty file left from before goes: it would be uploaded as subtitles with nothing in them)
+    writeFileSync(path.join(lv, 'youtube', 'es', 'subtitles.es.srt'), '');
+    const late = (args: string[]) => { const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: kp, stdout: 'pipe', stderr: 'pipe' }); return { code: p.exitCode, out: p.stdout.toString() + p.stderr.toString() }; };
+    const l1 = late(['srt', '--video', 'late', '--lang', 'en']), l2 = late(['srt', '--video', 'late', '--lang', 'es']);
+    expect('srt: a voice block after the video\'s end has no subtitle, not even a word crossing its start, and no empty file',
+      l1.code === 0 && l2.code === 0 && /No subtitles: none of the narration is heard/.test(l1.out + l2.out)
+      && !existsSync(path.join(lv, 'youtube', 'subtitles.en.srt')) && !existsSync(path.join(lv, 'youtube', 'es', 'subtitles.es.srt')), l1.out + l2.out);
+    // and its language's package is whole without them (codex's tenth review: check --full asked for them either way)
+    writeFileSync(path.join(lv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+    writeFileSync(path.join(lv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+    const l3 = late(['check', path.join('videos', 'late', 'youtube', 'es'), '--full']);
+    expect('check --full: a language\'s folder for a video whose narration is never heard needs no subtitles',
+      l3.code === 0 && /no timed narration heard in the video, so no subtitles/.test(l3.out), l3.out);
   }
 
   // check: a language's folder, its subtitles and its dubbed track
@@ -428,7 +437,7 @@ try {
   writeFileSync(path.join(nv, 'youtube', 'es', 'title.txt'), 'Un título\n');
   writeFileSync(path.join(nv, 'youtube', 'es', 'description.txt'), 'Una descripción.\n');
   r = inSub(['check', path.join('videos', 'n', 'youtube', 'es'), '--full']);
-  expect('check --full: a language\'s folder for a video with no timed narration needs no subtitles', r.code === 0 && /no timed narration, so no subtitles/.test(r.out), r.out);
+  expect('check --full: a language\'s folder for a video with no timed narration needs no subtitles', r.code === 0 && /no timed narration heard in the video, so no subtitles/.test(r.out), r.out);
   writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.es.srt'), '\n');
   writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.xx.srt'), '1\n00:00:99,000 --> 00:01:02,000\nnope\n');
   r = inSub(['check', path.join('videos', 'n', 'youtube', 'es')]);

@@ -95,9 +95,9 @@ where they show · Policy and disclosure · Sources
   word).
 - **Format:** `0:00 Name`, one per line, under a short heading line in the video's language. A separator such as
   "·" may become part of each name.
-- **Subtitles:** when the video has `data/words.json`, the package has `subtitles.<code>.srt` made from it
-  (`srt`): viewers who watch muted or in another language read it, and YouTube's automatic captions come only
-  in the video's language. Other languages' subtitles, titles and descriptions: references/languages.md.
+- **Subtitles:** when the video has `data/words.json` and plays any of it, the package has `subtitles.<code>.srt`
+  made from it (`srt`): viewers who watch muted or in another language read it, and YouTube's automatic captions
+  come only in the video's language. Other languages' subtitles, titles and descriptions: references/languages.md.
 
 ## Tags and hashtags
 

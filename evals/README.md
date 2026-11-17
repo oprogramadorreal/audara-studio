@@ -323,7 +323,8 @@ and three text files); preview's sheets; and what niche refuses before any netwo
 42, from its first word, and a timed note for words on screen; a subtitle ended at its clause split again until
 what is left fits, in German; a word after the video's end in no subtitle, in its language and a translation,
 and a Japanese sentence timed whole across the end shown only up to it; a voice block placed after the video's
-end with no subtitle, not even for a word crossing its start; Japanese in lines of 13 with no spaces and no line
+end with no subtitle, not even for a word crossing its start, no empty file, and a language's package whole
+without one; Japanese in lines of 13 with no spaces and no line
 or subtitle opening on a particle; Korean in lines of 16 with its spaces; Arabic shown while its original sentence
 is spoken; Hindi measured in graphemes and cut at the danda; a translation whose paragraphs don't match refused),
 `check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,

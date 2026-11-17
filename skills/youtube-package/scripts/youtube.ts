@@ -1277,6 +1277,18 @@ function wordsTiming(vdir: string): { shift: number; from: number; to: number } 
   } catch { return whole; }
 }
 
+/** Whether any of the video's narration is heard in it: a word of data/words.json inside the stretch its mix plays
+ *  it, before the video's end. One that never plays (a voice block after the end) has no subtitles to give. */
+function narrationHeard(vdir: string, video: string, proj: string): boolean {
+  const wordsFile = path.join(vdir, 'data', 'words.json');
+  if (!existsSync(wordsFile)) return false;
+  let doc: WordsDoc;
+  try { doc = JSON.parse(readText(wordsFile)); } catch { return true; } // (unreadable: srt says why)
+  const { shift, from, to } = wordsTiming(vdir);
+  const hi = Math.min(to, videoLength(path.join(vdir, 'youtube'), video, proj).seconds ?? Infinity);
+  return hi > from && (doc.lines ?? []).some((l) => (l.words ?? []).some((w) => typeof w.start === 'number' && w.end + shift > from && w.start + shift < hi));
+}
+
 function paragraphsOf(file: string): string[] {
   return readText(file).split(/\n\s*\n/).map((p) => p.split(/\s+/).filter(Boolean).join(' ')).filter(Boolean);
 }
@@ -1402,6 +1414,15 @@ async function srt() {
     }
     cues.sort((x, y) => x.start - y.start);
   }
+  const rel = path.relative(ROOT, out).replace(/\\/g, '/');
+  if (!cues.length) {
+    // nothing heard in the video and no note: no file to upload (an empty one is no subtitles at all), and none left
+    // from before
+    if (existsSync(out)) rmSync(out);
+    console.log(`No subtitles: none of the narration is heard in the video (its mix doesn't play it before the video's end), and there is no note, so there is no ${rel} to upload.`);
+    for (const n of notes) console.log(`  note: ${n}`);
+    return;
+  }
   const body = cues.map((c, i) => `${i + 1}\n${stampSrt(c.start)} --> ${stampSrt(c.end)}\n${c.lines.join('\n')}\n`).join('\n');
   mkdirSync(path.dirname(out), { recursive: true });
   writeFileSync(out, body, 'utf8');
@@ -1410,7 +1431,6 @@ async function srt() {
   const sorted = speeds.map((x) => x.cps).sort((a, b) => a - b);
   const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
   const fast = speeds.filter((x) => x.cps > rule.cps).sort((a, b) => b.cps - a.cps);
-  const rel = path.relative(ROOT, out).replace(/\\/g, '/');
   console.log(`${rel}: ${cues.length} subtitles${placedNotes ? ` (${placedNotes} of them notes for words on screen)` : ''}, ${cues.length ? `${clock(cues[0].start)} to ${clock(cues[cues.length - 1].end)}` : 'none'}; from ${from}.`);
   console.log(`  lines of ${rule.line} characters at most, two a subtitle${opt('line') ? ' (--line)' : ''}; plain UTF-8 SubRip, as YouTube reads it.`);
   console.log(`  reading speed: ${median.toFixed(1)} characters a second on median; ${fast.length} over ${rule.cps} (the ${lang} guide's adult speed)${fast.length ? `, the fastest ${fast[0].cps.toFixed(1)} at ${clock(fast[0].c.start)}` : ''}. They carry the narration word for word, so a fast voice reads fast.`);
@@ -1607,13 +1627,14 @@ async function checkFolder(dir: string, video?: string, proj?: string): Promise<
   } else add('note', 'tags.txt', 'none');
 
   // the request: the whole package, with --full (a narrower request makes some parts optional)
-  const timed = !!(video && proj && existsSync(path.join(proj, 'videos', video, 'data', 'words.json')));
+  // (subtitles where the video has timed narration it plays: none to give when it never does)
+  const timed = !!(video && proj && narrationHeard(path.join(proj, 'videos', video), video, proj));
   const wantSrt = !timed ? '' : langCode ? `subtitles.${langCode}.srt` : 'subtitles.<code>.srt';
   if (langCode) {
     const lm = ['title.txt', 'description.txt', wantSrt].filter((f) => f && !existsSync(path.join(dir, f)));
     if (full) for (const f of lm) add('FAIL', 'package', `${f} is missing`);
     else if (lm.length) add('note', 'package', `no ${lm.join(', ')} yet`);
-    if (full && !lm.length) add('ok', 'package', `${langCode}: the title, the description${wantSrt ? ' and the subtitles' : ' (no timed narration, so no subtitles)'}${thumbs.length ? `, ${thumbs.length} thumbnail(s)` : ''}${existsSync(wav) ? ', the dubbed track' : ''}`);
+    if (full && !lm.length) add('ok', 'package', `${langCode}: the title, the description${wantSrt ? ' and the subtitles' : ' (no timed narration heard in the video, so no subtitles)'}${thumbs.length ? `, ${thumbs.length} thumbnail(s)` : ''}${existsSync(wav) ? ', the dubbed track' : ''}`);
     for (const [name, [w, h, kind]] of full ? sizes : new Map()) if (w !== wantW || h !== wantH || kind !== (opts.has('jpg') ? 'JPEG' : 'PNG')) add('FAIL', 'package', `${name} is ${w}x${h} ${kind}, not the ${wantW}x${wantH} asked for`);
     return report(out, full);
   }
