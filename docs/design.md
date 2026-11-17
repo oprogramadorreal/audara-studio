@@ -604,8 +604,9 @@ How a track is made, and why:
   may start 0.25 s early, be sped up 8% (ffmpeg's atempo keeps the pitch) or push the next 0.4 s late; past
   that it is an open issue that says how much shorter it must be, and nothing runs past the video's end. A track is
   as long as the final render (the mix's length without one); sentences are matched to the original as spoken, so
-  one the video's mix doesn't play (before 0 s, or outside the stretch its voice block plays: the block's `from`,
-  `dur` and the mix's end, as the mix record has them) is left out of the dub and its subtitles.
+  one the video doesn't play (before 0 s, outside the stretch its voice block plays: the block's `from`, `dur`
+  and the mix's end, as the mix record has them, or after a shorter render's end) is left out of the dub and its
+  subtitles.
   These bounds are tested, not proof:
   `verify`'s numbers and the director's eye are. Each line is matched to the original line's level.
 - **The bed is the original's, exactly.** `dub.py mix` writes a plan from the video's own mix record: the

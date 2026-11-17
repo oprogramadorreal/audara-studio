@@ -314,6 +314,20 @@ try {
   r = inSub(['srt', '--video', 'v', '--lang', 'xx']);
   expect('srt: a translation whose paragraphs don\'t match the narration\'s lines is refused', r.code === 2 && /one paragraph per line/.test(r.out), r.out);
   rmSync(path.join(sv, 'youtube', 'xx'), { recursive: true });
+  {
+    // a subtitle ended at its clause: what is left, with the next word, is split again until it fits (codex's
+    // sixth review: "alle Rechtsschutzversicherungsgesellschaften und" was kept as one 48-character line)
+    const dp = path.join(root, 'subs-de'), dv = path.join(dp, 'videos', 'v');
+    mkdirSync(path.join(dv, 'data'), { recursive: true });
+    const text = 'Bei den heutigen Themen sind, alle Rechtsschutzversicherungsgesellschaften und Betriebshaftpflichtversicherungen.';
+    writeFileSync(path.join(dv, 'video.json'), JSON.stringify({ fps: 30, duration: 20, audio: null }));
+    writeFileSync(path.join(dv, 'data', 'words.json'), JSON.stringify({ lines: [{ text, words: text.split(' ').map((w, i) => ({ w, start: 1 + i * 0.6, end: 1.5 + i * 0.6 })) }] }));
+    const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'v', '--lang', 'de'], { cwd: dp, stdout: 'pipe', stderr: 'pipe' });
+    const out = p.stdout.toString() + p.stderr.toString();
+    const dc = p.exitCode === 0 ? cues(path.join(dv, 'youtube', 'subtitles.de.srt')) : [];
+    expect('srt: what is left of a subtitle ended at its clause is split again until it fits (German, 42 at most)',
+      p.exitCode === 0 && dc.length > 0 && dc.every((x) => x.lines.length <= 2 && x.lines.every((l) => g(l, 'de') <= 42)) && !/too long for two lines/.test(out), out + JSON.stringify(dc));
+  }
 
   // check: a language's folder, its subtitles and its dubbed track
   const wav = (seconds: number) => {

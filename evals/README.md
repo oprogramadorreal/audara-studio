@@ -320,7 +320,8 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 ("0:99"), the video's length taken from video.json before its audio, the tags' 500-character count, hashtags past
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
 and three text files); preview's sheets; and what niche refuses before any network call. It also checks `srt` (the video's own narration in lines of
-42, from its first word, and a timed note for words on screen; Japanese in lines of 13 with no spaces and no line
+42, from its first word, and a timed note for words on screen; a subtitle ended at its clause split again until
+what is left fits, in German; Japanese in lines of 13 with no spaces and no line
 or subtitle opening on a particle; Korean in lines of 16 with its spaces; Arabic shown while its original sentence
 is spoken; Hindi measured in graphemes and cut at the danda; a translation whose paragraphs don't match refused),
 `check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,
@@ -350,8 +351,9 @@ past the list rate stopping the job at its cap, a crash counted as possibly char
 added after the mix failing verify until it is taken back; a final render longer, then shorter, than the mix
 setting the track's length; a sentence the mix trims before 0 s left out of the dub and of the subtitles timed on
 it, and a trimmed line whose sentences don't match left open (on a synthetic project, in-process); with a voice
-block that plays 2 s of its file, the sentences before and after them in neither the dub nor the subtitles, and the
-text to translate written before any mix is built; the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
+block that plays 2 s of its file, the sentences before and after them in neither the dub nor the subtitles; a
+sentence after a 5-second render's end (its mix 10) not dubbed; the text to translate written before any mix is
+built; the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
 older and individual forms; `--language` kept in the command eleven.py suggests; grouped effects keeping the video's gains;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.

@@ -14,8 +14,8 @@ settled the same way; a request billed then a later one refused keeps the first 
 character than reserved stops the job at the cap; a higher cap lifts a stop on a language's share but not one on a
 possible charge; paid audio is never bought twice; sentences land on their original sentences and an anchored word
 on its original word; a sentence too long for its place, or one running past the video's end, stays open and its
-track is not "ready"; narration the video's mix doesn't play (before 0 s, or outside its block) is neither dubbed
-nor subtitled; a track made before its inputs changed fails verify; the dub's music and effects (grouped ones
+track is not "ready"; narration the video doesn't play (before 0 s, outside its block, or after a shorter
+render's end) is neither dubbed nor subtitled; a track made before its inputs changed fails verify; the dub's music and effects (grouped ones
 included) are the video's mix's, and the video's own mix.wav is untouched; mix.py refuses a mix with another
 voice and nowhere else to go. Needs ffmpeg and uv; no network, no paid call. Two or three minutes."""
 import importlib.util
@@ -651,6 +651,44 @@ class DubTest(unittest.TestCase):
         self.assertIn("timed on its dubbed voice", r.stdout, r.stdout + r.stderr)
         self.assertNotIn("Antes", tr)
         self.assertNotIn("Después", tr)
+
+    def test_17_nothing_after_a_shorter_renders_end(self):
+        """A 10 s mix and a 5 s final render: a sentence at 6 s, which the video never plays, isn't dubbed (codex's
+        sixth review). In-process, on a synthetic project."""
+        import argparse
+        root = self.tmp / "short"
+        v = root / "videos" / "v"
+        d = v / "dub" / "es"
+        for p in (v / "audio", v / "data", v / "youtube" / "es", d / "audio", d / "data", root / "out" / "v"):
+            p.mkdir(parents=True, exist_ok=True)
+        sr = 48000
+        tone = lambda s: (0.1 * np.sin(2 * np.pi * 220 * np.arange(int(s * sr)) / sr)).astype(np.float32)
+        put = lambda p, x: p.write_text(json.dumps(x, ensure_ascii=False), encoding="utf-8")
+        sf.write(str(v / "audio" / "narration.wav"), tone(10), sr)
+        sf.write(str(v / "audio" / "mix.wav"), np.column_stack([tone(10)] * 2), sr)
+        sf.write(str(d / "audio" / "narration.wav"), tone(5), sr)
+        subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-f", "lavfi", "-i", "color=s=16x16:r=30:d=5",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(root / "out" / "v" / "v.mp4")], check=True)
+        put(v / "video.json", {"fps": 30, "duration": 10, "audio": "audio/mix.wav"})
+        put(v / "data" / "words.json", {"lines": [{"text": "Kept opening. Late ending.", "words": [
+            {"w": "Kept", "start": 1, "end": 1.2}, {"w": "opening.", "start": 1.3, "end": 1.5},
+            {"w": "Late", "start": 6, "end": 6.2}, {"w": "ending.", "start": 6.3, "end": 6.5}]}]})
+        es = "Inicio conservado. Final tardío."
+        (v / "youtube" / "es" / "narration.txt").write_text(es + "\n", encoding="utf-8")
+        put(d / "data" / "words.json", {"lines": [{"text": es, "words": [
+            {"w": w, "start": 0.5 + k * 0.5, "end": 0.9 + k * 0.5} for k, w in enumerate(es.split())]}]})
+        put(v / "audio" / "mix.wav.request.json", {
+            "outputs": {"mix.wav": dub.sha256(v / "audio" / "mix.wav")}, "plan_file": "videos/v/mix.json",
+            "plan": {"voice": "audio/narration.wav"},
+            "resolved": {"duration": 10, "voice": [{"file": "videos/v/audio/narration.wav", "at": 0, "end": 10}],
+                         "timing_data": {"words.json": {"layer": "voice", "shift_s": 0}}}})
+        cwd = os.getcwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, cwd)
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertEqual(rec["duration"], 5.0)
+        self.assertEqual([p["text"] for p in rec["pieces"]], ["Inicio conservado."])
+        self.assertEqual(rec["issues"], [])
 
 
 if __name__ == "__main__":

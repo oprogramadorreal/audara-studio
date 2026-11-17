@@ -448,18 +448,21 @@ class Original:
         self.rec, self.rec_path = rec, rec_path
         res = rec.get("resolved") or {}
         self.duration = float(res.get("duration") or 0)
+        self.render = v.root / "out" / v.name / f"{v.name}.mp4"
         self.words_path, doc = narration_words(v)
         tdata = (res.get("timing_data") or {}).get("words.json") or {}
         shift = float(tdata.get("shift_s") or 0.0)
-        self.window = lo, hi = voice_window(res, tdata.get("layer"))
+        # what the video plays of the narration: its voice block, up to the video's end (a final render shorter
+        # than the mix ends it sooner)
+        lo, hi = voice_window(res, tdata.get("layer"))
+        self.window = lo, hi = lo, min(hi, self.video_duration()[0])
         self.lines = word_lines(doc, shift, self.window)
-        # a line's sentences as spoken, before the mix cuts any: a translation follows them one for one, so a
-        # sentence the mix leaves out whole is left out of the dub too, and one it cuts in part starts at the cut
+        # a line's sentences as spoken, before the video cuts any: a translation follows them one for one, so a
+        # sentence the video leaves out whole is left out of the dub too, and one it cuts in part starts at the cut
         for l, full in zip(self.lines, word_lines(doc, shift, None)):
             l["sentences"] = sentences(full["words"])
             l["trimmed"] = any(w["end"] <= lo or w["start"] >= hi for w in full["words"])
         self.plan_dir = (v.root / rec.get("plan_file", f"videos/{v.name}/mix.json")).parent
-        self.render = v.root / "out" / v.name / f"{v.name}.mp4"
         vj = read_json(v.dir / "video.json", "video.json") or {}
         self.fps = float(vj.get("fps") or 30) if isinstance(vj, dict) else 30.0
 
@@ -1427,8 +1430,8 @@ def cmd_place(a) -> dict:
     if abs(dur - o.duration) > 1e-3:
         notes.append(f"the track is {dur:.3f} s long, as {dur_from} is; the video's mix is {o.duration:.3f} s")
 
-    # pieces: sentence for sentence where the counts match, else the whole line; what the video's mix doesn't play
-    # (before 0 s, or outside the narration's block) is left out
+    # pieces: sentence for sentence where the counts match, else the whole line; what the video doesn't play
+    # (before 0 s, outside the narration's block, after the video's end) is left out
     plays_from, plays_to = o.window
     pieces = []
     for i, (ol, dl) in enumerate(zip(o.lines, D)):
@@ -1438,20 +1441,20 @@ def cmd_place(a) -> dict:
         if os_ and len(ds) == len(os_):
             for k, (src, dst) in enumerate(zip(os_, ds)):
                 if src[-1]["end"] <= plays_from or src[0]["start"] >= plays_to:
-                    notes.append(f"line {i + 1}, sentence {k + 1}: the video's mix doesn't play it (it cuts the "
-                                 "narration there), so its translation isn't placed")
+                    notes.append(f"line {i + 1}, sentence {k + 1}: the video doesn't play it (its mix or its end "
+                                 "cuts the narration there), so its translation isn't placed")
                     continue
                 pieces.append({"line": i, "k": k, "words": dst, "target": max(plays_from, src[0]["start"]), "why": "sentence",
                                "orig_end": min(plays_to, src[-1]["end"])})
         else:
             if ol.get("trimmed") and ol["start"] is not None:
-                issues.append(f"line {i + 1}: the video's mix plays only part of it and its translation has {len(ds)} "
+                issues.append(f"line {i + 1}: the video plays only part of it and its translation has {len(ds)} "
                               f"sentences against the original's {len(os_)}, so the part the video doesn't play can't "
                               "be left out: match them one for one")
                 continue
             if ol["start"] is None:
-                notes.append(f"line {i + 1}: the video's mix plays none of the original line (it cuts the narration "
-                             "there), so its translation isn't placed")
+                notes.append(f"line {i + 1}: the video plays none of the original line (its mix or its end cuts the "
+                             "narration there), so its translation isn't placed")
                 continue
             pieces.append({"line": i, "k": 0, "words": dl["words"], "target": ol["start"], "why": "line",
                            "orig_end": ol["end"]})

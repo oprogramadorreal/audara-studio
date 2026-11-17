@@ -1196,20 +1196,17 @@ function buildCues(all: Tok[], lang: string, rule: SubRule, gap: number): { cues
     cues.push({ start: part[0].start, end: part[part.length - 1].end, lines, toks: part });
   };
   for (const t of all) {
-    if (cur.length) {
-      const cand = [...cur, t];
-      const tooLong = !breakLines(cand, lang, rule) || t.end - cur[0].start > SUB_MAX;
-      if (t.start - cur[cur.length - 1].end > SUB_PAUSE) close();
-      else if (tooLong) {
-        // end the cue at its last clause when that leaves it at least a third full, else where it overflows
-        let k = -1;
-        for (let i = cur.length - 1; i >= 1; i--) if (cur[i - 1].clause) { k = i; break; }
-        const used = k > 0 ? graphemes(cur.slice(0, k).map((x) => x.text).join(' '), lang) : 0;
-        let at = k > 0 && used >= rule.line * 2 / 3 ? k : cur.length;
-        // the next subtitle would open on a particle: end this one a word earlier
-        while (at > 1 && noStart(at < cur.length ? cur[at] : t, lang)) at--;
-        close(at);
-      }
+    if (cur.length && t.start - cur[cur.length - 1].end > SUB_PAUSE) close();
+    // too long with the next word: end the cue at its last clause when that leaves it at least a third full, else
+    // where it overflows, and again until what is left fits with the word (a part of a cue that fit always fits)
+    while (cur.length && (!breakLines([...cur, t], lang, rule) || t.end - cur[0].start > SUB_MAX)) {
+      let k = -1;
+      for (let i = cur.length - 1; i >= 1; i--) if (cur[i - 1].clause) { k = i; break; }
+      const used = k > 0 ? graphemes(cur.slice(0, k).map((x) => x.text).join(' '), lang) : 0;
+      let at = k > 0 && used >= rule.line * 2 / 3 ? k : cur.length;
+      // the next subtitle would open on a particle: end this one a word earlier
+      while (at > 1 && noStart(at < cur.length ? cur[at] : t, lang)) at--;
+      close(at);
     }
     cur.push(t);
     if (t.sent) close();

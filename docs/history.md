@@ -5029,3 +5029,16 @@ Its fourth look found none. A fifth, after more time with the code, found three,
 
 `test_dub.py` has 16 tests (a voice block's window, and the text to translate before any mix; the demo project has
 an effect at 2 + 1/60 s, whose dub verify passes) and `test_youtube.ts` 73; both pass.
+
+Its sixth look found two more, both taken:
+
+- The window ended at the mix's end even when the final render is shorter. A sentence at 6 s with a 10-second mix
+  and a 5-second render was placed, and could only fail: it ran past the video's end and didn't fit. The window
+  now also ends at the video's end, so the sentence is left out like any other the video doesn't play.
+- A subtitle ended at its last clause left the rest of its words to go on with the next one, without checking that
+  they fit together. "alle Rechtsschutzversicherungsgesellschaften und" became one 48-character line, reported as
+  a word too long for two lines. The split now repeats until what is left fits with the next word. A part of a
+  subtitle that fit always fits by itself, so this ends.
+
+`test_dub.py` has 17 tests (a sentence after a shorter render's end) and `test_youtube.ts` 74 (the German
+subtitle).
