@@ -5105,14 +5105,16 @@ for an independent view before seeing this one, then reviewed each step, read-on
 devlog: the build is the story"); this video is about the fractals and how a renderer draws them, and the
 prototype is where its shots are found. The session built it that way: the explorer is "where the video's shots are
 found, and its code is the video's renderer in waiting", with the distance estimators, the light and camera paths
-as pure functions of time in shared source for the video's scenes, the director's saved views and flights in a
-committed `explorer/shots.json`, and the video held back until the director's word. Loaded, devlog would have added
+as pure functions of time in shared source for the video's scenes, a way for the director to save views and
+flight paths to `explorer/shots.json` (named in the project's `AGENTS.md` as a source to commit), and the video held
+back until the director's word. Loaded, devlog would have added
 a development log and a story ledger the video won't use, a prototype folder of its own with a capture page writing
 frames for streamed footage (a detour when the shader can run in an f(t) scene), and a script taken from the log,
 which bends the piece toward a making-of nobody asked for. What it would have given that the session lacked was
 little: re-filmable camera paths were already there. Codex added one thing worth keeping in mind: a discarded look
-can earn a place when it shows a rendering principle; that stays code-video's call when the video starts, since any
-stage can be rendered again from the code.
+can earn a place when it shows a rendering principle. A comparison the explanation needs, such as a surface with
+and without its light, can be rendered from the code when the video starts; a look discarded without a commit
+can't.
 
 **But the description didn't hold that line on a shorter request.** Probed through `trigger.ts` on Fable 5.2 at
 xhigh, the session's prompt verbatim never called devlog (0 of 3; code-video and video-repo in all three, as in the
@@ -5137,14 +5139,16 @@ then a video explaining how light bends near it). Subjects are swapped away from
 
 **What was checked.**
 - **Spec checks:** devlog passes the three validators, 7,992 bytes, no byte-order mark.
-- **Routing, Claude Code:** the whole set (25 requests, one run each) 25 of 25 on Fable 5.2 at xhigh and on Opus
-  5.5 at low effort: every request loaded devlog, no near-miss did, by a Skill call or a read of its SKILL.md. On
-  Fable at xhigh, dl-23 on the new text: 0 of 6 by a Skill call, 1 of 6 with a read (the run had loaded
-  code-video, searched it for "prototype|interactive|explorer|camera path", found nothing and read devlog's
-  SKILL.md and `capture.md`), against 1 and 2 of 6 before: in the right direction, too few runs to call measured.
-  The wording tried first ("rather than its making", the same
-  otherwise) passed the session's prompt (0 of 3), dl-23 (0 of 3 by a Skill call, 1 of 3 with a read), dl-24 (3 of
-  3) and dl-25 (0 of 3). Before the change, dl-24 3 of 3 and dl-25 0 of 3.
+- **Routing on Claude Code, the shipped text:** the whole set (25 requests, one run each) 25 of 25 on Fable 5.2 at
+  xhigh and on Opus 5.5 at low effort: every request loaded devlog and no near-miss did, by a Skill call or a read
+  of its SKILL.md. On Fable at xhigh, the session's prompt 0 of 3 counting reads (code-video and video-repo in all
+  three); dl-23 0 of 6 by a Skill call, 1 of 6 with a read (the run had loaded code-video, searched it for
+  "prototype|interactive|explorer|camera path", found nothing and read devlog's SKILL.md and `capture.md`), against
+  1 and 2 of 6 before: in the right direction, too few runs to call measured.
+- **The wording tried first** ("rather than its making", the same otherwise), Fable at xhigh, 3 runs each: the
+  session's prompt 0 of 3, dl-23 0 of 3 by a Skill call and 1 of 3 with a read, dl-24 3 of 3, dl-25 0 of 3.
+- **Before the change,** the same: the session's prompt 0 of 3 by a Skill call (2 of 3 with reads), dl-23 1 and 2
+  of 6, dl-24 3 of 3, dl-25 0 of 3.
 - **Not run:** routing on Codex (devlog has no scripts, so a Codex near-miss fails on the load), the other skills'
   sets, and the task evals.
 
@@ -5153,4 +5157,7 @@ filming later" says what the prototype is for), keep the description, and add a 
 find an explainer's footage; it kept the three cases as written over its own (a terrain scout for an erosion
 explainer). Shown the probes, it changed its advice: the dl-23 run that chose devlog for repeatable flights is a
 real false positive, so tighten the description, take the bytes from repetition rather than workflow guidance,
-keep the harness's criterion and report both counts.
+keep the harness's criterion and report both counts. Its review of the PR found the docs claiming more than the evidence, all fixed: the
+director's views named as committed when none had been saved yet, any stage said to be recoverable from the code
+where a look discarded without a commit isn't, the PR's table mixing the two wordings, and the evals README
+miscounting the set (four requests in Portuguese, five not games).
