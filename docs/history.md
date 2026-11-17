@@ -5008,3 +5008,9 @@ Its second look at the pull request found three more, all taken:
 
 `test_dub.py` has 15 tests (a shorter render; a trimmed sentence left out, on a synthetic project; the script's hash
 in the placement) and `test_youtube.ts` 73; both pass.
+
+Its third look found one: once placement left out a sentence its mix trims, the placed words no longer read as the
+whole paragraph, so `srt` called the placement stale and timed the subtitle on the original voice (gone at 2.0 s
+while the dub spoke to 4.5 s), and placing again couldn't change that. `dub.py place` now records the paragraphs it
+was placed from, and `srt` checks those; test_15 makes the subtitles from that placement and finds them timed on the
+dubbed voice.

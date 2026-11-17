@@ -571,6 +571,16 @@ class DubTest(unittest.TestCase):
         self.assertEqual([p["text"] for p in rec["pieces"]], ["Final conservado."])
         self.assertEqual(rec["issues"], [])
         self.assertEqual(rec["inputs"]["tool"], dub.sha256(Path(dub.__file__)))  # (a new dub.py places again)
+        # its subtitles are timed on the dubbed voice, the trimmed sentence left out (codex's third review)
+        r = subprocess.run(["bun", str(REPO / "skills/youtube-package/scripts/youtube.ts"), "srt", "--video", "v",
+                            "--lang", "es"], cwd=root, capture_output=True, text=True, encoding="utf-8")
+        srt = (v / "youtube" / "es" / "subtitles.es.srt").read_text(encoding="utf-8")
+        placed = json.loads((d / "data" / "words-placed.json").read_text(encoding="utf-8"))["lines"][0]["words"]
+        self.assertIn("timed on its dubbed voice", r.stdout, r.stdout + r.stderr)
+        self.assertNotIn("Inicio", srt)
+        last = srt.strip().split("\n")[1].split(" --> ")[1]
+        h, m, rest = last.split(":")
+        self.assertGreaterEqual(int(h) * 3600 + int(m) * 60 + float(rest.replace(",", ".")), placed[-1]["end"] - 1e-3, srt)
         # a translation whose sentences don't match: the trimmed part can't be told apart, an open issue
         (v / "youtube" / "es" / "narration.txt").write_text("Inicio cortado y final conservado.\n", encoding="utf-8")
         put(d / "data" / "words.json", {"lines": [{"text": "Inicio cortado y final conservado.", "words": [

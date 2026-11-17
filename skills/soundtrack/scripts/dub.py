@@ -1613,6 +1613,9 @@ def cmd_place(a) -> dict:
     vsha = sha256(lang.voice)
     doc = {"lines": words_out, "audioSha256": vsha,
            "source": {"kind": "narration", "tool": TOOL, "dub": lang.code, "of": v.rel(o.words_path),
+                      # (the text the take says, paragraph by paragraph: what subtitles check this placement
+                      # against, since a sentence its mix trims is left out of the words on purpose)
+                      "paragraphs": [dl["text"] for dl in D],
                       "note": "The dub's words at their times in the video (dub.py place); sourceText is the original "
                               "line, so scenes that find lines by the original's text still find them."}}
     write_json(lang.placed, doc)

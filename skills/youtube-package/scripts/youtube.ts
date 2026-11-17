@@ -1319,7 +1319,10 @@ async function srt() {
     let placed: WordsDoc | undefined;
     if (existsSync(placedFile)) {
       placed = readJson(placedFile);
-      const said = (placed!.lines ?? []).map((l) => (l.words ?? []).map((w) => w.w).join(' '));
+      // (the text it was placed from: dub.py records it, since words its mix trims are left out on purpose; an older
+      // placement is checked by its words)
+      const said: string[] = Array.isArray(placed!.source?.paragraphs) ? placed!.source.paragraphs.map(String)
+        : (placed!.lines ?? []).map((l) => (l.words ?? []).map((w) => w.w).join(' '));
       const fresh = said.length === paras.length && said.every((s, i) => s.replace(/\s+/g, '') === paras[i].replace(/\s+/g, ''));
       if (!fresh) { notes.push(`the dub in videos/${video}/dub/${code}/ was placed from another text than narration.txt: timed on the original instead (place the dub again to time them on its voice)`); placed = undefined; }
     }

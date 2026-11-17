@@ -348,8 +348,8 @@ and then to more again leaving a possible charge's stop in place; only a voice t
 taking a cap; with eleven.py replaced in-process, a take billed then one refused keeping the first billed, a bill
 past the list rate stopping the job at its cap, a crash counted as possibly charged; an anchor or a respelling
 added after the mix failing verify until it is taken back; a final render longer, then shorter, than the mix
-setting the track's length; a sentence the mix trims before 0 s left out of the dub, and a trimmed line whose
-sentences don't match left open (on a synthetic project, in-process); the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
+setting the track's length; a sentence the mix trims before 0 s left out of the dub and of the subtitles timed on
+it, and a trimmed line whose sentences don't match left open (on a synthetic project, in-process); the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
 older and individual forms; `--language` kept in the command eleven.py suggests; grouped effects keeping the video's gains;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
