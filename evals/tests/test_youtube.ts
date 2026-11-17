@@ -378,6 +378,29 @@ try {
     const l3 = late(['check', path.join('videos', 'late', 'youtube', 'es'), '--full']);
     expect('check --full: a language\'s folder for a video whose narration is never heard needs no subtitles',
       l3.code === 0 && /no timed narration heard in the video, so no subtitles/.test(l3.out), l3.out);
+    // where the original is heard, so is its translation, even in a sliver of it: the last tenth of a sentence (a block
+    // "from": 0.9 "dur": 0.1), or the moment between two translated words (codex's eleventh review: no Spanish file,
+    // and check --full failed)
+    for (const [name, text, es, row, shift] of [['tail', 'Hello.', 'Hola.', { at: 0, end: 0.1 }, -0.9],
+      ['gap', 'Goodbye.', 'Hasta luego.', { at: 0, end: 0.02 }, -0.43]] as const) {
+      const gv = path.join(kp, 'videos', name);
+      mkdirSync(path.join(gv, 'data'), { recursive: true });
+      mkdirSync(path.join(gv, 'audio'), { recursive: true });
+      mkdirSync(path.join(gv, 'youtube', 'es'), { recursive: true });
+      writeFileSync(path.join(gv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+      writeFileSync(path.join(gv, 'data', 'words.json'), JSON.stringify({ lines: [{ text, words: [{ w: text, start: 0, end: 1 }] }] }));
+      writeFileSync(path.join(gv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 5,
+        voice: [{ file: `videos/${name}/audio/narration.wav`, ...row }], timing_data: { 'words.json': { layer: 'voice', shift_s: shift } } } }));
+      writeFileSync(path.join(gv, 'youtube', 'es', 'narration.txt'), es + '\n');
+      writeFileSync(path.join(gv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+      writeFileSync(path.join(gv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+      const g1 = late(['srt', '--video', name, '--lang', 'es']);
+      const f = path.join(gv, 'youtube', 'es', 'subtitles.es.srt');
+      const body = existsSync(f) ? readFileSync(f, 'utf8') : '';
+      const g2 = late(['check', path.join('videos', name, 'youtube', 'es'), '--full']);
+      expect(`srt: a translation is shown wherever its original is heard (${name === 'tail' ? 'the last tenth of a sentence' : 'between two translated words'}), and its package passes check --full`,
+        g1.code === 0 && body.length > 0 && g2.code === 0, g1.out + body + g2.out);
+    }
   }
 
   // check: a language's folder, its subtitles and its dubbed track

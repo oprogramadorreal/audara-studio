@@ -5072,3 +5072,9 @@ check refuses ("no subtitles in it"), and without the file check asked for it, s
 `data/words.json` exists. Subtitles are now wanted when the video plays some of its narration, as `srt` measures it,
 and `srt` writes no file when there is nothing to show (and removes one left from before).
 `test_youtube.ts` has 78 tests.
+
+Its eleventh look found a gap. A translated sentence's time is shared among its words by length, and each word
+ended a character short of the next, leaving a gap. A block that plays only the last tenth of "Hello." (`from: 0.9`,
+`dur: 0.1`), or a moment between two translated words, then showed the English and no Spanish: no file, and
+`check --full` failed. Each word now runs up to the next, so wherever the original is heard so is its translation.
+`test_youtube.ts` has 80 tests.

@@ -1360,7 +1360,9 @@ async function srt() {
         for (const [s, a, b] of pairs) {
           const n = s.reduce((x, w) => x + graphemes(w.w, lang) + 1, 0);
           let acc = 0;
-          for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * (acc - 1) / n; }
+          // (the sentence's time shared by length, each word up to the next, with no gap between them: wherever the
+          // original is heard, so is its translation)
+          for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * acc / n; }
           // (a sentence the mix doesn't play isn't shown; one it cuts in part, where it plays)
           if (b > plays && a < stops) words.push(...s);
           else trimmedOut++;
