@@ -1698,7 +1698,8 @@ def cmd_voices(a, out: Out) -> None:
             continue
         rows.append({"voice_id": v.get("voice_id"), "name": v.get("name"), "category": v.get("category"),
                      "labels": labels, "languages": langs, "description": v.get("description"),
-                     "preview_url": v.get("preview_url")})
+                     "preview_url": v.get("preview_url"), "is_owner": v.get("is_owner"),
+                     "sharing_rate": (v.get("sharing") or {}).get("rate")})
     out.data["voices"] = rows
     if not rows:
         out("No voices matched." + (" Try without --language or --search." if (a.language or a.search) else ""))

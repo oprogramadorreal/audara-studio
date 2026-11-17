@@ -68,7 +68,7 @@ HERE = Path(__file__).resolve().parent
 ELEVEN = HERE / "eleven.py"
 MIX = HERE / "mix.py"
 TOOL = "audara-studio soundtrack/scripts/dub.py"
-VERSION = 1
+VERSION = 2  # (placement's checks changed in 2: what an earlier version placed is placed again)
 SR = 48000
 OK, ERROR, USAGE, NO_KEY, CONFIRM, SCOPE = 0, 1, 2, 3, 4, 5
 
@@ -91,8 +91,7 @@ V2_LANGS = {"en", "ja", "zh", "de", "hi", "fr", "ko", "pt", "it", "es", "id", "n
 FLASH_LANGS = V2_LANGS | {"hu", "no", "vi"}
 WIDE_MODELS = ("eleven_v3", "eleven_v4")
 FALLBACK_MODEL = "eleven_v4"
-CREDITS_PER_CHAR_MAX = 1.0  # list rate (Flash bills 0.5-1): the least a reservation holds per character
-UNKNOWN_RATE = 3.0  # a voice with no billing record yet: its first request here is held at this (a multiplier)
+CREDITS_PER_CHAR_MAX = 1.0  # list rate, the most a character costs (Flash bills 0.5-1): what a reservation holds
 STT_CREDITS_PER_MIN = 330  # Scribe v2, as eleven.py estimates it
 RETRY_SHARE = 0.25  # the estimate's allowance for retakes and shortened sentences, on top of one take of each block
 PILOT_S = 30  # seconds of audio the estimate allows for each language's voice-test transcription
@@ -228,6 +227,7 @@ class Lang:
         self.placement = self.dir / "placement.json"
         self.heard = self.dir / "heard.json"
         self.pilot = self.dir / "pilot.json"
+        self.take = self.dir / "take.json"
         self.mix_plan = self.dir / "mix.json"
         self.mix_wav = self.pkg / "mix.wav"
         self.mix_rec = self.pkg / "mix.wav.request.json"
@@ -621,21 +621,47 @@ def ledger_totals(job: dict, lang: str | None = None) -> dict:
 
 
 def char_rate(job: dict) -> float:
-    """Credits a character may cost with this voice: the most it was billed per character (the original narration's
-    requests, then this job's), never under the list rate; a voice billed nowhere yet is held at UNKNOWN_RATE until
-    its first request here measures it (a library voice can carry a credit multiplier the API doesn't state)."""
-    r = (job.get("rate") or {}).get("credits_per_char")
-    return max(CREDITS_PER_CHAR_MAX, float(r)) if r else UNKNOWN_RATE
+    """Credits a character may cost: the list rate, the most ElevenLabs states for these models on a voice the
+    account owns or one of its own premade voices (the only voices a job takes); higher only if this voice was once
+    billed more, which stopped the job."""
+    r = job.get("rate") or {}
+    if r.get("voice") == (job.get("voice") or {}).get("id") and r.get("credits_per_char"):
+        return max(CREDITS_PER_CHAR_MAX, float(r["credits_per_char"]))
+    return CREDITS_PER_CHAR_MAX
 
 
 def learn_rate(job: dict, billed: float, chars: int) -> None:
-    """A settled request's billed credits per character, kept when it is the most this voice has cost."""
+    """A settled request billed more per character than the list rate: kept for this voice (and over_cap stops)."""
     if chars <= 0 or billed <= 0:
         return
     r = billed / chars
-    old = (job.get("rate") or {}).get("credits_per_char")
-    if old is None or r > float(old) + 1e-9:
-        job["rate"] = {"credits_per_char": round(r, 4), "from": "a request of this job"}
+    if r > char_rate(job) + 1e-9:
+        job["rate"] = {"voice": (job.get("voice") or {}).get("id"), "credits_per_char": round(r, 4),
+                       "from": "a request of this job, billed past the stated rate"}
+
+
+def voice_ok(info: dict | None) -> tuple[bool, str]:
+    """Whether a cap can hold with this voice. ElevenLabs states a list rate per character, and credit multipliers
+    only on Voice Library voices whose sharer set a custom rate (a legacy feature, varying by the user's plan, not in
+    the API's voice fields): a voice the account owns, or one of ElevenLabs' premade voices, costs the list rate at
+    most; any other voice may cost more by a factor nobody can read beforehand."""
+    if info is None:
+        return False, "the voice isn't among the account's voices (eleven.py voices), so its rate can't be known"
+    if info.get("is_owner") is True:
+        return True, "a voice the account owns"
+    if info.get("category") == "premade":
+        return True, "one of ElevenLabs' premade voices"
+    return False, (f"a voice the account doesn't own ({info.get('category') or 'from the Voice Library'}): a Voice "
+                   "Library voice can carry a credit multiplier that the API doesn't state, so no cap can be held "
+                   "with it")
+
+
+def voice_info(v: Video, voice_id: str) -> dict | None:
+    """The voice as the account lists it (free): its category and whether the account owns it."""
+    rc, j = eleven(["voices", "--limit", "1000"], v)
+    if rc:
+        raise Fail(rc, f"listing the account's voices: {msg_of(j)}")
+    return next((x for x in j.get("voices") or [] if x.get("voice_id") == voice_id), None)
 
 
 def stops(holder: dict) -> list[dict]:
@@ -742,11 +768,24 @@ def over_cap(v: Video, job: dict) -> None:
         raise Fail(SCOPE, why + ": going on is the director's call")
 
 
+def unresolved(job: dict, lang: str) -> list[dict]:
+    """The language's requests that may have been billed without arriving: from the ledger itself, so no new
+    approval or change of the job's languages can lose them."""
+    return [e for e in job.get("ledger") or [] if e.get("lang") == lang and e.get("status") in ("possibly charged", "unknown")]
+
+
 def check_scope(v: Video, job: dict, lang: Lang) -> dict:
     if stops(job):
         raise Fail(SCOPE, "the job stopped: " + "; ".join(x["why"] for x in stops(job)))
+    if not (job.get("voice") or {}).get("rate_known"):
+        raise Fail(SCOPE, f"the job's voice: {(job.get('voice') or {}).get('why') or 'its rate is unknown'}")
+    u = unresolved(job, lang.code)
+    if u:
+        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: {u[0]['what']} may have been billed without its audio "
+                          "arriving (counted as spent); check the account's history on elevenlabs.io: going on is the "
+                          "director's call")
     ls = job["languages"].get(lang.code)
-    if ls is None:
+    if ls is None or lang.code not in job.get("scope", list(job["languages"])):
         raise Fail(SCOPE, f"{lang_name(lang.code)} isn't in the approved job ({', '.join(job['languages'])}): adding it "
                           "is the director's call")
     if stops(ls):
@@ -798,7 +837,7 @@ def cmd_plan(a) -> dict:
     o = Original(v)
     cfg, cfg_path = o.narration_cfg()
     job = load_job(v, need=False)
-    langs = [x.strip() for x in (a.langs or "").split(",") if x.strip()] or list((job or {}).get("languages") or [])
+    langs = [x.strip() for x in (a.langs or "").split(",") if x.strip()] or list((job or {}).get("scope") or (job or {}).get("languages") or [])
     if not langs:
         raise usage("name the languages: --langs es,en,hi (codes; the youtube-package skill's references/languages.md "
                     "has the preset)")
@@ -813,9 +852,8 @@ def cmd_plan(a) -> dict:
     if not src:
         raise usage("--from <code>: the video's language (its narration's), which the estimate scales from")
     vdur, vsrc = o.video_duration()
-    avg_rate, top_rate = o.billed_rate(cfg_path, voice_id)
-    known = (job or {}).get("rate", {}).get("credits_per_char") or top_rate
-    per_char = max(CREDITS_PER_CHAR_MAX, float(known)) if known else CREDITS_PER_CHAR_MAX
+    avg_rate, _ = o.billed_rate(cfg_path, voice_id)
+    per_char = char_rate(job) if job and (job.get("voice") or {}).get("id") == voice_id else CREDITS_PER_CHAR_MAX
     orig_chars = o.chars()
     rows = []
     for code in langs:
@@ -856,6 +894,7 @@ def cmd_plan(a) -> dict:
     account, problem = probe(v, voice_id, orig_model)
     if problem:
         raise Fail(problem[0], problem[1])
+    vok, vwhy = voice_ok(voice_info(v, voice_id))
     say(f"Dubbed audio for {v.name}: the narration in {len(rows)} language{'s' if len(rows) != 1 else ''}, voice "
         f"{voice_name or voice_id} ({voice_id}), over the video's own music and effects; each track as long as the "
         f"video ({vdur:.2f} s, from {vsrc}).")
@@ -871,29 +910,29 @@ def cmd_plan(a) -> dict:
         say(f"  The narration was made with {orig_model}, which doesn't speak {', '.join(r['name'] for r in moved)}: "
             f"{'they use' if len(moved) > 1 else 'it uses'} {', '.join(sorted({r['model'] for r in moved}))} with the same "
             "voice. The voice test is the first paid request there, and a language whose test fails stops.")
-    if known and float(known) > CREDITS_PER_CHAR_MAX + 1e-6:
-        rate_line = (f"{per_char:.2f} credits a character: this voice was billed that much (a credit multiplier), "
-                     "and every request is reserved at it")
-    elif known:
-        rate_line = (f"the list rate, 1 credit a character; this voice was billed {float(avg_rate or known):.2f} a "
-                     "character for the original narration, so it may cost less")
-    else:
-        rate_line = (f"the list rate, 1 credit a character; this voice has no billing record here, so its first request "
-                     f"is reserved at {UNKNOWN_RATE:g} times that (a voice can carry a credit multiplier) until it is "
-                     "measured")
+    rate_line = ("the list rate, 1 credit a character, the most ElevenLabs states for these models, at which every "
+                 "request is reserved" + (f"; this account was billed {avg_rate:.2f} a character for the original "
+                                          "narration, so it may cost less" if avg_rate and avg_rate < 0.95 else ""))
+    if per_char > CREDITS_PER_CHAR_MAX:
+        rate_line = f"{per_char:.2f} credits a character, what this voice was once billed"
     say(f"Estimate: about {num(total)} credits, at {rate_line}" + (f"; {num(spent)} spent or reserved so far." if spent
                                                                    else "."),
         f"A cap of {num(cap_suggest)} credits covers it" + (f" (the approved cap is {num(job['cap'])})." if job else "."))
     for x in account:
         say(x)
-    res = {"video": v.name, "voice": {"id": voice_id, "name": voice_name}, "from": src, "model": orig_model,
-           "duration": vdur, "rows": rows, "estimate": total, "spent": round(spent), "cap_suggested": cap_suggest,
-           "billed_rate": avg_rate, "rate_reserved": per_char if known else None, "account": account}
+    if not vok:
+        say(f"No dub with this voice can be approved: {vwhy}. Offer the packages; a dub needs a voice the account owns "
+            "or one of ElevenLabs' own, and which is the director's choice.")
+    res = {"video": v.name, "voice": {"id": voice_id, "name": voice_name, "rate_known": vok, "why": vwhy},
+           "from": src, "model": orig_model, "duration": vdur, "rows": rows, "estimate": total, "spent": round(spent),
+           "cap_suggested": cap_suggest, "billed_rate": avg_rate, "rate_reserved": per_char, "account": account}
     if a.approve is not None:
         if not a.approve.strip():
             raise usage("--approve takes the director's own words, as they gave their yes")
         if a.cap is None:
             raise usage("--approve needs --cap N: the most the batch may spend, as the director agreed it")
+        if not vok:
+            raise Fail(SCOPE, f"no job with this voice: {vwhy}")
         with JobLock(v):
             job = load_job(v, need=False)
             spent = ledger_totals(job)["committed"] if job else 0.0
@@ -901,21 +940,21 @@ def cmd_plan(a) -> dict:
                 raise usage(f"--cap {a.cap}: {num(spent)} credits are already spent or reserved")
             new = job or {"tool": TOOL, "version": VERSION, "ledger": []}
             new.update({"approved": now(), "words": a.approve.strip(), "from": src, "cap": int(a.cap),
-                        "voice": {"id": voice_id, "name": voice_name},
+                        "voice": {"id": voice_id, "name": voice_name, "rate_known": vok, "why": vwhy},
                         "settings": {"voice_settings": (cfg or {}).get("voice_settings") or {},
                                      "lufs": (cfg or {}).get("lufs"), "from": v.rel(cfg_path) if cfg_path else None},
                         "sources": o.fingerprint()})
-            if not new.get("rate") and top_rate:
-                new["rate"] = {"credits_per_char": round(top_rate, 4), "from": "the original narration's requests"}
             # a new yes with its cap lifts what stopped on the old cap; a request that may have been billed, or a voice
             # test that failed, stays stopped
             new["stopped"] = [x for x in stops(new) if x["kind"] not in ("cap", "share")]
-            langs_old = new.get("languages") or {}
-            new["languages"] = {}
+            # every language the job ever had stays in it (its ledger and stops with it); the scope is this yes's
+            new.setdefault("languages", {})
             for r in rows:
-                ls = {**langs_old.get(r["lang"], {}), "model": r["model"], "estimate": r["estimate"] + r["spent_or_reserved"]}
+                ls = {**new["languages"].get(r["lang"], {}), "model": r["model"],
+                      "estimate": r["estimate"] + r["spent_or_reserved"]}
                 ls["stopped"] = [x for x in stops(ls) if x["kind"] != "share"]
                 new["languages"][r["lang"]] = ls
+            new["scope"] = [r["lang"] for r in rows]
             share_out(new)
             new.setdefault("history", []).append({"at": new["approved"], "words": new["words"], "cap": new["cap"],
                                                   "languages": list(new["languages"])})
@@ -958,11 +997,14 @@ def probe(v: Video, voice_id: str, model: str) -> tuple[list[str], tuple[int, st
 
 
 def share_out(job: dict) -> None:
-    """Each language's share of the cap, in proportion to its estimate (what it has spent counts in it)."""
-    langs = job["languages"]
-    total = sum(float(x.get("estimate") or 0) for x in langs.values()) or 1.0
-    for code, x in langs.items():
-        x["share"] = round(float(job["cap"]) * float(x.get("estimate") or 0) / total, 1)
+    """Each language's share of the cap, in proportion to its estimate (what it has spent counts in it); a language
+    outside the scope keeps what it spent and no more."""
+    scope = job.get("scope", list(job["languages"]))
+    out = {c: ledger_totals(job, c)["committed"] for c in job["languages"] if c not in scope}
+    total = sum(float(job["languages"][c].get("estimate") or 0) for c in scope) or 1.0
+    room = float(job["cap"]) - sum(out.values())
+    for code, x in job["languages"].items():
+        x["share"] = round(room * float(x.get("estimate") or 0) / total, 1) if code in scope else round(out[code], 1)
 
 
 # ------------------------------------------------------------------------------------------------ speak and hear
@@ -1019,7 +1061,9 @@ def cmd_speak(a) -> dict:
                 say(f"{lang_name(lang.code)}: block {a.test} exists already (free).")
         elif jobs:
             pilot = read_json(lang.pilot) or {}
-            if not pilot.get("pass") or sha256(Path(v.root / pilot.get("file", "-"))) != pilot.get("file_sha256"):
+            if (not pilot.get("pass") or sha256(Path(v.root / pilot.get("file", "-"))) != pilot.get("file_sha256")
+                    or pilot.get("voice") != job["voice"]["id"] or pilot.get("model") != ls.get("model")
+                    or any(block_of(x) == pilot.get("block") for x in jobs)):
                 raise Fail(SCOPE, f"{lang_name(lang.code)}: the voice test hasn't passed yet. Make it on the hardest "
                                   f"paragraph (speak --lang {lang.code} --test N), check it (hear --lang {lang.code} "
                                   "--test N), then make the rest")
@@ -1070,41 +1114,56 @@ def run_paid(v: Video, job: dict, lang: Lang, e: dict, extra: list[str], files: 
             except (TypeError, ValueError):
                 billed += chars * char_rate(job)
     missing = [(f, c) for f, c in files if f not in made]
+    # the whole settlement is made in memory and written once, so an interruption leaves either the reservation
+    # (settled later as possibly charged) or all of it
+    possibly = None
     if made:
-        settle(v, job, e, "done", billed, why=why if missing or rc else "")
+        e.update(status="done", settled=now(), billed=billed, **({"why": why} if missing or rc else {}))
         learn_rate(job, billed, chars_made)
-        write_json(v.job_path, job)
+    if missing and not surely_not_billed(rc, j):
+        f0, c0 = missing[0]
+        most0 = round(c0 * char_rate(job), 1)
+        if made:  # the requests that arrived stay billed; the one that failed gets an entry of its own
+            possibly = {"id": len(job["ledger"]) + 1, "lang": lang.code, "what": f"{e['what']} ({Path(f0).name})",
+                        "kind": "tts", "max": most0, "status": "possibly charged", "at": e["at"], "settled": now(),
+                        "why": why}
+            job["ledger"].append(possibly)
+        else:
+            e.update(status="possibly charged", settled=now(), max=most0, why=why)
+            possibly = e
+        stop_lang(job, lang.code, f"{possibly['what']}: {why[:200]} (counted as spent: up to {num(possibly['max'])} "
+                                  "credits; never sent again by itself)")
+    elif missing and not made:
+        e.update(status="not charged", settled=now(), billed=0.0, why=why)
+    out_of_credits = missing and surely_not_billed(rc, j) and ("insufficient" in why.lower() or "HTTP 402" in why)
+    if out_of_credits:
+        stop(job, f"the account is out of credits ({why[:160]})", "cap")
+    write_json(v.job_path, job)
+    if made:
         over_cap(v, job)
     if not missing:
         return
-    if surely_not_billed(rc, j):
-        if not made:
-            settle(v, job, e, "not charged", 0.0, why=why)
-        if "insufficient" in why.lower() or "HTTP 402" in why:
-            stop(job, f"the account is out of credits ({why[:160]})", "cap")
-            write_json(v.job_path, job)
-            raise Fail(SCOPE, f"the account is out of credits ({why[:200]}): nothing more can be made until the "
-                              "director tops it up")
-        raise Fail(rc or ERROR, f"{lang_name(lang.code)}: {msg_of(j)}")
-    f0, c0 = missing[0]
-    most0 = round(c0 * char_rate(job), 1)
-    if made:  # the requests that arrived stay billed; the one that failed gets an entry of its own
-        e = {"id": len(job["ledger"]) + 1, "lang": lang.code, "what": f"{e['what']} ({Path(f0).name})", "kind": "tts",
-             "max": most0, "status": "possibly charged", "at": e["at"], "settled": now(), "why": why}
-        job["ledger"].append(e)
-    else:
-        e["max"] = most0
-        settle(v, job, e, "possibly charged", why=why)
-    stop_lang(job, lang.code, f"{e['what']}: {why[:200]} (counted as spent: up to {num(e['max'])} credits; never sent "
-                              "again by itself)")
-    write_json(v.job_path, job)
-    raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: {e['what']} may have been billed without its audio arriving "
-                      "(counted as spent); the other languages go on")
+    if possibly is not None:
+        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: {possibly['what']} may have been billed without its audio "
+                          "arriving (counted as spent); the other languages go on")
+    if out_of_credits:
+        raise Fail(SCOPE, f"the account is out of credits ({why[:200]}): nothing more can be made until the director "
+                          "tops it up")
+    raise Fail(rc or ERROR, f"{lang_name(lang.code)}: {msg_of(j)}")
+
+
+def take_inputs(lang: Lang, job: dict) -> dict:
+    """What a language's narration is made from: the text, the respellings, the voice, its model and settings."""
+    ls = (job.get("languages") or {}).get(lang.code) or {}
+    return {"narration": sha256(lang.narration_txt), "say": sha256(lang.say), "voice": (job.get("voice") or {}).get("id"),
+            "model": ls.get("model"), "settings": job.get("settings")}
 
 
 def assemble(v: Video, lang: Lang, job: dict) -> dict:
     rc, j = eleven(tts_args(lang, job, []), v)
     if rc == OK and lang.take_wav.is_file() and lang.take_words.is_file():
+        write_json(lang.take, {"tool": TOOL, "at": now(), "inputs": take_inputs(lang, job),
+                               "narration_wav": sha256(lang.take_wav), "words": sha256(lang.take_words)})
         say(f"{lang_name(lang.code)}: {v.rel(lang.take_wav)} and {v.rel(lang.take_words)} are up to date.")
         return {"lang": lang.code, "narration": v.rel(lang.take_wav), "words": v.rel(lang.take_words)}
     missing = len(j.get("jobs") or [])
@@ -1194,7 +1253,8 @@ def hear_pilot(v: Video, lang: Lang, n: int) -> dict:
     exp = lang.dir / "out" / f"pilot-{n}.txt"
     exp.parent.mkdir(parents=True, exist_ok=True)
     exp.write_text(spoken + "\n", encoding="utf-8", newline="\n")
-    args = ["stt", v.rel(f), "--out", v.rel(lang.dir), "--expect", v.rel(exp), "--language", lang.base]
+    # (no language given: the transcriber's own detection is what tells a take in the wrong language)
+    args = ["stt", v.rel(f), "--out", v.rel(lang.dir), "--expect", v.rel(exp)]
     j = paid_stt(v, lang, args, f"{lang.code} voice test, block {n}", float(sf.info(str(f)).duration)
                  if f.suffix in (".wav",) else len(decode(f)) / SR)
     ratio = difflib.SequenceMatcher(None, norm(spoken), norm(str(j.get("transcript") or "")), autojunk=False).ratio()
@@ -1202,7 +1262,10 @@ def hear_pilot(v: Video, lang: Lang, n: int) -> dict:
     ok = ratio >= 0.85 and same is not False
     old = read_json(lang.pilot) or {}
     fails = int(old.get("fails", 0)) + (0 if ok else 1) if old.get("file_sha256") != sha256(f) else int(old.get("fails", 0))
+    body = (rec.get("request") or {}).get("body") or {}
     res = {"block": n, "file": v.rel(f), "file_sha256": sha256(f), "similarity": round(ratio, 3),
+           "voice": str((rec.get("request") or {}).get("path", "")).split("/")[3:4][0] if (rec.get("request") or {}).get("path") else None,
+           "model": body.get("model_id"),
            "language_heard": j.get("language"), "same_language": same, "pass": ok, "fails": fails, "at": now()}
     write_json(lang.pilot, res)
     say(f"{lang_name(lang.code)}: the voice test (block {n}) heard as {j.get('language') or '?'}, its text at "
@@ -1229,10 +1292,18 @@ def placement_inputs(o: Original, lang: Lang) -> dict:
             "anchors": sha256(lang.anchors), "levels": sha256(lang.levels), "tool": VERSION}
 
 
-def take_stale(lang: Lang) -> str | None:
-    """Whether the narration made in a language still says its translation (a paragraph changed since: speak)."""
+def take_stale(lang: Lang, job: dict | None = None) -> str | None:
+    """Whether the narration made in a language is still what its translation, respellings, voice and settings make
+    (anything changed since: speak, which makes only what changed)."""
     if not lang.narration_txt.is_file() or not lang.take_words.is_file():
         return None
+    job = job if job is not None else (read_json(lang.v.job_path) or {})
+    t = read_json(lang.take) or {}
+    if job and (t.get("inputs") != take_inputs(lang, job) or t.get("narration_wav") != sha256(lang.take_wav)
+                or t.get("words") != sha256(lang.take_words)):
+        changed = [k for k, val in take_inputs(lang, job).items() if (t.get("inputs") or {}).get(k) != val] or \
+            ["the narration's files"]
+        return f"the narration made in this language predates a change of its {', '.join(changed)}: speak again"
     said = ["".join(str(w.get("w", "")) for w in l.get("words") or []) for l in (read_json(lang.take_words) or {}).get("lines") or []]
     text = ["".join(p.split()) for p in paragraphs(lang.narration_txt)]
     if [re.sub(r"\s", "", x) for x in said] != text:
@@ -1701,6 +1772,11 @@ def cmd_verify(a) -> dict:
         stale = freshness(o, lang)
         fails += [f"not current: {x}" for x in stale]
         issues += pl.get("issues") or []
+        late = [w for l in (read_json(lang.placed) or {}).get("lines") or [] for w in l.get("words") or []
+                if float(w.get("end", 0)) > d + 1e-3]
+        if late:
+            fails.append(f"{len(late)} placed word(s) end after the track does (\"{late[0].get('w')}\" at "
+                         f"{float(late[0]['end']):.2f} s)")
         heard = read_json(lang.heard) or {}
         if heard.get("voice_sha256") == sha256(lang.voice):
             sim = float(heard.get("similarity") or 0)

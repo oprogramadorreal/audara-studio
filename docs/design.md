@@ -577,10 +577,12 @@ What came back from that is now three steps of the existing skills, not a new on
   becomes a job file (`dub/job.json`: their words, the languages, the voice, the models, the cap), every paid
   request goes through `dub.py`, which writes a ledger entry reserving the most it can cost before sending it,
   refuses past the cap or past the language's share of it (so one language's retries can't starve the rest),
-  and lets one run work on the job at a time, reading it fresh for every write. A character is reserved at
-  the most this voice was billed per character in the narration's records (never under the list rate; three
-  times it for a voice billed nowhere yet, since a library voice's multiplier isn't in the API), and each
-  request that arrives sets the rate again. A request that may have been billed without its audio arriving
+  and lets one run work on the job at a time, reading it fresh for every write. A character is reserved at the
+  list rate, the most ElevenLabs states for these models, and a job takes only a voice the account owns or one
+  of ElevenLabs' premade voices: a Voice Library voice can carry a credit multiplier (a legacy custom rate that
+  varies with the user's plan) that no voice field states, so no cap could be held with one. A request billed
+  past its reservation that takes the job past its cap stops the job. A language's earlier requests stay in the
+  job whatever a later yes names, and one that may have been billed stops its language from the ledger itself. A request that may have been billed without its audio arriving
   (anything but the server's no: a timeout, a dropped connection, a crash) stays reserved at its most,
   "possibly charged", is never sent again by itself, and stops only its language; requests of the same run
   that arrived stay billed. Each language's voice test is transcribed against its text and language before

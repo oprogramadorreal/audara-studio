@@ -4949,3 +4949,26 @@ After the fixes `test_dub.py` has 12 tests (the voice test's gate and its two fa
 arrived with eleven.py replaced in-process, a higher cap lifting a share's stop, a stale anchor failing verify,
 grouped effects, speech past a tight video's end) and `test_youtube.ts` 70; both pass, as do `test_mix_measure.py`
 and `test_eleven_pitch.py`.
+
+**Its second review** found seven more, three it called blockers, all taken:
+
+- The cap still wasn't a hard limit: a rate learned from earlier bills, or a guess of three times the list rate,
+  bounds nothing, since a Voice Library voice's multiplier is a legacy custom rate that varies with the user's plan
+  and no voice field states it (ElevenLabs' help page on custom rates, read 2026-11-17). A job now takes only a
+  voice the account owns (`is_owner`, which `eleven.py voices` now lists) or one of ElevenLabs' premade voices,
+  whose rate is the stated list rate, and reserves every character at it; `plan` says when a voice can't be capped.
+- An interruption between settling a partial batch and recording its possibly billed request lost the latter.
+  The settlement is now made in memory and written once.
+- A yes naming fewer languages rebuilt the job's languages and dropped a stopped one's stop. Every language stays
+  in the job (`scope` lists the current yes), and a request that may have been billed stops its language from the
+  ledger itself.
+- Also: a new voice kept the old voice's rate and its passed voice test (both are now bound to the voice and model,
+  and a test whose block would be made again doesn't count); a change of respellings left the old audio "ready"
+  (each language's take now records what it was made from: the text, the respellings, the voice, model and
+  settings); placements cached before the end-of-video check skipped it (the placement version is 2, and verify
+  checks every placed word against the track's end itself); the subtitle fix dropped "Bye." spoken at 9.7 s of a
+  10-second video (a subtitle now ends with the video and starts earlier if that leaves it too short); and the voice
+  test gave the transcriber the language it then checked, so it now lets it detect the language (the mock gained a
+  small detector).
+
+`test_dub.py` (12) and `test_youtube.ts` (71) pass after these, with `test_mix_measure.py` and `test_eleven_pitch.py`.

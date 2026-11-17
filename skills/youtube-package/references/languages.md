@@ -58,8 +58,10 @@ Free, and quick; the offer needs these:
 - **Timed narration.** Subtitles and dubs are timed on `data/words.json`. A video without narration still
   gets translated titles, descriptions and thumbnail words: the offer says so.
 - **Whether a dub is possible:** the video's mix built by soundtrack's `mix.py` (`audio/mix.wav` and its
-  record: a dub keeps its music and effects), and a narration made by `eleven.py` with a voice in the account
-  (its records name it). Without either, offer the packages only, and say in a line what a dub would need.
+  record: a dub keeps its music and effects), and a narration made by `eleven.py` with a voice the account
+  owns or one of ElevenLabs' premade voices (a Voice Library voice can carry a credit multiplier no cap can
+  hold; `dub.py plan` says so). Without these, offer the packages only, and say in a line what a dub would
+  need.
 - **The estimate:** `uv run <soundtrack>/scripts/dub.py plan --video <video> --from <code> --langs <codes>`
   (`<soundtrack>` is the soundtrack skill's folder, beside this one): credits per language, the models (a
   language the original model doesn't speak gets one that does), the account's credits left, a cap that

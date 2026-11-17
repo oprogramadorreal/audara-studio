@@ -179,6 +179,11 @@ class DubTest(unittest.TestCase):
                                                             "request reached ElevenLabs it may have been billed"}))
         self.assertFalse(dub.surely_not_billed(1, {"error": "failed: HTTP 502 bad gateway"}))
         self.assertFalse(dub.surely_not_billed(1, {"error": "Traceback (most recent call last): ..."}))
+        # a cap holds only where the rate is stated: a voice the account owns, or ElevenLabs' premade
+        self.assertTrue(dub.voice_ok({"is_owner": True, "category": "professional"})[0])
+        self.assertTrue(dub.voice_ok({"is_owner": False, "category": "premade"})[0])
+        self.assertFalse(dub.voice_ok({"is_owner": False, "category": "professional"})[0])
+        self.assertFalse(dub.voice_ok(None)[0])
         job = {"cap": 1000, "languages": {"a": {"estimate": 300}, "b": {"estimate": 100}}}
         dub.share_out(job)
         self.assertEqual((job["languages"]["a"]["share"], job["languages"]["b"]["share"]), (750.0, 250.0))
@@ -227,7 +232,7 @@ class DubTest(unittest.TestCase):
         job = self.job()
         self.assertEqual((job["cap"], len(job["history"])), (6000, 2))
         self.assertEqual(job["voice"]["id"], VOICE)
-        self.assertEqual(job["rate"]["from"], "the original narration's requests")  # (the mock bills 1 a character)
+        self.assertTrue(job["voice"]["rate_known"])  # (the mock's Graham is the account's own)
 
     def test_05_spanish_end_to_end(self):
         before = self.paid()
@@ -287,6 +292,13 @@ class DubTest(unittest.TestCase):
         anchors.write_text("2\tclouds\tnubes\n", encoding="utf-8")
         code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
         self.assertEqual(v["rows"][0]["status"], "ready")
+        # a respelling added after the mix: the narration made no longer says what it would now
+        (self.v / "dub" / "es" / "say.tsv").write_text("nubes\tnú-bes\n", encoding="utf-8")
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es", ok=(1,))
+        self.assertTrue(any("say" in f for f in v["rows"][0]["fails"]), v["rows"][0])
+        (self.v / "dub" / "es" / "say.tsv").unlink()
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
+        self.assertEqual(v["rows"][0]["status"], "ready")
 
     def test_06_billed_without_an_answer_stops_only_its_language(self):
         self.assertTrue(self.pilot("de", 1, DE[0])["pass"])
@@ -334,6 +346,14 @@ class DubTest(unittest.TestCase):
         self.assertEqual(job["languages"]["fr"]["stopped"], [])
         self.assertTrue(job["languages"]["de"]["stopped"] and job["languages"]["it"]["stopped"])
         self.assertGreater(job["languages"]["fr"]["share"], 30)
+        # a yes to fewer languages, then to more again: German's possible charge still stops it
+        self.dub("plan", "--video", "demo", "--langs", "es,fr", "--from", "en", "--approve", "only these two", "--cap", "8000")
+        self.assertEqual(self.job()["scope"], ["es", "fr"])
+        self.dub("speak", "--video", "demo", "--lang", "de", "--test", "1", ok=(5,))  # outside the yes
+        self.dub("plan", "--video", "demo", "--langs", "es,de,fr,it,pt", "--from", "en", "--approve", "all five again",
+                 "--cap", "8000")
+        code, j, _ = self.dub("speak", "--video", "demo", "--lang", "de", "--test", "1", ok=(5,))
+        self.assertIn("may have been billed", j["message"])
 
     def test_09_a_sentence_too_long_stays_open(self):
         self.assertTrue(self.pilot("fr", 1, FR[0])["pass"])
@@ -402,7 +422,7 @@ class DubTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, dub.SCOPE)
         self.assertEqual((e["status"], e["billed"]), ("done", 100.0))
         self.assertEqual(dub.ledger_totals(j)["committed"], 100.0)
-        # a voice billed twice the list rate: the job stops at the cap
+        # a bill past the list rate (which ElevenLabs states for the voices a job takes): the job stops at the cap
         for f, _ in files:
             (v.root / f).unlink(missing_ok=True)
             (v.root / f).with_name(Path(f).stem + '.request.json').unlink(missing_ok=True)
@@ -415,8 +435,7 @@ class DubTest(unittest.TestCase):
         self.assertEqual(j["rate"]["credits_per_char"], 2.0)
         self.assertEqual([x["kind"] for x in dub.stops(j)], ["cap"])
         self.assertEqual(dub.char_rate(j), 2.0)
-        # a voice with no billing record yet: its first request is held at three times the list rate
-        self.assertEqual(dub.char_rate(job(1000, None)), dub.UNKNOWN_RATE)
+        self.assertEqual(dub.char_rate(job(1000, None)), 1.0)  # (the list rate, for a voice billed nowhere yet)
         # a crash with nothing on disk: possibly charged, the language stopped
         for f, _ in files:
             (v.root / f).unlink(missing_ok=True)

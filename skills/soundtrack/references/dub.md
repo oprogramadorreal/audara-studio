@@ -22,8 +22,8 @@ picture isn't changed: words it shows stay in the original language (the subtitl
 - The video's mix built by `mix.py` and up to date (`dub.py` refuses an older one), with the voice apart
   from the music and effects in `mix.json`: a finished file with everything mixed in can't be dubbed here.
 - Timed narration, `data/words.json`.
-- An ElevenLabs voice in the account: by default the one the narration was made with (its records name it),
-  with the same settings. A narration the user recorded has no voice to keep: a dub then needs a voice they
+- An ElevenLabs voice the account owns, or one of ElevenLabs' premade voices: by default the one the narration
+  was made with (its records name it), with the same settings. A narration the user recorded has no voice to keep: a dub then needs a voice they
   choose (`eleven.py voices`), which is their call, not a default.
 - A translation per language, `youtube/<code>/narration.txt` (`dub.py source` writes the original's lines as
   paragraphs to translate): one paragraph per line, sentence for sentence where the language allows. The
@@ -55,11 +55,11 @@ for something else (art, music), anything in YouTube Studio.
   gets a ledger entry in `job.json` before it is sent, reserving the most it can cost, and is refused past
   the cap or past its language's share (the cap split by the estimates), so one language's retries can't
   starve the others. Only one run works on the job at a time (`dub/.job.lock`), so every write reads it fresh.
-- **What a character may cost:** the most this voice was billed per character in the original narration's
-  records, never less than the list rate; a voice with no record yet has its first request held at three
-  times the list rate (a library voice can carry a credit multiplier the API doesn't state), and each request
-  that arrives sets the rate from what it was billed. A request billed past what was reserved, taking the job
-  past its cap, stops the job.
+- **What a character may cost:** the list rate, 1 credit, the most ElevenLabs states for these models. That
+  holds for a voice the account owns and for ElevenLabs' premade voices; a Voice Library voice the account
+  doesn't own can carry a credit multiplier (a legacy custom rate, varying with the user's plan) that the API
+  doesn't state, so no job takes one: a dub with it is the director's call, outside a cap. Should a request
+  ever be billed past what it reserved and take the job past its cap, the job stops.
 - **A request that may have been billed without its audio arriving** (a timeout, a dropped connection, a
   crash, anything but the server's no) stays reserved at its most ("possibly charged"), is never sent again by
   itself, and stops its language; the requests of the same run that did arrive stay billed:
@@ -77,7 +77,7 @@ for something else (art, music), anything in YouTube Studio.
    original's map shows what needed it).
 2. `dub.py speak --video <video> --lang <code> --test N`: the voice test on the hardest paragraph (most
    numbers and names, the tightest place), not the first; then `dub.py hear --video <video> --lang <code>
-   --test N` transcribes it against its text and its language. The rest isn't made until it passes; a
+   --test N` transcribes it, letting the transcriber detect the language, against its text. The rest isn't made until it passes; a
    failure gets another take (`speak --block N --takes 2`, `--pick 2 --block N`) heard again, and a second
    failure stops the language. Read what eleven.py measures on it too (pace against the original's,
    loudness).
@@ -121,9 +121,10 @@ stopped.
 
 `dub.py verify` (free) checks each track against the video (its final render's length, else the mix's, to a
 frame), 48 kHz stereo, no clipped sample, the true peak under the ceiling, the music and effects as in the
-video's mix (files, times, gains), the original voice absent, that it is made from what is there now (the
-translation, the narration, the anchors and levels, the placement, the video's words and mix: a track made
-before any of them changed fails), the placement's open issues, the transcription; and, as things to listen to rather than failures, the loudness against the original
+video's mix (files, times, gains), the original voice absent, every placed word inside the track, that it is
+made from what is there now (the translation, the respellings, the voice and its settings, the narration, the
+anchors and levels, the placement, the video's words and mix: a track made before any of them changed fails),
+the placement's open issues, the transcription; and, as things to listen to rather than failures, the loudness against the original
 (integrated, and 3-second stretches more than 3 LU apart) and the spread across languages. `--mp4` muxes each
 track on the final render in `out/<video>/dub/` to watch. Not checked by anything: the accent, the delivery,
 the translation's meaning. Say so in every hand-off: nobody has listened unless the director has.

@@ -1346,9 +1346,13 @@ async function srt() {
   // inside the video: a subtitle neither starts nor stays past its end (the reading time a last line would want)
   const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
   const end = len.seconds ?? Infinity;
-  const cues = built.cues.filter((c) => c.start < end - SUB_MIN / 2);
-  if (cues.length < built.cues.length) notes.push(`${built.cues.length - cues.length} subtitle(s) would start at the video's end (${clock(end)}, from ${len.from}): left out`);
-  for (const c of cues) c.end = Math.min(c.end, end);
+  const cues = built.cues.filter((c) => c.start < end);
+  if (cues.length < built.cues.length) notes.push(`${built.cues.length - cues.length} subtitle(s) would start after the video's end (${clock(end)}, from ${len.from}): left out`);
+  // a subtitle near the end ends with the video, and starts earlier when that leaves it too short to read
+  cues.forEach((c, i) => {
+    c.end = Math.min(c.end, end);
+    if (c.end - c.start < SUB_MIN) c.start = Math.max(i ? cues[i - 1].end + gap : 0, Math.min(c.start, c.end - SUB_MIN));
+  });
   // timed notes for words the picture shows (youtube/<code>/notes.tsv: time, seconds, text), where no subtitle is
   const notesFile = existsSync(narration) ? path.join(pkg, 'notes.tsv') : path.join(vdir, 'youtube', `notes.${code}.tsv`);
   let placedNotes = 0;

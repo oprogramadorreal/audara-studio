@@ -350,10 +350,10 @@ try {
   mkdirSync(path.join(ev, 'data'), { recursive: true });
   mkdirSync(path.join(ev, 'youtube', 'ja'), { recursive: true });
   writeFileSync(path.join(ev, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
-  const E1 = 'The planet turns.', E2 = 'And the night falls over the cities.';
+  const E1 = 'The planet turns.', E2 = 'And the night falls over the cities.', E3 = 'Bye.';
   writeFileSync(path.join(ev, 'data', 'words.json'), JSON.stringify({ lines: [
-    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 8, 1.8) }] }));
-  writeFileSync(path.join(ev, 'youtube', 'ja', 'narration.txt'), '惑星は回ります。\n\nそして街の上に夜が来て、すべての明かりが一つずつ灯っていきます。\n');
+    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 7.5, 1.8) }, { text: E3, words: timed(E3, 9.7, 0.2) }] }));
+  writeFileSync(path.join(ev, 'youtube', 'ja', 'narration.txt'), '惑星は回ります。\n\nそして街の上に夜が来て、すべての明かりが一つずつ灯っていきます。\n\nまたね。\n');
   writeFileSync(path.join(ev, 'youtube', 'notes.en.tsv'), '0:00\t2\t[day]\n0:08.5\t3\t[night]\n0:03\t2\t[noon]\n');
   r = inSub(['srt', '--video', 'e', '--lang', 'ja']);
   const endOf = (stamp: string) => { const m = /(\d\d):(\d\d):(\d\d),(\d\d\d)$/.exec(stamp)!; return +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000; };
@@ -362,6 +362,7 @@ try {
   expect('srt: a subtitle near the video\'s end stays inside it', r.code === 0 && span.length > 0 && span.every(([, z]) => z <= 10), r.out + JSON.stringify(span));
   r = inSub(['srt', '--video', 'e', '--lang', 'en']);
   span = r.code === 0 ? ends(path.join(ev, 'youtube', 'subtitles.en.srt')) : [];
+  expect('srt: a word spoken just before the video\'s end keeps its subtitle, ending with the video', r.code === 0 && /Bye\./.test(readFileSync(path.join(ev, 'youtube', 'subtitles.en.srt'), 'utf8')) && span[span.length - 1][1] === 10, r.out + JSON.stringify(span));
   expect('srt: notes placed one by one never overlap the narration or each other, and none runs past the end',
     r.code === 0 && span.every(([a, z], i) => z <= 10 && (i === 0 || a >= span[i - 1][1])) && /\[noon\]/.test(readFileSync(path.join(ev, 'youtube', 'subtitles.en.srt'), 'utf8')), r.out + JSON.stringify(span));
   const nv = path.join(sub, 'videos', 'n');
