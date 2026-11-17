@@ -689,6 +689,9 @@ class DubTest(unittest.TestCase):
         self.assertEqual(rec["duration"], 5.0)
         self.assertEqual([p["text"] for p in rec["pieces"]], ["Inicio conservado."])
         self.assertEqual(rec["issues"], [])
+        # the estimate counts the whole narration all the same: speak makes the translation whole (codex's seventh
+        # review: the cap it suggested had shrunk with the render)
+        self.assertEqual(dub.Original(dub.Video("v")).chars(), len("Kept opening. Late ending."))
 
 
 if __name__ == "__main__":

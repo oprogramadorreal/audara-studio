@@ -1359,13 +1359,15 @@ async function srt() {
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }
   }
-  const built = buildCues(toks(words, lang, rule.spaced), lang, rule, gap);
-  const long = built.long;
-  // inside the video: a subtitle neither starts nor stays past its end (the reading time a last line would want)
+  // inside the video: no word after its end goes into a subtitle (before they are grouped, so none joins one that
+  // starts in time), and a subtitle doesn't stay past it (the reading time a last line would want)
   const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
   const end = len.seconds ?? Infinity;
-  const cues = built.cues.filter((c) => c.start < end);
-  if (cues.length < built.cues.length) notes.push(`${built.cues.length - cues.length} subtitle(s) would start after the video's end (${clock(end)}, from ${len.from}): left out`);
+  const heard = words.filter((w) => w.start < end).map((w) => ({ ...w, end: Math.min(w.end, end) }));
+  if (heard.length < words.length) notes.push(`${words.length - heard.length} word(s) after the video's end (${clock(end)}, from ${len.from}): left out`);
+  const built = buildCues(toks(heard, lang, rule.spaced), lang, rule, gap);
+  const long = built.long;
+  const cues = built.cues;
   // a subtitle near the end ends with the video, and starts earlier when that leaves it too short to read
   cues.forEach((c, i) => {
     c.end = Math.min(c.end, end);

@@ -457,9 +457,10 @@ class Original:
         lo, hi = voice_window(res, tdata.get("layer"))
         self.window = lo, hi = lo, min(hi, self.video_duration()[0])
         self.lines = word_lines(doc, shift, self.window)
+        self.spoken = word_lines(doc, shift, None)  # (the whole narration, what a translation says and is billed for)
         # a line's sentences as spoken, before the video cuts any: a translation follows them one for one, so a
         # sentence the video leaves out whole is left out of the dub too, and one it cuts in part starts at the cut
-        for l, full in zip(self.lines, word_lines(doc, shift, None)):
+        for l, full in zip(self.lines, self.spoken):
             l["sentences"] = sentences(full["words"])
             l["trimmed"] = any(w["end"] <= lo or w["start"] >= hi for w in full["words"])
         self.plan_dir = (v.root / rec.get("plan_file", f"videos/{v.name}/mix.json")).parent
@@ -467,7 +468,9 @@ class Original:
         self.fps = float(vj.get("fps") or 30) if isinstance(vj, dict) else 30.0
 
     def chars(self) -> int:
-        return sum(len(" ".join(str(w.get("spoken") or w.get("w", "")) for w in l["words"])) for l in self.lines)
+        """The narration's characters, all of it: speak makes each translated paragraph whole, whatever part of it
+        the video plays, so the estimate counts it whole."""
+        return sum(len(" ".join(str(w.get("spoken") or w.get("w", "")) for w in l["words"])) for l in self.spoken)
 
     def voice_track(self) -> np.ndarray | None:
         """The original voice layer in video time (mono), from the plan as recorded: per-line levels come from it."""

@@ -5042,3 +5042,15 @@ Its sixth look found two more, both taken:
 
 `test_dub.py` has 17 tests (a sentence after a shorter render's end) and `test_youtube.ts` 74 (the German
 subtitle).
+
+Its seventh look found two that the window had brought, both taken:
+
+- `srt` dropped what follows the video's end only after grouping the words into subtitles, so a word after the end
+  could ride in an earlier one: "Omit." at 5.1 s in a 5-second video showed with "Keep." until 5.0. Words after the
+  end are now dropped before the grouping, in the video's language, a translation and a dub alike.
+- The estimate counted only the narration the video plays, but `speak` makes each translated paragraph whole. With
+  a 180-second narration and a 5-second render the suggested cap fell from 5,000 credits to 1,000, and the
+  translation's exact count then needed a second yes. The estimate counts the whole narration again.
+
+`test_dub.py` has 17 tests (test_17 also checks the estimate) and `test_youtube.ts` 75 (a word after the video's
+end).

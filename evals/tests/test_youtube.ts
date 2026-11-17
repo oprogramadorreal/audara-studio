@@ -328,6 +328,22 @@ try {
     expect('srt: what is left of a subtitle ended at its clause is split again until it fits (German, 42 at most)',
       p.exitCode === 0 && dc.length > 0 && dc.every((x) => x.lines.length <= 2 && x.lines.every((l) => g(l, 'de') <= 42)) && !/too long for two lines/.test(out), out + JSON.stringify(dc));
   }
+  {
+    // a word after the video's end joins no subtitle, in the video's language or a translation (codex's seventh
+    // review: "Omit." at 5.1 s in a 5-second video was shown with "Keep." until 5.0)
+    const kp = path.join(root, 'subs-end'), kv = path.join(kp, 'videos', 'v');
+    mkdirSync(path.join(kv, 'data'), { recursive: true });
+    mkdirSync(path.join(kv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(kv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(kv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Keep. Omit.', words: [
+      { w: 'Keep.', start: 4.5, end: 4.8 }, { w: 'Omit.', start: 5.1, end: 5.4 }] }] }));
+    writeFileSync(path.join(kv, 'youtube', 'es', 'narration.txt'), 'Guardar. Omitir.\n');
+    const run = (code: string) => { const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'v', '--lang', code], { cwd: kp, stdout: 'pipe', stderr: 'pipe' }); return p.stdout.toString() + p.stderr.toString(); };
+    const o1 = run('en'), o2 = run('es');
+    const s1 = readFileSync(path.join(kv, 'youtube', 'subtitles.en.srt'), 'utf8'), s2 = readFileSync(path.join(kv, 'youtube', 'es', 'subtitles.es.srt'), 'utf8');
+    expect('srt: a word after the video\'s end joins no subtitle, in its language and a translation',
+      /Keep\./.test(s1) && !/Omit/.test(s1) && /Guardar\./.test(s2) && !/Omitir/.test(s2) && /1 word\(s\) after the video's end/.test(o1 + o2), o1 + s1 + o2 + s2);
+  }
 
   // check: a language's folder, its subtitles and its dubbed track
   const wav = (seconds: number) => {
