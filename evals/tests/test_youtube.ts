@@ -354,6 +354,21 @@ try {
     const sj = jp.exitCode === 0 ? readFileSync(path.join(jv, 'youtube', 'subtitles.ja.srt'), 'utf8') : '';
     expect('srt: a Japanese sentence timed whole across the end shows only what is spoken before it',
       /私たちの旅は/.test(sj) && !/ここ|始まります|上空/.test(sj), jp.stdout.toString() + jp.stderr.toString() + sj);
+    // a voice block placed after the video's end (at 5.1 s in a 5-second video, "from": 0.5): nothing of it is heard,
+    // not even a word that crosses its start, in the video's language or a translation (codex's ninth review)
+    const lv = path.join(kp, 'videos', 'late');
+    mkdirSync(path.join(lv, 'data'), { recursive: true });
+    mkdirSync(path.join(lv, 'audio'), { recursive: true });
+    mkdirSync(path.join(lv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(lv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(lv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Hello.', words: [{ w: 'Hello.', start: 0, end: 1 }] }] }));
+    writeFileSync(path.join(lv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 10,
+      voice: [{ file: 'videos/late/audio/narration.wav', at: 5.1, end: 7.1 }], timing_data: { 'words.json': { layer: 'voice', shift_s: 4.6 } } } }));
+    writeFileSync(path.join(lv, 'youtube', 'es', 'narration.txt'), 'Hola.\n');
+    const late = (code: string, f: string) => { const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'late', '--lang', code], { cwd: kp }); return p.exitCode === 0 && existsSync(f) ? readFileSync(f, 'utf8') : null; };
+    const l1 = late('en', path.join(lv, 'youtube', 'subtitles.en.srt')), l2 = late('es', path.join(lv, 'youtube', 'es', 'subtitles.es.srt'));
+    expect('srt: a voice block after the video\'s end has no subtitle, not even a word crossing its start',
+      l1 !== null && l2 !== null && !/Hello/.test(l1) && !/Hola/.test(l2), JSON.stringify([l1, l2]));
   }
 
   // check: a language's folder, its subtitles and its dubbed track

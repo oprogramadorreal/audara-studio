@@ -5060,3 +5060,9 @@ by length. The end was applied to the entry before the split, so the whole sente
 before the end: a sentence spoken from 4.0 to 9.8 s in a 5-second video showed all its words between 4.5 and 5.0 s.
 Every edge (before 0 s, a voice block's `from` and `dur`, the video's end) now cuts the words after the split, and
 only "私たちの旅は", spoken before 5 s, is shown. `test_youtube.ts` has 76 tests.
+
+Its ninth look found one. A voice block placed after a shorter render's end (`at: 5.1`, `from: 0.5`, in a
+5-second video) leaves a window that ends before it starts. Each edge was checked on its own, so a word crossing the
+block's start passed both and came out from 5.1 to 5.0 s: "Hello." and "Hola." were shown from 4.17 s, and the dub
+placed the word and reported that it couldn't fit. An empty window now holds no word, in `srt` and in `dub.py`
+alike. `test_youtube.ts` has 77 tests, and test_17 places nothing for such a block.

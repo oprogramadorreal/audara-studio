@@ -692,6 +692,18 @@ class DubTest(unittest.TestCase):
         # the estimate counts the whole narration all the same: speak makes the translation whole (codex's seventh
         # review: the cap it suggested had shrunk with the render)
         self.assertEqual(dub.Original(dub.Video("v")).chars(), len("Kept opening. Late ending."))
+        # a voice block placed after the render's end (at 5.1 s in a 5 s video): nothing is heard, so nothing is
+        # placed, not even a word that crosses the block's start (codex's ninth review)
+        put(v / "data" / "words.json", {"lines": [{"text": "Hello.", "words": [{"w": "Hello.", "start": 0, "end": 1}]}]})
+        (v / "youtube" / "es" / "narration.txt").write_text("Hola.\n", encoding="utf-8")
+        put(d / "data" / "words.json", {"lines": [{"text": "Hola.", "words": [{"w": "Hola.", "start": 0.5, "end": 0.9}]}]})
+        put(v / "audio" / "mix.wav.request.json", {
+            "outputs": {"mix.wav": dub.sha256(v / "audio" / "mix.wav")}, "plan_file": "videos/v/mix.json",
+            "plan": {"voice": {"file": "audio/narration.wav", "from": 0.5, "at": 5.1, "dur": 2}},
+            "resolved": {"duration": 10, "voice": [{"file": "videos/v/audio/narration.wav", "at": 5.1, "end": 7.1}],
+                         "timing_data": {"words.json": {"layer": "voice", "shift_s": 4.6}}}})
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertEqual((rec["pieces"], rec["issues"]), ([], []), rec)
 
 
 if __name__ == "__main__":

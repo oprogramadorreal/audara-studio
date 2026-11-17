@@ -352,6 +352,13 @@ def sentences(words: list[dict]) -> list[list[dict]]:
     return out
 
 
+def heard(a: float, b: float, window: tuple[float, float]) -> bool:
+    """Whether the stretch a..b is heard in `window`: none of it is in an empty one (a voice block that starts after
+    the video's end)."""
+    lo, hi = window
+    return hi > lo and b > lo and a < hi
+
+
 def word_lines(doc: dict, shift: float = 0.0, window: tuple[float, float] | None = (0.0, math.inf)) -> list[dict]:
     """A words.json's lines in video time (+shift). Words outside `window`, the stretch of the video where the mix
     plays them (from 0 s; a narration placed before 0 s, cut by its block's "from" or "dur", or by the mix's end),
@@ -361,7 +368,7 @@ def word_lines(doc: dict, shift: float = 0.0, window: tuple[float, float] | None
     for i, l in enumerate(doc.get("lines") or []):
         ws = [{**w, "start": max(lo, float(w["start"]) + shift), "end": min(hi, float(w["end"]) + shift)}
               for w in l.get("words") or [] if isinstance(w.get("start"), (int, float))
-              and float(w["end"]) + shift > lo and float(w["start"]) + shift < hi]
+              and heard(float(w["start"]) + shift, float(w["end"]) + shift, (lo, hi))]
         text = l.get("text") if isinstance(l.get("text"), str) else " ".join(str(w.get("w", "")) for w in ws)
         lines.append({"i": i, "text": text, "words": ws,
                       "start": ws[0]["start"] if ws else None, "end": ws[-1]["end"] if ws else None})
@@ -455,14 +462,14 @@ class Original:
         # what the video plays of the narration: its voice block, up to the video's end (a final render shorter
         # than the mix ends it sooner)
         lo, hi = voice_window(res, tdata.get("layer"))
-        self.window = lo, hi = lo, min(hi, self.video_duration()[0])
+        self.window = lo, min(hi, self.video_duration()[0])
         self.lines = word_lines(doc, shift, self.window)
         self.spoken = word_lines(doc, shift, None)  # (the whole narration, what a translation says and is billed for)
         # a line's sentences as spoken, before the video cuts any: a translation follows them one for one, so a
         # sentence the video leaves out whole is left out of the dub too, and one it cuts in part starts at the cut
         for l, full in zip(self.lines, self.spoken):
             l["sentences"] = sentences(full["words"])
-            l["trimmed"] = any(w["end"] <= lo or w["start"] >= hi for w in full["words"])
+            l["trimmed"] = any(not heard(w["start"], w["end"], self.window) for w in full["words"])
         self.plan_dir = (v.root / rec.get("plan_file", f"videos/{v.name}/mix.json")).parent
         vj = read_json(v.dir / "video.json", "video.json") or {}
         self.fps = float(vj.get("fps") or 30) if isinstance(vj, dict) else 30.0
@@ -1443,7 +1450,7 @@ def cmd_place(a) -> dict:
         ds, os_ = sentences(dl["words"]), ol["sentences"]
         if os_ and len(ds) == len(os_):
             for k, (src, dst) in enumerate(zip(os_, ds)):
-                if src[-1]["end"] <= plays_from or src[0]["start"] >= plays_to:
+                if not heard(src[0]["start"], src[-1]["end"], o.window):
                     notes.append(f"line {i + 1}, sentence {k + 1}: the video doesn't play it (its mix or its end "
                                  "cuts the narration there), so its translation isn't placed")
                     continue

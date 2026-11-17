@@ -1365,8 +1365,11 @@ async function srt() {
   // an edge cuts is cut there. (A subtitle doesn't stay past the end either: the reading time a last line would want.)
   const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
   const end = len.seconds ?? Infinity;
-  const inside = toks(words, lang, rule.spaced).filter((t) => t.end > heardFrom && t.start < heardTo);
-  const heard = inside.filter((t) => t.start < end)
+  // (a window that ends before it starts, a voice block placed after the video's end, holds no word at all)
+  const at = (t: Tok, a: number, b: number) => b > a && t.end > a && t.start < b;
+  const all = toks(words, lang, rule.spaced);
+  const inside = all.filter((t) => at(t, heardFrom, heardTo));
+  const heard = all.filter((t) => at(t, heardFrom, Math.min(heardTo, end)))
     .map((t) => ({ ...t, start: Math.max(heardFrom, t.start), end: Math.min(heardTo, end, t.end) }));
   if (heard.length < inside.length) notes.push(`${inside.length - heard.length} word(s) after the video's end (${clock(end)}, from ${len.from}): left out`);
   const built = buildCues(heard, lang, rule, gap);
