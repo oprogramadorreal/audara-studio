@@ -351,10 +351,13 @@ def sentences(words: list[dict]) -> list[list[dict]]:
 
 
 def word_lines(doc: dict, shift: float = 0.0) -> list[dict]:
+    """A words.json's lines in video time (+shift). Words a mix places before 0 s (a narration trimmed at its start)
+    aren't in the video: left out, and a word cut by 0 s starts there."""
     lines = []
     for i, l in enumerate(doc.get("lines") or []):
-        ws = [{**w, "start": float(w["start"]) + shift, "end": float(w["end"]) + shift}
-              for w in l.get("words") or [] if isinstance(w.get("start"), (int, float))]
+        ws = [{**w, "start": max(0.0, float(w["start"]) + shift), "end": float(w["end"]) + shift}
+              for w in l.get("words") or [] if isinstance(w.get("start"), (int, float))
+              and float(w["end"]) + shift > 0]
         text = l.get("text") if isinstance(l.get("text"), str) else " ".join(str(w.get("w", "")) for w in ws)
         lines.append({"i": i, "text": text, "words": ws,
                       "start": ws[0]["start"] if ws else None, "end": ws[-1]["end"] if ws else None})
@@ -1061,9 +1064,12 @@ def cmd_speak(a) -> dict:
                 say(f"{lang_name(lang.code)}: block {a.test} exists already (free).")
         elif jobs:
             pilot = read_json(lang.pilot) or {}
+            paras = paragraphs(lang.narration_txt)
+            b = pilot.get("block")
             if (not pilot.get("pass") or sha256(Path(v.root / pilot.get("file", "-"))) != pilot.get("file_sha256")
                     or pilot.get("voice") != job["voice"]["id"] or pilot.get("model") != ls.get("model")
-                    or any(block_of(x) == pilot.get("block") for x in jobs)):
+                    or any(block_of(x) == b for x in jobs)
+                    or not isinstance(b, int) or not 1 <= b <= len(paras) or pilot.get("text") != paras[b - 1]):
                 raise Fail(SCOPE, f"{lang_name(lang.code)}: the voice test hasn't passed yet. Make it on the hardest "
                                   f"paragraph (speak --lang {lang.code} --test N), check it (hear --lang {lang.code} "
                                   "--test N), then make the rest")
@@ -1171,17 +1177,33 @@ def assemble(v: Video, lang: Lang, job: dict) -> dict:
     return {"lang": lang.code, "missing": missing}
 
 
-ISO3 = {"en": "eng", "es": "spa", "pt": "por", "hi": "hin", "ar": "ara", "ru": "rus", "ja": "jpn", "de": "deu",
-        "bn": "ben", "fr": "fra", "vi": "vie", "tr": "tur", "id": "ind", "ko": "kor", "it": "ita", "zh": "zho",
-        "nl": "nld", "pl": "pol", "uk": "ukr", "th": "tha", "fa": "fas", "ur": "urd", "ta": "tam", "te": "tel"}
-OTHER3 = {"de": {"ger"}, "fr": {"fre"}, "zh": {"chi", "cmn"}, "fa": {"per"}, "nl": {"dut"}}
+# ISO 639-1 to the 639-3 (and older 639-2/B) codes a transcriber may answer with, for every language the models
+# here speak and a few more; 639-3 macrolanguages with their usual individual codes.
+ISO3 = {"af": "afr", "am": "amh", "ar": "ara arb", "as": "asm", "az": "aze azj", "be": "bel", "bg": "bul", "bn": "ben",
+        "bs": "bos", "ca": "cat", "cs": "ces cze", "cy": "cym wel", "da": "dan", "de": "deu ger", "el": "ell gre",
+        "en": "eng", "es": "spa", "et": "est ekk", "fa": "fas per pes", "fi": "fin", "fr": "fra fre", "ga": "gle",
+        "gl": "glg", "gu": "guj", "ha": "hau", "he": "heb", "hi": "hin", "hr": "hrv", "hu": "hun", "hy": "hye arm",
+        "id": "ind", "is": "isl ice", "it": "ita", "ja": "jpn", "jv": "jav", "ka": "kat geo", "kk": "kaz", "kn": "kan",
+        "ko": "kor", "ky": "kir", "lb": "ltz", "ln": "lin", "lt": "lit", "lv": "lav lvs", "mk": "mkd mac", "ml": "mal",
+        "mn": "mon khk", "mr": "mar", "ms": "msa may zsm", "mt": "mlt", "my": "mya bur", "ne": "nep npi",
+        "nl": "nld dut", "no": "nor nob nno", "nb": "nob nor", "pa": "pan", "pl": "pol", "ps": "pus pbt",
+        "pt": "por", "ro": "ron rum", "ru": "rus", "sd": "snd", "sk": "slk slo", "sl": "slv", "so": "som", "sr": "srp",
+        "sv": "swe", "sw": "swa swh", "ta": "tam", "te": "tel", "tg": "tgk", "th": "tha", "tr": "tur", "uk": "ukr",
+        "ur": "urd", "uz": "uzb uzn", "vi": "vie", "zh": "zho chi cmn yue", "fil": "fil tgl", "tl": "tgl fil",
+        "yue": "yue zho", "ceb": "ceb", "ast": "ast"}
 
 
 def same_language(heard: str | None, base: str) -> bool | None:
+    """Whether a transcriber's language code is this language: None when it can't tell (no code, or one this table
+    doesn't know), so only a known other language fails a voice test."""
     if not heard:
         return None
     h = heard.lower().split("-")[0].split("_")[0]
-    return h == base or h == ISO3.get(base) or h in OTHER3.get(base, set())
+    mine = {base, *ISO3.get(base, "").split()}
+    if h in mine:
+        return True
+    known = {c for k, v in ISO3.items() for c in (k, *v.split())}
+    return False if h in known else None
 
 
 def paid_stt(v: Video, lang: Lang, args: list[str], what: str, secs: float) -> dict:
@@ -1243,12 +1265,23 @@ def cmd_hear(a) -> dict:
 
 def hear_pilot(v: Video, lang: Lang, n: int) -> dict:
     """The voice test checked before the rest is bought: block n transcribed, in its language, against its text."""
-    cands = [p for p in sorted(lang.blocks.glob("*")) if p.suffix in (".mp3", ".wav", ".pcm", ".opus")
-             and re.match(rf"0*{n}-", p.name) and p.with_name(p.stem + ".request.json").is_file()]
+    paras = paragraphs(lang.narration_txt) if lang.narration_txt.is_file() else []
+    if not 1 <= n <= len(paras):
+        raise usage(f"block {n}: youtube/{lang.code}/narration.txt has {len(paras)} paragraphs")
+    want = paras[n - 1]
+    # the block's take of the paragraph as it reads now (a paragraph rewritten leaves its old take beside the new one
+    # until the whole narration is assembled); the newest when there are several
+    cands = []
+    for p in lang.blocks.glob("*"):
+        if p.suffix not in (".mp3", ".wav", ".pcm", ".opus") or not re.match(rf"0*{n}-", p.name):
+            continue
+        r = read_json(p.with_name(p.stem + ".request.json")) or {}
+        if " ".join(str(r.get("shown_text") or "").split()) == want:
+            cands.append((str(r.get("generated") or ""), p, r))
     if not cands:
-        raise usage(f"block {n} isn't made yet: speak --video {v.name} --lang {lang.code} --test {n}")
-    f = cands[0]
-    rec = read_json(f.with_name(f.stem + ".request.json")) or {}
+        raise usage(f"block {n} isn't made for the paragraph as it reads now: speak --video {v.name} --lang {lang.code} "
+                    f"--test {n}")
+    _, f, rec = max(cands, key=lambda x: x[0])
     spoken = str(((rec.get("request") or {}).get("body") or {}).get("text") or rec.get("shown_text") or "")
     exp = lang.dir / "out" / f"pilot-{n}.txt"
     exp.parent.mkdir(parents=True, exist_ok=True)
@@ -1263,7 +1296,7 @@ def hear_pilot(v: Video, lang: Lang, n: int) -> dict:
     old = read_json(lang.pilot) or {}
     fails = int(old.get("fails", 0)) + (0 if ok else 1) if old.get("file_sha256") != sha256(f) else int(old.get("fails", 0))
     body = (rec.get("request") or {}).get("body") or {}
-    res = {"block": n, "file": v.rel(f), "file_sha256": sha256(f), "similarity": round(ratio, 3),
+    res = {"block": n, "file": v.rel(f), "file_sha256": sha256(f), "text": want, "similarity": round(ratio, 3),
            "voice": str((rec.get("request") or {}).get("path", "")).split("/")[3:4][0] if (rec.get("request") or {}).get("path") else None,
            "model": body.get("model_id"),
            "language_heard": j.get("language"), "same_language": same, "pass": ok, "fails": fails, "at": now()}
@@ -1359,8 +1392,10 @@ def cmd_place(a) -> dict:
         report_place(v, lang, old, up_to_date=True)
         return old
     y = decode(lang.take_wav)
-    dur = o.duration
+    dur, dur_from = o.video_duration()  # (the length verify holds the track to: the final render's, else the mix's)
     issues, notes = [], []
+    if abs(dur - o.duration) > 1e-3:
+        notes.append(f"the track is {dur:.3f} s long, as {dur_from} is; the video's mix is {o.duration:.3f} s")
 
     # pieces: sentence for sentence where the counts match, else the whole line
     pieces = []
@@ -1374,7 +1409,8 @@ def cmd_place(a) -> dict:
                                "orig_end": src[-1]["end"]})
         else:
             if ol["start"] is None:
-                issues.append(f"line {i + 1}: the original line has no timed words, so its translation has no place")
+                notes.append(f"line {i + 1}: none of the original line is in the video (no timed words after 0 s), so "
+                             "its translation isn't placed")
                 continue
             pieces.append({"line": i, "k": 0, "words": dl["words"], "target": ol["start"], "why": "line",
                            "orig_end": ol["end"]})
@@ -1623,7 +1659,7 @@ def cmd_mix(a) -> dict:
                     f"{lang_name(lang.code)} voice. The music and effects keep their files, times and gains.",
             **{k: raw[k] for k in ("kind", "loudness", "true_peak", "max_limit_db", "fade_in", "fade_out", "hits",
                                    "hit_lu", "build_lu") if k in raw},
-            "duration": res.get("duration"), "voice": "audio/voice.wav", "voice_words": "data/words-placed.json"}
+            "duration": o.video_duration()[0], "voice": "audio/voice.wav", "voice_words": "data/words-placed.json"}
     mu = raw.get("music")
     if mu is not None:
         mu = {"file": mu} if isinstance(mu, str) else dict(mu)
@@ -1750,9 +1786,13 @@ def cmd_verify(a) -> dict:
         # the bed: the original's files, times and gains; the original voice nowhere in it
         ores, dres = o.rec.get("resolved") or {}, drec.get("resolved") or {}
         om_, dm_ = ores.get("music") or {}, dres.get("music") or {}
-        for k in ("file", "at", "from", "end"):
+        for k in ("file", "at", "from"):
             if om_.get(k) != dm_.get(k):
                 fails.append(f"the music's {k} is {dm_.get(k)!r}, the video's mix has {om_.get(k)!r}")
+        # (its end within the video's mix's length: a track as long as a longer render runs the music on)
+        if isinstance(dm_.get("end"), (int, float)) and isinstance(om_.get("end"), (int, float)) and \
+                abs(min(dm_["end"], o.duration) - om_["end"]) > 1e-3:
+            fails.append(f"the music ends at {dm_['end']} s, at {om_['end']} s in the video's mix")
         if om_.get("gain_db") != dm_.get("gain_db"):
             fails.append(f"the music's gain is {dm_.get('gain_db')} dB, {om_.get('gain_db')} in the video's mix")
         ofx = [(e.get("file"), e.get("placed_at"), e.get("gain_db")) for e in ores.get("effects") or []]

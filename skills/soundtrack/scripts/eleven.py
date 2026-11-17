@@ -1772,7 +1772,8 @@ def tts_flags(a) -> list[str]:
     """The narration flags of this run, so a command it suggests repeats them (a refused run
     remembers nothing, so the suggestion must carry them)."""
     f: list[str] = []
-    for flag, v in (("--voice", a.voice), ("--model", a.model), ("--format", a.format), ("--seed", a.seed),
+    for flag, v in (("--voice", a.voice), ("--model", a.model), ("--language", a.language), ("--format", a.format),
+                    ("--seed", a.seed),
                     ("--gap", a.gap), ("--lead", a.lead), ("--tail", a.tail), ("--stability", a.stability),
                     ("--similarity", a.similarity), ("--style", a.style), ("--speed", a.speed),
                     ("--pitch-tolerance", a.pitch_tolerance)):

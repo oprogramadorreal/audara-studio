@@ -1296,7 +1296,8 @@ async function srt() {
   if (!existsSync(wordsFile)) fail(`videos/${video}/data/words.json doesn't exist: subtitles are timed on the narration's words (the soundtrack skill's eleven.py tts or align.py writes them)`);
   const shift = wordsShift(vdir);
   const orig: WordsDoc = readJson(wordsFile);
-  const olines = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
+  // (in video time; words a mix places before 0 s, a narration trimmed at its start, aren't in the video)
+  const olines = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number' && w.end + shift > 0).map((w) => ({ w: String(w.w), start: Math.max(0, w.start + shift), end: w.end + shift })));
   const pkg = path.join(vdir, 'youtube', code);
   const narration = path.join(pkg, 'narration.txt');
   const placedFile = path.join(vdir, 'dub', code, 'data', 'words-placed.json');
@@ -1320,7 +1321,7 @@ async function srt() {
       if (!fresh) { notes.push(`the dub in videos/${video}/dub/${code}/ was placed from another text than narration.txt: timed on the original instead (place the dub again to time them on its voice)`); placed = undefined; }
     }
     if (placed) {
-      words = (placed.lines ?? []).flatMap((l) => (l.words ?? []).map((w) => ({ w: String(w.w), start: w.start, end: w.end })));
+      words = (placed.lines ?? []).flatMap((l) => (l.words ?? []).filter((w) => w.end > 0).map((w) => ({ w: String(w.w), start: Math.max(0, w.start), end: w.end })));
       from = `youtube/${code}/narration.txt, timed on its dubbed voice (videos/${video}/dub/${code}/data/words-placed.json)`;
     } else {
       // each translated sentence shown while its original sentence is spoken (the paragraph's, when they don't match)

@@ -4972,3 +4972,23 @@ and `test_eleven_pitch.py`.
   small detector).
 
 `test_dub.py` (12) and `test_youtube.ts` (71) pass after these, with `test_mix_measure.py` and `test_eleven_pitch.py`.
+
+**A review of the pull request** (Codex again, on the PR as opened: all four offline suites passing, 117 checks)
+found five more, all reproduced and all taken:
+
+- Placement and mixing made each track as long as the video's mix while verify held it to the final render's
+  length: with a 30-second mix and a 31-second render, every rebuilt track failed. Both now make it the render's
+  length (the mix's when there is no render), and the music's end is compared within the mix's length.
+- A mix that places the narration later than it begins (its `from` past its `at`) gave the trimmed words negative
+  times, and `srt` wrote `00:00:00,000 --> 00:00:00,000` with words nobody hears, which `check` then refused. Words
+  before 0 s are left out of the subtitles and of the dub's placement; a word cut by 0 s starts there.
+- A rewritten voice-test paragraph left its old take beside the new one until the whole narration was assembled,
+  and `hear --test` took the first by name: it passed the old French text. It now takes the take of the paragraph as
+  it reads now (the newest if several), records that text, and `speak`'s gate checks it.
+- The language check knew too few codes: Swedish heard as `swe` failed its voice test, and so did Romanian, Czech,
+  Hebrew and Malay. The table now covers every language the models speak, older codes included, and a code it
+  doesn't know is no failure.
+- `eleven.py`'s suggested next command dropped `--language`.
+
+`test_dub.py` has 14 tests (the render's length, the voice test of a rewritten paragraph, `--language` in the next
+command, the language codes) and `test_youtube.ts` 72; both pass, with `test_eleven_pitch.py`.

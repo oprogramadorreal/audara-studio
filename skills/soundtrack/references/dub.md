@@ -11,8 +11,8 @@ yes · Stops · Checks · Lessons
 
 ## What a track is
 
-`youtube/<code>/mix.wav`: the video's mix with its narration replaced, as long as the video, so it plays in
-sync with it. The music and the effects keep their files, their times and their gains from the video's own
+`youtube/<code>/mix.wav`: the video's mix with its narration replaced, as long as the video (its final render,
+else its mix), so it plays in sync with it. The music and the effects keep their files, their times and their gains from the video's own
 mix (`audio/mix.wav.request.json`), so the bed doesn't move; each translated sentence starts where its
 original sentence starts, because the picture follows the original words (a cut, a label, a reveal). The
 picture isn't changed: words it shows stay in the original language (the subtitles can translate them).
@@ -77,7 +77,8 @@ for something else (art, music), anything in YouTube Studio.
    original's map shows what needed it).
 2. `dub.py speak --video <video> --lang <code> --test N`: the voice test on the hardest paragraph (most
    numbers and names, the tightest place), not the first; then `dub.py hear --video <video> --lang <code>
-   --test N` transcribes it, letting the transcriber detect the language, against its text. The rest isn't made until it passes; a
+   --test N` transcribes the take of that paragraph as it reads now, letting the transcriber detect the
+   language, against its text. The rest isn't made until it passes; a
    failure gets another take (`speak --block N --takes 2`, `--pick 2 --block N`) heard again, and a second
    failure stops the language. Read what eleven.py measures on it too (pace against the original's,
    loudness).

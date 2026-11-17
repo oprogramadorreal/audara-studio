@@ -378,6 +378,21 @@ try {
   r = inSub(['check', path.join('videos', 'n', 'youtube', 'es')]);
   expect('check: an empty SubRip file fails, and so does a time with 99 seconds', r.code === 1 && /FAIL\s+subtitles\.es\.srt\s+no subtitles in it/.test(r.out) && /FAIL\s+subtitles\.xx\.srt\s+block 1: a time that isn't one/.test(r.out), r.out);
 
+  // srt: a narration its mix trims at the start (placed 5 s earlier than it begins) has no subtitle before 0 s
+  const tv = path.join(sub, 'videos', 't');
+  mkdirSync(path.join(tv, 'data'), { recursive: true });
+  mkdirSync(path.join(tv, 'audio'), { recursive: true });
+  writeFileSync(path.join(tv, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
+  writeFileSync(path.join(tv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { timing_data: { 'words.json': { shift_s: -5 } } } }));
+  writeFileSync(path.join(tv, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: 'Cut opening.', words: [{ w: 'Cut', start: 1, end: 1.4 }, { w: 'opening.', start: 1.5, end: 2 }] },
+    { text: 'Kept ending.', words: [{ w: 'Kept', start: 6, end: 6.4 }, { w: 'ending.', start: 6.5, end: 7 }] }] }));
+  r = inSub(['srt', '--video', 't', '--lang', 'en']);
+  const tsrt = r.code === 0 ? readFileSync(path.join(tv, 'youtube', 'subtitles.en.srt'), 'utf8') : '';
+  const tchk = inSub(['check', path.join('videos', 't', 'youtube')]);
+  expect('srt: narration trimmed before 0 s gets no subtitle (codex\'s review), and check passes', r.code === 0 && !/Cut opening/.test(tsrt)
+    && /00:00:01,000 --> [^\n]*\nKept ending\./.test(tsrt) && tchk.code === 0, r.out + tsrt + tchk.out);
+
   // shoot: a Korean face draws its characters a square wide, as the fallback does; it is still the face that draws
   const malgun = 'C:\\Windows\\Fonts\\malgunsl.ttf';
   if (existsSync(malgun)) {

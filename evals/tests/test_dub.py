@@ -179,6 +179,13 @@ class DubTest(unittest.TestCase):
                                                             "request reached ElevenLabs it may have been billed"}))
         self.assertFalse(dub.surely_not_billed(1, {"error": "failed: HTTP 502 bad gateway"}))
         self.assertFalse(dub.surely_not_billed(1, {"error": "Traceback (most recent call last): ..."}))
+        # a transcriber's language code against the language: every code it may use, and none it can't tell
+        for base, heard in (("sv", "swe"), ("ro", "ron"), ("cs", "ces"), ("he", "heb"), ("ms", "msa"), ("de", "ger"),
+                            ("zh", "cmn"), ("es", "es"), ("bn", "ben"), ("vi", "vie")):
+            self.assertTrue(dub.same_language(heard, base), (base, heard))
+        self.assertFalse(dub.same_language("eng", "es"))
+        self.assertIsNone(dub.same_language("qqq", "es"))
+        self.assertIsNone(dub.same_language(None, "es"))
         # a cap holds only where the rate is stated: a voice the account owns, or ElevenLabs' premade
         self.assertTrue(dub.voice_ok({"is_owner": True, "category": "professional"})[0])
         self.assertTrue(dub.voice_ok({"is_owner": False, "category": "premade"})[0])
@@ -202,6 +209,12 @@ class DubTest(unittest.TestCase):
         self.assertFalse((self.v / "dub" / "job.json").exists(), "a plan without --approve wrote the job")
         code, j, _ = self.dub("speak", "--video", "demo", "--lang", "es", ok=(4,))
         self.assertIn("no approved job", j["message"])
+        two = self.tmp / "two.txt"
+        two.write_text("First paragraph.\n\nSecond paragraph.\n", encoding="utf-8")
+        r = self.uv(SK / "eleven.py", "tts", str(two), "--out", str(self.tmp / "two"), "--voice", VOICE, "--model",
+                    "eleven_v4", "--language", "bn", "--json", ok=(4,))
+        self.assertIn("--language bn", " ".join(json.loads(r.stdout)["next"]) if isinstance(json.loads(r.stdout)["next"], list)
+                      else json.loads(r.stdout)["next"])
         self.assertEqual(self.paid(), before, "a free step reached a paid endpoint")
 
     def test_03_mix_with_another_voice_needs_somewhere_else(self):
@@ -468,6 +481,54 @@ class DubTest(unittest.TestCase):
         self.assertTrue(any("video" in x and ("end" in x or "room" in x) for x in rec["issues"]), rec["issues"])
         placed = json.loads((tight / "dub" / "es" / "data" / "words-placed.json").read_text(encoding="utf-8"))
         self.assertTrue(rec["issues"] or all(w["end"] <= plan["duration"] for l in placed["lines"] for w in l["words"]))
+
+    def test_13_the_voice_test_is_the_paragraph_as_it_reads_now(self):
+        """hear --test in-process, the transcription replaced: a paragraph rewritten leaves its old take beside the new
+        one, and the test is the new one's."""
+        cwd = os.getcwd()
+        os.chdir(self.root)
+        self.addCleanup(os.chdir, cwd)
+        real = dub.paid_stt
+        self.addCleanup(setattr, dub, "paid_stt", real)
+        v = dub.Video("demo")
+        lang = dub.Lang(v, "xx")
+        lang.blocks.mkdir(parents=True, exist_ok=True)
+        lang.pkg.mkdir(parents=True, exist_ok=True)
+        old, new = "Old words for the second paragraph.", "New words, rewritten, for the second paragraph."
+        lang.narration_txt.write_text(f"One.\n\n{new}\n\nThree.\n", encoding="utf-8")
+        for name, text, at in (("02-new-words-rewritten-for.mp3", new, "2026-11-17T12:00:01Z"),
+                               ("02-old-words-for-the.mp3", old, "2026-11-17T12:00:00Z")):
+            subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-f", "lavfi", "-i", "sine=f=220:d=0.5",
+                            str(lang.blocks / name)], check=True)
+            (lang.blocks / name).with_suffix(".request.json").write_text(json.dumps(
+                {"shown_text": text, "generated": at, "request": {"path": f"/v1/text-to-speech/{VOICE}/with-timestamps",
+                                                                   "body": {"text": text, "model_id": "eleven_multilingual_v2"}}}),
+                encoding="utf-8")
+        heard = []
+        dub.paid_stt = lambda v_, l_, args, what, secs: heard.append(args[1]) or {"transcript": new, "language": "xx"}
+        res = dub.hear_pilot(v, lang, 2)
+        self.assertTrue(heard[0].endswith("02-new-words-rewritten-for.mp3"), heard)
+        self.assertTrue(res["pass"] and res["text"] == new, res)
+        lang.narration_txt.write_text("One.\n\nNewer still.\n\nThree.\n", encoding="utf-8")
+        with self.assertRaises(dub.Fail):  # no take of the paragraph as it reads now
+            dub.hear_pilot(v, lang, 2)
+
+    def test_14_a_track_as_long_as_the_final_render(self):
+        render = self.root / "out" / "demo" / "demo.mp4"
+        render.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-f", "lavfi", "-i", "color=s=16x16:r=30:d=31",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(render)], check=True)
+        self.addCleanup(render.unlink)
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es", ok=(1,))  # made before the render
+        self.assertTrue(any("not current" in f for f in v["rows"][0]["fails"]), v["rows"][0])
+        code, rec, _ = self.dub("place", "--video", "demo", "--lang", "es")
+        self.assertEqual(rec["duration"], 31.0)
+        self.dub("mix", "--video", "demo", "--lang", "es")
+        self.mock.STATE["tts_texts"][:] = ES
+        self.dub("hear", "--video", "demo", "--lang", "es")
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
+        self.assertEqual((v["rows"][0]["status"], v["duration"]), ("ready", 31.0), v["rows"][0])
+        self.assertAlmostEqual(sf.info(str(self.v / "youtube" / "es" / "mix.wav")).duration, 31.0, places=3)
 
 
 if __name__ == "__main__":

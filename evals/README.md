@@ -326,8 +326,8 @@ is spoken; Hindi measured in graphemes and cut at the danda; a translation whose
 `check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,
 a language's own tags, a folder in full, a package with timed narration and no subtitles, a language's folder
 for a video with none needing no subtitles, an empty SubRip file and a time of 99 seconds), subtitles kept inside
-the video's end (a word spoken just before it kept) and notes placed one by one without covering the
-narration, and that a Korean web
+the video's end (a word spoken just before it kept), no subtitle for narration a mix trims before 0 s, notes
+placed one by one without covering the narration, and that a Korean web
 face drawing its characters a square wide isn't called a fallback (with Windows' Malgun Gothic Semilight; skipped
 without it: 0.13.2's width test called it one).
 `test_dub.py` checks `dub.py` against the ElevenLabs mock, served in-process, on a small project (music, an effect
@@ -346,7 +346,9 @@ refused until its voice test is heard and passes, and two failed tests stopping 
 and then to more again leaving a possible charge's stop in place; only a voice the account owns or a premade one
 taking a cap; with eleven.py replaced in-process, a take billed then one refused keeping the first billed, a bill
 past the list rate stopping the job at its cap, a crash counted as possibly charged; an anchor or a respelling
-added after the mix failing verify until it is taken back; grouped effects keeping the video's gains;
+added after the mix failing verify until it is taken back; a final render longer than the mix setting the
+track's length; the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
+older and individual forms; `--language` kept in the command eleven.py suggests; grouped effects keeping the video's gains;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
