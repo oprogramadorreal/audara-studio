@@ -1303,11 +1303,10 @@ async function srt() {
   if (!existsSync(wordsFile)) fail(`videos/${video}/data/words.json doesn't exist: subtitles are timed on the narration's words (the soundtrack skill's eleven.py tts or align.py writes them)`);
   const { shift, from: plays, to: stops } = wordsTiming(vdir);
   const orig: WordsDoc = readJson(wordsFile);
-  // (in video time; words the mix doesn't play, before 0 s or outside the narration's block, aren't in the video,
-  // and are left out once a translation's sentences have been matched to the original's as spoken)
+  // (in video time, as spoken; words the mix doesn't play, before 0 s or outside the narration's block, aren't in
+  // the video, and are left out once split into words, after a translation's sentences are matched to these)
   const full = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
-  const inVideo = <T extends { start: number; end: number }>(ws: T[]) => ws.filter((w) => w.end > plays && w.start < stops).map((w) => ({ ...w, start: Math.max(plays, w.start), end: Math.min(stops, w.end) }));
-  const olines = full.map(inVideo);
+  let heardFrom = plays, heardTo = stops; // (where the words are heard: the narration's block, or a dub's whole track)
   const pkg = path.join(vdir, 'youtube', code);
   const narration = path.join(pkg, 'narration.txt');
   const placedFile = path.join(vdir, 'dub', code, 'data', 'words-placed.json');
@@ -1316,12 +1315,12 @@ async function srt() {
   let out = '';
   const notes: string[] = [];
   if (!existsSync(narration)) {
-    words = olines.flat();
+    words = full.flat();
     from = `the video's own narration, videos/${video}/data/words.json${shift ? ` (+${shift.toFixed(3)} s, as the mix places it)` : ''}`;
     out = path.join(vdir, 'youtube', `subtitles.${code}.srt`);
   } else {
     const paras = paragraphsOf(narration);
-    if (paras.length !== olines.length) fail(`youtube/${code}/narration.txt has ${paras.length} paragraphs and the narration ${olines.length} lines: one paragraph per line, in order`);
+    if (paras.length !== full.length) fail(`youtube/${code}/narration.txt has ${paras.length} paragraphs and the narration ${full.length} lines: one paragraph per line, in order`);
     out = path.join(pkg, `subtitles.${code}.srt`);
     let placed: WordsDoc | undefined;
     if (existsSync(placedFile)) {
@@ -1334,7 +1333,8 @@ async function srt() {
       if (!fresh) { notes.push(`the dub in videos/${video}/dub/${code}/ was placed from another text than narration.txt: timed on the original instead (place the dub again to time them on its voice)`); placed = undefined; }
     }
     if (placed) {
-      words = (placed.lines ?? []).flatMap((l) => (l.words ?? []).filter((w) => w.end > 0).map((w) => ({ w: String(w.w), start: Math.max(0, w.start), end: w.end })));
+      words = (placed.lines ?? []).flatMap((l) => (l.words ?? []).map((w) => ({ w: String(w.w), start: w.start, end: w.end })));
+      heardFrom = 0; heardTo = Infinity;
       from = `youtube/${code}/narration.txt, timed on its dubbed voice (videos/${video}/dub/${code}/data/words-placed.json)`;
     } else {
       // each translated sentence shown while its original sentence is spoken (the paragraph's, when they don't match)
@@ -1350,7 +1350,7 @@ async function srt() {
           let acc = 0;
           for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * (acc - 1) / n; }
           // (a sentence the mix doesn't play isn't shown; one it cuts in part, where it plays)
-          if (b > plays && a < stops) words.push(...inVideo(s));
+          if (b > plays && a < stops) words.push(...s);
           else trimmedOut++;
         }
       });
@@ -1359,13 +1359,17 @@ async function srt() {
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }
   }
-  // inside the video: no word after its end goes into a subtitle (before they are grouped, so none joins one that
-  // starts in time), and a subtitle doesn't stay past it (the reading time a last line would want)
+  // only what is heard, inside the video: words outside where they play and after the video's end go into no
+  // subtitle. Cut once a timed run with no spaces (a Japanese sentence) is split into its words, so its time isn't
+  // squeezed into what is left, and before they are grouped, so none joins a subtitle that starts in time; a word
+  // an edge cuts is cut there. (A subtitle doesn't stay past the end either: the reading time a last line would want.)
   const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
   const end = len.seconds ?? Infinity;
-  const heard = words.filter((w) => w.start < end).map((w) => ({ ...w, end: Math.min(w.end, end) }));
-  if (heard.length < words.length) notes.push(`${words.length - heard.length} word(s) after the video's end (${clock(end)}, from ${len.from}): left out`);
-  const built = buildCues(toks(heard, lang, rule.spaced), lang, rule, gap);
+  const inside = toks(words, lang, rule.spaced).filter((t) => t.end > heardFrom && t.start < heardTo);
+  const heard = inside.filter((t) => t.start < end)
+    .map((t) => ({ ...t, start: Math.max(heardFrom, t.start), end: Math.min(heardTo, end, t.end) }));
+  if (heard.length < inside.length) notes.push(`${inside.length - heard.length} word(s) after the video's end (${clock(end)}, from ${len.from}): left out`);
+  const built = buildCues(heard, lang, rule, gap);
   const long = built.long;
   const cues = built.cues;
   // a subtitle near the end ends with the video, and starts earlier when that leaves it too short to read

@@ -321,7 +321,8 @@ description at and past 5,000 accented characters, chapters under 10 s or past t
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
 and three text files); preview's sheets; and what niche refuses before any network call. It also checks `srt` (the video's own narration in lines of
 42, from its first word, and a timed note for words on screen; a subtitle ended at its clause split again until
-what is left fits, in German; a word after the video's end in no subtitle, in its language and a translation; Japanese in lines of 13 with no spaces and no line
+what is left fits, in German; a word after the video's end in no subtitle, in its language and a translation,
+and a Japanese sentence timed whole across the end shown only up to it; Japanese in lines of 13 with no spaces and no line
 or subtitle opening on a particle; Korean in lines of 16 with its spaces; Arabic shown while its original sentence
 is spoken; Hindi measured in graphemes and cut at the danda; a translation whose paragraphs don't match refused),
 `check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,

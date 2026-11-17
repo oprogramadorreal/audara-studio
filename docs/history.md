@@ -5054,3 +5054,9 @@ Its seventh look found two that the window had brought, both taken:
 
 `test_dub.py` has 17 tests (test_17 also checks the estimate) and `test_youtube.ts` 75 (a word after the video's
 end).
+
+Its eighth look found one. eleven.py times an unspaced Japanese sentence as one entry, which `srt` splits into words
+by length. The end was applied to the entry before the split, so the whole sentence was squeezed into the time
+before the end: a sentence spoken from 4.0 to 9.8 s in a 5-second video showed all its words between 4.5 and 5.0 s.
+Every edge (before 0 s, a voice block's `from` and `dur`, the video's end) now cuts the words after the split, and
+only "私たちの旅は", spoken before 5 s, is shown. `test_youtube.ts` has 76 tests.

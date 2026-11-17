@@ -343,6 +343,17 @@ try {
     const s1 = readFileSync(path.join(kv, 'youtube', 'subtitles.en.srt'), 'utf8'), s2 = readFileSync(path.join(kv, 'youtube', 'es', 'subtitles.es.srt'), 'utf8');
     expect('srt: a word after the video\'s end joins no subtitle, in its language and a translation',
       /Keep\./.test(s1) && !/Omit/.test(s1) && /Guardar\./.test(s2) && !/Omitir/.test(s2) && /1 word\(s\) after the video's end/.test(o1 + o2), o1 + s1 + o2 + s2);
+    // a Japanese sentence timed whole (as eleven.py writes one) across the end: its words after the end are left out,
+    // not squeezed into the time before it (codex's eighth review)
+    const jv = path.join(kp, 'videos', 'j');
+    mkdirSync(path.join(jv, 'data'), { recursive: true });
+    writeFileSync(path.join(jv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    const ja = '私たちの旅はここから始まります、地表から百キロメートル上空です。';
+    writeFileSync(path.join(jv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: ja, words: [{ w: ja, start: 4, end: 9.8125 }] }] }));
+    const jp = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'j', '--lang', 'ja'], { cwd: kp, stdout: 'pipe', stderr: 'pipe' });
+    const sj = jp.exitCode === 0 ? readFileSync(path.join(jv, 'youtube', 'subtitles.ja.srt'), 'utf8') : '';
+    expect('srt: a Japanese sentence timed whole across the end shows only what is spoken before it',
+      /私たちの旅は/.test(sj) && !/ここ|始まります|上空/.test(sj), jp.stdout.toString() + jp.stderr.toString() + sj);
   }
 
   // check: a language's folder, its subtitles and its dubbed track
