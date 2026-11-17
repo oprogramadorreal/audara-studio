@@ -1,6 +1,6 @@
 ---
 name: devlog
-description: "Makes a devlog: builds something worth watching being built (a game, a physics simulation, a fractal explorer, a visual tool, any prototype) while keeping what makes its making a story (a development log, the director's turns, before and after, real bugs, demonstrations that can be filmed again), then hands that material to code-video for the video about how it was made. Use it whenever the user wants a devlog or a making-of video, asks to build something and then a video of how it was built (even when the build comes first and the video much later), or wants a video about how a project of theirs was built, and in any project whose docs/DEVELOPMENT_LOG.md feeds a video. Not for building something with no video in view, tutorials, product demos or screen recordings of finished software, videos that only show code (code-video), or ideas alone (video-ideas)."
+description: "Makes a devlog: builds something worth watching being built (a game, a physics simulation, a fractal explorer, a visual tool, any prototype) while keeping what makes its making a story (a development log, the director's turns, before and after, real bugs, demonstrations that can be filmed again), then hands that material to code-video for the video about how it was made. Use it whenever the user wants a devlog or a making-of video, asks to build something and then a video of how it was built (even when the build comes first and the video much later), or wants a video about how a project of theirs was built, and in any project whose docs/DEVELOPMENT_LOG.md feeds a video. Not for building something with no video in view, a prototype built to film a video about its subject, not its making (code-video), tutorials, product demos or screen recordings of finished software, videos that only show code (code-video), or ideas alone (video-ideas)."
 ---
 
 # devlog
@@ -83,14 +83,12 @@ Don't stop short of their scope, and don't widen it silently.
 - **Footage** enters through the engine's streamed footage (code-video's contract.md, "Images and footage").
 - Then code-video and soundtrack as usual (carry the respellings approved before; test words the voice may
   miss). nutlight-style only when named: its look is for the scenes around the footage, and the thing keeps its
-  own. youtube-package on request. video-repo keeps the recordings, screenshots and captures of old stages as
-  sources.
+  own. video-repo keeps the recordings, screenshots and captures of old stages as sources.
 
 ## Stays theirs
 What to build and how far; the look picks; the escalation; the story beats they seed; jokes in their voice; how
 they appear on screen; the final yes.
 
 ## Read when
-- references/capture.md: filming a game, a simulation, a math explorer or a tool again: replays, shot folders and
-  manifests, footage in the video, the checks.
-- references/log-template.md: DEVELOPMENT_LOG.md, the ledger and the AGENTS.md section, with an example entry.
+- references/capture.md: filming it again: replays, shot folders and manifests, footage in the video, the checks.
+- references/log-template.md: DEVELOPMENT_LOG.md, the ledger, the AGENTS.md section, an example entry.

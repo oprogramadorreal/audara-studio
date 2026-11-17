@@ -263,8 +263,9 @@ agent (or by the user, earlier) and then told as how it was made. Their story ha
 much of it is gone once the next change lands: the first attempt, the bug before its fix, the look the
 director rejected, his reaction. `devlog` covers that phase and what it keeps, then hands the material to
 code-video, which makes the video by its usual steps. It loads on a devlog request, or in a project whose
-`docs/DEVELOPMENT_LOG.md` feeds a video; tutorials, product demos and videos that only show code stay with
-code-video, and ideas for one with video-ideas.
+`docs/DEVELOPMENT_LOG.md` feeds a video; tutorials, product demos, videos that only show code and a prototype
+built to film a video about its subject rather than its making (an explorer to fly through a fractal for an
+explainer about it) stay with code-video, and ideas for one with video-ideas.
 
 - **The director's order holds.** He may build first and approve the prototype before any script, script
   while building, or bring a project already built; the skill's defaults (an early first look, the prototype
