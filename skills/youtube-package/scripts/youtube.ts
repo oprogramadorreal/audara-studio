@@ -1296,8 +1296,11 @@ async function srt() {
   if (!existsSync(wordsFile)) fail(`videos/${video}/data/words.json doesn't exist: subtitles are timed on the narration's words (the soundtrack skill's eleven.py tts or align.py writes them)`);
   const shift = wordsShift(vdir);
   const orig: WordsDoc = readJson(wordsFile);
-  // (in video time; words a mix places before 0 s, a narration trimmed at its start, aren't in the video)
-  const olines = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number' && w.end + shift > 0).map((w) => ({ w: String(w.w), start: Math.max(0, w.start + shift), end: w.end + shift })));
+  // (in video time; words a mix places before 0 s, a narration trimmed at its start, aren't in the video, and are
+  // left out once a translation's sentences have been matched to the original's as spoken)
+  const full = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
+  const inVideo = <T extends { start: number; end: number }>(ws: T[]) => ws.filter((w) => w.end > 0).map((w) => ({ ...w, start: Math.max(0, w.start) }));
+  const olines = full.map(inVideo);
   const pkg = path.join(vdir, 'youtube', code);
   const narration = path.join(pkg, 'narration.txt');
   const placedFile = path.join(vdir, 'dub', code, 'data', 'words-placed.json');
@@ -1325,19 +1328,23 @@ async function srt() {
       from = `youtube/${code}/narration.txt, timed on its dubbed voice (videos/${video}/dub/${code}/data/words-placed.json)`;
     } else {
       // each translated sentence shown while its original sentence is spoken (the paragraph's, when they don't match)
-      let whole = 0;
+      let whole = 0, trimmedOut = 0;
       paras.forEach((p, i) => {
         const tw = p.split(' ').map((w) => ({ w, start: 0, end: 0 }));
-        const os = sentencesOf(olines[i]), ts = sentencesOf(tw);
+        const os = sentencesOf(full[i]), ts = sentencesOf(tw);
         const pairs: [typeof tw, number, number][] = [];
         if (os.length && os.length === ts.length) ts.forEach((s, k) => pairs.push([s, os[k][0].start, os[k][os[k].length - 1].end]));
-        else if (olines[i].length) { pairs.push([tw, olines[i][0].start, olines[i][olines[i].length - 1].end]); whole++; }
+        else if (full[i].length) { pairs.push([tw, full[i][0].start, full[i][full[i].length - 1].end]); whole++; }
         for (const [s, a, b] of pairs) {
           const n = s.reduce((x, w) => x + graphemes(w.w, lang) + 1, 0);
           let acc = 0;
-          for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * (acc - 1) / n; words.push(w); }
+          for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * (acc - 1) / n; }
+          // (a sentence the mix trims whole isn't shown; one it trims in part, from 0 s)
+          if (b > 0) { for (const w of s) if (w.end > 0) words.push({ ...w, start: Math.max(0, w.start) }); }
+          else trimmedOut++;
         }
       });
+      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the mix trims their original before 0 s`);
       from = `youtube/${code}/narration.txt, each sentence shown while its original is spoken (videos/${video}/data/words.json)`;
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }

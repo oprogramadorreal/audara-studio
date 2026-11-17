@@ -529,6 +529,55 @@ class DubTest(unittest.TestCase):
         code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
         self.assertEqual((v["rows"][0]["status"], v["duration"]), ("ready", 31.0), v["rows"][0])
         self.assertAlmostEqual(sf.info(str(self.v / "youtube" / "es" / "mix.wav")).duration, 31.0, places=3)
+        # a render shorter than the mix: the track is cut with it, the music's end compared where both play
+        subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-y", "-f", "lavfi", "-i", "color=s=16x16:r=30:d=29",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(render)], check=True)
+        self.dub("place", "--video", "demo", "--lang", "es")
+        self.dub("mix", "--video", "demo", "--lang", "es")
+        self.dub("hear", "--video", "demo", "--lang", "es")
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
+        self.assertEqual((v["rows"][0]["status"], v["duration"]), ("ready", 29.0), v["rows"][0])
+
+    def test_15_a_sentence_the_mix_trims_isnt_dubbed(self):
+        """place in-process on a synthetic project: a line whose first sentence its mix places before 0 s."""
+        root = self.tmp / "trim"
+        v = root / "videos" / "v"
+        d = v / "dub" / "es"
+        for p in (v / "audio", v / "data", v / "youtube" / "es", d / "audio", d / "data"):
+            p.mkdir(parents=True, exist_ok=True)
+        sr = 48000
+        tone = lambda s: (0.1 * np.sin(2 * np.pi * 220 * np.arange(int(s * sr)) / sr)).astype(np.float32)
+        sf.write(str(v / "audio" / "narration.wav"), tone(10), sr)
+        sf.write(str(v / "audio" / "mix.wav"), np.column_stack([tone(10)] * 2), sr)
+        sf.write(str(d / "audio" / "narration.wav"), tone(5), sr)
+        put = lambda p, x: p.write_text(json.dumps(x, ensure_ascii=False), encoding="utf-8")
+        put(v / "video.json", {"fps": 30, "duration": 10, "audio": "audio/mix.wav"})
+        put(v / "data" / "words.json", {"lines": [{"text": "Cut opening. Kept ending.", "words": [
+            {"w": "Cut", "start": 1, "end": 1.2}, {"w": "opening.", "start": 1.3, "end": 1.5},
+            {"w": "Kept", "start": 6, "end": 6.2}, {"w": "ending.", "start": 6.3, "end": 6.5}]}]})
+        put(d / "data" / "words.json", {"lines": [{"text": "Inicio cortado. Final conservado.", "words": [
+            {"w": "Inicio", "start": 0.5, "end": 0.7}, {"w": "cortado.", "start": 0.8, "end": 1.0},
+            {"w": "Final", "start": 3, "end": 3.2}, {"w": "conservado.", "start": 3.3, "end": 3.5}]}]})
+        (v / "youtube" / "es" / "narration.txt").write_text("Inicio cortado. Final conservado.\n", encoding="utf-8")
+        put(v / "audio" / "mix.wav.request.json", {
+            "outputs": {"mix.wav": dub.sha256(v / "audio" / "mix.wav")}, "plan_file": "videos/v/mix.json",
+            "plan": {"voice": {"file": "audio/narration.wav", "from": 5}},
+            "resolved": {"duration": 10, "timing_data": {"words.json": {"shift_s": -5}}}})
+        cwd = os.getcwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, cwd)
+        import argparse
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertEqual([p["text"] for p in rec["pieces"]], ["Final conservado."])
+        self.assertEqual(rec["issues"], [])
+        self.assertEqual(rec["inputs"]["tool"], dub.sha256(Path(dub.__file__)))  # (a new dub.py places again)
+        # a translation whose sentences don't match: the trimmed part can't be told apart, an open issue
+        (v / "youtube" / "es" / "narration.txt").write_text("Inicio cortado y final conservado.\n", encoding="utf-8")
+        put(d / "data" / "words.json", {"lines": [{"text": "Inicio cortado y final conservado.", "words": [
+            {"w": w, "start": 0.5 + k * 0.5, "end": 0.9 + k * 0.5} for k, w in
+            enumerate("Inicio cortado y final conservado.".split())]}]})
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertTrue(any("can't be left out" in x for x in rec["issues"]), rec["issues"])
 
 
 if __name__ == "__main__":

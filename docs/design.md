@@ -602,7 +602,9 @@ How a track is made, and why:
   the moments a cut or a label follows, so `anchors.tsv` names those (line, original words, translated words,
   an occurrence), and the sentence is cut in the measured pause before the word. A sentence that runs long
   may start 0.25 s early, be sped up 8% (ffmpeg's atempo keeps the pitch) or push the next 0.4 s late; past
-  that it is an open issue that says how much shorter it must be, and nothing runs past the video's end.
+  that it is an open issue that says how much shorter it must be, and nothing runs past the video's end. A track is
+  as long as the final render (the mix's length without one); sentences are matched to the original as spoken, so
+  one the mix trims before 0 s is left out of the dub and its subtitles.
   These bounds are tested, not proof:
   `verify`'s numbers and the director's eye are. Each line is matched to the original line's level.
 - **The bed is the original's, exactly.** `dub.py mix` writes a plan from the video's own mix record: the

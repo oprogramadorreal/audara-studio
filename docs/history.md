@@ -4992,3 +4992,19 @@ found five more, all reproduced and all taken:
 
 `test_dub.py` has 14 tests (the render's length, the voice test of a rewritten paragraph, `--language` in the next
 command, the language codes) and `test_youtube.ts` 72; both pass, with `test_eleven_pitch.py`.
+
+Its second look at the pull request found three more, all taken:
+
+- A render shorter than the mix (29 s against 30) made the track 29 s long, as it should be, but verify still
+  compared the music's end with the mix's 30 s. The ends are now compared within what both play.
+- When a mix trimmed a paragraph's first sentence, the trimmed words left the original with one sentence against the
+  translation's two, and the translation was shown whole over the sentence that remained ("Inicio cortado. Final
+  conservado." under "Kept ending."); placement had the same flaw. Sentences are now matched to the original as spoken,
+  before the trim, and a sentence the trim cuts whole is left out of the subtitles and of the dub. Where a trimmed
+  line's sentences don't match one for one, subtitles share the line's time out and drop what falls before 0 s, and
+  placement leaves an open issue: it can't tell which part the video doesn't play.
+- Placements made before these rules were "up to date", since the version in their fingerprint was still 2. The
+  fingerprint now holds `dub.py`'s own hash, as mix.py's does, so a new version of the script places again (free).
+
+`test_dub.py` has 15 tests (a shorter render; a trimmed sentence left out, on a synthetic project; the script's hash
+in the placement) and `test_youtube.ts` 73; both pass.

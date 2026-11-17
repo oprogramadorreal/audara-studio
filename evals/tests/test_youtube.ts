@@ -393,6 +393,15 @@ try {
   expect('srt: narration trimmed before 0 s gets no subtitle (codex\'s review), and check passes', r.code === 0 && !/Cut opening/.test(tsrt)
     && /00:00:01,000 --> [^\n]*\nKept ending\./.test(tsrt) && tchk.code === 0, r.out + tsrt + tchk.out);
 
+  // ...and a translation of a line whose first sentence the mix trims leaves that sentence out too (codex's review)
+  writeFileSync(path.join(tv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Cut opening. Kept ending.', words: [
+    { w: 'Cut', start: 1, end: 1.4 }, { w: 'opening.', start: 1.5, end: 2 }, { w: 'Kept', start: 6, end: 6.4 }, { w: 'ending.', start: 6.5, end: 7 }] }] }));
+  mkdirSync(path.join(tv, 'youtube', 'es'), { recursive: true });
+  writeFileSync(path.join(tv, 'youtube', 'es', 'narration.txt'), 'Inicio cortado. Final conservado.\n');
+  r = inSub(['srt', '--video', 't', '--lang', 'es']);
+  const tes = r.code === 0 ? readFileSync(path.join(tv, 'youtube', 'es', 'subtitles.es.srt'), 'utf8') : '';
+  expect('srt: a translated sentence whose original the mix trims is left out', r.code === 0 && /Final conservado\./.test(tes) && !/Inicio cortado/.test(tes), r.out + tes);
+
   // shoot: a Korean face draws its characters a square wide, as the fallback does; it is still the face that draws
   const malgun = 'C:\\Windows\\Fonts\\malgunsl.ttf';
   if (existsSync(malgun)) {
