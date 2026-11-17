@@ -126,6 +126,6 @@ From an 8-minute narrated explainer dubbed by hand into eight languages (docs/hi
   better where the place allowed. The take report's pace is the check.
 - German ran about as long as the Portuguese; Japanese and Korean used about half its characters, Chinese
   a third (what the estimate's ratios come from).
-- Numbers and names need a say map in every language (dates, "Apollo 11", "3D"), as the original did.
+- Numbers and names need a say map in every language (dates, a mission's number, an abbreviation), as the original did.
 - The account was billed about half the list rate per character for its narration: the estimate stays at the
   list rate, and the ledger keeps what was billed.

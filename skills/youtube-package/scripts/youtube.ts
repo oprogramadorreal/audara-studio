@@ -1123,6 +1123,8 @@ const SENT_END = /[.!?…。！？؟।॥]+["'”’»」』)\]]*$/;
 const CLAUSE_END = /[,;:—–、，；：،]["'”’»)\]]*$/;
 const NOT_END = /^(\d{1,2}\.|mr\.|mrs\.|ms\.|dr\.|st\.|sr\.|sra\.|jr\.|vs\.|e\.g\.|i\.e\.|z\.b\.|bzw\.|ca\.|nr\.|prof\.)$/i;
 type Tok = { text: string; start: number; end: number; sent: boolean; clause: boolean };
+// (a Japanese line or subtitle doesn't open on a particle or an ending: は, を, から, ます)
+const noStart = (t: Tok, lang: string) => lang === 'ja' && /^(は|が|を|に|で|と|も|へ|の|から|まで|より|って|ます|です|た|て)/.test(t.text);
 type Cue = { start: number; end: number; lines: string[]; toks: Tok[]; note?: boolean };
 
 function toks(words: { w: string; start: number; end: number }[], lang: string, spaced: boolean): Tok[] {
@@ -1171,7 +1173,7 @@ function breakLines(ts: Tok[], lang: string, rule: SubRule): string[] | null {
     // (a break after punctuation is best; in Japanese, after a particle: a line doesn't start with は, を or から)
     const after = ts[k - 1].clause || ts[k - 1].sent ? rule.line / 3
       : lang === 'ja' && /(は|が|を|に|で|と|も|へ|から|まで|より|って)$/.test(ts[k - 1].text) ? rule.line / 4 : 0;
-    const before = lang === 'ja' && /^(は|が|を|に|で|と|も|へ|の|から|まで|より|って|ます|です|た|て)/.test(ts[k].text) ? rule.line / 2 : 0;
+    const before = noStart(ts[k], lang) ? rule.line / 2 : 0;
     const cost = Math.abs(la - lb) + (la > lb ? 2 : 0) - after + before;
     if (!best || cost < best.cost) best = { cost, lines: [a, b] };
   }
@@ -1203,7 +1205,10 @@ function buildCues(all: Tok[], lang: string, rule: SubRule, gap: number): { cues
         let k = -1;
         for (let i = cur.length - 1; i >= 1; i--) if (cur[i - 1].clause) { k = i; break; }
         const used = k > 0 ? graphemes(cur.slice(0, k).map((x) => x.text).join(' '), lang) : 0;
-        close(k > 0 && used >= rule.line * 2 / 3 ? k : cur.length);
+        let at = k > 0 && used >= rule.line * 2 / 3 ? k : cur.length;
+        // the next subtitle would open on a particle: end this one a word earlier
+        while (at > 1 && noStart(at < cur.length ? cur[at] : t, lang)) at--;
+        close(at);
       }
     }
     cur.push(t);

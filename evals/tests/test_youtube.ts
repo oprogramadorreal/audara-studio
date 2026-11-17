@@ -264,6 +264,95 @@ try {
     && readFileSync(path.join(root, 'niche-api', 'aaaaaaaaaaa.jpg'), 'utf8') === 'the picture fetched before', nout + JSON.stringify(got));
   const order = ['bbbbbbbbbbb', 'ccccccccccc', 'aaaaaaaaaaa'].map((id) => nout.indexOf(`  ${id}  `));
   expect('niche: lists the videos that outran their channel first', order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])) && /10x its average, 5\.1x its subscribers/.test(nout), nout);
+
+  // srt: subtitles from the narration's timed words, the video's own and translations' (no dub: each translated
+  // sentence shown while its original sentence is spoken)
+  const sub = path.join(root, 'subs'), sv = path.join(sub, 'videos', 'v');
+  mkdirSync(path.join(sv, 'data'), { recursive: true });
+  writeFileSync(path.join(sv, 'video.json'), JSON.stringify({ fps: 30, duration: 20, audio: null }));
+  const timed = (text: string, t0: number, dur: number) => text.split(' ').map((w, i, a) => ({ w, start: +(t0 + dur * i / a.length).toFixed(3), end: +(t0 + dur * (i + 0.9) / a.length).toFixed(3) }));
+  const S = ['Our journey begins here, a hundred kilometers above the surface of the Earth.', 'This is the edge of space.',
+    'The colors come from real satellite photos taken by many satellites over many years.', 'The clouds are real too.'];
+  writeFileSync(path.join(sv, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: `${S[0]} ${S[1]}`, words: [...timed(S[0], 1, 4.5), ...timed(S[1], 6, 2)] },
+    { text: `${S[2]} ${S[3]}`, words: [...timed(S[2], 9, 5), ...timed(S[3], 15, 1.8)] }] }));
+  const tr: Record<string, string> = {
+    ja: '私たちの旅はここから始まります、地表から百キロメートル上空です。 ここが宇宙の境目です。\n\n地表の色は長年たくさんの衛星が撮った本物の衛星写真から来ています。 雲も本物です。',
+    ko: '우리의 여행은 여기, 지표면에서 백 킬로미터 위에서 시작됩니다. 여기가 우주의 경계입니다.\n\n색은 오랜 세월 많은 위성이 찍은 진짜 위성 사진에서 왔습니다. 구름도 진짜입니다.',
+    ar: 'تبدأ رحلتنا من هنا، على ارتفاع مئة كيلومتر فوق سطح الأرض. هذه هي حافة الفضاء.\n\nالألوان مأخوذة من صور حقيقية التقطتها أقمار صناعية كثيرة على مدى سنوات طويلة. والغيوم حقيقية أيضًا.',
+    hi: 'हमारी यात्रा यहीं से शुरू होती है, पृथ्वी की सतह से सौ किलोमीटर ऊपर। यह अंतरिक्ष का किनारा है।\n\nरंग कई सालों में कई उपग्रहों की ली गई असली सैटेलाइट तस्वीरों से आते हैं। बादल भी असली हैं।',
+  };
+  for (const [code, text] of Object.entries(tr)) {
+    mkdirSync(path.join(sv, 'youtube', code), { recursive: true });
+    writeFileSync(path.join(sv, 'youtube', code, 'narration.txt'), text + '\n');
+  }
+  writeFileSync(path.join(sv, 'youtube', 'notes.en.tsv'), '0:18\t1.5\t[100 km]\n');
+  const inSub = (args: string[]) => { const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: sub, stdout: 'pipe', stderr: 'pipe' }); return { code: p.exitCode, out: p.stdout.toString() + p.stderr.toString() }; };
+  const cues = (file: string) => readFileSync(file, 'utf8').trim().split(/\n\n+/).map((b) => { const l = b.split('\n'); return { at: l[1].slice(0, 12), lines: l.slice(2) }; });
+  const g = (s: string, lang: string) => [...new Intl.Segmenter(lang, { granularity: 'grapheme' }).segment(s)].length;
+  r = inSub(['srt', '--video', 'v', '--lang', 'en']);
+  let c = r.code === 0 ? cues(path.join(sv, 'youtube', 'subtitles.en.srt')) : [];
+  expect('srt: the video\'s own narration, lines of 42 at most, two a subtitle, from its first word', r.code === 0 && c.length >= 4
+    && c.every((x) => x.lines.length <= 2 && x.lines.every((l) => l.length <= 42)) && c[0].at === '00:00:01,000', r.out + JSON.stringify(c));
+  expect('srt: a timed note for words on screen, where nobody speaks', c.some((x) => x.at === '00:00:18,000' && x.lines.join(' ') === '[100 km]'), JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'ja']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ja', 'subtitles.ja.srt')) : [];
+  expect('srt: Japanese in lines of 13, no spaces, no line opening on a particle', r.code === 0 && c.length >= 3
+    && c.every((x) => x.lines.every((l) => g(l, 'ja') <= 13 && !/\s/.test(l) && !/^(は|が|を|に|で|と|も|へ|の|から)/.test(l))), r.out + JSON.stringify(c));
+  expect('srt: reports a reading speed over the language\'s guide', /over 4 \(the ja guide's adult speed\)/.test(r.out), r.out);
+  r = inSub(['srt', '--video', 'v', '--lang', 'ko']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ko', 'subtitles.ko.srt')) : [];
+  expect('srt: Korean in lines of 16, its spaces kept', r.code === 0 && c.every((x) => x.lines.every((l) => g(l, 'ko') <= 16)) && c.some((x) => x.lines.some((l) => / /.test(l))), r.out + JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'ar']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ar', 'subtitles.ar.srt')) : [];
+  expect('srt: a translated sentence shows while its original is spoken (Arabic, the second at 0:06)', r.code === 0 && c.some((x) => x.at === '00:00:06,000' && /حافة الفضاء/.test(x.lines.join(' '))), r.out + JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'hi']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'hi', 'subtitles.hi.srt')) : [];
+  expect('srt: Hindi lines measured in graphemes (42 at most) and cut at the danda', r.code === 0 && c.every((x) => x.lines.every((l) => g(l, 'hi') <= 42)) && c.some((x) => /।$/.test(x.lines[x.lines.length - 1])), r.out + JSON.stringify(c));
+  mkdirSync(path.join(sv, 'youtube', 'xx'), { recursive: true });
+  writeFileSync(path.join(sv, 'youtube', 'xx', 'narration.txt'), 'One paragraph only.\n');
+  r = inSub(['srt', '--video', 'v', '--lang', 'xx']);
+  expect('srt: a translation whose paragraphs don\'t match the narration\'s lines is refused', r.code === 2 && /one paragraph per line/.test(r.out), r.out);
+  rmSync(path.join(sv, 'youtube', 'xx'), { recursive: true });
+
+  // check: a language's folder, its subtitles and its dubbed track
+  const wav = (seconds: number) => {
+    const n = Math.round(seconds * 48000) * 4, b = Buffer.alloc(44 + n);
+    b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12); b.writeUInt32LE(16, 16);
+    b.writeUInt16LE(1, 20); b.writeUInt16LE(2, 22); b.writeUInt32LE(48000, 24); b.writeUInt32LE(192000, 28);
+    b.writeUInt16LE(4, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n, 40); return b;
+  };
+  const ar = path.join(sv, 'youtube', 'ar');
+  writeFileSync(path.join(ar, 'title.txt'), 'رحلة إلى حافة الفضاء\n');
+  writeFileSync(path.join(ar, 'description.txt'), 'وصف قصير.\n');
+  writeFileSync(path.join(ar, 'tags.txt'), 'فضاء\n');
+  writeFileSync(path.join(ar, 'mix.wav'), wav(12));
+  writeFileSync(path.join(ar, 'subtitles.bad.srt'), '1\n00:00:05,000 --> 00:00:04,000\nبعد\n\n2\nno time here\nنص\n');
+  r = inSub(['check', '--video', 'v']);
+  expect('check --video: each language\'s folder after the package', r.code === 1 && /youtube\/ar\//.test(r.out) && /youtube\/ja\//.test(r.out), r.out);
+  expect('check: a dubbed track not as long as the video fails', /FAIL\s+mix\.wav\s+0:12 \(12\.000 s\)[^\n]*the video lasts 20\.000 s/.test(r.out), r.out);
+  expect('check: a SubRip file with a cue that ends before it starts, and a block with no time, fails', /FAIL\s+subtitles\.bad\.srt\s+block 1: ends before it starts; block 2/.test(r.out), r.out);
+  expect('check: a language\'s folder has no tags of its own (one list a video)', /note\s+tags\.txt\s+YouTube keeps one tag list per video/.test(r.out), r.out);
+  writeFileSync(path.join(ar, 'mix.wav'), wav(20));
+  rmSync(path.join(ar, 'subtitles.bad.srt'));
+  r = inSub(['check', path.join('videos', 'v', 'youtube', 'ar'), '--full']);
+  expect('check: a language\'s folder in full: title, description, subtitles, and its track the video\'s length', r.code === 0 && /ok\s+mix\.wav[^\n]*the video's length to a frame/.test(r.out) && /ok\s+subtitles\.ar\.srt/.test(r.out) && /ok\s+package\s+ar: the title, the description and the subtitles, the dubbed track/.test(r.out), r.out);
+  writeFileSync(path.join(sv, 'youtube', 'title.txt'), 'A trip to the edge of space\n');
+  writeFileSync(path.join(sv, 'youtube', 'description.txt'), 'A short description.\n');
+  writeFileSync(path.join(sv, 'youtube', 'tags.txt'), 'space\n');
+  rmSync(path.join(sv, 'youtube', 'subtitles.en.srt'));
+  r = inSub(['check', path.join('videos', 'v', 'youtube'), '--full']);
+  expect('check --full: a package whose video has timed narration needs its subtitles', r.code === 1 && /FAIL\s+package\s+no subtitles\.<code>\.srt/.test(r.out), r.out);
+
+  // shoot: a Korean face draws its characters a square wide, as the fallback does; it is still the face that draws
+  const malgun = 'C:\\Windows\\Fonts\\malgunsl.ttf';
+  if (existsSync(malgun)) {
+    mkdirSync(path.join(root, 'pages', 'fonts'), { recursive: true });
+    copyFileSync(malgun, path.join(root, 'pages', 'fonts', 'k.ttf'));
+    pkg('pages', { 'ko.html': `<!doctype html><style>@font-face{font-family:'K';src:url('fonts/k.ttf')} body{margin:0;width:1280px;height:720px;background:#123} p{font:80px 'K';color:#fff;margin:80px}</style><p>구름도 진짜입니다</p>` });
+    r = run(['shoot', 'pages/ko.html']);
+    expect('shoot: a CJK face that has the characters isn\'t called a fallback (its glyphs, not its widths, are compared)', r.code === 0 && !/fallback|seems to lack/.test(r.out), r.out);
+  } else console.log('skip  shoot: a CJK face (needs Windows\' Malgun Gothic Semilight to load as a web font)');
 } finally {
   for (let i = 0; i < 20; i++) { try { rmSync(root, { recursive: true, force: true }); break; } catch { await Bun.sleep(200); } }
 }

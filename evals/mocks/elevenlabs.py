@@ -29,7 +29,8 @@ request ids and song metadata in ElevenLabs' formats. Agents that spotted a mock
 storage bucket, where these files don't exist: fetched, they answer 404.
 
 Triggers for error tests: TTS text containing TRIGGER_402 -> 402 insufficient_credits;
-TRIGGER_429 -> 429 once, then success.
+TRIGGER_429 -> 429 once, then success; TRIGGER_DROP -> logged as billed, then the connection closes
+with no answer (what a timeout after the charge looks like to a client).
 """
 import argparse
 import base64
@@ -388,6 +389,10 @@ class H(BaseHTTPRequestHandler):
                 c, b = err(429, "rate_limit_error", "concurrent_limit_exceeded", "Too many concurrent requests.")
                 self._log(c, True)
                 return self._json(c, b)
+            if "TRIGGER_DROP" in text:  # billed, then nothing comes back: the client can't tell whether it was
+                self._log(200, True, {"chars": len(text), "dropped": True})
+                self.close_connection = True
+                return
             y, al, words = synth_tts(text, int(body.get("seed") or 0))
             audio = mp3(y)
             with LOCK:

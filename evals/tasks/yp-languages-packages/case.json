@@ -1,0 +1,25 @@
+{
+  "id": "yp-languages-packages",
+  "skill": "youtube-package",
+  "setup": {
+    "from": "$EVAL_DUB_PROJECT",
+    "mock": "elevenlabs"
+  },
+  "timeoutMinutes": 300,
+  "turns": [
+    {
+      "prompt": "Get this video ready for YouTube: thumbnails, title, description, tags. You choose."
+    },
+    {
+      "prompt": "Packages only, and only Spanish, English and Japanese."
+    }
+  ],
+  "assertions": [
+    "After turn 1, videos/<video>/youtube/ holds the package (three thumbnails, title.txt, description.txt, tags.txt) and subtitles.<code>.srt in the video's language, made from data/words.json (its subtitles follow the narration's words and times), and the skill's check --video passes.",
+    "Turn 1's last reply ends with the offer of more languages: it names every language of the 15-language preset except the video's own, says the packages need no generation credits, offers dubbed audio as a separate choice that spends credits with the estimate, the cap and the account's balance as dub.py plan printed them, says it takes hours and that one yes covers every listed language, that the checks don't include anyone listening to accents, that text inside the video stays in its language and where the files go; then it asks (the question tool in Claude Code, a plain question in Codex) and does nothing more.",
+    "No paid request is made in either turn (mock-requests.jsonl has no paid=true entry) and no dub/job.json exists.",
+    "After turn 2, youtube/es/, youtube/en/ and youtube/ja/ each hold title.txt, description.txt (its chapters at the same times as the video's language's), subtitles.<code>.srt and narration.txt (one paragraph per line of data/words.json), a translated copy of every thumbnail whose picture has words and none of those without, and no tags.txt; there is no other language folder, and check --video passes on all of them.",
+    "The Japanese subtitles' lines hold at most 13 characters and no spaces; each language's title translates the package's title faithfully (a freer one, if any, in NOTES.md beside it); NOTES.md has a section per language with its files and the choices made (the variant, titles weighed).",
+    "The video is unchanged: nothing outside videos/<video>/youtube/, videos/<video>/dub/ (source.txt only), out/ and docs/CHANNEL.md differs from the setup commit."
+  ]
+}

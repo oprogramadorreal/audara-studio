@@ -41,6 +41,7 @@ Contents
 - A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
 - An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 - The preview's frames: one a refresh, and footage after a seek (0.13.2, 2026-11-13)
+- More languages: subtitles, packages and dubbed tracks (0.14.0, 2026-11-17)
 
 ## Definition of done
 
@@ -4820,3 +4821,95 @@ While playing, the clock steps back only for a seek, a loop or the sound, so any
 change of refresh rate never moves it back and keeps the floor. The new test (the , key, and that scrub back at
 60 and 120 Hz) fails without that condition, the scrub ending on 11.017 s with the clock at 10.42 s. Measured
 again on the project: 99.7% one frame at both moments, the longest refresh 36 ms.
+
+## More languages: subtitles, packages and dubbed tracks (0.14.0, 2026-11-17)
+
+The user had just packaged a finished video by hand in nine languages and asked for it to be automated, with
+the skills kept small: by default the package in the video's own language plus a timed SubRip file; an offer of
+packages in YouTube's most popular languages (first the top ten of a ranking they linked, then, mid-task, "make
+it for the top 15 languages"), the video's language counted once; dubbed audio in the narration's own ElevenLabs
+voice as a separate choice, its languages, tracks and credits shown before one approval for the whole batch, then
+carried to the end without asking ("approve the full job once and be able to walk away"), retries and resumes
+included, without paying twice; and a complete `mix.wav` per language, mixed and checked against the original mix
+and the video.
+
+**What the hand-made package was.** An 8-minute narrated explainer in Brazilian Portuguese, packaged over two days
+(2026-11-16 and 11-17), one request per language (English, Spanish, Chinese, German, Japanese, Italian, Korean,
+Russian), each "the whole package":
+
+- A folder per language with the title, the description (the same 13 chapters, translated), the one thumbnail of
+  three that had words, a SubRip file, and a copy of the tag list. The tags were one list for every language:
+  two tags per language took it to 30 tags, 498 of YouTube's 500 characters.
+- Subtitles from a 36 KB script with per-language rules, plus a Japanese and a Chinese variant (lines of 18 and
+  by character; Korean 22): the language's narration as written, timed on its dubbed voice as transcribed, two
+  bracketed notes translating numbers the picture shows while nobody speaks.
+- A dub per language: a translated script with the original's 36 paragraphs and a say map (dates, a
+  mission's number, an abbreviation), the same voice, model and settings, two takes at two speeds (the voice read English and Spanish at 220
+  words a minute, some lines near 300), then a 17 KB placement script per language putting each sentence where
+  its Portuguese sentence sits, with a hand plan per line for the few words the picture follows, and a level
+  matched line by line to the original voice. Then a shell script per language that copied the mix plan out of
+  the project, mixed it there and copied the result back, because `mix.py build` always wrote the video's own
+  `audio/mix.wav`, and checked that file's hash before and after.
+- Type for each script: Archivo has no Cyrillic (Sofia Sans Condensed instead), and Chinese, Japanese and Korean
+  took Noto subsets. `shoot` called all three CJK faces "drawn by a fallback face": it compared advance widths
+  with generic faces, and every CJK face draws its characters a square wide. The session checked by shooting the
+  page without the font, which came out different.
+
+**Measured on that project.** The translated scripts' characters against the Portuguese one: English 1.02, Spanish
+1.06, German 1.05, Italian 1.05, Russian 0.92, Japanese 0.50, Korean 0.49, Chinese 0.31; as ratios to English, the
+estimate's table. For the preset's other seven, ten of the English script's paragraphs (1,225 characters) were
+translated the way a dub's are and counted: French 1.11, Indonesian 1.04, Vietnamese 1.00, Turkish 0.95, Hindi 0.91
+(code points, what ElevenLabs bills), Bengali 0.88, Arabic 0.79; the eight measured languages, on the same ten
+paragraphs, came within 0.05 of their whole scripts' ratios. Billed: the `character-cost` of every narration
+request against its text came to 0.49 credits a character on that account (Multilingual v2), where the estimate
+uses the list's 1.
+
+**The ranking.** BeMultilingual's list (bemultilingual.ca/blog/youtube-languages, read 2026-11-17) ranks
+languages by native-speaking YouTube users, YouTube users per country times the native share: Spanish, English,
+Hindi, Portuguese, Arabic, Russian, Japanese, German, Bengali, French, then Vietnamese, Turkish, Indonesian (its
+figure counts Javanese speakers), Korean, Italian. It measures speakers, not viewing, so the skill calls it a
+15-language preset. YouTube's help (read the same day): own audio tracks need advanced features, roughly the
+video's length, an automatic dub deleted first; localized thumbnails for long-form videos; no tags per language;
+automatic dubbing from Portuguese only into English and Spanish. ElevenLabs' models: Multilingual v2 speaks 29
+languages, not Bengali or Vietnamese; v3 and v4 speak all fifteen.
+
+**The decision: two skills extended, no eighth.** A new skill would have overlapped youtube-package's and
+soundtrack's descriptions and needed every rule both hold, and the default subtitles changed youtube-package
+anyway. So youtube-package makes the subtitles and the offer and holds the languages' packages
+(references/languages.md), and soundtrack holds the dub's machinery (`dub.py`, references/dub.md). Both SKILL.md
+files were within 15 bytes of the 8,000 cap: youtube-package's room came from command rows and a gotcha its
+references already carry (the frames and plates commands, imagegen.py, the captions in a plate: all in art.md),
+soundtrack's from flags `--help` lists and outputs its scripts print. No line about taste changed, so the gate
+didn't apply.
+
+**Codex as consultant (Herdr tab 2), read-only, before building.** It agreed on extending the two skills and
+asked for: an offer that leads with what the default already has, says "no generation credits" rather than
+"free", states the cap and the balance, that nobody will have listened, that audio tracks need advanced features
+and that YouTube's automatic dubbing exists; spending enforced in code, a reservation written before each paid
+request, an unknown outcome kept "possibly charged" at its most and never reissued, a share of the cap per
+language so one can't starve the rest, paid calls one at a time, checkpoints on disk for another session to
+resume; a scope for the yes (meaning-preserving fixes yes; another voice, model, facts, paid art or anything in
+Studio no); word anchors as well as sentence anchors; no automatic lift on every line the mix flags, since an
+approved mix once drew flags on 14 of 30 lines; the final placed voice transcribed rather than the raw
+narration; clipping a failure and loudness differences diagnostics; every thumbnail with words translated, not
+the first; grapheme-aware lines, Korean's spaces kept, Japanese phrase breaks. All taken. Two simplifications it
+accepted: a small anchors file instead of a general segment plan, and an unknown outcome counted as spent rather
+than reconciled through the account's history. The estimate stays before translating (so one answer suffices),
+with the figure after translating called an updated estimate and the shares split again within the same cap.
+
+**What was built.** `dub.py` (source, plan with `--approve`, speak, place, hear, mix, verify, status); `mix.py
+build` takes a plan's `voice_words` only with `--to DIR`, mixing another voice into another folder and never over
+the video's own mix; `eleven.py tts --language`; `youtube.ts srt`, `check` over language folders, subtitles and
+dubbed tracks, and `shoot` comparing glyphs as well as widths.
+
+**Checked.** `test_dub.py` (new, 9 tests, 78 s: the free steps spend nothing; the cap and a language's share refuse
+before sending; a request billed and dropped stops only its language and is never resent; a run stopped
+mid-request is settled; nothing is bought twice; sentences and an anchor land; the dub's bed is the video's mix's
+and that mix is untouched; a sentence too long stays open), `test_youtube.ts` (66, 15 new), `test_mix_measure.py`
+(21) and `test_eleven_pitch.py` (13) pass. 0.13.2's `youtube.ts` on a page in Malgun Gothic Semilight said the face
+"seems to lack" all eight Korean characters; this one says nothing. The three validators pass on both skills.
+
+**Not measured.** No real ElevenLabs request was made: the dub of a real narration, eleven_v4's timings in Bengali
+or Vietnamese with a cloned voice, and a 14-language batch's time and credits are unknown. No track was uploaded to
+YouTube. The three new task cases (`yp-languages-packages`, `yp-languages-dub`, `st-dub-asks-first`) wait for an
+`EVAL_DUB_PROJECT` and were not run.

@@ -1,0 +1,22 @@
+{
+  "id": "st-dub-asks-first",
+  "skill": "soundtrack",
+  "setup": {
+    "from": "$EVAL_DUB_PROJECT",
+    "mock": "elevenlabs"
+  },
+  "timeoutMinutes": 120,
+  "turns": [
+    {
+      "prompt": "Dub this video's narration into Spanish with the same voice, and keep the music."
+    },
+    {
+      "prompt": "Yes, go ahead, up to 3000 credits."
+    }
+  ],
+  "assertions": [
+    "Turn 1 spends nothing (no paid=true entry in mock-requests.jsonl before turn 2) and writes no dub/job.json: it says what the track will be (the narration in Spanish, the same voice, over the video's own music and effects, as long as the video), its estimate and a cap, and asks.",
+    "In turn 2, dub/job.json holds the user's words and a cap of 3000, every paid request has a ledger entry, and the total stays within 3000.",
+    "youtube/es/narration.txt has one paragraph per line of data/words.json; youtube/es/mix.wav is as long as the video to a frame; audio/mix.wav is unchanged; dub.py verify ran and reported no FAIL; the reply names the file, what was spent and that nobody has listened."
+  ]
+}

@@ -75,6 +75,9 @@ near-misses sit beside it in the other sets: cv-24 (the package asked for inside
 set) and vi-23 (a better title for a finished video, in video-ideas'). A packaging run that renders plates
 calls `render.ts`, which counts as code-video's use on Codex: read cv-24 by its loads, as cv-23.
 
+youtube-package's yp-25 asks for the package in two more languages and yp-26, in Portuguese, for a timed
+subtitle file alone; soundtrack's st-26 asks to dub a video's narration for YouTube's audio tracks.
+
 soundtrack's set ends with films whose picture isn't the engine's: st-21 asks for a whole ad shot with an AI
 video model, its narration, music and mix; st-23 says the picture is made in another tool; st-22 narrates in
 a voice clone the user already has, beside st-16, which asks to make one; st-24, the AI shots alone, is the
@@ -139,6 +142,9 @@ Some cases need outside material, passed by environment variable so no third-par
 yet, for the `yp-` cases: their words fit channel project 4's narrated video, copied without `node_modules/`, `out/`,
 `.audara-cache/`, that video's `thumbs/`, `thumbnail.py` and `youtube-description.txt`, and with
 TREATMENT.md cut before the Decision that first asks for a thumbnail, so the session starts where the user did),
+`EVAL_DUB_PROJECT` (a finished project whose narrated video runs a minute or more, its narration made by
+`eleven.py tts` with one of the ElevenLabs mock's voices and its mix built by `mix.py`, for the languages cases:
+the mock answers only for its own voices),
 `EVAL_SONG` (a song) with `EVAL_SONG_DATA` (a folder with its ground-truth `audio.json` and
 `lyrics.json`), `EVAL_PROJECT` (a project made with audara, for the later-session, second-format, second-video and
 existing-project ideas cases; one from an older release keeps its older `render.ts`, which init's AGENTS.md
@@ -191,6 +197,11 @@ channel's type applied in a new session (`yp-given-words`); nothing given (`yp-n
 where no picture should be made (`yp-title-only`); and generated images within a budget, on the image mock
 (`yp-images-budget`). They aren't in run-tasks.sh's default list, since they need that project; run them with
 `--without` too, judging the thumbnails blind, small and beside their title, against the model alone.
+On `EVAL_DUB_PROJECT`, with the ElevenLabs mock: the package's subtitles and the offer of more languages, then a
+partial yes for packages only (`yp-languages-packages`); the one yes for packages and dubbed audio, after which the
+session must finish without a question, within the cap, every paid request in the job's ledger
+(`yp-languages-dub`); and a dub asked of soundtrack directly (`st-dub-asks-first`). They take hours and aren't in
+run-tasks.sh's default list.
 `ns-new-subject` stands for someone who names the Nutlight house style for a subject its reference images
 don't show (a swarm of bees choosing a home, from `article.md`), with a music library of three synthetic
 tracks in `music/`, a note that departs from the style (a hard cut, and a human the kit doesn't draw), a later
@@ -308,7 +319,27 @@ two pages that would write one image, its exit codes); check's rules (the title 
 description at and past 5,000 accented characters, chapters under 10 s or past the end or not times at all
 ("0:99"), the video's length taken from video.json before its audio, the tags' 500-character count, hashtags past
 15 and past 60, Markdown, an image that isn't 16:9 or doesn't decode, a mistyped folder, and --full's three PNGs
-and three text files); preview's sheets; and what niche refuses before any network call.
+and three text files); preview's sheets; and what niche refuses before any network call. It also checks `srt` (the video's own narration in lines of
+42, from its first word, and a timed note for words on screen; Japanese in lines of 13 with no spaces and no line
+or subtitle opening on a particle; Korean in lines of 16 with its spaces; Arabic shown while its original sentence
+is spoken; Hindi measured in graphemes and cut at the danda; a translation whose paragraphs don't match refused),
+`check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,
+a language's own tags, a folder in full, a package with timed narration and no subtitles), and that a Korean web
+face drawing its characters a square wide isn't called a fallback (with Windows' Malgun Gothic Semilight; skipped
+without it: 0.13.2's width test called it one).
+`test_dub.py` checks `dub.py` against the ElevenLabs mock, served in-process, on a small project (music, an effect
+on a word, a three-paragraph narration, its mix): sentence ends in five scripts and an ordinal that isn't one, words
+found by text and occurrence, the model each language gets, a cap split by estimates; that source and plan spend
+nothing and speak refuses without an approved job; that mix.py refuses a mix with another voice and no --to, or
+--to the video's own audio folder; a cap too low refused before anything is sent, and a second yes kept in the
+job's history; a language end to end (a voice test, the rest, nothing bought again on a re-run, sentences on their
+originals and an anchored word within 0.3 s, a voice as long as the video, the original lines named in its words,
+a mix whose effects and music gain are the video's mix's while the video's own mix.wav is untouched, a
+transcription kept and not paid twice, verify "ready"); a request billed and then dropped (the mock's
+TRIGGER_DROP) left "possibly charged" at its most, its language stopped, never sent again, the other languages
+going on; a run stopped mid-request settled the same way; a language's share spent stopping it before anything is
+sent; and a sentence too long for its place left open, its track "incomplete". It needs ffmpeg and uv, and takes
+about a minute and a half.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
@@ -381,6 +412,7 @@ mistakes as usage errors, and `measure` saying it needs the plan.
 uv run evals/tests/test_imagegen.py
 uv run evals/tests/test_eleven_pitch.py
 uv run evals/tests/test_mix_measure.py
+uv run evals/tests/test_dub.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
