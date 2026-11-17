@@ -41,6 +41,7 @@ Contents
 - A stronger model reads the skills: a gate for changes of taste, and six that didn't pass it (0.13.0, 2026-11-10)
 - An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 - The preview's frames: one a refresh, and footage after a seek (0.13.2, 2026-11-13)
+- More languages: subtitles, packages and dubbed tracks (0.14.0, 2026-11-17)
 
 ## Definition of done
 
@@ -4820,3 +4821,265 @@ While playing, the clock steps back only for a seek, a loop or the sound, so any
 change of refresh rate never moves it back and keeps the floor. The new test (the , key, and that scrub back at
 60 and 120 Hz) fails without that condition, the scrub ending on 11.017 s with the clock at 10.42 s. Measured
 again on the project: 99.7% one frame at both moments, the longest refresh 36 ms.
+
+## More languages: subtitles, packages and dubbed tracks (0.14.0, 2026-11-17)
+
+The user had just packaged a finished video by hand in nine languages and asked for it to be automated, with
+the skills kept small: by default the package in the video's own language plus a timed SubRip file; an offer of
+packages in YouTube's most popular languages (first the top ten of a ranking they linked, then, mid-task, "make
+it for the top 15 languages"), the video's language counted once; dubbed audio in the narration's own ElevenLabs
+voice as a separate choice, its languages, tracks and credits shown before one approval for the whole batch, then
+carried to the end without asking ("approve the full job once and be able to walk away"), retries and resumes
+included, without paying twice; and a complete `mix.wav` per language, mixed and checked against the original mix
+and the video.
+
+**What the hand-made package was.** An 8-minute narrated explainer in Brazilian Portuguese, packaged over two days
+(2026-11-16 and 11-17), one request per language (English, Spanish, Chinese, German, Japanese, Italian, Korean,
+Russian), each "the whole package":
+
+- A folder per language with the title, the description (the same 13 chapters, translated), the one thumbnail of
+  three that had words, a SubRip file, and a copy of the tag list. The tags were one list for every language:
+  two tags per language took it to 30 tags, 498 of YouTube's 500 characters.
+- Subtitles from a 36 KB script with per-language rules, plus a Japanese and a Chinese variant (lines of 18 and
+  by character; Korean 22): the language's narration as written, timed on its dubbed voice as transcribed, two
+  bracketed notes translating numbers the picture shows while nobody speaks.
+- A dub per language: a translated script with the original's 36 paragraphs and a say map (dates, a
+  mission's number, an abbreviation), the same voice, model and settings, two takes at two speeds (the voice read English and Spanish at 220
+  words a minute, some lines near 300), then a 17 KB placement script per language putting each sentence where
+  its Portuguese sentence sits, with a hand plan per line for the few words the picture follows, and a level
+  matched line by line to the original voice. Then a shell script per language that copied the mix plan out of
+  the project, mixed it there and copied the result back, because `mix.py build` always wrote the video's own
+  `audio/mix.wav`, and checked that file's hash before and after.
+- Type for each script: Archivo has no Cyrillic (Sofia Sans Condensed instead), and Chinese, Japanese and Korean
+  took Noto subsets. `shoot` called all three CJK faces "drawn by a fallback face": it compared advance widths
+  with generic faces, and every CJK face draws its characters a square wide. The session checked by shooting the
+  page without the font, which came out different.
+
+**Measured on that project.** The translated scripts' characters against the Portuguese one: English 1.02, Spanish
+1.06, German 1.05, Italian 1.05, Russian 0.92, Japanese 0.50, Korean 0.49, Chinese 0.31; as ratios to English, the
+estimate's table. For the preset's other seven, ten of the English script's paragraphs (1,225 characters) were
+translated the way a dub's are and counted: French 1.11, Indonesian 1.04, Vietnamese 1.00, Turkish 0.95, Hindi 0.91
+(code points, what ElevenLabs bills), Bengali 0.88, Arabic 0.79; the eight measured languages, on the same ten
+paragraphs, came within 0.05 of their whole scripts' ratios. Billed: the `character-cost` of every narration
+request against its text came to 0.49 credits a character on that account (Multilingual v2), where the estimate
+uses the list's 1.
+
+**The ranking.** BeMultilingual's list (bemultilingual.ca/blog/youtube-languages, read 2026-11-17) ranks
+languages by native-speaking YouTube users, YouTube users per country times the native share: Spanish, English,
+Hindi, Portuguese, Arabic, Russian, Japanese, German, Bengali, French, then Vietnamese, Turkish, Indonesian (its
+figure counts Javanese speakers), Korean, Italian. It measures speakers, not viewing, so the skill calls it a
+15-language preset. YouTube's help (read the same day): own audio tracks need advanced features, roughly the
+video's length, an automatic dub deleted first; localized thumbnails for long-form videos; no tags per language;
+automatic dubbing from Portuguese only into English and Spanish. ElevenLabs' models: Multilingual v2 speaks 29
+languages, not Bengali or Vietnamese; v3 and v4 speak all fifteen.
+
+**The decision: two skills extended, no eighth.** A new skill would have overlapped youtube-package's and
+soundtrack's descriptions and needed every rule both hold, and the default subtitles changed youtube-package
+anyway. So youtube-package makes the subtitles and the offer and holds the languages' packages
+(references/languages.md), and soundtrack holds the dub's machinery (`dub.py`, references/dub.md). Both SKILL.md
+files were within 15 bytes of the 8,000 cap: youtube-package's room came from command rows and a gotcha its
+references already carry (the frames and plates commands, imagegen.py, the captions in a plate: all in art.md),
+soundtrack's from flags `--help` lists and outputs its scripts print. No line about taste changed, so the gate
+didn't apply.
+
+**Codex as consultant (Herdr tab 2), read-only, before building.** It agreed on extending the two skills and
+asked for: an offer that leads with what the default already has, says "no generation credits" rather than
+"free", states the cap and the balance, that nobody will have listened, that audio tracks need advanced features
+and that YouTube's automatic dubbing exists; spending enforced in code, a reservation written before each paid
+request, an unknown outcome kept "possibly charged" at its most and never reissued, a share of the cap per
+language so one can't starve the rest, paid calls one at a time, checkpoints on disk for another session to
+resume; a scope for the yes (meaning-preserving fixes yes; another voice, model, facts, paid art or anything in
+Studio no); word anchors as well as sentence anchors; no automatic lift on every line the mix flags, since an
+approved mix once drew flags on 14 of 30 lines; the final placed voice transcribed rather than the raw
+narration; clipping a failure and loudness differences diagnostics; every thumbnail with words translated, not
+the first; grapheme-aware lines, Korean's spaces kept, Japanese phrase breaks. All taken. Two simplifications it
+accepted: a small anchors file instead of a general segment plan, and an unknown outcome counted as spent rather
+than reconciled through the account's history. The estimate stays before translating (so one answer suffices),
+with the figure after translating called an updated estimate and the shares split again within the same cap.
+
+**What was built.** `dub.py` (source, plan with `--approve`, speak, place, hear, mix, verify, status); `mix.py
+build` takes a plan's `voice_words` only with `--to DIR`, mixing another voice into another folder and never over
+the video's own mix; `eleven.py tts --language`; `youtube.ts srt`, `check` over language folders, subtitles and
+dubbed tracks, and `shoot` comparing glyphs as well as widths.
+
+**Checked.** `test_dub.py` (new, 9 tests, 78 s: the free steps spend nothing; the cap and a language's share refuse
+before sending; a request billed and dropped stops only its language and is never resent; a run stopped
+mid-request is settled; nothing is bought twice; sentences and an anchor land; the dub's bed is the video's mix's
+and that mix is untouched; a sentence too long stays open), `test_youtube.ts` (66, 15 new), `test_mix_measure.py`
+(21) and `test_eleven_pitch.py` (13) pass. 0.13.2's `youtube.ts` on a page in Malgun Gothic Semilight said the face
+"seems to lack" all eight Korean characters; this one says nothing. The three validators pass on both skills.
+
+**Not measured.** No real ElevenLabs request was made: the dub of a real narration, eleven_v4's timings in Bengali
+or Vietnamese with a cloned voice, and a 14-language batch's time and credits are unknown. No track was uploaded to
+YouTube. The three new task cases (`yp-languages-packages`, `yp-languages-dub`, `st-dub-asks-first`) wait for an
+`EVAL_DUB_PROJECT` and were not run.
+
+**Codex's review of the branch** (Herdr tab 2; it ran the tests and reproduced each finding in temp folders, with
+no paid call). Twelve findings, five it called blockers, all taken:
+
+- A voice's credit multiplier wasn't in any reservation: a request reserved at 100 credits billed 200 against a
+  100-credit cap. Now a character is reserved at the most the voice was billed per character in the narration's
+  records (never under the list rate), three times the list rate for a voice billed nowhere yet, and each
+  request that arrives sets the rate again; a request billed past its reservation that takes the job past its cap
+  stops the job.
+- A batch of takes where the first was billed and the second refused (402) was settled "not charged" as a whole,
+  so the committed total went to 0. Now the requests that arrived stay billed, a refused one is released, and one
+  that may have been billed gets an entry of its own.
+- A run wrote the job after releasing its lock, erasing another run's ledger entries. Every write now holds the
+  job's lock and reads the job fresh (`plan --approve` included).
+- `verify` called a track "ready" after an impossible anchor was added and after the take was replaced: it checked
+  the placed voice against the mix, not what the placement was made from. One check now serves place, mix, verify
+  and status: the translation against the narration made, the take, its words, the anchors, the levels, the
+  video's words and mix; a track made before any changed fails.
+- A last sentence could run 0.14 s past the end of a 2-second video and be cut, with no issue: the slip allowed
+  between sentences applied at the end too. The video's end is now a hard limit, and a placement that would cut
+  sound there, or put a word past it, is an open issue.
+- Also taken: a higher cap now lifts a stop on a language's share (a possible charge stays stopped); an effect
+  mix.py had turned down for sounding within 150 ms of another was turned down again in the dub ([0, -4.44] dB
+  became [0, -8.88]), and the bed's gains are now a failure, not a note, when they differ; the voice test had no
+  check before the rest was bought, so `hear --test N` transcribes it against its text and language, `speak`
+  makes the rest only after it passes, and a second failure stops the language; a subtitle could end at 10.75 s in
+  a 10-second video, and two notes could land on the narration (the second placed against an unsorted list);
+  `check --full` asked a video with no timed narration for subtitles; an empty SubRip file and a time of 99
+  seconds passed.
+- Not taken: its note that a face loaded from the platform's own fallback font (Malgun Gothic itself) still reads
+  as a fallback, since the pixels are the same; that predates the branch, and what's drawn is right.
+
+After the fixes `test_dub.py` has 12 tests (the voice test's gate and its two failures, the ledger kept from what
+arrived with eleven.py replaced in-process, a higher cap lifting a share's stop, a stale anchor failing verify,
+grouped effects, speech past a tight video's end) and `test_youtube.ts` 70; both pass, as do `test_mix_measure.py`
+and `test_eleven_pitch.py`.
+
+**Its second review** found seven more, three it called blockers, all taken:
+
+- The cap still wasn't a hard limit: a rate learned from earlier bills, or a guess of three times the list rate,
+  bounds nothing, since a Voice Library voice's multiplier is a legacy custom rate that varies with the user's plan
+  and no voice field states it (ElevenLabs' help page on custom rates, read 2026-11-17). A job now takes only a
+  voice the account owns (`is_owner`, which `eleven.py voices` now lists) or one of ElevenLabs' premade voices,
+  whose rate is the stated list rate, and reserves every character at it; `plan` says when a voice can't be capped.
+- An interruption between settling a partial batch and recording its possibly billed request lost the latter.
+  The settlement is now made in memory and written once.
+- A yes naming fewer languages rebuilt the job's languages and dropped a stopped one's stop. Every language stays
+  in the job (`scope` lists the current yes), and a request that may have been billed stops its language from the
+  ledger itself.
+- Also: a new voice kept the old voice's rate and its passed voice test (both are now bound to the voice and model,
+  and a test whose block would be made again doesn't count); a change of respellings left the old audio "ready"
+  (each language's take now records what it was made from: the text, the respellings, the voice, model and
+  settings); placements cached before the end-of-video check skipped it (the placement version is 2, and verify
+  checks every placed word against the track's end itself); the subtitle fix dropped "Bye." spoken at 9.7 s of a
+  10-second video (a subtitle now ends with the video and starts earlier if that leaves it too short); and the voice
+  test gave the transcriber the language it then checked, so it now lets it detect the language (the mock gained a
+  small detector).
+
+`test_dub.py` (12) and `test_youtube.ts` (71) pass after these, with `test_mix_measure.py` and `test_eleven_pitch.py`.
+
+**A review of the pull request** (Codex again, on the PR as opened: all four offline suites passing, 117 checks)
+found five more, all reproduced and all taken:
+
+- Placement and mixing made each track as long as the video's mix while verify held it to the final render's
+  length: with a 30-second mix and a 31-second render, every rebuilt track failed. Both now make it the render's
+  length (the mix's when there is no render), and the music's end is compared within the mix's length.
+- A mix that places the narration later than it begins (its `from` past its `at`) gave the trimmed words negative
+  times, and `srt` wrote `00:00:00,000 --> 00:00:00,000` with words nobody hears, which `check` then refused. Words
+  before 0 s are left out of the subtitles and of the dub's placement; a word cut by 0 s starts there.
+- A rewritten voice-test paragraph left its old take beside the new one until the whole narration was assembled,
+  and `hear --test` took the first by name: it passed the old French text. It now takes the take of the paragraph as
+  it reads now (the newest if several), records that text, and `speak`'s gate checks it.
+- The language check knew too few codes: Swedish heard as `swe` failed its voice test, and so did Romanian, Czech,
+  Hebrew and Malay. The table now covers every language the models speak, older codes included, and a code it
+  doesn't know is no failure.
+- `eleven.py`'s suggested next command dropped `--language`.
+
+`test_dub.py` has 14 tests (the render's length, the voice test of a rewritten paragraph, `--language` in the next
+command, the language codes) and `test_youtube.ts` 72; both pass, with `test_eleven_pitch.py`.
+
+Its second look at the pull request found three more, all taken:
+
+- A render shorter than the mix (29 s against 30) made the track 29 s long, as it should be, but verify still
+  compared the music's end with the mix's 30 s. The ends are now compared within what both play.
+- When a mix trimmed a paragraph's first sentence, the trimmed words left the original with one sentence against the
+  translation's two, and the translation was shown whole over the sentence that remained ("Inicio cortado. Final
+  conservado." under "Kept ending."); placement had the same flaw. Sentences are now matched to the original as spoken,
+  before the trim, and a sentence the trim cuts whole is left out of the subtitles and of the dub. Where a trimmed
+  line's sentences don't match one for one, subtitles share the line's time out and drop what falls before 0 s, and
+  placement leaves an open issue: it can't tell which part the video doesn't play.
+- Placements made before these rules were "up to date", since the version in their fingerprint was still 2. The
+  fingerprint now holds `dub.py`'s own hash, as mix.py's does, so a new version of the script places again (free).
+
+`test_dub.py` has 15 tests (a shorter render; a trimmed sentence left out, on a synthetic project; the script's hash
+in the placement) and `test_youtube.ts` 73; both pass.
+
+Its third look found one: once placement left out a sentence its mix trims, the placed words no longer read as the
+whole paragraph, so `srt` called the placement stale and timed the subtitle on the original voice (gone at 2.0 s
+while the dub spoke to 4.5 s), and placing again couldn't change that. `dub.py place` now records the paragraphs it
+was placed from, and `srt` checks those; test_15 makes the subtitles from that placement and finds them timed on the
+dubbed voice.
+
+Its fourth look found none. A fifth, after more time with the code, found three, all taken:
+
+- Only words a mix placed before 0 s were left out. A voice block that plays part of its file (`from: 5, at: 2,
+  dur: 2`) put the sentences before and after that part into the dub (at 1 s and 5 s) and the subtitles, with no
+  issue. The mix record already says where each block starts and ends in the video, so placement and `srt` now
+  leave out what the mix doesn't play, wherever it cuts the narration.
+- `dub.py mix` copied each effect's time from the mix record, which keeps it to 0.1 ms. An effect at 2 + 1/60 s
+  then landed 2 samples later in the dub, and verify, which compared placements exactly, failed every rebuilt dub.
+  It now allows 0.25 ms, against a worst case of 0.06 ms that no one can hear.
+- `dub.py source`, which writes the text to translate, needed the video's mix, though the packages-only path (free,
+  subtitles and no dub) uses it on videos that may have none. It now reads the narration's words alone.
+
+`test_dub.py` has 16 tests (a voice block's window, and the text to translate before any mix; the demo project has
+an effect at 2 + 1/60 s, whose dub verify passes) and `test_youtube.ts` 73; both pass.
+
+Its sixth look found two more, both taken:
+
+- The window ended at the mix's end even when the final render is shorter. A sentence at 6 s with a 10-second mix
+  and a 5-second render was placed, and could only fail: it ran past the video's end and didn't fit. The window
+  now also ends at the video's end, so the sentence is left out like any other the video doesn't play.
+- A subtitle ended at its last clause left the rest of its words to go on with the next one, without checking that
+  they fit together. "alle Rechtsschutzversicherungsgesellschaften und" became one 48-character line, reported as
+  a word too long for two lines. The split now repeats until what is left fits with the next word. A part of a
+  subtitle that fit always fits by itself, so this ends.
+
+`test_dub.py` has 17 tests (a sentence after a shorter render's end) and `test_youtube.ts` 74 (the German
+subtitle).
+
+Its seventh look found two that the window had brought, both taken:
+
+- `srt` dropped what follows the video's end only after grouping the words into subtitles, so a word after the end
+  could ride in an earlier one: "Omit." at 5.1 s in a 5-second video showed with "Keep." until 5.0. Words after the
+  end are now dropped before the grouping, in the video's language, a translation and a dub alike.
+- The estimate counted only the narration the video plays, but `speak` makes each translated paragraph whole. With
+  a 180-second narration and a 5-second render the suggested cap fell from 5,000 credits to 1,000, and the
+  translation's exact count then needed a second yes. The estimate counts the whole narration again.
+
+`test_dub.py` has 17 tests (test_17 also checks the estimate) and `test_youtube.ts` 75 (a word after the video's
+end).
+
+Its eighth look found one. eleven.py times an unspaced Japanese sentence as one entry, which `srt` splits into words
+by length. The end was applied to the entry before the split, so the whole sentence was squeezed into the time
+before the end: a sentence spoken from 4.0 to 9.8 s in a 5-second video showed all its words between 4.5 and 5.0 s.
+Every edge (before 0 s, a voice block's `from` and `dur`, the video's end) now cuts the words after the split, and
+only "私たちの旅は", spoken before 5 s, is shown. `test_youtube.ts` has 76 tests.
+
+Its ninth look found one. A voice block placed after a shorter render's end (`at: 5.1`, `from: 0.5`, in a
+5-second video) leaves a window that ends before it starts. Each edge was checked on its own, so a word crossing the
+block's start passed both and came out from 5.1 to 5.0 s: "Hello." and "Hola." were shown from 4.17 s, and the dub
+placed the word and reported that it couldn't fit. An empty window now holds no word, in `srt` and in `dub.py`
+alike. `test_youtube.ts` has 77 tests, and test_17 places nothing for such a block.
+
+Its tenth look found that such a video's package could never pass `check --full`: `srt` wrote an empty file, which
+check refuses ("no subtitles in it"), and without the file check asked for it, since it wanted subtitles whenever
+`data/words.json` exists. Subtitles are now wanted when the video plays some of its narration, as `srt` measures it,
+and `srt` writes no file when there is nothing to show (and removes one left from before).
+`test_youtube.ts` has 78 tests.
+
+Its eleventh look found a gap. A translated sentence's time is shared among its words by length, and each word
+ended a character short of the next, leaving a gap. A block that plays only the last tenth of "Hello." (`from: 0.9`,
+`dur: 0.1`), or a moment between two translated words, then showed the English and no Spanish: no file, and
+`check --full` failed. Each word now runs up to the next, so wherever the original is heard so is its translation.
+`test_youtube.ts` has 80 tests.
+
+Its twelfth look found the converse. Both scripts judged a sentence heard by the span from its first word to its
+last, which takes in its pauses. A block playing 0.3 to 0.5 s of "Hello" (0 to 0.2) "world." (0.8 to 1.0) plays
+no word of it, yet "Hola mundo." was subtitled and dubbed. A sentence now counts as heard when one of its words
+is, in `srt` and in placement alike. `test_youtube.ts` has 81 tests, and test_17 dubs nothing for such a block.

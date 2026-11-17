@@ -29,7 +29,8 @@ request ids and song metadata in ElevenLabs' formats. Agents that spotted a mock
 storage bucket, where these files don't exist: fetched, they answer 404.
 
 Triggers for error tests: TTS text containing TRIGGER_402 -> 402 insufficient_credits;
-TRIGGER_429 -> 429 once, then success.
+TRIGGER_429 -> 429 once, then success; TRIGGER_DROP -> logged as billed, then the connection closes
+with no answer (what a timeout after the charge looks like to a client).
 """
 import argparse
 import base64
@@ -65,7 +66,7 @@ STATE = {"tts_texts": [], "sfx_calls": {}, "seen_429": set(), "audio_sha": {}}
 # Design (generated); preview links have the bucket paths each kind has there
 PREVIEWS = "https://storage.googleapis.com/eleven-public-prod"
 VOICES = [
-    {"voice_id": "7pw50oSJb9NWQ0HJBBuM", "name": "Camila", "category": "premade",
+    {"voice_id": "7pw50oSJb9NWQ0HJBBuM", "name": "Camila", "category": "premade", "is_owner": False,
      "description": "A calm, clear Brazilian Portuguese voice for narration and audiobooks.",
      "labels": {"accent": "brazilian", "descriptive": "calm", "age": "young", "gender": "female", "language": "pt",
                 "use_case": "narrative_story"},
@@ -73,6 +74,7 @@ VOICES = [
                              "locale": "pt-BR"}],
      "preview_url": f"{PREVIEWS}/premade/voices/7pw50oSJb9NWQ0HJBBuM/ae2156f9-d9fa-4042-b60d-4505f3d38841.mp3"},
     {"voice_id": "lLMLgpFODM2KlxUSCdcI", "name": "Graham - Warm Narrator", "category": "professional",
+     "is_owner": True,
      "description": "A warm, steady American narrator in his forties: clear and trustworthy, for explainers, "
                     "product videos and documentaries.",
      "labels": {"accent": "american", "descriptive": "warm", "age": "middle_aged", "gender": "male", "language": "en",
@@ -82,6 +84,7 @@ VOICES = [
      "preview_url": f"{PREVIEWS}/database/user/AIUIKYiRBwkRR26g44VZyKyilmnV/voices/lLMLgpFODM2KlxUSCdcI/"
                     "cTczOGjY24UT3zJATqtC.mp3"},
     {"voice_id": "f38bgdzGogYQ5UizvbaJ", "name": "Hannah - British Host", "category": "generated",
+     "is_owner": True,
      "description": "A bright, upbeat young British voice for social media, ads and short videos.",
      "labels": {"accent": "british", "descriptive": "upbeat", "age": "young", "gender": "female", "language": "en",
                 "use_case": "social_media"},
@@ -91,6 +94,30 @@ VOICES = [
      "preview_url": f"{PREVIEWS}/UJeUIFMzeGXX9WpLtQoWnZIpJBcq/voices/f38bgdzGogYQ5UizvbaJ/"
                     "31ecfd4d-415a-499e-97f8-7fe8a1d48843.mp3"},
 ]
+
+
+# A small language detector, as the transcriber's own: the writing system, then the commonest words of the Latin
+# alphabet's languages (ISO 639-3, as Scribe answers).
+STOPWORDS = {
+    "eng": "the and is of to a in that this it are with for",
+    "spa": "el la los las de y es que en un una del por con",
+    "por": "o a os as de e é que em um uma do da não você com",
+    "deu": "der die das und ist nicht ein eine zu den mit von",
+    "fra": "le la les de et est un une des du que dans",
+    "ita": "il lo la gli le di e è che un una del per con",
+}
+
+
+def detect(text: str) -> str:
+    for code, rng in (("jpn", r"[\u3040-\u30ff]"), ("kor", r"[\uac00-\ud7af]"), ("zho", r"[\u4e00-\u9fff]"),
+                      ("ara", r"[\u0600-\u06ff]"), ("hin", r"[\u0900-\u097f]"), ("ben", r"[\u0980-\u09ff]"),
+                      ("rus", r"[\u0400-\u04ff]")):
+        if re.search(rng, text):
+            return code
+    words = re.findall(r"[^\W\d_]+", text.lower())
+    score = {c: sum(w in set(sw.split()) for w in words) for c, sw in STOPWORDS.items()}
+    best = max(score, key=lambda c: score[c])
+    return best if score[best] else "eng"
 
 
 def request_id() -> str:
@@ -388,6 +415,10 @@ class H(BaseHTTPRequestHandler):
                 c, b = err(429, "rate_limit_error", "concurrent_limit_exceeded", "Too many concurrent requests.")
                 self._log(c, True)
                 return self._json(c, b)
+            if "TRIGGER_DROP" in text:  # billed, then nothing comes back: the client can't tell whether it was
+                self._log(200, True, {"chars": len(text), "dropped": True})
+                self.close_connection = True
+                return
             y, al, words = synth_tts(text, int(body.get("seed") or 0))
             audio = mp3(y)
             with LOCK:
@@ -479,7 +510,8 @@ class H(BaseHTTPRequestHandler):
                 self._log(c, True)
                 return self._json(c, b)
             text = " ".join(STATE["tts_texts"]).replace("dum", "doom")
-            lang = "por" if re.search(r"[ãõçáéíóúâêô]", text.lower()) else "eng"  # the language it detects
+            asked = fields.get(b"language_code", b"").decode()
+            lang = asked or detect(text)  # the language it was held to, else the one it detects
             words, t = [], 0.4
             for wd in text.split():
                 words.append({"text": wd, "type": "word", "start": round(t, 3), "end": round(t + 0.3, 3),

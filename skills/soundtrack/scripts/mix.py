@@ -1445,6 +1445,15 @@ class TimingData:
             raise usage(f"{why}: data/audio.json has {len(arr)} {kind}s; index {i} is out of range")
 
 
+def read_record(p: Path) -> dict:
+    """A mix record, or {} when there is none or it can't be read."""
+    try:
+        j = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else {}
+    except (OSError, ValueError):
+        return {}
+    return j if isinstance(j, dict) else {}
+
+
 def layer_shift(data: TimingData, name: str, plan: dict, shas: dict) -> tuple[float, str | None, dict | None]:
     """Where data/<name>'s times sit in the mix: its audioSha256 names the plan file it was timed to (a voice block,
     or the music), and its times move with that layer's placement (at - from). Returns (shift, layer, document);
@@ -1477,7 +1486,7 @@ def block_gaps(doc: dict | None, layer: str | None, shift: float) -> list[tuple[
 # ------------------------------------------------------------------------------------------------ the plan
 
 PLAN_KEYS = {"kind", "loudness", "true_peak", "max_limit_db", "duration", "fade_in", "fade_out", "voice", "music",
-             "effects", "hits", "hit_lu", "build_lu", "note", "notes"}
+             "effects", "hits", "hit_lu", "build_lu", "note", "notes", "voice_words"}
 VOICE_KEYS = {"file", "at", "from", "dur", "gain_db", "note"}
 MUSIC_KEYS = {"file", "at", "from", "dur", "gain_db", "under_voice", "fade_in", "fade_out", "duck", "joins",
               "intended_start", "intended_end", "note"}
@@ -1732,6 +1741,14 @@ def parse_plan(raw, base: Path) -> dict:
     plan["build_lu"] = num(raw, "build_lu", "plan", BUILD_LU, 0, 40)
     if not plan["voice"] and plan["music"] is None and not plan["effects"]:
         raise usage('the plan has no "voice", "music" or "effects": nothing to mix')
+    # Words timed to this plan's voice, in mix time, when they aren't the video's data/words.json (a dub: another
+    # language's voice over the video's own music and effects). The voice checks and the sync report read them;
+    # effects, joins and hits still resolve on the video's data, so the bed doesn't move with the voice.
+    plan["voice_words"] = None
+    if raw.get("voice_words") is not None:
+        if not plan["voice"]:
+            raise usage('plan.voice_words names the words of the plan\'s voice, and the plan has no "voice"')
+        plan["voice_words"] = need_file({"file": raw.get("voice_words")}, "voice_words", base)
     return plan
 
 
@@ -2405,8 +2422,17 @@ def locate_build(args) -> dict:
         if not plan_arg.is_file():
             raise usage(f"--plan {args.plan}: no such file")
         plan = plan_arg
-    return {"w": w, "project": w.project, "name": w.name, "vdir": w.video_dir, "plan": plan.resolve(),
-            "audio": w.audio_dir, "data": w.data_dir, "out": w.review_dir}
+    ctx = {"w": w, "project": w.project, "name": w.name, "vdir": w.video_dir, "plan": plan.resolve(),
+           "audio": w.audio_dir, "data": w.data_dir, "out": w.review_dir, "to": None}
+    to = getattr(args, "to", None)
+    if to:
+        # Another mix of the video (a dub): mix.wav and its record go to the folder named; music-only.wav, the earlier
+        # rounds and the report to the review folder, under that folder's name. The video's own audio/ stays its own.
+        d = Path(to).resolve()
+        if d == Path(w.audio_dir).resolve():
+            raise usage(f"--to {to} is the video's own audio folder: its mix.wav is made without --to")
+        ctx.update(audio=d, out=Path(w.review_dir) / f"mix-{d.name}", to=d)
+    return ctx
 
 
 def video_hints(ctx: dict, video: dict, dur: float, dsrc: str, data: TimingData) -> list[str]:
@@ -2506,6 +2532,9 @@ def cmd_build(args) -> dict:
     raw = load_json(ctx["plan"], "plan")
     base = ctx["plan"].parent
     plan = parse_plan(raw, base)
+    if plan["voice_words"] is not None and ctx["to"] is None:
+        raise usage("the plan's voice_words make it a mix with another voice (a dub): name where it goes with --to DIR "
+                    "(the video's own audio/mix.wav stays the video's)")
     data = TimingData(ctx["data"], root)
     vjson = (ctx["vdir"] / "video.json") if ctx["vdir"] else None
     video = load_json(vjson, "video.json") if vjson and vjson.is_file() else {}
@@ -2522,7 +2551,25 @@ def cmd_build(args) -> dict:
     notes: list[str] = []
     data.shift_audio, audio_layer, _ = layer_shift(data, "audio.json", plan, shas)
     data.shift_words, words_layer, words_doc = layer_shift(data, "words.json", plan, shas)
-    gaps = block_gaps(words_doc, words_layer, data.shift_words)
+    # The words the voice checks read: the video's, or the plan's voice_words (already in mix time). With another
+    # voice, data/words.json no longer matches a layer of this plan, so its times sit where the video's own mix put
+    # them (its record's shift): joins and hits anchored on words land as they do there.
+    if plan["voice_words"] is not None and ctx["vdir"] is not None and words_layer is None:
+        own = read_record(ctx["vdir"] / "audio" / "mix.wav.request.json")
+        try:
+            data.shift_words = float(((own.get("resolved") or {}).get("timing_data") or {}).get("words.json", {})
+                                     .get("shift_s") or 0.0)
+        except (AttributeError, TypeError, ValueError):
+            pass
+    if plan["voice_words"] is not None:
+        v_doc = load_json(plan["voice_words"], "voice_words")
+        if not isinstance(v_doc, dict) or not isinstance(v_doc.get("lines"), list):
+            raise usage(f"voice_words: {relpath(plan['voice_words'], root)} has no \"lines\" (the words.json format)")
+        data.used[relpath(plan["voice_words"], root)] = sha256(plan["voice_words"])
+        v_layer, v_shift = "voice", 0.0
+    else:
+        v_doc, v_layer, v_shift = words_doc, words_layer, data.shift_words
+    gaps = block_gaps(v_doc, v_layer, v_shift)
     for name, layer, sh in (("audio.json", audio_layer, data.shift_audio), ("words.json", words_layer, data.shift_words)):
         if layer and abs(sh) > 0.0005:
             notes.append(f"data/{name} was timed to the {layer} file: its times move {sh:+.3f} s with it")
@@ -2544,8 +2591,9 @@ def cmd_build(args) -> dict:
               "video_duration": vdur_used}
     fingerprint = hashlib.sha256(json.dumps(fp_src, sort_keys=True).encode("utf-8")).hexdigest()
     ctx["audio"].mkdir(parents=True, exist_ok=True)
-    mix_path, mo_path = ctx["audio"] / "mix.wav", ctx["audio"] / "music-only.wav"
+    mix_path, mo_path = ctx["audio"] / "mix.wav", (ctx["out"] if ctx["to"] else ctx["audio"]) / "music-only.wav"
     rec_path = ctx["audio"] / "mix.wav.request.json"
+    mo_path.parent.mkdir(parents=True, exist_ok=True)
     old = None
     if rec_path.is_file():
         try:
@@ -2557,7 +2605,8 @@ def cmd_build(args) -> dict:
             and old.get("outputs", {}).get("music-only.wav") == sha256(mo_path)):
         rs = old.get("resolved") or {}
         return {"ok": True, "status": "up to date", "round": old.get("round"), "record": old, "ctx": ctx,
-                "hints": video_hints(ctx, video, float(rs.get("duration") or 0), str(rs.get("duration_source")), data),
+                "hints": [] if ctx["to"] else video_hints(ctx, video, float(rs.get("duration") or 0),
+                                                          str(rs.get("duration_source")), data),
                 "uv_cache": uv_cache()}
 
     # Decode everything once (ffmpeg's gapless decode, 48 kHz stereo).
@@ -2823,10 +2872,10 @@ def cmd_build(args) -> dict:
         for i0 in range(0, n, SR * 10):
             mix_r[i0:i0 + SR * 10] -= V[i0:i0 + SR * 10]
     if has_voice:
-        doc = words_doc if words_layer is None or words_layer.startswith("voice") else None
+        doc = v_doc if v_layer is None or v_layer.startswith("voice") else None
         layers = [("voice" if len(vrows) == 1 else f"voice[{i}]", v["file"], v["at"], v["end"])
                   for i, v in enumerate(vrows)]
-        vlines, vwords, by, regs = voice_lines(doc, data.shift_words, active, dur, words_layer is not None, layers)
+        vlines, vwords, by, regs = voice_lines(doc, v_shift, active, dur, v_layer is not None, layers)
         # (the plan's under_voice target; with music.gain_db set by hand, or no music, the default's 12 LU)
         target_lu = (mrow or {}).get("under_voice_target", UNDER_VOICE_LU)
         vob = voice_over_bed(kv, KEnergy(mix_r, phone=True), act_b, vlines, vwords, by, target_lu, regs)
@@ -2913,15 +2962,17 @@ def cmd_build(args) -> dict:
 
     # Sync of the narration with data/words.json (the picture finds words there): line starts vs voice onsets.
     sync = None
-    if has_voice and data.exists("words.json") and (words_layer is None or words_layer.startswith("voice")):
+    if has_voice and plan["voice_words"] is not None:
+        sync = words_sync(V, v_doc.get("lines") or [], video, 0.0)
+    elif has_voice and data.exists("words.json") and (words_layer is None or words_layer.startswith("voice")):
         try:
             lines = load_json(data.dir / "words.json", "words.json").get("lines") or []
         except Fail:
             lines = []
         sync = words_sync(V, lines, video, data.shift_words)
 
-    # The engine's view: which file video.json plays, and the length it gives the video.
-    hints = video_hints(ctx, video, dur, dsrc, data)
+    # The engine's view: which file video.json plays, and the length it gives the video (not for another mix).
+    hints = [] if ctx["to"] else video_hints(ctx, video, dur, dsrc, data)
 
     # PNG + JSON report, then the record.
     in_project_cache = mpl_cache(ctx["w"])
@@ -2960,6 +3011,8 @@ def cmd_build(args) -> dict:
         "resolved": {"duration": round(dur, 4), "duration_source": dsrc, "voice": vrows, "music": mrow,
                      "timing_data": {"audio.json": {"layer": audio_layer, "shift_s": round(data.shift_audio, 4)},
                                      "words.json": {"layer": words_layer, "shift_s": round(data.shift_words, 4)},
+                                     **({"voice_words": relpath(plan["voice_words"], root)}
+                                        if plan["voice_words"] is not None else {}),
                                      "block_gaps": len(gaps)},
                      "effects": frows, "bed": bed_name,
                      "master": {"target_lufs": target, "target_source": plan["target_source"], "ceiling_dbtp": ceiling,
@@ -3410,6 +3463,9 @@ def main(argv=None) -> int:
                                                   "looked for in videos/NAME/)")
     b.add_argument("--out", metavar="DIR", help="without a project: the folder that gets audio/ (the mix) and out/ "
                                                 "(review files), and holds data/ (default .)")
+    b.add_argument("--to", metavar="DIR", help="another mix of the video (a dub: a plan with voice_words): mix.wav and "
+                   "its record go to DIR; music-only.wav, earlier rounds and the report to out/<video>/mix-<DIR's "
+                   "name>/. Never the video's own audio/ folder")
     b.add_argument("--force", action="store_true", help="rebuild even when the plan and its inputs are unchanged")
     b.add_argument("--json", action="store_true", help="print a machine-readable result instead of the summary")
     m = sub.add_parser("measure", help="loudness, sections, hit contrast, intros and tails of any audio file",

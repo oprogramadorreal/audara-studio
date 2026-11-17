@@ -1,11 +1,11 @@
 ---
 name: youtube-package
-description: "Makes a video's YouTube package: three thumbnail options (1280x720 PNG) designed together with one title, plus the description with chapters and the tags, in the project. Builds the art from the video's frames and engine or generated images (asking before spending), and judges each option small, in a mock feed, beside the title. Use it whenever the user wants a thumbnail, a YouTube title, description, chapters or tags for a video, wants it ready to upload, or wants one of those changed, even if they only say \"thumb\", \"miniatura\" or \"make it clickable\". Not for making or changing the video itself, or title cards and text inside it (code-video), for choosing a video to make or its working title and thumbnail (video-ideas), or for images unrelated to a video."
+description: "Makes a video's YouTube package: three thumbnail options (1280x720 PNG) designed together with one title, plus the description with chapters, the tags and timed subtitles, in the project, and offers it in more languages. Builds the art from the video's frames and engine or generated images (asking before spending), and judges each option small, in a mock feed, beside the title. Use it whenever the user wants a thumbnail, a YouTube title, description, chapters, tags or subtitles for a video, wants it ready to upload or in other languages, or wants one of those changed, even if they only say \"thumb\", \"miniatura\" or \"make it clickable\". Not for making or changing the video itself, or title cards and text inside it (code-video), for choosing a video to make or its working title and thumbnail (video-ideas), or for images unrelated to a video."
 ---
 
 # youtube-package
 
-The user is about to publish a video. Make what decides whether people click and stay: three thumbnail options and one title made as a pair, then the description (with chapters) and the tags, in `videos/<video>/youtube/` (outside an audara project, a `youtube/` folder beside the video). "A thumbnail" or "get it ready for YouTube" gets the whole package, description and tags too, even when only the pictures are named; one other part alone gets that part (a title, the description, one option changed). Their words outrank this skill. `<skill>` is this skill's folder; other paths are the project's.
+The user is about to publish a video. Make what decides whether people click and stay: three thumbnail options and one title made as a pair, then the description (with chapters), the tags and subtitles, in `videos/<video>/youtube/` (outside an audara project, a `youtube/` folder beside the video). "A thumbnail" or "get it ready for YouTube" gets the whole package, its words and subtitles too, even when only the pictures are named; one other part alone gets that part (a title, the description, one option changed). Their words outrank this skill. `<skill>` is this skill's folder; other paths are the project's.
 
 ## Fixed
 - **The pair promises what the video delivers, early.** The first seconds keep the viewers who clicked, and play in the thumbnail's place on hover and in phone feeds. Metaphor and new art are fine; an invented result, quote or endorsement isn't. When the opening doesn't pay off the best promise, say so and offer the change (code-video makes it); never change the video here.
@@ -25,29 +25,26 @@ Keep this checklist in your notes. Explore once (about six ideas, three finished
 - [ ] **Art.** Each idea gets the means it needs (references/art.md): the video's own frames and plates, a plate staged in the engine, the user's photos, generated images after a yes, code. Type in the channel's typeface.
 - [ ] **Finish** each as `youtube/thumbnail-N.png`, 1280x720 unless asked otherwise, its source beside it so a word can change later: an HTML page through `shoot`, or any pipeline.
 - [ ] **Look as viewers do.** `preview` (again after any change), and look at every image. Then a critic: a fresh subagent that starts without this conversation, given only the preview images and the title, answers: what does each promise; what reads first at 168 px; what is confusing, illegible, ordinary or misleading; does each give its own reason to click; which one change would help most. No subagent: look again yourself, and say so. A last look at full size.
-- [ ] **Words.** `description.txt` (plain text, short unless asked) and `tags.txt`, only what gets pasted (references/youtube.md). Chapters from timing data checked against the final cut, never guessed.
+- [ ] **Words.** `description.txt` (plain text, short unless asked) and `tags.txt`, only what gets pasted (references/youtube.md). Chapters from timing data checked against the final cut, never guessed. Timed narration gets `subtitles.<code>.srt` (`srt`).
 - [ ] **Check.** `check --full` for the whole package (plain `check` for a part); fix every FAIL.
 - [ ] **Hand-off**, in the user's language, every part a line or so, even if you usually reply briefly: what's theirs to decide (the pick, a Test & Compare run, the "AI use" disclosure, an opening that doesn't pay off), also atop `NOTES.md`; your pick and why; each option's idea; the title and two runners-up with lengths; the description's first line and chapters; files and preview images; what the check and the critic found; costs. Their decisions go in `NOTES.md` in their words (channel-wide ones in `docs/CHANNEL.md`), not the treatment, which is the video's; read them before any change.
+- [ ] **More languages**, after a whole package: the offer in references/languages.md (no credits for the packages; dubbed tracks a separate, paid choice).
 
 ## Commands
-From the project folder; `--help` has every option.
+From the project folder (`youtube.ts` is `bun <skill>/scripts/youtube.ts`; `--help` has every option); outside an audara project, the package folder in place of `--video`.
 
 | Step | Command |
 |---|---|
-| Find moments | `bun scripts/render.ts sheet --video <video> --n 24` |
-| Plates at 2x | `bun scripts/render.ts stills --video <video> --t 12.5,40 --scale 2 [--only <entries>] --out out/<video>/youtube/frames` |
-| A page to PNG | `bun <skill>/scripts/youtube.ts shoot videos/<video>/youtube/thumbnail-1.html` |
-| The niche | `bun <skill>/scripts/youtube.ts niche <links> --video <video>` |
-| As viewers see it | `bun <skill>/scripts/youtube.ts preview --video <video> --channel "<name>" [--niche <dir>]` |
-| Check the package | `bun <skill>/scripts/youtube.ts check --video <video> [--full]` |
-| Generated image | code-video's `scripts/imagegen.py` (references/art.md) |
-
-Outside an audara project, pass the package folder, not `--video`.
+| A page to PNG | `youtube.ts shoot videos/<video>/youtube/thumbnail-1.html` |
+| The niche | `youtube.ts niche <links> --video <video>` |
+| As viewers see it | `youtube.ts preview --video <video> --channel "<name>" [--niche <dir>]` |
+| Check the package | `youtube.ts check --video <video> [--full]` |
+| Subtitles | `youtube.ts srt --video <video> --lang <code>` |
 
 ## Read when
-- references/art.md: the pictures (ideas, plates, photos, generated images, finishing, type, the niche, the critic).
-- references/youtube.md: the title, description, chapters and tags, and YouTube's sizes, limits, testing and policy, with sources.
+- references/art.md: the pictures (ideas, plates and stills, photos, `imagegen.py`, type, the niche, the critic).
+- references/youtube.md: the words (title, description, chapters, tags) and YouTube's limits, testing and policy, with sources.
+- references/languages.md: more languages: the offer, each language's package and subtitles, the dubbed tracks.
 
 ## Gotchas
-- A frame carries the video's captions and HUD: render the plate without those entries (`--only`), or use the asset the scene loads.
-- A Bun or Node script (importing `node:` or using Bun) doesn't go in `videos/`: `bun run check` reads it as browser code and fails. HTML or Python there; scratch in `out/`.
+- A Bun or Node script doesn't go in `videos/` (`bun run check` reads it as browser code and fails): HTML or Python there; scratch in `out/`.

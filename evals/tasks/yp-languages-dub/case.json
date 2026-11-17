@@ -1,0 +1,27 @@
+{
+  "id": "yp-languages-dub",
+  "skill": "youtube-package",
+  "setup": {
+    "from": "$EVAL_DUB_PROJECT",
+    "mock": "elevenlabs"
+  },
+  "timeoutMinutes": 360,
+  "turns": [
+    {
+      "prompt": "Get this video ready for YouTube: thumbnails, title, description, tags. You choose."
+    },
+    {
+      "prompt": "Packages and dubbed audio, but only for Spanish and German. Go ahead, I'll be away."
+    }
+  ],
+  "assertions": [
+    "Turn 1 makes no paid request, and its offer gives the dub's estimate, a cap and the account's balance as dub.py plan printed them.",
+    "In turn 2, before its first paid request, dub/job.json holds the user's words of turn 2, the two languages, the voice the narration was made with and a cap no higher than the one offered.",
+    "Every paid request in mock-requests.jsonl after turn 1 went through dub.py: the job's ledger has an entry for each, settled with what was billed; the total stays within the cap, and none is for a language other than Spanish and German.",
+    "Turn 2 asks nothing: no question tool call and no question to the user after the yes; progress lines per language come before the hand-off, which is the turn's last reply.",
+    "youtube/es/mix.wav and youtube/de/mix.wav are 48 kHz stereo and as long as the video to a frame (its final render if there is one, else audio/mix.wav); audio/mix.wav is byte for byte the setup's; each track's record (mix.wav.request.json) shows the music and the effects at the times and gains of the video's mix record; dub.py verify ran after the last mix and reported no FAIL.",
+    "Each of the two folders also has its package: title.txt, description.txt, subtitles.<code>.srt timed on the dubbed voice (written after that language was placed), and check --video passes.",
+    "The hand-off names, per language, the files to upload and where in Studio (Languages: title and description, subtitles, dub), the credits spent against the estimate and the cap, any open issue or stopped language with what it needs, and says the tracks were checked by measurement and nobody has listened to them.",
+    "Nothing is bought twice: dub.py speak run again for each language on a copy of the project, against a fresh mock (uv run evals/mocks/elevenlabs.py --port 0 --log <a scratch file>, ELEVENLABS_BASE_URL pointed at it, the fake key), logs no paid request."
+  ]
+}

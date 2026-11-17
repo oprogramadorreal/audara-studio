@@ -548,10 +548,108 @@ for 1280x720, the floor for a full-quality test; `shoot --scale 3` makes one fro
 as salience or CLIP readings as judges; a fixed outlier threshold that rules a niche video in or out (the
 user's preferred reference wasn't an outlier; the multiples are read, not obeyed); the median of each channel's
 recent uploads as the baseline, closer to vidIQ's "similar timeframe" but two more calls per channel and skewed
-by Shorts, where the lifetime average per video comes with the channel's statistics in one call; an SRT from the
-word timings, offered rather than made; and a second image script for Google's Nano Banana 2.1 (a little
+by Shorts, where the lifetime average per video comes with the channel's statistics in one call; and a second image script for Google's Nano Banana 2.1 (a little
 cheaper per image, better at keeping one face across three options, but a new script and key, while
 `imagegen.py`'s GPT Image 2.5 led Artificial Analysis's rankings for generating and editing in October 2026).
+
+### More languages: packages, subtitles and dubbed tracks
+
+The user packaged a finished 8-minute narrated explainer by hand in nine languages, one request per language
+over two days (history.md, 2026-11-17): a folder per language with the title, the description, the one
+thumbnail that had words, timed subtitles and a dubbed audio track, each made by a script written for that
+video (a subtitle script per writing system, a 17 KB placement script and a mixing workaround per language).
+What came back from that is now three steps of the existing skills, not a new one:
+
+- **By default, the package's subtitles.** `youtube.ts srt` makes `subtitles.<code>.srt` from the narration's
+  timed words, in lines of the language's length and on screen as long as Netflix's timed-text guides allow
+  (42 characters a line, Japanese 13, Korean and Chinese 16; 5/6 s to 7 s; graphemes counted, so Devanagari
+  and Bengali are measured as they read; Japanese breaks after a particle, never before one). They carry the
+  narration word for word, so their reading speed is reported against the language's guide, not enforced.
+- **One offer, two choices, after a whole package.** The package in a 15-language preset (the languages with
+  the most native-speaking YouTube users in one 2025 estimate; it counts speakers, not views, so it is never
+  called "the most-watched"), the video's own language counted once; and, apart, dubbed tracks in the
+  narration's own ElevenLabs voice. The offer says what the default already has, what each choice adds, which
+  spends credits ("no generation credits" for the packages, not "free"), where the files go, the estimate, the
+  cap and the balance, that it takes hours and one yes covers every language, that nobody will have listened
+  to the accents, that audio tracks need Studio's advanced features, and that YouTube's own automatic dubbing
+  is free in the directions it covers. A narrow request (a title) gets neither the subtitles nor the offer.
+- **One yes, then nothing to answer.** The user wanted to approve the batch once and walk away. So the yes
+  becomes a job file (`dub/job.json`: their words, the languages, the voice, the models, the cap), every paid
+  request goes through `dub.py`, which writes a ledger entry reserving the most it can cost before sending it,
+  refuses past the cap or past the language's share of it (so one language's retries can't starve the rest),
+  and lets one run work on the job at a time, reading it fresh for every write. A character is reserved at the
+  list rate, the most ElevenLabs states for these models, and a job takes only a voice the account owns or one
+  of ElevenLabs' premade voices: a Voice Library voice can carry a credit multiplier (a legacy custom rate that
+  varies with the user's plan) that no voice field states, so no cap could be held with one. A request billed
+  past its reservation that takes the job past its cap stops the job. A language's earlier requests stay in the
+  job whatever a later yes names, and one that may have been billed stops its language from the ledger itself. A request that may have been billed without its audio arriving
+  (anything but the server's no: a timeout, a dropped connection, a crash) stays reserved at its most,
+  "possibly charged", is never sent again by itself, and stops only its language; requests of the same run
+  that arrived stay billed. Each language's voice test is transcribed against its text and language before
+  the rest is bought; two failures stop it. A higher cap the director approves lifts a stop on a share, not
+  one on a possible charge. Progress is a line per language, never a question. Only finishing past
+  the cap, another voice or model, or a change of what the video says goes back to the director, and a
+  stopped language waits in the hand-off. `dub.py status` reads the job and the files on disk, so another
+  session resumes where one stopped, and eleven.py's request cache means paid audio is never bought twice.
+
+How a track is made, and why:
+
+- **The translation is one text for two uses.** `youtube/<code>/narration.txt`, a paragraph per narration line
+  and sentence for sentence where the language allows, is both the subtitles' text and the dub's script, so
+  what is read and what is heard agree. It is the agent's work, faithful to the director's locked script.
+- **Sentence anchors, a few word anchors.** The picture is timed to the original words, so each translated
+  sentence starts where its original sentence starts; the reference's hand plans also landed a few words on
+  the moments a cut or a label follows, so `anchors.tsv` names those (line, original words, translated words,
+  an occurrence), and the sentence is cut in the measured pause before the word. A sentence that runs long
+  may start 0.25 s early, be sped up 8% (ffmpeg's atempo keeps the pitch) or push the next 0.4 s late; past
+  that it is an open issue that says how much shorter it must be, and nothing runs past the video's end. A track is
+  as long as the final render (the mix's length without one); sentences are matched to the original as spoken, so
+  one the video doesn't play (before 0 s, outside the stretch its voice block plays: the block's `from`, `dur`
+  and the mix's end, as the mix record has them, or after a shorter render's end) is left out of the dub and its
+  subtitles.
+  These bounds are tested, not proof:
+  `verify`'s numbers and the director's eye are. Each line is matched to the original line's level.
+- **The bed is the original's, exactly.** `dub.py mix` writes a plan from the video's own mix record: the
+  music and every effect at the times and gains that mix resolved, the dub's voice in place of the narration,
+  and its placed words for the voice checks. `mix.py build` takes such a plan (`voice_words`) only with
+  `--to DIR`, so a dub never writes the video's own `mix.wav` (the reference needed a staging folder and a
+  hash check to be sure of that). An effect mix.py turned down for sounding within 150 ms of another keeps
+  the gain it had: the cut is taken out of the copied gain, since mix.py makes it again. The record keeps an
+  effect's time to 0.1 ms, so its copy can land 3 samples (0.06 ms) away; `verify` allows 0.25 ms. The mix's per-line voice-over-bed measures are compared with the same
+  lines in the original mix, which the director approved, and a line that lost more than 2 LU is listed with
+  the lift that restores it: listed, not lifted, since an approved mix once drew flags on 14 of its 30 lines.
+- **Checks that are measurements.** `verify` holds every track to the video's length (the final render's,
+  to a frame), 48 kHz stereo, no clipped sample, the true peak under the ceiling, the original's music and
+  effects (files, times, gains), no original voice among its inputs, that it is made from what is there now
+  (the translation, the narration, anchors, levels, the placement, the video's words and mix: one shared
+  check for place, mix, verify and status), its placement's open issues, and a transcription of the placed
+  voice (paid, inside the job: the words that reached the track,
+  cuts included); loudness against the original mix and across languages is listed to listen to, not failed.
+  What nothing checks (an accent, a delivery, the translation's meaning) is said before the yes and in every
+  hand-off.
+- **Models by language.** Multilingual v2 doesn't speak Bengali or Vietnamese: those take `eleven_v4`, named
+  in the estimate before the yes, its voice test the first paid request there. `eleven.py tts --language`
+  holds v3, v4 and Flash to a language.
+- **The estimate before translating.** The offer comes before any translation, so the user can answer once:
+  the original's characters times measured ratios (a pt-BR narration translated whole into 8 languages, and
+  ten of its paragraphs into 7 more), at the list rate, plus a transcription of every placed voice and a 25%
+  retry allowance. After translating, `plan` gives an updated estimate from the exact texts and splits the
+  same cap again; past it, that is the one question.
+
+Where the files go: everything a language uploads in `youtube/<code>/` (title, description, its thumbnails
+with words, subtitles, `mix.wav`), one Studio "Languages" row per folder; the paid audio and its records in
+`dub/<code>/`. Tags stay one list: YouTube has no tags per language, and the reference's tag list filled its
+500 characters adding two per language.
+
+Considered and left out: a new skill for languages (its description would overlap both youtube-package's and
+soundtrack's, and every rule it needed lives in one of them; youtube-package had to change anyway for the
+default subtitles); ElevenLabs' dubbing API (it separates speech from a finished mix and translates on its
+own: here the stems exist, and the translation is read before anything is paid); YouTube's automatic dubbing
+as the only path (free, but from Portuguese only into English and Spanish, in a voice it picks: named in the
+offer instead); a local transcriber for the check (free, but heavy for a batch of long tracks on a CPU, and its quality
+in these 15 languages unmeasured here); lifting every line the mix flags; a general segment-plan format for placement (sentence and
+word anchors covered the reference's hand plans); reconciling an unknown outcome through the account's
+history API (counted as spent and named instead); and tags per language.
 
 ### A house style you can name: Nutlight
 
@@ -1084,7 +1182,9 @@ local voice (Kokoro-82M, Apache-2.0), and the user's own audio is analyzed as be
   ([elevenlabs/skills](https://github.com/elevenlabs/skills): text-to-speech, music, sound effects,
   speech-to-text). They are guides for writing app code with the SDK and know nothing about this timing
   format. audara owns only the glue: three calls, the files they write and the timing JSON. For anything
-  else (voice design, cloning, dubbing), point to the official skills.
+  else (voice design, cloning, ElevenLabs' dubbing of finished media), point to the official skills. A
+  video's narration in another language is `dub.py`'s: the same text-to-speech calls, placed and mixed over
+  the video's own stems ("More languages", above).
 
 ### Rules for the generation scripts
 
@@ -1183,8 +1283,8 @@ on one approved mix with no record of what its director would have flagged.
 ### Adding more tools later
 
 Add a tool only when it writes data the engine reads or does a step the model can't do by itself, and keep
-it behind one line in SKILL.md. A cheap candidate: SRT captions from the word timings. Leave out until a
-project needs them: stock footage, voice cloning. (A thumbnail mode came as `render.ts poster`, one frame at
+it behind one line in SKILL.md. Leave out until a project needs them: stock footage, voice cloning. (SRT
+subtitles from the word timings came as youtube-package's `srt` in 0.14.0, with dubbed tracks.) (A thumbnail mode came as `render.ts poster`, one frame at
 full quality, and grew into the `youtube-package` skill in 0.7.0; image generation joined in round 4, as an
 option behind the same spending rules; Blender and math references came as optional tools, each read only when
 in play.)

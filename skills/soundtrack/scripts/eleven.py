@@ -1698,7 +1698,8 @@ def cmd_voices(a, out: Out) -> None:
             continue
         rows.append({"voice_id": v.get("voice_id"), "name": v.get("name"), "category": v.get("category"),
                      "labels": labels, "languages": langs, "description": v.get("description"),
-                     "preview_url": v.get("preview_url")})
+                     "preview_url": v.get("preview_url"), "is_owner": v.get("is_owner"),
+                     "sharing_rate": (v.get("sharing") or {}).get("rate")})
     out.data["voices"] = rows
     if not rows:
         out("No voices matched." + (" Try without --language or --search." if (a.language or a.search) else ""))
@@ -1771,7 +1772,8 @@ def tts_flags(a) -> list[str]:
     """The narration flags of this run, so a command it suggests repeats them (a refused run
     remembers nothing, so the suggestion must carry them)."""
     f: list[str] = []
-    for flag, v in (("--voice", a.voice), ("--model", a.model), ("--format", a.format), ("--seed", a.seed),
+    for flag, v in (("--voice", a.voice), ("--model", a.model), ("--language", a.language), ("--format", a.format),
+                    ("--seed", a.seed),
                     ("--gap", a.gap), ("--lead", a.lead), ("--tail", a.tail), ("--stability", a.stability),
                     ("--similarity", a.similarity), ("--style", a.style), ("--speed", a.speed),
                     ("--pitch-tolerance", a.pitch_tolerance)):
@@ -1814,6 +1816,12 @@ def cmd_tts(a, out: Out) -> None:
     voice = voice or "<voice>"
     vname = cfg.get("voice_name") if voice == cfg.get("voice_id") else None
     model = a.model or cfg.get("model_id") or TTS_MODEL
+    # The language to enforce (a dub in Bengali or Vietnamese on eleven_v4): sent as language_code to the models that
+    # take it; Multilingual v2 doesn't, and finds the language in the text.
+    language = (a.language if a.language is not None else cfg.get("language_code")) or None
+    if language and not re.fullmatch(r"[a-z]{2,3}", language):
+        raise Fail(USAGE, f"--language {language}: an ISO 639-1 code such as es, hi or bn (639-3 where there is none)")
+    send_language = language if language and not model.startswith("eleven_multilingual_v2") else None
     fmt = a.format or cfg.get("output_format") or DEFAULT_FORMAT
     ext = ext_for(fmt, "tts")
     seed = a.seed if a.seed is not None else int(cfg.get("seed", 1))
@@ -1860,7 +1868,8 @@ def cmd_tts(a, out: Out) -> None:
         raise Fail(USAGE, f"--pitch-tolerance {a.pitch_tolerance:g}: semitones, more than 0 and at most 24")
 
     def req(b: Block, s: int) -> dict:
-        body = {"text": b.spoken, "model_id": model, "voice_settings": dict(sorted(vs.items())), "seed": s}
+        body = {"text": b.spoken, "model_id": model, "voice_settings": dict(sorted(vs.items())), "seed": s,
+                **({"language_code": send_language} if send_language else {})}
         return {"method": "POST", "path": f"/v1/text-to-speech/{voice}/with-timestamps",
                 "query": {"output_format": fmt}, "body": body}
 
@@ -1943,6 +1952,7 @@ def cmd_tts(a, out: Out) -> None:
 
     def cfg_doc(words_sha: str | None) -> dict:
         return {"voice_id": voice, "voice_name": vname, "model_id": model, "voice_settings": vs,
+                **({"language_code": language} if language else {}),
                 "output_format": fmt, "seed": seed, "say": say_keep, "gap": gap, "lead": lead, "tail": tail,
                 "snap": snap_on, "lufs": lufs, "script": rel_to(script, w.base), "words_sha256": words_sha,
                 "notes": "Settings of this narration, kept by eleven.py tts: every block uses the same ones. Flags "
@@ -3598,6 +3608,8 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("script", help="the narration as shown on screen (.txt or .md), paragraphs = blocks")
     t.add_argument("--voice", help="voice id (eleven.py voices); kept for this narration")
     t.add_argument("--model", help=f"text-to-speech model (default {TTS_MODEL})")
+    t.add_argument("--language", help="language code the model is held to (sent as language_code to the models that "
+                                      "take it, not Multilingual v2); kept for this narration")
     t.add_argument("--say", action="append", help="respelling for the voice: a file of shown<TAB>spoken lines, a "
                                                    "JSON {\"shown\": \"spoken\"}, or 'shown=spoken'; repeatable")
     t.add_argument("--gap", type=float, help="seconds of silence between blocks (default 0.6)")

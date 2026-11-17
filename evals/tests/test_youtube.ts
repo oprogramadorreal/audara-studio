@@ -264,6 +264,258 @@ try {
     && readFileSync(path.join(root, 'niche-api', 'aaaaaaaaaaa.jpg'), 'utf8') === 'the picture fetched before', nout + JSON.stringify(got));
   const order = ['bbbbbbbbbbb', 'ccccccccccc', 'aaaaaaaaaaa'].map((id) => nout.indexOf(`  ${id}  `));
   expect('niche: lists the videos that outran their channel first', order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])) && /10x its average, 5\.1x its subscribers/.test(nout), nout);
+
+  // srt: subtitles from the narration's timed words, the video's own and translations' (no dub: each translated
+  // sentence shown while its original sentence is spoken)
+  const sub = path.join(root, 'subs'), sv = path.join(sub, 'videos', 'v');
+  mkdirSync(path.join(sv, 'data'), { recursive: true });
+  writeFileSync(path.join(sv, 'video.json'), JSON.stringify({ fps: 30, duration: 20, audio: null }));
+  const timed = (text: string, t0: number, dur: number) => text.split(' ').map((w, i, a) => ({ w, start: +(t0 + dur * i / a.length).toFixed(3), end: +(t0 + dur * (i + 0.9) / a.length).toFixed(3) }));
+  const S = ['Our journey begins here, a hundred kilometers above the surface of the Earth.', 'This is the edge of space.',
+    'The colors come from real satellite photos taken by many satellites over many years.', 'The clouds are real too.'];
+  writeFileSync(path.join(sv, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: `${S[0]} ${S[1]}`, words: [...timed(S[0], 1, 4.5), ...timed(S[1], 6, 2)] },
+    { text: `${S[2]} ${S[3]}`, words: [...timed(S[2], 9, 5), ...timed(S[3], 15, 1.8)] }] }));
+  const tr: Record<string, string> = {
+    ja: '私たちの旅はここから始まります、地表から百キロメートル上空です。 ここが宇宙の境目です。\n\n地表の色は長年たくさんの衛星が撮った本物の衛星写真から来ています。 雲も本物です。',
+    ko: '우리의 여행은 여기, 지표면에서 백 킬로미터 위에서 시작됩니다. 여기가 우주의 경계입니다.\n\n색은 오랜 세월 많은 위성이 찍은 진짜 위성 사진에서 왔습니다. 구름도 진짜입니다.',
+    ar: 'تبدأ رحلتنا من هنا، على ارتفاع مئة كيلومتر فوق سطح الأرض. هذه هي حافة الفضاء.\n\nالألوان مأخوذة من صور حقيقية التقطتها أقمار صناعية كثيرة على مدى سنوات طويلة. والغيوم حقيقية أيضًا.',
+    hi: 'हमारी यात्रा यहीं से शुरू होती है, पृथ्वी की सतह से सौ किलोमीटर ऊपर। यह अंतरिक्ष का किनारा है।\n\nरंग कई सालों में कई उपग्रहों की ली गई असली सैटेलाइट तस्वीरों से आते हैं। बादल भी असली हैं।',
+  };
+  for (const [code, text] of Object.entries(tr)) {
+    mkdirSync(path.join(sv, 'youtube', code), { recursive: true });
+    writeFileSync(path.join(sv, 'youtube', code, 'narration.txt'), text + '\n');
+  }
+  writeFileSync(path.join(sv, 'youtube', 'notes.en.tsv'), '0:18\t1.5\t[100 km]\n');
+  const inSub = (args: string[]) => { const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: sub, stdout: 'pipe', stderr: 'pipe' }); return { code: p.exitCode, out: p.stdout.toString() + p.stderr.toString() }; };
+  const cues = (file: string) => readFileSync(file, 'utf8').trim().split(/\n\n+/).map((b) => { const l = b.split('\n'); return { at: l[1].slice(0, 12), lines: l.slice(2) }; });
+  const g = (s: string, lang: string) => [...new Intl.Segmenter(lang, { granularity: 'grapheme' }).segment(s)].length;
+  r = inSub(['srt', '--video', 'v', '--lang', 'en']);
+  let c = r.code === 0 ? cues(path.join(sv, 'youtube', 'subtitles.en.srt')) : [];
+  expect('srt: the video\'s own narration, lines of 42 at most, two a subtitle, from its first word', r.code === 0 && c.length >= 4
+    && c.every((x) => x.lines.length <= 2 && x.lines.every((l) => l.length <= 42)) && c[0].at === '00:00:01,000', r.out + JSON.stringify(c));
+  expect('srt: a timed note for words on screen, where nobody speaks', c.some((x) => x.at === '00:00:18,000' && x.lines.join(' ') === '[100 km]'), JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'ja']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ja', 'subtitles.ja.srt')) : [];
+  expect('srt: Japanese in lines of 13, no spaces, no line opening on a particle', r.code === 0 && c.length >= 3
+    && c.every((x) => x.lines.every((l) => g(l, 'ja') <= 13 && !/\s/.test(l) && !/^(は|が|を|に|で|と|も|へ|の|から)/.test(l))), r.out + JSON.stringify(c));
+  expect('srt: reports a reading speed over the language\'s guide', /over 4 \(the ja guide's adult speed\)/.test(r.out), r.out);
+  r = inSub(['srt', '--video', 'v', '--lang', 'ko']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ko', 'subtitles.ko.srt')) : [];
+  expect('srt: Korean in lines of 16, its spaces kept', r.code === 0 && c.every((x) => x.lines.every((l) => g(l, 'ko') <= 16)) && c.some((x) => x.lines.some((l) => / /.test(l))), r.out + JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'ar']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'ar', 'subtitles.ar.srt')) : [];
+  expect('srt: a translated sentence shows while its original is spoken (Arabic, the second at 0:06)', r.code === 0 && c.some((x) => x.at === '00:00:06,000' && /حافة الفضاء/.test(x.lines.join(' '))), r.out + JSON.stringify(c));
+  r = inSub(['srt', '--video', 'v', '--lang', 'hi']);
+  c = r.code === 0 ? cues(path.join(sv, 'youtube', 'hi', 'subtitles.hi.srt')) : [];
+  expect('srt: Hindi lines measured in graphemes (42 at most) and cut at the danda', r.code === 0 && c.every((x) => x.lines.every((l) => g(l, 'hi') <= 42)) && c.some((x) => /।$/.test(x.lines[x.lines.length - 1])), r.out + JSON.stringify(c));
+  mkdirSync(path.join(sv, 'youtube', 'xx'), { recursive: true });
+  writeFileSync(path.join(sv, 'youtube', 'xx', 'narration.txt'), 'One paragraph only.\n');
+  r = inSub(['srt', '--video', 'v', '--lang', 'xx']);
+  expect('srt: a translation whose paragraphs don\'t match the narration\'s lines is refused', r.code === 2 && /one paragraph per line/.test(r.out), r.out);
+  rmSync(path.join(sv, 'youtube', 'xx'), { recursive: true });
+  {
+    // a subtitle ended at its clause: what is left, with the next word, is split again until it fits (codex's
+    // sixth review: "alle Rechtsschutzversicherungsgesellschaften und" was kept as one 48-character line)
+    const dp = path.join(root, 'subs-de'), dv = path.join(dp, 'videos', 'v');
+    mkdirSync(path.join(dv, 'data'), { recursive: true });
+    const text = 'Bei den heutigen Themen sind, alle Rechtsschutzversicherungsgesellschaften und Betriebshaftpflichtversicherungen.';
+    writeFileSync(path.join(dv, 'video.json'), JSON.stringify({ fps: 30, duration: 20, audio: null }));
+    writeFileSync(path.join(dv, 'data', 'words.json'), JSON.stringify({ lines: [{ text, words: text.split(' ').map((w, i) => ({ w, start: 1 + i * 0.6, end: 1.5 + i * 0.6 })) }] }));
+    const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'v', '--lang', 'de'], { cwd: dp, stdout: 'pipe', stderr: 'pipe' });
+    const out = p.stdout.toString() + p.stderr.toString();
+    const dc = p.exitCode === 0 ? cues(path.join(dv, 'youtube', 'subtitles.de.srt')) : [];
+    expect('srt: what is left of a subtitle ended at its clause is split again until it fits (German, 42 at most)',
+      p.exitCode === 0 && dc.length > 0 && dc.every((x) => x.lines.length <= 2 && x.lines.every((l) => g(l, 'de') <= 42)) && !/too long for two lines/.test(out), out + JSON.stringify(dc));
+  }
+  {
+    // a word after the video's end joins no subtitle, in the video's language or a translation (codex's seventh
+    // review: "Omit." at 5.1 s in a 5-second video was shown with "Keep." until 5.0)
+    const kp = path.join(root, 'subs-end'), kv = path.join(kp, 'videos', 'v');
+    mkdirSync(path.join(kv, 'data'), { recursive: true });
+    mkdirSync(path.join(kv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(kv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(kv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Keep. Omit.', words: [
+      { w: 'Keep.', start: 4.5, end: 4.8 }, { w: 'Omit.', start: 5.1, end: 5.4 }] }] }));
+    writeFileSync(path.join(kv, 'youtube', 'es', 'narration.txt'), 'Guardar. Omitir.\n');
+    const run = (code: string) => { const p = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'v', '--lang', code], { cwd: kp, stdout: 'pipe', stderr: 'pipe' }); return p.stdout.toString() + p.stderr.toString(); };
+    const o1 = run('en'), o2 = run('es');
+    const s1 = readFileSync(path.join(kv, 'youtube', 'subtitles.en.srt'), 'utf8'), s2 = readFileSync(path.join(kv, 'youtube', 'es', 'subtitles.es.srt'), 'utf8');
+    expect('srt: a word after the video\'s end joins no subtitle, in its language and a translation',
+      /Keep\./.test(s1) && !/Omit/.test(s1) && /Guardar\./.test(s2) && !/Omitir/.test(s2) && /1 word\(s\) after the video's end/.test(o1 + o2), o1 + s1 + o2 + s2);
+    // a Japanese sentence timed whole (as eleven.py writes one) across the end: its words after the end are left out,
+    // not squeezed into the time before it (codex's eighth review)
+    const jv = path.join(kp, 'videos', 'j');
+    mkdirSync(path.join(jv, 'data'), { recursive: true });
+    writeFileSync(path.join(jv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    const ja = '私たちの旅はここから始まります、地表から百キロメートル上空です。';
+    writeFileSync(path.join(jv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: ja, words: [{ w: ja, start: 4, end: 9.8125 }] }] }));
+    const jp = Bun.spawnSync(['bun', SCRIPT, 'srt', '--video', 'j', '--lang', 'ja'], { cwd: kp, stdout: 'pipe', stderr: 'pipe' });
+    const sj = jp.exitCode === 0 ? readFileSync(path.join(jv, 'youtube', 'subtitles.ja.srt'), 'utf8') : '';
+    expect('srt: a Japanese sentence timed whole across the end shows only what is spoken before it',
+      /私たちの旅は/.test(sj) && !/ここ|始まります|上空/.test(sj), jp.stdout.toString() + jp.stderr.toString() + sj);
+    // a voice block placed after the video's end (at 5.1 s in a 5-second video, "from": 0.5): nothing of it is heard,
+    // not even a word that crosses its start, in the video's language or a translation (codex's ninth review)
+    const lv = path.join(kp, 'videos', 'late');
+    mkdirSync(path.join(lv, 'data'), { recursive: true });
+    mkdirSync(path.join(lv, 'audio'), { recursive: true });
+    mkdirSync(path.join(lv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(lv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(lv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Hello.', words: [{ w: 'Hello.', start: 0, end: 1 }] }] }));
+    writeFileSync(path.join(lv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 10,
+      voice: [{ file: 'videos/late/audio/narration.wav', at: 5.1, end: 7.1 }], timing_data: { 'words.json': { layer: 'voice', shift_s: 4.6 } } } }));
+    writeFileSync(path.join(lv, 'youtube', 'es', 'narration.txt'), 'Hola.\n');
+    // (an empty file left from before goes: it would be uploaded as subtitles with nothing in them)
+    writeFileSync(path.join(lv, 'youtube', 'es', 'subtitles.es.srt'), '');
+    const late = (args: string[]) => { const p = Bun.spawnSync(['bun', SCRIPT, ...args], { cwd: kp, stdout: 'pipe', stderr: 'pipe' }); return { code: p.exitCode, out: p.stdout.toString() + p.stderr.toString() }; };
+    const l1 = late(['srt', '--video', 'late', '--lang', 'en']), l2 = late(['srt', '--video', 'late', '--lang', 'es']);
+    expect('srt: a voice block after the video\'s end has no subtitle, not even a word crossing its start, and no empty file',
+      l1.code === 0 && l2.code === 0 && /No subtitles: none of the narration is heard/.test(l1.out + l2.out)
+      && !existsSync(path.join(lv, 'youtube', 'subtitles.en.srt')) && !existsSync(path.join(lv, 'youtube', 'es', 'subtitles.es.srt')), l1.out + l2.out);
+    // and its language's package is whole without them (codex's tenth review: check --full asked for them either way)
+    writeFileSync(path.join(lv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+    writeFileSync(path.join(lv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+    const l3 = late(['check', path.join('videos', 'late', 'youtube', 'es'), '--full']);
+    expect('check --full: a language\'s folder for a video whose narration is never heard needs no subtitles',
+      l3.code === 0 && /no timed narration heard in the video, so no subtitles/.test(l3.out), l3.out);
+    // where the original is heard, so is its translation, even in a sliver of it: the last tenth of a sentence (a block
+    // "from": 0.9 "dur": 0.1), or the moment between two translated words (codex's eleventh review: no Spanish file,
+    // and check --full failed)
+    for (const [name, text, es, row, shift] of [['tail', 'Hello.', 'Hola.', { at: 0, end: 0.1 }, -0.9],
+      ['gap', 'Goodbye.', 'Hasta luego.', { at: 0, end: 0.02 }, -0.43]] as const) {
+      const gv = path.join(kp, 'videos', name);
+      mkdirSync(path.join(gv, 'data'), { recursive: true });
+      mkdirSync(path.join(gv, 'audio'), { recursive: true });
+      mkdirSync(path.join(gv, 'youtube', 'es'), { recursive: true });
+      writeFileSync(path.join(gv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+      writeFileSync(path.join(gv, 'data', 'words.json'), JSON.stringify({ lines: [{ text, words: [{ w: text, start: 0, end: 1 }] }] }));
+      writeFileSync(path.join(gv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 5,
+        voice: [{ file: `videos/${name}/audio/narration.wav`, ...row }], timing_data: { 'words.json': { layer: 'voice', shift_s: shift } } } }));
+      writeFileSync(path.join(gv, 'youtube', 'es', 'narration.txt'), es + '\n');
+      writeFileSync(path.join(gv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+      writeFileSync(path.join(gv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+      const g1 = late(['srt', '--video', name, '--lang', 'es']);
+      const f = path.join(gv, 'youtube', 'es', 'subtitles.es.srt');
+      const body = existsSync(f) ? readFileSync(f, 'utf8') : '';
+      const g2 = late(['check', path.join('videos', name, 'youtube', 'es'), '--full']);
+      expect(`srt: a translation is shown wherever its original is heard (${name === 'tail' ? 'the last tenth of a sentence' : 'between two translated words'}), and its package passes check --full`,
+        g1.code === 0 && body.length > 0 && g2.code === 0, g1.out + body + g2.out);
+    }
+    // and not where only a pause inside its original is: a block playing 0.3-0.5 s of "Hello" (0-0.2) "world." (0.8-1.0)
+    // plays no word of it (codex's twelfth review: "Hola mundo." was shown)
+    const pv = path.join(kp, 'videos', 'pause');
+    mkdirSync(path.join(pv, 'data'), { recursive: true });
+    mkdirSync(path.join(pv, 'audio'), { recursive: true });
+    mkdirSync(path.join(pv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(pv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(pv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Hello world.', words: [{ w: 'Hello', start: 0, end: 0.2 }, { w: 'world.', start: 0.8, end: 1 }] }] }));
+    writeFileSync(path.join(pv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 5,
+      voice: [{ file: 'videos/pause/audio/narration.wav', at: 0, end: 0.2 }], timing_data: { 'words.json': { layer: 'voice', shift_s: -0.3 } } } }));
+    writeFileSync(path.join(pv, 'youtube', 'es', 'narration.txt'), 'Hola mundo.\n');
+    writeFileSync(path.join(pv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+    writeFileSync(path.join(pv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+    const q1 = late(['srt', '--video', 'pause', '--lang', 'es']);
+    const q2 = late(['check', path.join('videos', 'pause', 'youtube', 'es'), '--full']);
+    expect('srt: a translation isn\'t shown where only a pause inside its original is heard, and its package passes check --full',
+      q1.code === 0 && !existsSync(path.join(pv, 'youtube', 'es', 'subtitles.es.srt')) && q2.code === 0, q1.out + q2.out);
+  }
+
+  // check: a language's folder, its subtitles and its dubbed track
+  const wav = (seconds: number) => {
+    const n = Math.round(seconds * 48000) * 4, b = Buffer.alloc(44 + n);
+    b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8); b.write('fmt ', 12); b.writeUInt32LE(16, 16);
+    b.writeUInt16LE(1, 20); b.writeUInt16LE(2, 22); b.writeUInt32LE(48000, 24); b.writeUInt32LE(192000, 28);
+    b.writeUInt16LE(4, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n, 40); return b;
+  };
+  const ar = path.join(sv, 'youtube', 'ar');
+  writeFileSync(path.join(ar, 'title.txt'), 'رحلة إلى حافة الفضاء\n');
+  writeFileSync(path.join(ar, 'description.txt'), 'وصف قصير.\n');
+  writeFileSync(path.join(ar, 'tags.txt'), 'فضاء\n');
+  writeFileSync(path.join(ar, 'mix.wav'), wav(12));
+  writeFileSync(path.join(ar, 'subtitles.bad.srt'), '1\n00:00:05,000 --> 00:00:04,000\nبعد\n\n2\nno time here\nنص\n');
+  r = inSub(['check', '--video', 'v']);
+  expect('check --video: each language\'s folder after the package', r.code === 1 && /youtube\/ar\//.test(r.out) && /youtube\/ja\//.test(r.out), r.out);
+  expect('check: a dubbed track not as long as the video fails', /FAIL\s+mix\.wav\s+0:12 \(12\.000 s\)[^\n]*the video lasts 20\.000 s/.test(r.out), r.out);
+  expect('check: a SubRip file with a cue that ends before it starts, and a block with no time, fails', /FAIL\s+subtitles\.bad\.srt\s+block 1: ends before it starts; block 2/.test(r.out), r.out);
+  expect('check: a language\'s folder has no tags of its own (one list a video)', /note\s+tags\.txt\s+YouTube keeps one tag list per video/.test(r.out), r.out);
+  writeFileSync(path.join(ar, 'mix.wav'), wav(20));
+  rmSync(path.join(ar, 'subtitles.bad.srt'));
+  r = inSub(['check', path.join('videos', 'v', 'youtube', 'ar'), '--full']);
+  expect('check: a language\'s folder in full: title, description, subtitles, and its track the video\'s length', r.code === 0 && /ok\s+mix\.wav[^\n]*the video's length to a frame/.test(r.out) && /ok\s+subtitles\.ar\.srt/.test(r.out) && /ok\s+package\s+ar: the title, the description and the subtitles, the dubbed track/.test(r.out), r.out);
+  writeFileSync(path.join(sv, 'youtube', 'title.txt'), 'A trip to the edge of space\n');
+  writeFileSync(path.join(sv, 'youtube', 'description.txt'), 'A short description.\n');
+  writeFileSync(path.join(sv, 'youtube', 'tags.txt'), 'space\n');
+  rmSync(path.join(sv, 'youtube', 'subtitles.en.srt'));
+  r = inSub(['check', path.join('videos', 'v', 'youtube'), '--full']);
+  expect('check --full: a package whose video has timed narration needs its subtitles', r.code === 1 && /FAIL\s+package\s+no subtitles\.<code>\.srt/.test(r.out), r.out);
+
+  // srt and check at the edges (codex's review): speech near the end, notes beside narration, no narration at all,
+  // and SubRip files that aren't
+  const ev = path.join(sub, 'videos', 'e');
+  mkdirSync(path.join(ev, 'data'), { recursive: true });
+  mkdirSync(path.join(ev, 'youtube', 'ja'), { recursive: true });
+  writeFileSync(path.join(ev, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
+  // ("Bye." far enough from the line before not to join it: codex's reproduction, which 0.14.0's first fix dropped)
+  const E1 = 'The planet turns.', E2 = 'Hello.', E3 = 'Bye.';
+  writeFileSync(path.join(ev, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 6, 1) }, { text: E3, words: timed(E3, 9.7, 0.2) }] }));
+  writeFileSync(path.join(ev, 'youtube', 'ja', 'narration.txt'), '惑星は回ります。\n\nそして街の上に夜が来て、すべての明かりが一つずつ灯っていきます。\n\nまたね。\n');
+  writeFileSync(path.join(ev, 'youtube', 'notes.en.tsv'), '0:00\t2\t[day]\n0:08.5\t3\t[night]\n0:03\t2\t[noon]\n');
+  r = inSub(['srt', '--video', 'e', '--lang', 'ja']);
+  const endOf = (stamp: string) => { const m = /(\d\d):(\d\d):(\d\d),(\d\d\d)$/.exec(stamp)!; return +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000; };
+  const ends = (file: string) => readFileSync(file, 'utf8').trim().split(/\n\n+/).map((b) => b.split('\n')[1].split(' --> ')).map(([a, z]) => [endOf(a), endOf(z)]);
+  let span = r.code === 0 ? ends(path.join(ev, 'youtube', 'ja', 'subtitles.ja.srt')) : [];
+  expect('srt: a subtitle near the video\'s end stays inside it', r.code === 0 && span.length > 0 && span.every(([, z]) => z <= 10), r.out + JSON.stringify(span));
+  r = inSub(['srt', '--video', 'e', '--lang', 'en']);
+  span = r.code === 0 ? ends(path.join(ev, 'youtube', 'subtitles.en.srt')) : [];
+  expect('srt: a word spoken just before the video\'s end keeps its subtitle, ending with the video', r.code === 0 && /Bye\./.test(readFileSync(path.join(ev, 'youtube', 'subtitles.en.srt'), 'utf8')) && span[span.length - 1][1] === 10, r.out + JSON.stringify(span));
+  expect('srt: notes placed one by one never overlap the narration or each other, and none runs past the end',
+    r.code === 0 && span.every(([a, z], i) => z <= 10 && (i === 0 || a >= span[i - 1][1])) && /\[noon\]/.test(readFileSync(path.join(ev, 'youtube', 'subtitles.en.srt'), 'utf8')), r.out + JSON.stringify(span));
+  const nv = path.join(sub, 'videos', 'n');
+  mkdirSync(path.join(nv, 'youtube', 'es'), { recursive: true });
+  writeFileSync(path.join(nv, 'video.json'), JSON.stringify({ fps: 30, duration: 60, audio: null }));
+  writeFileSync(path.join(nv, 'youtube', 'es', 'title.txt'), 'Un título\n');
+  writeFileSync(path.join(nv, 'youtube', 'es', 'description.txt'), 'Una descripción.\n');
+  r = inSub(['check', path.join('videos', 'n', 'youtube', 'es'), '--full']);
+  expect('check --full: a language\'s folder for a video with no timed narration needs no subtitles', r.code === 0 && /no timed narration heard in the video, so no subtitles/.test(r.out), r.out);
+  writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.es.srt'), '\n');
+  writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.xx.srt'), '1\n00:00:99,000 --> 00:01:02,000\nnope\n');
+  r = inSub(['check', path.join('videos', 'n', 'youtube', 'es')]);
+  expect('check: an empty SubRip file fails, and so does a time with 99 seconds', r.code === 1 && /FAIL\s+subtitles\.es\.srt\s+no subtitles in it/.test(r.out) && /FAIL\s+subtitles\.xx\.srt\s+block 1: a time that isn't one/.test(r.out), r.out);
+
+  // srt: a narration its mix trims at the start (placed 5 s earlier than it begins) has no subtitle before 0 s
+  const tv = path.join(sub, 'videos', 't');
+  mkdirSync(path.join(tv, 'data'), { recursive: true });
+  mkdirSync(path.join(tv, 'audio'), { recursive: true });
+  writeFileSync(path.join(tv, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
+  writeFileSync(path.join(tv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { timing_data: { 'words.json': { shift_s: -5 } } } }));
+  writeFileSync(path.join(tv, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: 'Cut opening.', words: [{ w: 'Cut', start: 1, end: 1.4 }, { w: 'opening.', start: 1.5, end: 2 }] },
+    { text: 'Kept ending.', words: [{ w: 'Kept', start: 6, end: 6.4 }, { w: 'ending.', start: 6.5, end: 7 }] }] }));
+  r = inSub(['srt', '--video', 't', '--lang', 'en']);
+  const tsrt = r.code === 0 ? readFileSync(path.join(tv, 'youtube', 'subtitles.en.srt'), 'utf8') : '';
+  const tchk = inSub(['check', path.join('videos', 't', 'youtube')]);
+  expect('srt: narration trimmed before 0 s gets no subtitle (codex\'s review), and check passes', r.code === 0 && !/Cut opening/.test(tsrt)
+    && /00:00:01,000 --> [^\n]*\nKept ending\./.test(tsrt) && tchk.code === 0, r.out + tsrt + tchk.out);
+
+  // ...and a translation of a line whose first sentence the mix trims leaves that sentence out too (codex's review)
+  writeFileSync(path.join(tv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Cut opening. Kept ending.', words: [
+    { w: 'Cut', start: 1, end: 1.4 }, { w: 'opening.', start: 1.5, end: 2 }, { w: 'Kept', start: 6, end: 6.4 }, { w: 'ending.', start: 6.5, end: 7 }] }] }));
+  mkdirSync(path.join(tv, 'youtube', 'es'), { recursive: true });
+  writeFileSync(path.join(tv, 'youtube', 'es', 'narration.txt'), 'Inicio cortado. Final conservado.\n');
+  r = inSub(['srt', '--video', 't', '--lang', 'es']);
+  const tes = r.code === 0 ? readFileSync(path.join(tv, 'youtube', 'es', 'subtitles.es.srt'), 'utf8') : '';
+  expect('srt: a translated sentence whose original the mix trims is left out', r.code === 0 && /Final conservado\./.test(tes) && !/Inicio cortado/.test(tes), r.out + tes);
+
+  // shoot: a Korean face draws its characters a square wide, as the fallback does; it is still the face that draws
+  const malgun = 'C:\\Windows\\Fonts\\malgunsl.ttf';
+  if (existsSync(malgun)) {
+    mkdirSync(path.join(root, 'pages', 'fonts'), { recursive: true });
+    copyFileSync(malgun, path.join(root, 'pages', 'fonts', 'k.ttf'));
+    pkg('pages', { 'ko.html': `<!doctype html><style>@font-face{font-family:'K';src:url('fonts/k.ttf')} body{margin:0;width:1280px;height:720px;background:#123} p{font:80px 'K';color:#fff;margin:80px}</style><p>구름도 진짜입니다</p>` });
+    r = run(['shoot', 'pages/ko.html']);
+    expect('shoot: a CJK face that has the characters isn\'t called a fallback (its glyphs, not its widths, are compared)', r.code === 0 && !/fallback|seems to lack/.test(r.out), r.out);
+  } else console.log('skip  shoot: a CJK face (needs Windows\' Malgun Gothic Semilight to load as a web font)');
 } finally {
   for (let i = 0; i < 20; i++) { try { rmSync(root, { recursive: true, force: true }); break; } catch { await Bun.sleep(200); } }
 }

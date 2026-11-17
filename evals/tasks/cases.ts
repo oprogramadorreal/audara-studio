@@ -769,6 +769,55 @@ const cases: Record<string, Case> = {
       'The package is complete and the skill\'s check passes on it; the video is unchanged.',
     ],
   },
+  // More languages (0.14.0), on EVAL_DUB_PROJECT: a finished narrated video whose narration eleven.py made with one
+  // of the ElevenLabs mock's voices and whose mix mix.py built (evals/README.md). The package's subtitles, the offer
+  // and its two choices, a partial yes, packages only.
+  'yp-languages-packages': {
+    skill: 'youtube-package', setup: { from: '$EVAL_DUB_PROJECT', mock: 'elevenlabs' }, timeoutMinutes: 300,
+    turns: [
+      { prompt: 'Get this video ready for YouTube: thumbnails, title, description, tags. You choose.' },
+      { prompt: 'Packages only, and only Spanish, English and Japanese.' },
+    ],
+    assertions: [
+      "After turn 1, videos/<video>/youtube/ holds the package (three thumbnails, title.txt, description.txt, tags.txt) and subtitles.<code>.srt in the video's language, made from data/words.json (its subtitles follow the narration's words and times), and the skill's check --video passes.",
+      "Turn 1's last reply ends with the offer of more languages: it names every language of the 15-language preset except the video's own, says the packages need no generation credits, offers dubbed audio as a separate choice that spends credits with the estimate, the cap and the account's balance as dub.py plan printed them, says it takes hours and that one yes covers every listed language, that the checks don't include anyone listening to accents, that text inside the video stays in its language and where the files go; then it asks (the question tool in Claude Code, a plain question in Codex) and does nothing more.",
+      'No paid request is made in either turn (mock-requests.jsonl has no paid=true entry) and no dub/job.json exists.',
+      "After turn 2, youtube/es/, youtube/en/ and youtube/ja/ each hold title.txt, description.txt (its chapters at the same times as the video's language's), subtitles.<code>.srt and narration.txt (one paragraph per line of data/words.json), a translated copy of every thumbnail whose picture has words and none of those without, and no tags.txt; there is no other language folder, and check --video passes on all of them.",
+      "The Japanese subtitles' lines hold at most 13 characters and no spaces; each language's title translates the package's title faithfully (a freer one, if any, in NOTES.md beside it); NOTES.md has a section per language with its files and the choices made (the variant, titles weighed).",
+      'The video is unchanged: nothing outside videos/<video>/youtube/, videos/<video>/dub/ (source.txt only), out/ and docs/CHANNEL.md differs from the setup commit.',
+    ],
+  },
+  // The one yes: dubbed audio approved once, then nothing to answer until the hand-off.
+  'yp-languages-dub': {
+    skill: 'youtube-package', setup: { from: '$EVAL_DUB_PROJECT', mock: 'elevenlabs' }, timeoutMinutes: 360,
+    turns: [
+      { prompt: 'Get this video ready for YouTube: thumbnails, title, description, tags. You choose.' },
+      { prompt: "Packages and dubbed audio, but only for Spanish and German. Go ahead, I'll be away." },
+    ],
+    assertions: [
+      "Turn 1 makes no paid request, and its offer gives the dub's estimate, a cap and the account's balance as dub.py plan printed them.",
+      "In turn 2, before its first paid request, dub/job.json holds the user's words of turn 2, the two languages, the voice the narration was made with and a cap no higher than the one offered.",
+      'Every paid request in mock-requests.jsonl after turn 1 went through dub.py: the job\'s ledger has an entry for each, settled with what was billed; the total stays within the cap, and none is for a language other than Spanish and German.',
+      'Turn 2 asks nothing: no question tool call and no question to the user after the yes; progress lines per language come before the hand-off, which is the turn\'s last reply.',
+      "youtube/es/mix.wav and youtube/de/mix.wav are 48 kHz stereo and as long as the video to a frame (its final render if there is one, else audio/mix.wav); audio/mix.wav is byte for byte the setup's; each track's record (mix.wav.request.json) shows the music and the effects at the times and gains of the video's mix record; dub.py verify ran after the last mix and reported no FAIL.",
+      'Each of the two folders also has its package: title.txt, description.txt, subtitles.<code>.srt timed on the dubbed voice (written after that language was placed), and check --video passes.',
+      'The hand-off names, per language, the files to upload and where in Studio (Languages: title and description, subtitles, dub), the credits spent against the estimate and the cap, any open issue or stopped language with what it needs, and says the tracks were checked by measurement and nobody has listened to them.',
+      "Nothing is bought twice: dub.py speak run again for each language on a copy of the project, against a fresh mock (uv run evals/mocks/elevenlabs.py --port 0 --log <a scratch file>, ELEVENLABS_BASE_URL pointed at it, the fake key), logs no paid request.",
+    ],
+  },
+  // A dub asked of soundtrack directly: the same job and the same yes.
+  'st-dub-asks-first': {
+    skill: 'soundtrack', setup: { from: '$EVAL_DUB_PROJECT', mock: 'elevenlabs' }, timeoutMinutes: 120,
+    turns: [
+      { prompt: "Dub this video's narration into Spanish with the same voice, and keep the music." },
+      { prompt: 'Yes, go ahead, up to 3000 credits.' },
+    ],
+    assertions: [
+      'Turn 1 spends nothing (no paid=true entry in mock-requests.jsonl before turn 2) and writes no dub/job.json: it says what the track will be (the narration in Spanish, the same voice, over the video\'s own music and effects, as long as the video), its estimate and a cap, and asks.',
+      "In turn 2, dub/job.json holds the user's words and a cap of 3000, every paid request has a ledger entry, and the total stays within 3000.",
+      "youtube/es/narration.txt has one paragraph per line of data/words.json; youtube/es/mix.wav is as long as the video to a frame; audio/mix.wav is unchanged; dub.py verify ran and reported no FAIL; the reply names the file, what was spent and that nobody has listened.",
+    ],
+  },
   'st-beats-json': {
     skill: 'soundtrack', setup: { files: ['$EVAL_SONG => song.mp3'] }, timeoutMinutes: 30,
     turns: [{ prompt: 'I need the beats and downbeats of song.mp3 as JSON so my animation can cut on the beat.' }],

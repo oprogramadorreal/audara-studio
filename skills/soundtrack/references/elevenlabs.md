@@ -141,6 +141,10 @@ These ids and limits live only here and in the script's defaults (checked 2026-1
 | `eleven_v3` | most expressive (audio tags); no speed, similarity or speaker boost | 5,000 |
 | `eleven_v4` | new on 2026-09-28; its timings came back and snapped in one 30-block Portuguese narration (2026-10-11); a take differs from the next even with the same seed | 10,000 |
 
+- **Languages** (the model pages, checked 2026-11-17): Multilingual v2 speaks 29 languages, not Bengali or
+  Vietnamese; Flash v2.5 adds Vietnamese, Hungarian and Norwegian; v3 (70+) and v4 (90+) speak both.
+  `tts --language <code>` holds v3, v4 and Flash to a language (sent as `language_code`; v2 takes none and
+  reads the language from the text). A dub uses the narration's model where it speaks the language.
 - Music is always `music_v2_5` (the API still defaults to the deprecated `music_v1`); effects
   `eleven_text_to_sound_v2`; transcription `scribe_v2`. The v1 speech models and Scribe v1 were
   scheduled for removal on 2026-07-09: don't use them.
@@ -307,8 +311,10 @@ Also adapted from motion-video-kit (`references/audio.md`, `scripts/sfx-candidat
 ## What to leave to ElevenLabs' own skills
 
 [elevenlabs/skills](https://github.com/elevenlabs/skills) covers writing app code with the SDK,
-voice design, voice cloning, dubbing, conversational agents and streaming. audara only owns the
-calls that become files, their request records and the timing JSON the engine reads.
+voice design, voice cloning, ElevenLabs' dubbing of finished media, conversational agents and streaming.
+audara only owns the calls that become files, their request records and the timing JSON the engine reads.
+A video's narration in another language over its own music and effects is `dub.py`'s (references/dub.md):
+the stems are there, so nothing is separated, and the translation is read before anything is paid for.
 
 ## Sources and credits
 

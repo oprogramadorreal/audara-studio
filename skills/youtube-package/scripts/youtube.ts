@@ -47,6 +47,20 @@
 //            given; JPEG with --jpg), title.txt, description.txt and tags.txt; without it, a missing part is
 //            only a note. The video's length: --duration, else its final render, else as the engine reads it
 //            (video.json's duration, its audio segments, data/audio.json, its one audio file).
+//            A language's folder (videos/<video>/youtube/<code>/) is held to what it uploads: the title, the
+//            description, its thumbnails with words, subtitles.<code>.srt and, when dubbed, mix.wav (as long as the
+//            video, to a frame); tags stay one list for the video. Every subtitles.*.srt is read as YouTube reads
+//            SubRip (plain UTF-8, numbered, times in order, inside the video). With --video and no folder, the
+//            video's package and then each language's are checked; --full also asks the package for its subtitles.
+//   srt:     bun <skill>/scripts/youtube.ts srt --video <video> --lang <code> [--line N]
+//            Timed subtitles (SubRip), in lines of the language's length (Netflix's guides: 42 characters, Japanese
+//            13, Korean and Chinese 16; --line sets another), two a subtitle, at a sentence's end or a clause's,
+//            on screen 5/6 s to 7 s. With no youtube/<code>/narration.txt, from the video's own narration
+//            (data/words.json) to youtube/subtitles.<code>.srt. With one (a translation, one paragraph per narration
+//            line), to youtube/<code>/subtitles.<code>.srt: timed on the language's dubbed voice when dub.py placed
+//            it from that text, else each translated sentence while its original sentence is spoken. Timed notes
+//            for words the picture shows (youtube/<code>/notes.tsv, or youtube/notes.<code>.tsv for the video's
+//            language: time, seconds, text) fill gaps in the narration. Reports the reading speed.
 // <dir> is the package folder: thumbnail-1.png ... and title.txt, description.txt, tags.txt. In an audara project,
 // --video <video> means videos/<video>/youtube/, previews go to out/<video>/youtube/, and the video's length is
 // read from its render (out/<video>/<video>.mp4), else as the engine resolves it (ffprobe for media).
@@ -59,10 +73,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 const argv = process.argv.slice(2);
-const MODES = ['shoot', 'preview', 'niche', 'check'];
+const MODES = ['shoot', 'preview', 'niche', 'check', 'srt'];
 const mode = argv[0] && !argv[0].startsWith('--') ? argv[0] : '';
 const rest = argv.slice(1);
-const VALUED = new Set(['size', 'scale', 'out', 'video', 'title', 'channel', 'duration', 'niche', 'lang', 'root', 'search', 'n', 'region']);
+const VALUED = new Set(['size', 'scale', 'out', 'video', 'title', 'channel', 'duration', 'niche', 'lang', 'root', 'search', 'n', 'region', 'line']);
 const opts = new Map<string, string>();
 const positional: string[] = [];
 for (let i = 0; i < rest.length; i++) {
@@ -531,11 +545,16 @@ function locate(): { dir: string; video?: string; proj?: string; outDir: string 
   }
   const first = dirArg ?? positional[0];
   const dir = first ? (existsSync(first) && statSync(first).isDirectory() ? path.resolve(first) : path.dirname(path.resolve(first))) : ROOT;
-  // videos/<video>/youtube/ given as a path: the same as --video
+  // videos/<video>/youtube/ given as a path: the same as --video (and videos/<video>/youtube/<code>/, a language's)
   const m = /[\\/]videos[\\/]([^\\/]+)[\\/]youtube$/.exec(dir);
   if (m && existsSync(path.join(dir, '..', 'video.json'))) {
     const proj = path.resolve(dir, '..', '..', '..');
     return { dir, video: m[1], proj, outDir: path.resolve(opt('out', path.join(proj, 'out', m[1], 'youtube'))!) };
+  }
+  const ml = /[\\/]videos[\\/]([^\\/]+)[\\/]youtube[\\/][^\\/]+$/.exec(dir);
+  if (ml && existsSync(path.join(dir, '..', '..', 'video.json'))) {
+    const proj = path.resolve(dir, '..', '..', '..', '..');
+    return { dir, video: ml[1], proj, outDir: path.resolve(opt('out', path.join(proj, 'out', ml[1], 'youtube'))!) };
   }
   return { dir, outDir: path.resolve(opt('out', path.join(dir, 'preview'))!) };
 }
@@ -618,10 +637,21 @@ const MEASURE_TEXT = `(() => {
   }
   const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[a-z-]+)$/i;
   // A face that lacks a character draws it in the next one: measured against two generic faces, the width then
-  // equals each generic's own.
+  // equals each generic's own, and so do the pixels. (Widths alone aren't enough: every Chinese, Japanese and Korean
+  // face draws its characters a square wide, so a face that has them measures as the fallback does.)
+  const ink = (f, s) => {
+    const k = document.createElement('canvas').getContext('2d');
+    k.font = f; const w = Math.min(4000, Math.ceil(k.measureText(s).width) + 8);
+    k.canvas.width = w; k.canvas.height = 160; k.font = f; k.textBaseline = 'alphabetic'; k.fillText(s, 4, 118);
+    const d = k.getImageData(0, 0, w, 160).data; let h = 0;
+    for (let i = 3; i < d.length; i += 4) h = (h * 31 + d[i]) | 0;
+    return h;
+  };
   const lacks = (font, family, s) => {
     const w = (f) => { c.font = font + ' 100px ' + f; return c.measureText(s).width; };
-    return w('"' + family + '", monospace') === w('monospace') && w('"' + family + '", serif') === w('serif');
+    if (w('"' + family + '", monospace') !== w('monospace') || w('"' + family + '", serif') !== w('serif')) return false;
+    return ink(font + ' 100px "' + family + '", monospace', s) === ink(font + ' 100px monospace', s)
+      && ink(font + ' 100px "' + family + '", serif', s) === ink(font + ' 100px serif', s);
   };
   const failed = Array.from(document.fonts).filter((f) => f.status === 'error').map((f) => f.family.replace(/["']/g, ''));
   return { failed, blocks: Array.from(blocks.values(), (b) => {
@@ -1066,6 +1096,354 @@ async function niche() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// srt: timed subtitles (SubRip) from the narration's timed words
+
+// Subtitle lines and reading speeds, adult programs, from Netflix's timed-text style guides (partnerhelp.netflixstudios
+// .com, read 2026-11-17; references/languages.md has the links): 42 characters a line for most languages, Japanese 13
+// full-width, Korean and Chinese 16; 17 characters a second for most, English and Arabic 20, Hindi and Bengali 22,
+// Korean 12, Chinese 9, Japanese 4. On screen 5/6 s to 7 s, two frames apart. The speeds are reported, not enforced:
+// these subtitles carry the narration word for word.
+type SubRule = { line: number; cps: number; spaced: boolean };
+const SUB_RULES: Record<string, SubRule> = {
+  en: { line: 42, cps: 20, spaced: true }, ar: { line: 42, cps: 20, spaced: true },
+  hi: { line: 42, cps: 22, spaced: true }, bn: { line: 42, cps: 22, spaced: true },
+  ja: { line: 13, cps: 4, spaced: false }, ko: { line: 16, cps: 12, spaced: true }, zh: { line: 16, cps: 9, spaced: false },
+};
+const SUB_DEFAULT: SubRule = { line: 42, cps: 17, spaced: true };
+const SUB_MIN = 5 / 6, SUB_MAX = 7, SUB_LINGER = 0.25, SUB_PAUSE = 1.0;
+const subRule = (code: string): SubRule => {
+  const r = SUB_RULES[code.split('-')[0].toLowerCase()] ?? SUB_DEFAULT;
+  const line = opt('line') ? +opt('line')! : r.line;
+  if (!(line >= 8 && line <= 80)) fail(`--line ${opt('line')}: characters a line, 8 to 80`);
+  return { ...r, line };
+};
+const graphemes = (s: string, lang: string) => [...new Intl.Segmenter(lang, { granularity: 'grapheme' }).segment(s)].length;
+// (the sentence and clause ends dub.py splits on: ., !, ?, ... and their CJK, Arabic and Devanagari forms)
+const SENT_END = /[.!?…。！？؟।॥]+["'”’»」』)\]]*$/;
+const CLAUSE_END = /[,;:—–、，；：،]["'”’»)\]]*$/;
+const NOT_END = /^(\d{1,2}\.|mr\.|mrs\.|ms\.|dr\.|st\.|sr\.|sra\.|jr\.|vs\.|e\.g\.|i\.e\.|z\.b\.|bzw\.|ca\.|nr\.|prof\.)$/i;
+type Tok = { text: string; start: number; end: number; sent: boolean; clause: boolean };
+// (a Japanese line or subtitle doesn't open on a particle or an ending: は, を, から, ます)
+const noStart = (t: Tok, lang: string) => lang === 'ja' && /^(は|が|を|に|で|と|も|へ|の|から|まで|より|って|ます|です|た|て)/.test(t.text);
+type Cue = { start: number; end: number; lines: string[]; toks: Tok[]; note?: boolean };
+
+function toks(words: { w: string; start: number; end: number }[], lang: string, spaced: boolean): Tok[] {
+  const out: Tok[] = [];
+  const seg = new Intl.Segmenter(lang, { granularity: 'word' });
+  for (const w of words) {
+    const text = String(w.w ?? '').trim();
+    if (!text) continue;
+    const sent = SENT_END.test(text) && !NOT_END.test(text), clause = CLAUSE_END.test(text);
+    // a word with no spaces in it for a whole phrase (Japanese, Chinese): cut at its words, the time shared by length
+    const parts = !spaced && graphemes(text, lang) > 4 ? glue([...seg.segment(text)].map((s) => s.segment)) : [text];
+    const total = parts.reduce((n, p) => n + graphemes(p, lang), 0) || 1;
+    let acc = 0;
+    parts.forEach((p, k) => {
+      const a = w.start + (w.end - w.start) * acc / total;
+      acc += graphemes(p, lang);
+      const b = w.start + (w.end - w.start) * acc / total;
+      const last = k === parts.length - 1;
+      out.push({ text: p, start: a, end: b, sent: last ? sent : SENT_END.test(p), clause: last ? clause : CLAUSE_END.test(p) });
+    });
+  }
+  return out;
+}
+
+/** Word segments with their punctuation kept on the word before (a line never starts with 、 or 。). */
+function glue(parts: string[]): string[] {
+  const out: string[] = [];
+  for (const p of parts) {
+    if (out.length && /^[\p{P}\s]+$/u.test(p)) out[out.length - 1] += p.trim();
+    else if (p.trim()) out.push(p.trim());
+  }
+  return out;
+}
+
+/** The best two lines for a cue (or one), within `line` graphemes each: a break after punctuation when there is one,
+ *  the lines as even as can be, the bottom one the longer. null when the words don't fit in two. */
+function breakLines(ts: Tok[], lang: string, rule: SubRule): string[] | null {
+  const join = (a: Tok[]) => a.map((t) => t.text).join(rule.spaced ? ' ' : '');
+  const whole = join(ts);
+  if (graphemes(whole, lang) <= rule.line) return [whole];
+  let best: { cost: number; lines: string[] } | null = null;
+  for (let k = 1; k < ts.length; k++) {
+    const a = join(ts.slice(0, k)), b = join(ts.slice(k));
+    const la = graphemes(a, lang), lb = graphemes(b, lang);
+    if (la > rule.line || lb > rule.line) continue;
+    // (a break after punctuation is best; in Japanese, after a particle: a line doesn't start with は, を or から)
+    const after = ts[k - 1].clause || ts[k - 1].sent ? rule.line / 3
+      : lang === 'ja' && /(は|が|を|に|で|と|も|へ|から|まで|より|って)$/.test(ts[k - 1].text) ? rule.line / 4 : 0;
+    const before = noStart(ts[k], lang) ? rule.line / 2 : 0;
+    const cost = Math.abs(la - lb) + (la > lb ? 2 : 0) - after + before;
+    if (!best || cost < best.cost) best = { cost, lines: [a, b] };
+  }
+  return best?.lines ?? null;
+}
+
+function buildCues(all: Tok[], lang: string, rule: SubRule, gap: number): { cues: Cue[]; long: string[] } {
+  const cues: Cue[] = [];
+  const long: string[] = [];
+  let cur: Tok[] = [];
+  const close = (n = cur.length) => {
+    const part = cur.slice(0, n);
+    cur = cur.slice(n);
+    if (!part.length) return;
+    let lines = breakLines(part, lang, rule);
+    if (!lines) { // one word longer than two lines: kept whole, reported
+      lines = [part.map((t) => t.text).join(rule.spaced ? ' ' : '')];
+      long.push(lines[0]);
+    }
+    cues.push({ start: part[0].start, end: part[part.length - 1].end, lines, toks: part });
+  };
+  for (const t of all) {
+    if (cur.length && t.start - cur[cur.length - 1].end > SUB_PAUSE) close();
+    // too long with the next word: end the cue at its last clause when that leaves it at least a third full, else
+    // where it overflows, and again until what is left fits with the word (a part of a cue that fit always fits)
+    while (cur.length && (!breakLines([...cur, t], lang, rule) || t.end - cur[0].start > SUB_MAX)) {
+      let k = -1;
+      for (let i = cur.length - 1; i >= 1; i--) if (cur[i - 1].clause) { k = i; break; }
+      const used = k > 0 ? graphemes(cur.slice(0, k).map((x) => x.text).join(' '), lang) : 0;
+      let at = k > 0 && used >= rule.line * 2 / 3 ? k : cur.length;
+      // the next subtitle would open on a particle: end this one a word earlier
+      while (at > 1 && noStart(at < cur.length ? cur[at] : t, lang)) at--;
+      close(at);
+    }
+    cur.push(t);
+    if (t.sent) close();
+  }
+  close();
+  // a cue too short to read joins its neighbour when the two fit and nearly touch
+  for (let i = 0; i < cues.length; i++) {
+    const c = cues[i];
+    if (c.end - c.start >= SUB_MIN) continue;
+    for (const j of [i + 1, i - 1]) {
+      const d = cues[j];
+      if (!d || Math.abs((j > i ? d.start - c.end : c.start - d.end)) > 0.5) continue;
+      const ts = j > i ? [...c.toks, ...d.toks] : [...d.toks, ...c.toks];
+      const lines = breakLines(ts, lang, rule);
+      if (!lines || ts[ts.length - 1].end - ts[0].start > SUB_MAX) continue;
+      const merged = { start: ts[0].start, end: ts[ts.length - 1].end, lines, toks: ts };
+      cues.splice(Math.min(i, j), 2, merged);
+      i = Math.min(i, j) - 1;
+      break;
+    }
+  }
+  // timing: shown from the first word, a little past the last, long enough to read where the next leaves room,
+  // at least 5/6 s where it can be, two frames before the next
+  for (let i = 0; i < cues.length; i++) {
+    const c = cues[i], next = cues[i + 1], prev = cues[i - 1];
+    const room = next ? next.start - gap : Infinity;
+    const n = graphemes(c.lines.join(''), lang);
+    const want = Math.max(c.end + SUB_LINGER, c.start + Math.max(SUB_MIN, n / rule.cps));
+    c.end = Math.min(want, c.end + 1.5, room, c.start + SUB_MAX);
+    if (c.end - c.start < SUB_MIN && prev) c.start = Math.max(prev.end + gap, Math.min(c.start, c.end - SUB_MIN));
+    c.end = Math.max(c.end, c.start + 0.2);
+  }
+  return { cues, long };
+}
+
+/** A note's time: seconds (12.5), m:ss or m:ss.s (0:08.5), or h:mm:ss. */
+function noteTime(t: string): number | undefined {
+  const m = /^(\d+):(\d{2}(?:\.\d+)?)$/.exec(t);
+  return m && +m[2] < 60 ? +m[1] * 60 + +m[2] : parseClock(t);
+}
+
+function stampSrt(t: number): string {
+  const ms = Math.max(0, Math.round(t * 1000));
+  const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`;
+}
+
+type WordsDoc = { lines?: { text?: string; words?: { w: string; start: number; end: number; spoken?: string }[] }[]; source?: any };
+
+function readJson(file: string): any {
+  try { return JSON.parse(readText(file)); } catch (e) { fail(`${file}: not readable JSON (${(e as Error).message})`); }
+}
+
+/** Where data/words.json's times sit in the video, as the video's mix recorded them: their shift (a voice placed
+ *  later), and the stretch where the mix plays the voice block they were timed to (from its start, 0 s at the
+ *  earliest, to its end: its "from" and "dur" and the mix's end cut it). Else no shift, and the whole video. */
+function wordsTiming(vdir: string): { shift: number; from: number; to: number } {
+  const rec = path.join(vdir, 'audio', 'mix.wav.request.json');
+  const whole = { shift: 0, from: 0, to: Infinity };
+  if (!existsSync(rec)) return whole;
+  try {
+    const res = JSON.parse(readText(rec))?.resolved ?? {};
+    const td = res.timing_data?.['words.json'] ?? {};
+    const m = /^voice(?:\[(\d+)\])?$/.exec(String(td.layer ?? ''));
+    const row = m ? res.voice?.[+(m[1] ?? 0)] : undefined;
+    const ok = row && typeof row.end === 'number';
+    return { shift: +(td.shift_s ?? 0) || 0, from: ok ? Math.max(0, +row.at || 0) : 0, to: ok ? row.end : Infinity };
+  } catch { return whole; }
+}
+
+/** Whether any of the video's narration is heard in it: a word of data/words.json inside the stretch its mix plays
+ *  it, before the video's end. One that never plays (a voice block after the end) has no subtitles to give. */
+function narrationHeard(vdir: string, video: string, proj: string): boolean {
+  const wordsFile = path.join(vdir, 'data', 'words.json');
+  if (!existsSync(wordsFile)) return false;
+  let doc: WordsDoc;
+  try { doc = JSON.parse(readText(wordsFile)); } catch { return true; } // (unreadable: srt says why)
+  const { shift, from, to } = wordsTiming(vdir);
+  const hi = Math.min(to, videoLength(path.join(vdir, 'youtube'), video, proj).seconds ?? Infinity);
+  return hi > from && (doc.lines ?? []).some((l) => (l.words ?? []).some((w) => typeof w.start === 'number' && w.end + shift > from && w.start + shift < hi));
+}
+
+function paragraphsOf(file: string): string[] {
+  return readText(file).split(/\n\s*\n/).map((p) => p.split(/\s+/).filter(Boolean).join(' ')).filter(Boolean);
+}
+
+function sentencesOf<T extends { w: string }>(ws: T[]): T[][] {
+  const out: T[][] = []; let cur: T[] = [];
+  for (const w of ws) { cur.push(w); if (SENT_END.test(w.w) && !NOT_END.test(w.w)) { out.push(cur); cur = []; } }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
+async function srt() {
+  const video = opt('video'), code = opt('lang');
+  if (!video || !code) fail('srt needs --video <video> --lang <code>: the video\'s own language (from data/words.json) or a translation in youtube/<code>/narration.txt');
+  if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(code)) fail(`--lang ${code}: a language code such as pt-BR, es, ja or zh-Hans`);
+  const vdir = path.join(ROOT, 'videos', video);
+  if (!existsSync(path.join(vdir, 'video.json'))) fail(`--video ${video}: no videos/${video}/video.json in ${ROOT}`);
+  const lang = code.split('-')[0].toLowerCase();
+  const rule = subRule(code);
+  let fps = 30;
+  try { fps = +JSON.parse(readText(path.join(vdir, 'video.json'))).fps || 30; } catch {}
+  const gap = 2 / fps;
+  const wordsFile = path.join(vdir, 'data', 'words.json');
+  if (!existsSync(wordsFile)) fail(`videos/${video}/data/words.json doesn't exist: subtitles are timed on the narration's words (the soundtrack skill's eleven.py tts or align.py writes them)`);
+  const { shift, from: plays, to: stops } = wordsTiming(vdir);
+  const orig: WordsDoc = readJson(wordsFile);
+  // (in video time, as spoken; words the mix doesn't play, before 0 s or outside the narration's block, aren't in
+  // the video, and are left out once split into words, after a translation's sentences are matched to these)
+  const full = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
+  let heardFrom = plays, heardTo = stops; // (where the words are heard: the narration's block, or a dub's whole track)
+  const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
+  const end = len.seconds ?? Infinity;
+  // (a word heard between a and b; a window that ends before it starts, a voice block placed after the video's end,
+  // holds no word at all)
+  const at = (t: { start: number; end: number }, a: number, b: number) => b > a && t.end > a && t.start < b;
+  const pkg = path.join(vdir, 'youtube', code);
+  const narration = path.join(pkg, 'narration.txt');
+  const placedFile = path.join(vdir, 'dub', code, 'data', 'words-placed.json');
+  let words: { w: string; start: number; end: number }[] = [];
+  let from = '';
+  let out = '';
+  const notes: string[] = [];
+  if (!existsSync(narration)) {
+    words = full.flat();
+    from = `the video's own narration, videos/${video}/data/words.json${shift ? ` (+${shift.toFixed(3)} s, as the mix places it)` : ''}`;
+    out = path.join(vdir, 'youtube', `subtitles.${code}.srt`);
+  } else {
+    const paras = paragraphsOf(narration);
+    if (paras.length !== full.length) fail(`youtube/${code}/narration.txt has ${paras.length} paragraphs and the narration ${full.length} lines: one paragraph per line, in order`);
+    out = path.join(pkg, `subtitles.${code}.srt`);
+    let placed: WordsDoc | undefined;
+    if (existsSync(placedFile)) {
+      placed = readJson(placedFile);
+      // (the text it was placed from: dub.py records it, since words its mix trims are left out on purpose; an older
+      // placement is checked by its words)
+      const said: string[] = Array.isArray(placed!.source?.paragraphs) ? placed!.source.paragraphs.map(String)
+        : (placed!.lines ?? []).map((l) => (l.words ?? []).map((w) => w.w).join(' '));
+      const fresh = said.length === paras.length && said.every((s, i) => s.replace(/\s+/g, '') === paras[i].replace(/\s+/g, ''));
+      if (!fresh) { notes.push(`the dub in videos/${video}/dub/${code}/ was placed from another text than narration.txt: timed on the original instead (place the dub again to time them on its voice)`); placed = undefined; }
+    }
+    if (placed) {
+      words = (placed.lines ?? []).flatMap((l) => (l.words ?? []).map((w) => ({ w: String(w.w), start: w.start, end: w.end })));
+      heardFrom = 0; heardTo = Infinity;
+      from = `youtube/${code}/narration.txt, timed on its dubbed voice (videos/${video}/dub/${code}/data/words-placed.json)`;
+    } else {
+      // each translated sentence shown while its original sentence is spoken (the paragraph's, when they don't match)
+      let whole = 0, trimmedOut = 0;
+      paras.forEach((p, i) => {
+        const tw = p.split(' ').map((w) => ({ w, start: 0, end: 0 }));
+        const os = sentencesOf(full[i]), ts = sentencesOf(tw);
+        const pairs: [typeof tw, number, number, typeof full[number]][] = [];
+        if (os.length && os.length === ts.length) ts.forEach((s, k) => pairs.push([s, os[k][0].start, os[k][os[k].length - 1].end, os[k]]));
+        else if (full[i].length) { pairs.push([tw, full[i][0].start, full[i][full[i].length - 1].end, full[i]]); whole++; }
+        for (const [s, a, b, ows] of pairs) {
+          const n = s.reduce((x, w) => x + graphemes(w.w, lang) + 1, 0);
+          let acc = 0;
+          // (the sentence's time shared by length, each word up to the next, with no gap between them: wherever the
+          // original is heard, so is its translation)
+          for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * acc / n; }
+          // (a sentence none of whose words the video plays isn't shown, though its span may reach into what it
+          // plays, through a pause; one it cuts in part, where it plays)
+          if (ows.some((w) => at(w, plays, Math.min(stops, end)))) words.push(...s);
+          else trimmedOut++;
+        }
+      });
+      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the video doesn't play their original (its mix or its end cuts the narration there)`);
+      from = `youtube/${code}/narration.txt, each sentence shown while its original is spoken (videos/${video}/data/words.json)`;
+      if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
+    }
+  }
+  // only what is heard, inside the video: words outside where they play and after the video's end go into no
+  // subtitle. Cut once a timed run with no spaces (a Japanese sentence) is split into its words, so its time isn't
+  // squeezed into what is left, and before they are grouped, so none joins a subtitle that starts in time; a word
+  // an edge cuts is cut there. (A subtitle doesn't stay past the end either: the reading time a last line would want.)
+  const all = toks(words, lang, rule.spaced);
+  const inside = all.filter((t) => at(t, heardFrom, heardTo));
+  const heard = all.filter((t) => at(t, heardFrom, Math.min(heardTo, end)))
+    .map((t) => ({ ...t, start: Math.max(heardFrom, t.start), end: Math.min(heardTo, end, t.end) }));
+  if (heard.length < inside.length) notes.push(`${inside.length - heard.length} word(s) after the video's end (${clock(end)}, from ${len.from}): left out`);
+  const built = buildCues(heard, lang, rule, gap);
+  const long = built.long;
+  const cues = built.cues;
+  // a subtitle near the end ends with the video, and starts earlier when that leaves it too short to read
+  cues.forEach((c, i) => {
+    c.end = Math.min(c.end, end);
+    if (c.end - c.start < SUB_MIN) c.start = Math.max(i ? cues[i - 1].end + gap : 0, Math.min(c.start, c.end - SUB_MIN));
+  });
+  // timed notes for words the picture shows (youtube/<code>/notes.tsv: time, seconds, text), where no subtitle is
+  const notesFile = existsSync(narration) ? path.join(pkg, 'notes.tsv') : path.join(vdir, 'youtube', `notes.${code}.tsv`);
+  let placedNotes = 0;
+  if (existsSync(notesFile)) {
+    for (const [k, raw] of readText(notesFile).split('\n').entries()) {
+      if (!raw.trim() || raw.trim().startsWith('#')) continue;
+      const [t, d, ...txt] = raw.split('\t');
+      const a = noteTime(t?.trim() ?? ''), len = +(d ?? '');
+      if (a === undefined || !(len > 0) || !txt.join('\t').trim()) fail(`${path.basename(notesFile)} line ${k + 1}: time<TAB>seconds<TAB>text`);
+      // (what is already there, narration and the notes placed so far, in order)
+      const prev = [...cues].reverse().find((c) => c.start <= a), next = cues.find((c) => c.start > a);
+      const s = Math.max(a, prev ? prev.end + gap : 0), e = Math.min(a + len, next ? next.start - gap : Infinity);
+      if (e - s < 1) { notes.push(`note at ${clock(a)} dropped: under a second free of narration there`); continue; }
+      const text = txt.join(' ').trim();
+      const lines = breakLines(toks(text.split(/\s+/).map((w) => ({ w, start: s, end: e })), lang, rule.spaced), lang, rule) ?? [text];
+      if (s >= end || Math.min(e, end) - s < 1) { notes.push(`note at ${clock(a)} dropped: under a second free of narration before the video's end`); continue; }
+      cues.push({ start: s, end: Math.min(e, end), lines, toks: [], note: true });
+      cues.sort((x, y) => x.start - y.start);
+      placedNotes++;
+    }
+    cues.sort((x, y) => x.start - y.start);
+  }
+  const rel = path.relative(ROOT, out).replace(/\\/g, '/');
+  if (!cues.length) {
+    // nothing heard in the video and no note: no file to upload (an empty one is no subtitles at all), and none left
+    // from before
+    if (existsSync(out)) rmSync(out);
+    console.log(`No subtitles: none of the narration is heard in the video (its mix doesn't play it before the video's end), and there is no note, so there is no ${rel} to upload.`);
+    for (const n of notes) console.log(`  note: ${n}`);
+    return;
+  }
+  const body = cues.map((c, i) => `${i + 1}\n${stampSrt(c.start)} --> ${stampSrt(c.end)}\n${c.lines.join('\n')}\n`).join('\n');
+  mkdirSync(path.dirname(out), { recursive: true });
+  writeFileSync(out, body, 'utf8');
+  // the report: what was read, and how fast it reads
+  const speeds = cues.filter((c) => !c.note).map((c) => ({ c, cps: graphemes(c.lines.join(''), lang) / Math.max(0.1, c.end - c.start) }));
+  const sorted = speeds.map((x) => x.cps).sort((a, b) => a - b);
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  const fast = speeds.filter((x) => x.cps > rule.cps).sort((a, b) => b.cps - a.cps);
+  console.log(`${rel}: ${cues.length} subtitles${placedNotes ? ` (${placedNotes} of them notes for words on screen)` : ''}, ${cues.length ? `${clock(cues[0].start)} to ${clock(cues[cues.length - 1].end)}` : 'none'}; from ${from}.`);
+  console.log(`  lines of ${rule.line} characters at most, two a subtitle${opt('line') ? ' (--line)' : ''}; plain UTF-8 SubRip, as YouTube reads it.`);
+  console.log(`  reading speed: ${median.toFixed(1)} characters a second on median; ${fast.length} over ${rule.cps} (the ${lang} guide's adult speed)${fast.length ? `, the fastest ${fast[0].cps.toFixed(1)} at ${clock(fast[0].c.start)}` : ''}. They carry the narration word for word, so a fast voice reads fast.`);
+  if (long.length) console.log(`  ${long.length} subtitle(s) with a word too long for two lines, kept whole: ${long.slice(0, 3).join(' | ')}`);
+  for (const n of notes) console.log(`  note: ${n}`);
+  console.log(`  In Studio: Subtitles (or Languages), the video, ${existsSync(narration) ? `Add language: ${code}` : `the video's language`}, Subtitles: Add, Upload file, With timing.`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // check
 
 type Finding = { level: 'ok' | 'note' | 'warn' | 'FAIL'; what: string; msg: string };
@@ -1099,8 +1477,29 @@ function chapters(desc: string): { list: { t: number; label: string; line: numbe
 async function check() {
   const { dir, video, proj } = locate();
   if (!existsSync(dir)) fail(`${dir}: no such folder`);
+  // with --video and no folder named: the video's package, then each language's
+  const folders = [dir];
+  if (video && !positional.length && path.basename(dir) === 'youtube')
+    for (const f of readdirSync(dir).sort()) {
+      const d = path.join(dir, f);
+      if (statSync(d).isDirectory() && ['title.txt', 'description.txt', 'narration.txt'].some((x) => existsSync(path.join(d, x)))) folders.push(d);
+    }
+  let fails = 0;
+  for (const d of folders) {
+    if (folders.length > 1) console.log(`\n${path.relative(ROOT, d).replace(/\\/g, '/') || d}/`);
+    fails += await checkFolder(d, video, proj);
+  }
+  if (folders.length > 1) console.log(fails ? `\n${fails} problem(s) in all.` : `\nNothing YouTube would refuse in the ${folders.length - 1} language folder(s) or the package.`);
+  if (fails) process.exit(1);
+}
+
+async function checkFolder(dir: string, video?: string, proj?: string): Promise<number> {
   const out: Finding[] = [];
   const add = (level: Finding['level'], what: string, msg: string) => out.push({ level, what, msg });
+  // a language's folder (videos/<video>/youtube/<code>/): what is uploaded for that language
+  const langCode = path.basename(path.dirname(dir)) === 'youtube' && video ? path.basename(dir) : undefined;
+  let fps = 30;
+  if (video && proj) try { fps = +JSON.parse(readText(path.join(proj, 'videos', video, 'video.json'))).fps || 30; } catch {}
 
   // thumbnails: decoded by Chrome when it starts (what it can't decode, YouTube won't either), else read from
   // their headers, so a browser problem never stops the rest of the check
@@ -1151,7 +1550,7 @@ async function check() {
       if (h.w && h.h) judge(h.name, h.kind, h.w, h.h, h.bytes);
       else add('FAIL', h.name, `${h.kind} whose header is cut off or damaged (no size in it), so it won't decode`);
     }
-  } else add('note', 'thumbnails', 'none (thumbnail-1.png ...)');
+  } else add('note', 'thumbnails', langCode ? "none (the video's thumbnails without words serve every language)" : 'none (thumbnail-1.png ...)');
 
   // title
   const titleFile = path.join(dir, 'title.txt');
@@ -1210,9 +1609,17 @@ async function check() {
     else if (tags.size) add('ok', 'hashtags', `${tags.size}: ${[...tags].join(' ')} (YouTube shows up to three it finds most engaging by the title)`);
   } else add('note', 'description.txt', 'none');
 
+  // subtitles, and a language's dubbed track
+  const srts = readdirSync(dir).filter((f) => /\.srt$/i.test(f)).sort();
+  for (const f of srts) checkSrt(path.join(dir, f), len, add);
+  const wav = path.join(dir, 'mix.wav');
+  if (existsSync(wav)) checkTrack(wav, len, fps, langCode, add);
+
   // tags
   const tagsFile = path.join(dir, 'tags.txt');
-  if (existsSync(tagsFile)) {
+  if (langCode) {
+    if (existsSync(tagsFile)) add('note', 'tags.txt', "YouTube keeps one tag list per video, not one per language: this one isn't uploaded (the video's is youtube/tags.txt)");
+  } else if (existsSync(tagsFile)) {
     const tags = readText(tagsFile).split(/[,\n]/).map((t) => t.trim()).filter(Boolean);
     const total = tagsLength(tags);
     const dupes = tags.filter((t, i) => tags.findIndex((u) => u.toLowerCase() === t.toLowerCase()) !== i);
@@ -1224,6 +1631,18 @@ async function check() {
   } else add('note', 'tags.txt', 'none');
 
   // the request: the whole package, with --full (a narrower request makes some parts optional)
+  // (subtitles where the video has timed narration it plays: none to give when it never does)
+  const timed = !!(video && proj && narrationHeard(path.join(proj, 'videos', video), video, proj));
+  const wantSrt = !timed ? '' : langCode ? `subtitles.${langCode}.srt` : 'subtitles.<code>.srt';
+  if (langCode) {
+    const lm = ['title.txt', 'description.txt', wantSrt].filter((f) => f && !existsSync(path.join(dir, f)));
+    if (full) for (const f of lm) add('FAIL', 'package', `${f} is missing`);
+    else if (lm.length) add('note', 'package', `no ${lm.join(', ')} yet`);
+    if (full && !lm.length) add('ok', 'package', `${langCode}: the title, the description${wantSrt ? ' and the subtitles' : ' (no timed narration heard in the video, so no subtitles)'}${thumbs.length ? `, ${thumbs.length} thumbnail(s)` : ''}${existsSync(wav) ? ', the dubbed track' : ''}`);
+    for (const [name, [w, h, kind]] of full ? sizes : new Map()) if (w !== wantW || h !== wantH || kind !== (opts.has('jpg') ? 'JPEG' : 'PNG')) add('FAIL', 'package', `${name} is ${w}x${h} ${kind}, not the ${wantW}x${wantH} asked for`);
+    return report(out, full);
+  }
+  if (full && wantSrt && !srts.length) add('FAIL', 'package', `no ${wantSrt}: the package has the narration's subtitles (youtube.ts srt --video ${video} --lang <code>)`);
   const missing = ['title.txt', 'description.txt', 'tags.txt'].filter((f) => !existsSync(path.join(dir, f)));
   // (the package's thumbnails are PNG, as the skill makes them; --jpg when JPEG was asked for)
   const wantKind = opts.has('jpg') ? 'JPEG' : 'PNG';
@@ -1240,12 +1659,76 @@ async function check() {
     add('note', 'package', `${thumbs.length} thumbnail(s)${missing.length ? `; no ${missing.join(', ')}` : ''} (fine for a narrower request; --full holds it to the whole package)`);
   }
 
+  return report(out, full, thumbs.length > 0 && !decoded);
+}
+
+function report(out: Finding[], full: boolean, undecoded = false): number {
   const pad = Math.max(...out.map((f) => f.what.length));
   for (const f of out) console.log(`${f.level.padEnd(4)}  ${f.what.padEnd(pad)}  ${f.msg}`);
   const fails = out.filter((f) => f.level === 'FAIL').length;
   if (fails) console.log(`${fails} problem(s): YouTube would refuse or ignore them${full ? ', or the package is incomplete' : ''}.`);
-  else console.log(`Nothing YouTube would refuse${thumbs.length && !decoded ? ' in what could be read (the thumbnails from their headers only: they weren\'t decoded)' : ''}. This checks limits, not whether it is good: look at the preview.`);
-  if (fails) process.exit(1);
+  else console.log(`Nothing YouTube would refuse${undecoded ? ' in what could be read (the thumbnails from their headers only: they weren\'t decoded)' : ''}. This checks limits, not whether it is good: look at the preview.`);
+  return fails;
+}
+
+/** A SubRip file as YouTube reads it: plain UTF-8, numbered blocks, times in order and inside the video. */
+function checkSrt(file: string, len: { seconds?: number; from: string }, add: (l: Finding['level'], w: string, m: string) => void) {
+  const name = path.basename(file);
+  const buf = readFileSync(file);
+  let text: string;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { add('FAIL', name, 'not UTF-8: YouTube asks for plain UTF-8'); return; }
+  if (text.startsWith('\uFEFF')) { add('warn', name, 'starts with a byte-order mark: YouTube asks for plain UTF-8 without one'); text = text.slice(1); }
+  const blocks = text.replace(/\r\n?/g, '\n').trim().split(/\n\s*\n/).filter((b) => b.trim());
+  if (!blocks.length) { add('FAIL', name, 'no subtitles in it'); return; }
+  const T = /^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/;
+  const sec = (m: RegExpExecArray, o: number) => +m[o] * 3600 + +m[o + 1] * 60 + +m[o + 2] + +m[o + 3] / 1000;
+  const bad: string[] = [], warn: string[] = [];
+  let prevStart = -1, prevEnd = -1, first = 0, last = 0, three = 0, marks = 0;
+  blocks.forEach((b, i) => {
+    const ls = b.split('\n');
+    const n = /^\d+$/.test(ls[0].trim()) ? 1 : 0;
+    const m = T.exec(ls[n] ?? '');
+    if (!m) { bad.push(`block ${i + 1} ("${ls[0].slice(0, 30)}"): no "00:00:01,000 --> 00:00:02,500" line`); return; }
+    if (!n) warn.push(`block ${i + 1} has no number`);
+    else if (+ls[0] !== i + 1) warn.push(`block ${i + 1} is numbered ${ls[0].trim()}`);
+    if ([m[2], m[3], m[6], m[7]].some((x) => +x > 59)) { bad.push(`block ${i + 1}: a time that isn't one (minutes and seconds run 0 to 59)`); return; }
+    const a = sec(m, 1), z = sec(m, 5);
+    if (z <= a) bad.push(`block ${i + 1}: ends before it starts`);
+    if (a < prevStart) bad.push(`block ${i + 1} starts before block ${i}`);
+    else if (a < prevEnd - 0.001) warn.push(`block ${i + 1} starts before block ${i} ends (both show at once)`);
+    const lines = ls.slice(n + 1).filter((l) => l.trim());
+    if (!lines.length) bad.push(`block ${i + 1} has no text`);
+    if (lines.length > 2) three++;
+    if (lines.some((l) => /<\/?[a-z]+[^>]*>|\{\\/i.test(l))) marks++;
+    if (i === 0) first = a;
+    prevStart = a; prevEnd = z; last = Math.max(last, z);
+  });
+  if (len.seconds !== undefined && last > len.seconds + 0.5) bad.push(`it runs to ${clock(last)}, past the video's end (${clock(len.seconds)}, from ${len.from})`);
+  if (three) warn.push(`${three} subtitle(s) of three lines or more`);
+  if (marks) warn.push(`${marks} subtitle(s) with style marks (<i>, {\\an8}): YouTube reads the basic form, and may show them as typed`);
+  if (bad.length) add('FAIL', name, bad.slice(0, 4).join('; ') + (bad.length > 4 ? `; and ${bad.length - 4} more` : ''));
+  else add('ok', name, `${blocks.length} subtitles, ${clock(first)} to ${clock(last)}, plain UTF-8 SubRip`);
+  for (const w of warn.slice(0, 4)) add('warn', name, w);
+}
+
+/** A dubbed audio track (WAV): as long as the video, to a frame, as YouTube's audio tracks want it. */
+function checkTrack(file: string, len: { seconds?: number; from: string }, fps: number, code: string | undefined,
+                    add: (l: Finding['level'], w: string, m: string) => void) {
+  const b = readFileSync(file);
+  if (b.length < 44 || b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WAVE') { add('FAIL', 'mix.wav', 'not a WAV file'); return; }
+  let o = 12, rate = 0, ch = 0, bits = 0, data = -1;
+  while (o + 8 <= b.length) {
+    const id = b.toString('ascii', o, o + 4), size = b.readUInt32LE(o + 4);
+    if (id === 'fmt ') { ch = b.readUInt16LE(o + 10); rate = b.readUInt32LE(o + 12); bits = b.readUInt16LE(o + 22); }
+    if (id === 'data') { data = Math.min(size, b.length - o - 8); break; }
+    o += 8 + size + (size % 2);
+  }
+  if (!rate || !ch || !bits || data < 0) { add('FAIL', 'mix.wav', 'a WAV whose header is cut off or damaged'); return; }
+  const d = data / (rate * ch * bits / 8);
+  const desc = `${clock(d)} (${d.toFixed(3)} s), ${rate / 1000} kHz, ${ch === 2 ? 'stereo' : ch === 1 ? 'mono' : `${ch} channels`}, ${bits}-bit, ${mb(b.length)}`;
+  if (len.seconds === undefined) add('note', 'mix.wav', `${desc}; the video's length is unknown (pass --duration), so it wasn't compared`);
+  else if (Math.abs(d - len.seconds) > 1 / fps + 1e-6) add('FAIL', 'mix.wav', `${desc}: the video lasts ${len.seconds.toFixed(3)} s (${len.from}); an audio track is the video's length (dub.py mix makes it so)`);
+  else add('ok', 'mix.wav', `${desc}, the video's length to a frame; in Studio: Languages, ${code ?? 'the language'}, Dub: Add`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1254,6 +1737,7 @@ try {
   if (mode === 'shoot') await shoot();
   else if (mode === 'preview') await preview();
   else if (mode === 'niche') await niche();
+  else if (mode === 'srt') await srt();
   else await check();
 } catch (e) {
   server?.stop(true);
