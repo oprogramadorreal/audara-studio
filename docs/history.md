@@ -5014,3 +5014,18 @@ whole paragraph, so `srt` called the placement stale and timed the subtitle on t
 while the dub spoke to 4.5 s), and placing again couldn't change that. `dub.py place` now records the paragraphs it
 was placed from, and `srt` checks those; test_15 makes the subtitles from that placement and finds them timed on the
 dubbed voice.
+
+Its fourth look found none. A fifth, after more time with the code, found three, all taken:
+
+- Only words a mix placed before 0 s were left out. A voice block that plays part of its file (`from: 5, at: 2,
+  dur: 2`) put the sentences before and after that part into the dub (at 1 s and 5 s) and the subtitles, with no
+  issue. The mix record already says where each block starts and ends in the video, so placement and `srt` now
+  leave out what the mix doesn't play, wherever it cuts the narration.
+- `dub.py mix` copied each effect's time from the mix record, which keeps it to 0.1 ms. An effect at 2 + 1/60 s
+  then landed 2 samples later in the dub, and verify, which compared placements exactly, failed every rebuilt dub.
+  It now allows 0.25 ms, against a worst case of 0.06 ms that no one can hear.
+- `dub.py source`, which writes the text to translate, needed the video's mix, though the packages-only path (free,
+  subtitles and no dub) uses it on videos that may have none. It now reads the narration's words alone.
+
+`test_dub.py` has 16 tests (a voice block's window, and the text to translate before any mix; the demo project has
+an effect at 2 + 1/60 s, whose dub verify passes) and `test_youtube.ts` 73; both pass.

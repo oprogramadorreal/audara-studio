@@ -604,7 +604,8 @@ How a track is made, and why:
   may start 0.25 s early, be sped up 8% (ffmpeg's atempo keeps the pitch) or push the next 0.4 s late; past
   that it is an open issue that says how much shorter it must be, and nothing runs past the video's end. A track is
   as long as the final render (the mix's length without one); sentences are matched to the original as spoken, so
-  one the mix trims before 0 s is left out of the dub and its subtitles.
+  one the video's mix doesn't play (before 0 s, or outside the stretch its voice block plays: the block's `from`,
+  `dur` and the mix's end, as the mix record has them) is left out of the dub and its subtitles.
   These bounds are tested, not proof:
   `verify`'s numbers and the director's eye are. Each line is matched to the original line's level.
 - **The bed is the original's, exactly.** `dub.py mix` writes a plan from the video's own mix record: the
@@ -612,7 +613,8 @@ How a track is made, and why:
   and its placed words for the voice checks. `mix.py build` takes such a plan (`voice_words`) only with
   `--to DIR`, so a dub never writes the video's own `mix.wav` (the reference needed a staging folder and a
   hash check to be sure of that). An effect mix.py turned down for sounding within 150 ms of another keeps
-  the gain it had: the cut is taken out of the copied gain, since mix.py makes it again. The mix's per-line voice-over-bed measures are compared with the same
+  the gain it had: the cut is taken out of the copied gain, since mix.py makes it again. The record keeps an
+  effect's time to 0.1 ms, so its copy can land 3 samples (0.06 ms) away; `verify` allows 0.25 ms. The mix's per-line voice-over-bed measures are compared with the same
   lines in the original mix, which the director approved, and a line that lost more than 2 LU is listed with
   the lift that restores it: listed, not lifted, since an approved mix once drew flags on 14 of its 30 lines.
 - **Checks that are measurements.** `verify` holds every track to the video's length (the final render's,

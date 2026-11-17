@@ -327,12 +327,12 @@ is spoken; Hindi measured in graphemes and cut at the danda; a translation whose
 a language's own tags, a folder in full, a package with timed narration and no subtitles, a language's folder
 for a video with none needing no subtitles, an empty SubRip file and a time of 99 seconds), subtitles kept inside
 the video's end (a word spoken just before it kept), no subtitle for narration a mix trims before 0 s (in the
-original language and in a translation), notes
+original language and in a translation; `test_dub.py` covers a voice block's `from` and `dur`), notes
 placed one by one without covering the narration, and that a Korean web
 face drawing its characters a square wide isn't called a fallback (with Windows' Malgun Gothic Semilight; skipped
 without it: 0.13.2's width test called it one).
-`test_dub.py` checks `dub.py` against the ElevenLabs mock, served in-process, on a small project (music, an effect
-on a word, a three-paragraph narration, its mix): sentence ends in five scripts and an ordinal that isn't one, words
+`test_dub.py` checks `dub.py` against the ElevenLabs mock, served in-process, on a small project (music, two effects
+on a word and one at a time its record rounds, a three-paragraph narration, its mix): sentence ends in five scripts and an ordinal that isn't one, words
 found by text and occurrence, the model each language gets, a cap split by estimates; that source and plan spend
 nothing and speak refuses without an approved job; that mix.py refuses a mix with another voice and no --to, or
 --to the video's own audio folder; a cap too low refused before anything is sent, and a second yes kept in the
@@ -349,7 +349,9 @@ taking a cap; with eleven.py replaced in-process, a take billed then one refused
 past the list rate stopping the job at its cap, a crash counted as possibly charged; an anchor or a respelling
 added after the mix failing verify until it is taken back; a final render longer, then shorter, than the mix
 setting the track's length; a sentence the mix trims before 0 s left out of the dub and of the subtitles timed on
-it, and a trimmed line whose sentences don't match left open (on a synthetic project, in-process); the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
+it, and a trimmed line whose sentences don't match left open (on a synthetic project, in-process); with a voice
+block that plays 2 s of its file, the sentences before and after them in neither the dub nor the subtitles, and the
+text to translate written before any mix is built; the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
 older and individual forms; `--language` kept in the command eleven.py suggests; grouped effects keeping the video's gains;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.

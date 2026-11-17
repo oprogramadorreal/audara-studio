@@ -108,6 +108,8 @@ PAD_IN, PAD_OUT = 0.08, 0.25  # sound kept before a piece's first word and after
 FADE = 0.006
 LEVEL_CLAMP = 6.0  # dB: a line's level matched to the original line's, within this
 END_ROOM = 0.25  # the last piece ends this long before the video does
+FX_TOL = 0.00025  # s: a dub's effect lands where the video's does within this (a mix record keeps an effect's time to
+# 0.1 ms, so its copy can land 3 samples away: 0.06 ms, far below anything heard)
 
 TERM = re.compile(r"[.!?…。！？؟।॥]+[\"'”’»」』)\]]*$")
 ABBR = {"mr.", "mrs.", "ms.", "dr.", "st.", "sr.", "sra.", "jr.", "vs.", "e.g.", "i.e.", "z.b.", "bzw.", "ca.", "nr.",
@@ -350,15 +352,16 @@ def sentences(words: list[dict]) -> list[list[dict]]:
     return out
 
 
-def word_lines(doc: dict, shift: float = 0.0, trim: bool = True) -> list[dict]:
-    """A words.json's lines in video time (+shift). Words a mix places before 0 s (a narration trimmed at its start)
-    aren't in the video: left out (trim), and a word cut by 0 s starts there."""
+def word_lines(doc: dict, shift: float = 0.0, window: tuple[float, float] | None = (0.0, math.inf)) -> list[dict]:
+    """A words.json's lines in video time (+shift). Words outside `window`, the stretch of the video where the mix
+    plays them (from 0 s; a narration placed before 0 s, cut by its block's "from" or "dur", or by the mix's end),
+    aren't in the video: left out, and a word cut by an edge is cut there. None keeps every word."""
+    lo, hi = window or (-math.inf, math.inf)
     lines = []
     for i, l in enumerate(doc.get("lines") or []):
-        ws = [{**w, "start": max(0.0, float(w["start"]) + shift) if trim else float(w["start"]) + shift,
-               "end": float(w["end"]) + shift}
+        ws = [{**w, "start": max(lo, float(w["start"]) + shift), "end": min(hi, float(w["end"]) + shift)}
               for w in l.get("words") or [] if isinstance(w.get("start"), (int, float))
-              and (not trim or float(w["end"]) + shift > 0)]
+              and float(w["end"]) + shift > lo and float(w["start"]) + shift < hi]
         text = l.get("text") if isinstance(l.get("text"), str) else " ".join(str(w.get("w", "")) for w in ws)
         lines.append({"i": i, "text": text, "words": ws,
                       "start": ws[0]["start"] if ws else None, "end": ws[-1]["end"] if ws else None})
@@ -398,6 +401,31 @@ def read_tsv(p: Path, cols: int, what: str) -> list[list[str]]:
 
 # ------------------------------------------------------------------------------------------------ the reference
 
+def narration_words(v: Video) -> tuple[Path, dict]:
+    """The video's timed narration, data/words.json."""
+    wpath = v.dir / "data" / "words.json"
+    doc = read_json(wpath, "data/words.json")
+    if not isinstance(doc, dict) or not doc.get("lines"):
+        raise usage(f"{v.rel(wpath)} has no narration lines: a dub puts each translated sentence where the "
+                    "original's sits, so the video needs its words timed (eleven.py tts, or align.py)")
+    return wpath, doc
+
+
+def voice_window(res: dict, layer) -> tuple[float, float]:
+    """Where the mix plays the voice block data/words.json was timed to, in video time: from its start (0 s at the
+    earliest) to its end, as the mix record has them (its "from" and "dur", the file's end and the mix's end all cut
+    it). Words timed to something else: the whole video from 0 s."""
+    m = re.fullmatch(r"voice(?:\[(\d+)\])?", str(layer or ""))
+    rows = res.get("voice") or []
+    i = int(m.group(1) or 0) if m else -1
+    if not 0 <= i < len(rows) or not isinstance(rows[i], dict):
+        return 0.0, math.inf
+    try:
+        return max(0.0, float(rows[i].get("at") or 0.0)), float(rows[i]["end"])
+    except (KeyError, TypeError, ValueError):
+        return 0.0, math.inf
+
+
 class Original:
     """The video's own mix and narration, which every dub copies and is measured against."""
 
@@ -420,19 +448,16 @@ class Original:
         self.rec, self.rec_path = rec, rec_path
         res = rec.get("resolved") or {}
         self.duration = float(res.get("duration") or 0)
-        wpath = v.dir / "data" / "words.json"
-        doc = read_json(wpath, "data/words.json")
-        if not isinstance(doc, dict) or not doc.get("lines"):
-            raise usage(f"{v.rel(wpath)} has no narration lines: a dub puts each translated sentence where the "
-                        "original's sits, so the video needs its words timed (eleven.py tts, or align.py)")
-        self.words_path = wpath
-        shift = float(((res.get("timing_data") or {}).get("words.json") or {}).get("shift_s") or 0.0)
-        self.lines = word_lines(doc, shift)
-        # a line's sentences as spoken, before a mix's trim: a translation follows them one for one, so a sentence
-        # the trim cuts whole is left out of the dub too, and one it cuts in part starts at 0 s
-        for l, full in zip(self.lines, word_lines(doc, shift, trim=False)):
+        self.words_path, doc = narration_words(v)
+        tdata = (res.get("timing_data") or {}).get("words.json") or {}
+        shift = float(tdata.get("shift_s") or 0.0)
+        self.window = lo, hi = voice_window(res, tdata.get("layer"))
+        self.lines = word_lines(doc, shift, self.window)
+        # a line's sentences as spoken, before the mix cuts any: a translation follows them one for one, so a
+        # sentence the mix leaves out whole is left out of the dub too, and one it cuts in part starts at the cut
+        for l, full in zip(self.lines, word_lines(doc, shift, None)):
             l["sentences"] = sentences(full["words"])
-            l["trimmed"] = any(w["end"] <= 0 for w in full["words"])
+            l["trimmed"] = any(w["end"] <= lo or w["start"] >= hi for w in full["words"])
         self.plan_dir = (v.root / rec.get("plan_file", f"videos/{v.name}/mix.json")).parent
         self.render = v.root / "out" / v.name / f"{v.name}.mp4"
         vj = read_json(v.dir / "video.json", "video.json") or {}
@@ -809,16 +834,17 @@ def paragraphs(p: Path) -> list[str]:
 
 def cmd_source(a) -> dict:
     v = Video(a.video)
-    o = Original(v)
+    # (the narration as written, from its words alone: a translation for the subtitles needs no mix, nor a dub)
+    lines = word_lines(narration_words(v)[1], 0.0, None)
     out = Path(a.out) if a.out else v.dub / "source.txt"
-    text = "\n\n".join(l["text"] for l in o.lines) + "\n"
+    text = "\n\n".join(l["text"] for l in lines) + "\n"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8", newline="\n")
-    counts = [len(l["sentences"]) for l in o.lines]
-    say(f"Wrote {v.rel(out)}: the narration's {len(o.lines)} lines as paragraphs, {sum(counts)} sentences.",
+    counts = [len(sentences(l["words"])) for l in lines]
+    say(f"Wrote {v.rel(out)}: the narration's {len(lines)} lines as paragraphs, {sum(counts)} sentences.",
         "A translation (youtube/<code>/narration.txt) keeps them one for one: paragraph for paragraph, sentence for "
         "sentence where the language allows, so each sentence lands where its original sits.")
-    return {"file": v.rel(out), "lines": len(o.lines), "sentences": counts}
+    return {"file": v.rel(out), "lines": len(lines), "sentences": counts}
 
 
 def check_translation(o: Original, lang: Lang) -> list[str]:
@@ -1401,7 +1427,9 @@ def cmd_place(a) -> dict:
     if abs(dur - o.duration) > 1e-3:
         notes.append(f"the track is {dur:.3f} s long, as {dur_from} is; the video's mix is {o.duration:.3f} s")
 
-    # pieces: sentence for sentence where the counts match, else the whole line
+    # pieces: sentence for sentence where the counts match, else the whole line; what the video's mix doesn't play
+    # (before 0 s, or outside the narration's block) is left out
+    plays_from, plays_to = o.window
     pieces = []
     for i, (ol, dl) in enumerate(zip(o.lines, D)):
         if not dl["words"]:
@@ -1409,21 +1437,21 @@ def cmd_place(a) -> dict:
         ds, os_ = sentences(dl["words"]), ol["sentences"]
         if os_ and len(ds) == len(os_):
             for k, (src, dst) in enumerate(zip(os_, ds)):
-                if src[-1]["end"] <= 0:
-                    notes.append(f"line {i + 1}, sentence {k + 1}: before the video starts (the mix trims it), so its "
-                                 "translation isn't placed")
+                if src[-1]["end"] <= plays_from or src[0]["start"] >= plays_to:
+                    notes.append(f"line {i + 1}, sentence {k + 1}: the video's mix doesn't play it (it cuts the "
+                                 "narration there), so its translation isn't placed")
                     continue
-                pieces.append({"line": i, "k": k, "words": dst, "target": max(0.0, src[0]["start"]), "why": "sentence",
-                               "orig_end": src[-1]["end"]})
+                pieces.append({"line": i, "k": k, "words": dst, "target": max(plays_from, src[0]["start"]), "why": "sentence",
+                               "orig_end": min(plays_to, src[-1]["end"])})
         else:
             if ol.get("trimmed") and ol["start"] is not None:
-                issues.append(f"line {i + 1}: the mix trims its start and its translation has {len(ds)} sentences against "
-                              f"the original's {len(os_)}, so the part the video doesn't play can't be left out: match "
-                              "them one for one")
+                issues.append(f"line {i + 1}: the video's mix plays only part of it and its translation has {len(ds)} "
+                              f"sentences against the original's {len(os_)}, so the part the video doesn't play can't "
+                              "be left out: match them one for one")
                 continue
             if ol["start"] is None:
-                notes.append(f"line {i + 1}: none of the original line is in the video (no timed words after 0 s), so "
-                             "its translation isn't placed")
+                notes.append(f"line {i + 1}: the video's mix plays none of the original line (it cuts the narration "
+                             "there), so its translation isn't placed")
                 continue
             pieces.append({"line": i, "k": 0, "words": dl["words"], "target": ol["start"], "why": "line",
                            "orig_end": ol["end"]})
@@ -1814,9 +1842,11 @@ def cmd_verify(a) -> dict:
             fails.append(f"the music's gain is {dm_.get('gain_db')} dB, {om_.get('gain_db')} in the video's mix")
         ofx = [(e.get("file"), e.get("placed_at"), e.get("gain_db")) for e in ores.get("effects") or []]
         dfx = [(e.get("file"), e.get("placed_at"), e.get("gain_db")) for e in dres.get("effects") or []]
-        if [(f, t) for f, t, _ in ofx] != [(f, t) for f, t, _ in dfx]:
+        if [f for f, _, _ in ofx] != [f for f, _, _ in dfx] or any(
+                not isinstance(t0, (int, float)) or not isinstance(t1, (int, float)) or abs(t1 - t0) > FX_TOL
+                for (_, t0, _), (_, t1, _) in zip(ofx, dfx)):
             fails.append("the effects aren't the video's mix's (files or times differ)")
-        elif ofx != dfx:
+        elif [g for _, _, g in ofx] != [g for _, _, g in dfx]:
             fails.append("an effect's gain differs from the video's mix: " + "; ".join(
                 f"{f} {g1} dB, {g0} in the video's mix" for (f, _, g0), (_, _, g1) in zip(ofx, dfx) if g0 != g1))
         else:

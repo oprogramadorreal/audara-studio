@@ -1263,11 +1263,21 @@ function readJson(file: string): any {
   try { return JSON.parse(readText(file)); } catch (e) { fail(`${file}: not readable JSON (${(e as Error).message})`); }
 }
 
-/** Where data/words.json's times sit in the video: the shift the video's mix recorded (a voice placed later), else 0. */
-function wordsShift(vdir: string): number {
+/** Where data/words.json's times sit in the video, as the video's mix recorded them: their shift (a voice placed
+ *  later), and the stretch where the mix plays the voice block they were timed to (from its start, 0 s at the
+ *  earliest, to its end: its "from" and "dur" and the mix's end cut it). Else no shift, and the whole video. */
+function wordsTiming(vdir: string): { shift: number; from: number; to: number } {
   const rec = path.join(vdir, 'audio', 'mix.wav.request.json');
-  if (!existsSync(rec)) return 0;
-  try { return +(JSON.parse(readText(rec))?.resolved?.timing_data?.['words.json']?.shift_s ?? 0) || 0; } catch { return 0; }
+  const whole = { shift: 0, from: 0, to: Infinity };
+  if (!existsSync(rec)) return whole;
+  try {
+    const res = JSON.parse(readText(rec))?.resolved ?? {};
+    const td = res.timing_data?.['words.json'] ?? {};
+    const m = /^voice(?:\[(\d+)\])?$/.exec(String(td.layer ?? ''));
+    const row = m ? res.voice?.[+(m[1] ?? 0)] : undefined;
+    const ok = row && typeof row.end === 'number';
+    return { shift: +(td.shift_s ?? 0) || 0, from: ok ? Math.max(0, +row.at || 0) : 0, to: ok ? row.end : Infinity };
+  } catch { return whole; }
 }
 
 function paragraphsOf(file: string): string[] {
@@ -1294,12 +1304,12 @@ async function srt() {
   const gap = 2 / fps;
   const wordsFile = path.join(vdir, 'data', 'words.json');
   if (!existsSync(wordsFile)) fail(`videos/${video}/data/words.json doesn't exist: subtitles are timed on the narration's words (the soundtrack skill's eleven.py tts or align.py writes them)`);
-  const shift = wordsShift(vdir);
+  const { shift, from: plays, to: stops } = wordsTiming(vdir);
   const orig: WordsDoc = readJson(wordsFile);
-  // (in video time; words a mix places before 0 s, a narration trimmed at its start, aren't in the video, and are
-  // left out once a translation's sentences have been matched to the original's as spoken)
+  // (in video time; words the mix doesn't play, before 0 s or outside the narration's block, aren't in the video,
+  // and are left out once a translation's sentences have been matched to the original's as spoken)
   const full = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
-  const inVideo = <T extends { start: number; end: number }>(ws: T[]) => ws.filter((w) => w.end > 0).map((w) => ({ ...w, start: Math.max(0, w.start) }));
+  const inVideo = <T extends { start: number; end: number }>(ws: T[]) => ws.filter((w) => w.end > plays && w.start < stops).map((w) => ({ ...w, start: Math.max(plays, w.start), end: Math.min(stops, w.end) }));
   const olines = full.map(inVideo);
   const pkg = path.join(vdir, 'youtube', code);
   const narration = path.join(pkg, 'narration.txt');
@@ -1342,12 +1352,12 @@ async function srt() {
           const n = s.reduce((x, w) => x + graphemes(w.w, lang) + 1, 0);
           let acc = 0;
           for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * (acc - 1) / n; }
-          // (a sentence the mix trims whole isn't shown; one it trims in part, from 0 s)
-          if (b > 0) { for (const w of s) if (w.end > 0) words.push({ ...w, start: Math.max(0, w.start) }); }
+          // (a sentence the mix doesn't play isn't shown; one it cuts in part, where it plays)
+          if (b > plays && a < stops) words.push(...inVideo(s));
           else trimmedOut++;
         }
       });
-      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the mix trims their original before 0 s`);
+      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the video's mix doesn't play their original (it cuts the narration there)`);
       from = `youtube/${code}/narration.txt, each sentence shown while its original is spoken (videos/${video}/data/words.json)`;
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }

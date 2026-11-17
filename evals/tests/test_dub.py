@@ -4,17 +4,19 @@
 # ///
 """dub.py, offline: uv run evals/tests/test_dub.py.
 
-A small audara project (music, two effects on a word 0.1 s apart, a three-paragraph English narration made by
-eleven.py against evals/mocks/elevenlabs.py, served in-process, and its mix), dubbed. What it holds dub.py to: the
-free steps spend nothing; nothing is paid for without an approved job, past its cap or past a language's share; the
+A small audara project (music, two effects on a word 0.1 s apart and one at a time its record rounds, a
+three-paragraph English narration made by eleven.py against evals/mocks/elevenlabs.py, served in-process, and its
+mix), dubbed. What it holds dub.py to: the free steps spend nothing, and the text to translate needs no mix;
+nothing is paid for without an approved job, past its cap or past a language's share; the
 rest of a language waits for its voice test to pass, and two failed tests stop it; a request billed without an
 answer stays reserved, stops its language (only it) and is never sent again; a run that stopped mid-request is
 settled the same way; a request billed then a later one refused keeps the first billed; a voice billed more per
 character than reserved stops the job at the cap; a higher cap lifts a stop on a language's share but not one on a
 possible charge; paid audio is never bought twice; sentences land on their original sentences and an anchored word
 on its original word; a sentence too long for its place, or one running past the video's end, stays open and its
-track is not "ready"; a track made before its inputs changed fails verify; the dub's music and effects (grouped
-ones included) are the video's mix's, and the video's own mix.wav is untouched; mix.py refuses a mix with another
+track is not "ready"; narration the video's mix doesn't play (before 0 s, or outside its block) is neither dubbed
+nor subtitled; a track made before its inputs changed fails verify; the dub's music and effects (grouped ones
+included) are the video's mix's, and the video's own mix.wav is untouched; mix.py refuses a mix with another
 voice and nowhere else to go. Needs ffmpeg and uv; no network, no paid call. Two or three minutes."""
 import importlib.util
 import json
@@ -109,7 +111,9 @@ class DubTest(unittest.TestCase):
             "kind": "calm", "voice": "audio/narration.wav",
             "music": {"file": "audio/music.wav", "under_voice": 14, "fade_out": 2},
             "effects": [{"file": "audio/click.wav", "word": "clouds"},
-                        {"file": "audio/click.wav", "word": "clouds", "offset": 0.1}]}), encoding="utf-8")
+                        {"file": "audio/click.wav", "word": "clouds", "offset": 0.1},
+                        # (a time its record rounds: a copy of the rounded time lands two samples away)
+                        {"file": "audio/click.wav", "at": 2 + 1 / 60}]}), encoding="utf-8")
         cls.uv(SK / "mix.py", "build", "--video", "demo")
         cls.orig_mix = dub.sha256(v / "audio" / "mix.wav")
         for code, paras in (("es", ES), ("de", DE), ("fr", FR), ("it", IT), ("pt", PT)):
@@ -282,8 +286,10 @@ class DubTest(unittest.TestCase):
         self.assertEqual(dub.sha256(self.v / "audio" / "mix.wav"), self.orig_mix, "the video's own mix changed")
         drec = json.loads((self.v / "youtube" / "es" / "mix.wav.request.json").read_text(encoding="utf-8"))
         orec = json.loads((self.v / "audio" / "mix.wav.request.json").read_text(encoding="utf-8"))
-        self.assertEqual([(e["file"], e["placed_at"], e["gain_db"]) for e in drec["resolved"]["effects"]],
-                         [(e["file"], e["placed_at"], e["gain_db"]) for e in orec["resolved"]["effects"]])
+        self.assertEqual([(e["file"], e["gain_db"]) for e in drec["resolved"]["effects"]],
+                         [(e["file"], e["gain_db"]) for e in orec["resolved"]["effects"]])
+        for d_, o_ in zip(drec["resolved"]["effects"], orec["resolved"]["effects"]):
+            self.assertLessEqual(abs(d_["placed_at"] - o_["placed_at"]), dub.FX_TOL, (d_, o_))
         self.assertEqual(drec["resolved"]["music"]["gain_db"], orec["resolved"]["music"]["gain_db"])
         self.mock.STATE["tts_texts"][:] = ES  # (the mock's transcriber hears what it is given)
         before = self.paid()
@@ -588,6 +594,63 @@ class DubTest(unittest.TestCase):
             enumerate("Inicio cortado y final conservado.".split())]}]})
         rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
         self.assertTrue(any("can't be left out" in x for x in rec["issues"]), rec["issues"])
+
+    def test_16_only_what_the_voice_block_plays(self):
+        """A voice block {"from": 5, "at": 2, "dur": 2} plays 2 s of its file: what the narration says before and after
+        that is in neither the dub nor the subtitles (codex's fifth review). In-process, on a synthetic project."""
+        import argparse
+        root = self.tmp / "block"
+        v = root / "videos" / "v"
+        d = v / "dub" / "es"
+        for p in (v / "audio", v / "data", v / "youtube" / "es", d / "audio", d / "data"):
+            p.mkdir(parents=True, exist_ok=True)
+        sr = 48000
+        tone = lambda s: (0.1 * np.sin(2 * np.pi * 220 * np.arange(int(s * sr)) / sr)).astype(np.float32)
+        put = lambda p, x: p.write_text(json.dumps(x, ensure_ascii=False), encoding="utf-8")
+        put(v / "video.json", {"fps": 30, "duration": 10, "audio": "audio/mix.wav"})
+        sents = [("Before", "block.", 4.0), ("Inside", "block.", 5.5), ("After", "block.", 8.0)]
+        put(v / "data" / "words.json", {"lines": [{"text": "Before block. Inside block. After block.", "words": [
+            w for a, b, t in sents for w in ({"w": a, "start": t, "end": t + 0.2}, {"w": b, "start": t + 0.25, "end": t + 0.45})]}]})
+        cwd = os.getcwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, cwd)
+        # the text to translate needs only the words: no mix built yet
+        src = dub.cmd_source(argparse.Namespace(video="v", out=None))
+        self.assertEqual((src["lines"], src["sentences"]), (1, [3]))
+        sf.write(str(v / "audio" / "narration.wav"), tone(10), sr)
+        sf.write(str(v / "audio" / "mix.wav"), np.column_stack([tone(10)] * 2), sr)
+        sf.write(str(d / "audio" / "narration.wav"), tone(6), sr)
+        put(v / "audio" / "mix.wav.request.json", {
+            "outputs": {"mix.wav": dub.sha256(v / "audio" / "mix.wav")}, "plan_file": "videos/v/mix.json",
+            "plan": {"voice": {"file": "audio/narration.wav", "from": 5, "at": 2, "dur": 2}},
+            "resolved": {"duration": 10, "voice": [{"file": "videos/v/audio/narration.wav", "at": 2, "end": 4}],
+                         "timing_data": {"words.json": {"layer": "voice", "shift_s": -3}}}})
+        es = "Antes del bloque. Dentro del bloque. Después del bloque."
+        (v / "youtube" / "es" / "narration.txt").write_text(es + "\n", encoding="utf-8")
+        put(d / "data" / "words.json", {"lines": [{"text": es, "words": [
+            {"w": w, "start": 0.5 + k * 0.5, "end": 0.9 + k * 0.5} for k, w in enumerate(es.split())]}]})
+        srt = lambda code, f: (subprocess.run(["bun", str(REPO / "skills/youtube-package/scripts/youtube.ts"), "srt",
+                                               "--video", "v", "--lang", code], cwd=root, capture_output=True, text=True,
+                                              encoding="utf-8"), f.read_text(encoding="utf-8") if f.is_file() else "")
+        # the video's own subtitles, and a translation's before any dub: only the sentence the block plays
+        r, own = srt("en", v / "youtube" / "subtitles.en.srt")
+        self.assertIn("Inside", own, r.stdout + r.stderr)
+        self.assertNotIn("Before", own)
+        self.assertNotIn("After", own)
+        r, tr = srt("es", v / "youtube" / "es" / "subtitles.es.srt")
+        self.assertIn("Dentro", tr, r.stdout + r.stderr)
+        self.assertNotIn("Antes", tr)
+        self.assertNotIn("Después", tr)
+        self.assertIn("2 translated sentence(s) left out", r.stdout)
+        # the dub: the sentence the block plays, where it plays
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertEqual([p["text"] for p in rec["pieces"]], ["Dentro del bloque."])
+        self.assertEqual(rec["pieces"][0]["target"], 2.5)
+        self.assertEqual(rec["issues"], [])
+        r, tr = srt("es", v / "youtube" / "es" / "subtitles.es.srt")
+        self.assertIn("timed on its dubbed voice", r.stdout, r.stdout + r.stderr)
+        self.assertNotIn("Antes", tr)
+        self.assertNotIn("Después", tr)
 
 
 if __name__ == "__main__":
