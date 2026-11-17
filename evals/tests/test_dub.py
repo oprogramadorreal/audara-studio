@@ -704,6 +704,20 @@ class DubTest(unittest.TestCase):
                          "timing_data": {"words.json": {"layer": "voice", "shift_s": 4.6}}}})
         rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
         self.assertEqual((rec["pieces"], rec["issues"]), ([], []), rec)
+        # nor one that plays only a pause inside a sentence: 0.3-0.5 s of "Hello" (0-0.2) "world." (0.8-1.0), no word of
+        # it heard, so "Hola mundo." isn't dubbed (codex's twelfth review)
+        put(v / "data" / "words.json", {"lines": [{"text": "Hello world.", "words": [
+            {"w": "Hello", "start": 0, "end": 0.2}, {"w": "world.", "start": 0.8, "end": 1}]}]})
+        (v / "youtube" / "es" / "narration.txt").write_text("Hola mundo.\n", encoding="utf-8")
+        put(d / "data" / "words.json", {"lines": [{"text": "Hola mundo.", "words": [
+            {"w": "Hola", "start": 0.5, "end": 0.8}, {"w": "mundo.", "start": 0.9, "end": 1.3}]}]})
+        put(v / "audio" / "mix.wav.request.json", {
+            "outputs": {"mix.wav": dub.sha256(v / "audio" / "mix.wav")}, "plan_file": "videos/v/mix.json",
+            "plan": {"voice": {"file": "audio/narration.wav", "from": 0.3, "at": 0, "dur": 0.2}},
+            "resolved": {"duration": 10, "voice": [{"file": "videos/v/audio/narration.wav", "at": 0, "end": 0.2}],
+                         "timing_data": {"words.json": {"layer": "voice", "shift_s": -0.3}}}})
+        rec = dub.cmd_place(argparse.Namespace(video="v", lang="es", force=False))
+        self.assertEqual((rec["pieces"], rec["issues"]), ([], []), rec)
 
 
 if __name__ == "__main__":

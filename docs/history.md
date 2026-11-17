@@ -5078,3 +5078,8 @@ ended a character short of the next, leaving a gap. A block that plays only the 
 `dur: 0.1`), or a moment between two translated words, then showed the English and no Spanish: no file, and
 `check --full` failed. Each word now runs up to the next, so wherever the original is heard so is its translation.
 `test_youtube.ts` has 80 tests.
+
+Its twelfth look found the converse. Both scripts judged a sentence heard by the span from its first word to its
+last, which takes in its pauses. A block playing 0.3 to 0.5 s of "Hello" (0 to 0.2) "world." (0.8 to 1.0) plays
+no word of it, yet "Hola mundo." was subtitled and dubbed. A sentence now counts as heard when one of its words
+is, in `srt` and in placement alike. `test_youtube.ts` has 81 tests, and test_17 dubs nothing for such a block.

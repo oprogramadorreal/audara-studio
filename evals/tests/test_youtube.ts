@@ -401,6 +401,23 @@ try {
       expect(`srt: a translation is shown wherever its original is heard (${name === 'tail' ? 'the last tenth of a sentence' : 'between two translated words'}), and its package passes check --full`,
         g1.code === 0 && body.length > 0 && g2.code === 0, g1.out + body + g2.out);
     }
+    // and not where only a pause inside its original is: a block playing 0.3-0.5 s of "Hello" (0-0.2) "world." (0.8-1.0)
+    // plays no word of it (codex's twelfth review: "Hola mundo." was shown)
+    const pv = path.join(kp, 'videos', 'pause');
+    mkdirSync(path.join(pv, 'data'), { recursive: true });
+    mkdirSync(path.join(pv, 'audio'), { recursive: true });
+    mkdirSync(path.join(pv, 'youtube', 'es'), { recursive: true });
+    writeFileSync(path.join(pv, 'video.json'), JSON.stringify({ fps: 30, duration: 5, audio: null }));
+    writeFileSync(path.join(pv, 'data', 'words.json'), JSON.stringify({ lines: [{ text: 'Hello world.', words: [{ w: 'Hello', start: 0, end: 0.2 }, { w: 'world.', start: 0.8, end: 1 }] }] }));
+    writeFileSync(path.join(pv, 'audio', 'mix.wav.request.json'), JSON.stringify({ resolved: { duration: 5,
+      voice: [{ file: 'videos/pause/audio/narration.wav', at: 0, end: 0.2 }], timing_data: { 'words.json': { layer: 'voice', shift_s: -0.3 } } } }));
+    writeFileSync(path.join(pv, 'youtube', 'es', 'narration.txt'), 'Hola mundo.\n');
+    writeFileSync(path.join(pv, 'youtube', 'es', 'title.txt'), 'Un vídeo\n');
+    writeFileSync(path.join(pv, 'youtube', 'es', 'description.txt'), 'Una breve introducción.\n');
+    const q1 = late(['srt', '--video', 'pause', '--lang', 'es']);
+    const q2 = late(['check', path.join('videos', 'pause', 'youtube', 'es'), '--full']);
+    expect('srt: a translation isn\'t shown where only a pause inside its original is heard, and its package passes check --full',
+      q1.code === 0 && !existsSync(path.join(pv, 'youtube', 'es', 'subtitles.es.srt')) && q2.code === 0, q1.out + q2.out);
   }
 
   // check: a language's folder, its subtitles and its dubbed track

@@ -1450,7 +1450,8 @@ def cmd_place(a) -> dict:
         ds, os_ = sentences(dl["words"]), ol["sentences"]
         if os_ and len(ds) == len(os_):
             for k, (src, dst) in enumerate(zip(os_, ds)):
-                if not heard(src[0]["start"], src[-1]["end"], o.window):
+                # (by its words: its span may reach into what the video plays through a pause, none of it heard)
+                if not any(heard(w["start"], w["end"], o.window) for w in src):
                     notes.append(f"line {i + 1}, sentence {k + 1}: the video doesn't play it (its mix or its end "
                                  "cuts the narration there), so its translation isn't placed")
                     continue

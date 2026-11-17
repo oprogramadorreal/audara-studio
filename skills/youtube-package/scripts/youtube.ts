@@ -1319,6 +1319,11 @@ async function srt() {
   // the video, and are left out once split into words, after a translation's sentences are matched to these)
   const full = (orig.lines ?? []).map((l) => (l.words ?? []).filter((w) => typeof w.start === 'number').map((w) => ({ w: String(w.w), start: w.start + shift, end: w.end + shift })));
   let heardFrom = plays, heardTo = stops; // (where the words are heard: the narration's block, or a dub's whole track)
+  const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
+  const end = len.seconds ?? Infinity;
+  // (a word heard between a and b; a window that ends before it starts, a voice block placed after the video's end,
+  // holds no word at all)
+  const at = (t: { start: number; end: number }, a: number, b: number) => b > a && t.end > a && t.start < b;
   const pkg = path.join(vdir, 'youtube', code);
   const narration = path.join(pkg, 'narration.txt');
   const placedFile = path.join(vdir, 'dub', code, 'data', 'words-placed.json');
@@ -1354,21 +1359,22 @@ async function srt() {
       paras.forEach((p, i) => {
         const tw = p.split(' ').map((w) => ({ w, start: 0, end: 0 }));
         const os = sentencesOf(full[i]), ts = sentencesOf(tw);
-        const pairs: [typeof tw, number, number][] = [];
-        if (os.length && os.length === ts.length) ts.forEach((s, k) => pairs.push([s, os[k][0].start, os[k][os[k].length - 1].end]));
-        else if (full[i].length) { pairs.push([tw, full[i][0].start, full[i][full[i].length - 1].end]); whole++; }
-        for (const [s, a, b] of pairs) {
+        const pairs: [typeof tw, number, number, typeof full[number]][] = [];
+        if (os.length && os.length === ts.length) ts.forEach((s, k) => pairs.push([s, os[k][0].start, os[k][os[k].length - 1].end, os[k]]));
+        else if (full[i].length) { pairs.push([tw, full[i][0].start, full[i][full[i].length - 1].end, full[i]]); whole++; }
+        for (const [s, a, b, ows] of pairs) {
           const n = s.reduce((x, w) => x + graphemes(w.w, lang) + 1, 0);
           let acc = 0;
           // (the sentence's time shared by length, each word up to the next, with no gap between them: wherever the
           // original is heard, so is its translation)
           for (const w of s) { w.start = a + (b - a) * acc / n; acc += graphemes(w.w, lang) + 1; w.end = a + (b - a) * acc / n; }
-          // (a sentence the mix doesn't play isn't shown; one it cuts in part, where it plays)
-          if (b > plays && a < stops) words.push(...s);
+          // (a sentence none of whose words the video plays isn't shown, though its span may reach into what it
+          // plays, through a pause; one it cuts in part, where it plays)
+          if (ows.some((w) => at(w, plays, Math.min(stops, end)))) words.push(...s);
           else trimmedOut++;
         }
       });
-      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the video's mix doesn't play their original (it cuts the narration there)`);
+      if (trimmedOut) notes.push(`${trimmedOut} translated sentence(s) left out: the video doesn't play their original (its mix or its end cuts the narration there)`);
       from = `youtube/${code}/narration.txt, each sentence shown while its original is spoken (videos/${video}/data/words.json)`;
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }
@@ -1377,10 +1383,6 @@ async function srt() {
   // subtitle. Cut once a timed run with no spaces (a Japanese sentence) is split into its words, so its time isn't
   // squeezed into what is left, and before they are grouped, so none joins a subtitle that starts in time; a word
   // an edge cuts is cut there. (A subtitle doesn't stay past the end either: the reading time a last line would want.)
-  const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
-  const end = len.seconds ?? Infinity;
-  // (a window that ends before it starts, a voice block placed after the video's end, holds no word at all)
-  const at = (t: Tok, a: number, b: number) => b > a && t.end > a && t.start < b;
   const all = toks(words, lang, rule.spaced);
   const inside = all.filter((t) => at(t, heardFrom, heardTo));
   const heard = all.filter((t) => at(t, heardFrom, Math.min(heardTo, end)))

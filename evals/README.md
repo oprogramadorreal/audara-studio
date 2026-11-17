@@ -325,7 +325,7 @@ what is left fits, in German; a word after the video's end in no subtitle, in it
 and a Japanese sentence timed whole across the end shown only up to it; a voice block placed after the video's
 end with no subtitle, not even for a word crossing its start, no empty file, and a language's package whole
 without one; a translation shown wherever its original is heard, in the last tenth of a sentence or between two
-translated words; Japanese in lines of 13 with no spaces and no line
+translated words, and not where only a pause inside its original is; Japanese in lines of 13 with no spaces and no line
 or subtitle opening on a particle; Korean in lines of 16 with its spaces; Arabic shown while its original sentence
 is spoken; Hindi measured in graphemes and cut at the danda; a translation whose paragraphs don't match refused),
 `check` on language folders (a dubbed track not as long as the video, a SubRip file out of order or without a time,
@@ -357,7 +357,7 @@ setting the track's length; a sentence the mix trims before 0 s left out of the 
 it, and a trimmed line whose sentences don't match left open (on a synthetic project, in-process); with a voice
 block that plays 2 s of its file, the sentences before and after them in neither the dub nor the subtitles; a
 sentence after a 5-second render's end (its mix 10) not dubbed, and still counted in the estimate; a voice block
-placed after that end dubbing nothing; the text to
+placed after that end, or one playing only a pause inside a sentence, dubbing nothing; the text to
 translate written before any mix is built; the voice test of a rewritten paragraph being its new take; a transcriber's language codes in their
 older and individual forms; `--language` kept in the command eleven.py suggests; grouped effects keeping the video's gains;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
