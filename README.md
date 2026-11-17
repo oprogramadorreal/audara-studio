@@ -12,7 +12,8 @@ audara-studio is a plugin for Claude Code and Codex with seven skills:
   render and any moment has a link.
 - **soundtrack**: turns a song or a script into audio and the timing the picture syncs to: beats, sections,
   word timings, narration and music (with ElevenLabs, asking before spending credits), effects and the mix,
-  also for a video made elsewhere (filmed, or from AI video clips).
+  also for a video made elsewhere (filmed, or from AI video clips), and dubbed tracks of a narration in other
+  languages.
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
   one and writes it up as a prompt or a script, without building anything until you ask.
 - **devlog**: for when the video is about building something (a game, a physics simulation, a fractal explorer,
@@ -24,10 +25,11 @@ audara-studio is a plugin for Claude Code and Codex with seven skills:
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is
   pushed until you ask.
 - **youtube-package**: for when a video is ready to publish. Three thumbnail options designed together with
-  one title, then the description with chapters and the tags, written into the project and checked against
-  YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail; one option
+  one title, then the description with chapters, the tags and timed subtitles, written into the project and
+  checked against YouTube's limits. The art comes from the video itself, staged and finished for a thumbnail; one option
   borrows the layout of a video on the same subject that did unusually well. Each option is judged small, in a
-  mock of YouTube's feed, beside the title.
+  mock of YouTube's feed, beside the title. Then it offers the package in 14 or 15 more languages (no credits),
+  and, as a separate paid choice you approve once, dubbed audio tracks in the narration's own voice.
 - **nutlight-style**: a house style you can name, for explainers: squirrels acting out the ideas in luminous
   geometric worlds, scenes that flow into each other and music cut from your own library. Ask for a video
   "in the Nutlight style" and the other skills make it in that look; it stays out of everything else.
@@ -98,6 +100,8 @@ Other ways in:
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You
   get them in `videos/<video>/youtube/`, with the one the agent would pick and why. A title or text you've
   decided is used as you wrote it; one you offer as a start may be improved, and the agent says what changed.
+- **More languages:** after a package, say which of the offered languages you want, and whether with dubbed
+  audio. Each language's files go in `videos/<video>/youtube/<code>/`, ready for Studio's Languages page.
 
 To force the skill (for example when other video skills are installed), use `/audara-studio:code-video` in
 Claude Code or `$audara-studio:code-video` in Codex.

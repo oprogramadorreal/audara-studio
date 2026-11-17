@@ -95,7 +95,9 @@ where they show · Policy and disclosure · Sources
   word).
 - **Format:** `0:00 Name`, one per line, under a short heading line in the video's language. A separator such as
   "·" may become part of each name.
-- **Captions:** when the video has `data/words.json`, an `.srt` made from it helps viewers and search; offer it.
+- **Subtitles:** when the video has `data/words.json`, the package has `subtitles.<code>.srt` made from it
+  (`srt`): viewers who watch muted or in another language read it, and YouTube's automatic captions come only
+  in the video's language. Other languages' subtitles, titles and descriptions: references/languages.md.
 
 ## Tags and hashtags
 
@@ -168,7 +170,8 @@ thumbnails (answer/16391400), titles and thumbnails (answer/12340300), chapters 
 altered or synthetic content (answer/14328491), content performance (answer/16559650), audience retention and the
 Intro measure (answer/9314415), title and description limits (answer/57404), advanced features (answer/9890437),
 previews on hover and in feeds (answer/7640367), spam (answer/2801973), the Partner Program's monetization policies
-(answer/1311392). The tags count and the description's bytes: YouTube Data API, videos resource
+(answer/1311392); and, read 2026-11-17, subtitle files (answer/2734698), adding them (answer/2734796), translated
+titles and descriptions (answer/6289575), multi-language audio and thumbnails (answer/13338784). The tags count and the description's bytes: YouTube Data API, videos resource
 (developers.google.com/youtube/v3/docs/videos); a channel's subscribers, views and uploads for `niche`: its channels
 resource (developers.google.com/youtube/v3/docs/channels). vidIQ's outlier score (a video's views against its
 channel's average; brackets at 2x, 5x and 10x): its help page "Outliers" (support.vidiq.com/en/articles/9660010),
