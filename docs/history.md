@@ -5083,3 +5083,74 @@ Its twelfth look found the converse. Both scripts judged a sentence heard by the
 last, which takes in its pauses. A block playing 0.3 to 0.5 s of "Hello" (0 to 0.2) "world." (0.8 to 1.0) plays
 no word of it, yet "Hola mundo." was subtitled and dubbed. A sentence now counts as heard when one of its words
 is, in `srt` and in placement alike. `test_youtube.ts` has 81 tests, and test_17 dubs nothing for such a block.
+
+## A prototype for a video about its subject is code-video's, not devlog's (0.14.1, 2026-11-17)
+
+The user, directing from Audara App, opened a new project (plugin 0.14.0, Fable 5.2 at xhigh effort) with: "Build
+an interactive prototype that lets me fly through two 3D fractal worlds ... This is the first step toward a video
+about exploring mathematical landscapes in 3D", then "Once it's ready, pause so I can explore it and give feedback.
+**Wait for my explicit approval before starting work on the video itself.**" Its eventual video had the structure
+of an earlier explainer of theirs: "Open with an accessible explanation of [the two fractals], then give the
+audience time to explore both worlds through an impressive cinematic showcase set to epic background music",
+answering "How does the computer turn a mathematical rule into the image we see?", with "Look for dramatic 3D
+sequences that will be worth filming later." The session loaded code-video and video-repo at its first step and
+never devlog. The user had expected devlog "because I asked for a prototype before the video", and asked whether
+skipping it was right and, if not, how its description should change.
+
+**How it was read.** The session's transcript (32 MB, one director message so far) parsed into a timeline; the
+project's `AGENTS.md` and git log, read and not changed. Codex (GPT-6.2-Astra, Herdr tab 2) read the same material
+for an independent view before seeing this one, then reviewed each step, read-only.
+
+**The verdict: skipping devlog was right.** devlog is for a video about how something was built (design.md, "A
+devlog: the build is the story"); this video is about the fractals and how a renderer draws them, and the
+prototype is where its shots are found. The session built it that way: the explorer is "where the video's shots are
+found, and its code is the video's renderer in waiting", with the distance estimators, the light and camera paths
+as pure functions of time in shared source for the video's scenes, the director's saved views and flights in a
+committed `explorer/shots.json`, and the video held back until the director's word. Loaded, devlog would have added
+a development log and a story ledger the video won't use, a prototype folder of its own with a capture page writing
+frames for streamed footage (a detour when the shader can run in an f(t) scene), and a script taken from the log,
+which bends the piece toward a making-of nobody asked for. What it would have given that the session lacked was
+little: re-filmable camera paths were already there. Codex added one thing worth keeping in mind: a discarded look
+can earn a place when it shows a rendering principle; that stays code-video's call when the video starts, since any
+stage can be rendered again from the code.
+
+**But the description didn't hold that line on a shorter request.** Probed through `trigger.ts` on Fable 5.2 at
+xhigh, the session's prompt verbatim never called devlog (0 of 3; code-video and video-repo in all three, as in the
+session). A shorter request of the same shape, dl-23 (a fly-through prototype of two other fractals, "the first step
+toward a video about them", an explanation then a showcase, "Wait for my approval before you start the video"),
+called it in 1 of 6 runs: "I'm building this as a devlog-style project, starting with the explorer and a way to
+re-film flights later." Counting a read of its SKILL.md as a load, as the harness does, both came to 2 of 3 and 2 of
+6: a run that loads code-video may then browse the linked skills folder and read devlog's SKILL.md, or its
+`capture.md` for an explorer's camera paths. The session itself listed every file in the plugin's cache and read
+none of devlog's.
+
+**What changed.** devlog's description names the case among what stays with code-video: "Not for building
+something with no video in view, a prototype built to film a video about its subject, not its making (code-video),
+tutorials, ...". "Film" rather than "find its shots", since the prototype may also render the final footage (Codex).
+The bytes came from "youtube-package on request" (that skill loads on its own description) and the Read-when lines'
+detail, which Setup already gives; SKILL.md is 7,992 bytes. design.md's routing sentence names the case too. The
+README ("for when the video is about building something") and init's AGENTS.md line ("for a video about how it was
+made") already said so. Three trigger cases: dl-23 and dl-24, the same request with the video about the fractals
+and about how the prototype was built ("the first renders, what broke and how it got to look this good"), a matched
+pair like dl-21 and dl-22, and dl-25, a near-miss in Portuguese (a black hole prototype "pra gente achar as cenas",
+then a video explaining how light bends near it). Subjects are swapped away from the user's project.
+
+**What was checked.**
+- **Spec checks:** devlog passes the three validators, 7,992 bytes, no byte-order mark.
+- **Routing, Claude Code:** the whole set (25 requests, one run each) 25 of 25 on Fable 5.2 at xhigh and on Opus
+  5.5 at low effort: every request loaded devlog, no near-miss did, by a Skill call or a read of its SKILL.md. On
+  Fable at xhigh, dl-23 on the new text: 0 of 6 by a Skill call, 1 of 6 with a read (the run had loaded
+  code-video, searched it for "prototype|interactive|explorer|camera path", found nothing and read devlog's
+  SKILL.md and `capture.md`), against 1 and 2 of 6 before: in the right direction, too few runs to call measured.
+  The wording tried first ("rather than its making", the same
+  otherwise) passed the session's prompt (0 of 3), dl-23 (0 of 3 by a Skill call, 1 of 3 with a read), dl-24 (3 of
+  3) and dl-25 (0 of 3). Before the change, dl-24 3 of 3 and dl-25 0 of 3.
+- **Not run:** routing on Codex (devlog has no scripts, so a Codex near-miss fails on the load), the other skills'
+  sets, and the task evals.
+
+Codex's rounds. Its independent view: skipping devlog was right ("Look for dramatic 3D sequences that will be worth
+filming later" says what the prototype is for), keep the description, and add a near-miss for a prototype built to
+find an explainer's footage; it kept the three cases as written over its own (a terrain scout for an erosion
+explainer). Shown the probes, it changed its advice: the dl-23 run that chose devlog for repeatable flights is a
+real false positive, so tighten the description, take the bytes from repetition rather than workflow guidance,
+keep the harness's criterion and report both counts.
