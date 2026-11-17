@@ -577,9 +577,15 @@ What came back from that is now three steps of the existing skills, not a new on
   becomes a job file (`dub/job.json`: their words, the languages, the voice, the models, the cap), every paid
   request goes through `dub.py`, which writes a ledger entry reserving the most it can cost before sending it,
   refuses past the cap or past the language's share of it (so one language's retries can't starve the rest),
-  and serializes paid calls. A request that may have been billed without its audio arriving (eleven.py says
-  so on a timeout) stays reserved at its most, "possibly charged", is never sent again by itself, and stops
-  only its language; the others go on. Progress is a line per language, never a question. Only finishing past
+  and lets one run work on the job at a time, reading it fresh for every write. A character is reserved at
+  the most this voice was billed per character in the narration's records (never under the list rate; three
+  times it for a voice billed nowhere yet, since a library voice's multiplier isn't in the API), and each
+  request that arrives sets the rate again. A request that may have been billed without its audio arriving
+  (anything but the server's no: a timeout, a dropped connection, a crash) stays reserved at its most,
+  "possibly charged", is never sent again by itself, and stops only its language; requests of the same run
+  that arrived stay billed. Each language's voice test is transcribed against its text and language before
+  the rest is bought; two failures stop it. A higher cap the director approves lifts a stop on a share, not
+  one on a possible charge. Progress is a line per language, never a question. Only finishing past
   the cap, another voice or model, or a change of what the video says goes back to the director, and a
   stopped language waits in the hand-off. `dub.py status` reads the job and the files on disk, so another
   session resumes where one stopped, and eleven.py's request cache means paid audio is never bought twice.
@@ -594,19 +600,23 @@ How a track is made, and why:
   the moments a cut or a label follows, so `anchors.tsv` names those (line, original words, translated words,
   an occurrence), and the sentence is cut in the measured pause before the word. A sentence that runs long
   may start 0.25 s early, be sped up 8% (ffmpeg's atempo keeps the pitch) or push the next 0.4 s late; past
-  that it is an open issue that says how much shorter it must be. These bounds are tested, not proof:
+  that it is an open issue that says how much shorter it must be, and nothing runs past the video's end.
+  These bounds are tested, not proof:
   `verify`'s numbers and the director's eye are. Each line is matched to the original line's level.
 - **The bed is the original's, exactly.** `dub.py mix` writes a plan from the video's own mix record: the
   music and every effect at the times and gains that mix resolved, the dub's voice in place of the narration,
   and its placed words for the voice checks. `mix.py build` takes such a plan (`voice_words`) only with
   `--to DIR`, so a dub never writes the video's own `mix.wav` (the reference needed a staging folder and a
-  hash check to be sure of that). The mix's per-line voice-over-bed measures are compared with the same
+  hash check to be sure of that). An effect mix.py turned down for sounding within 150 ms of another keeps
+  the gain it had: the cut is taken out of the copied gain, since mix.py makes it again. The mix's per-line voice-over-bed measures are compared with the same
   lines in the original mix, which the director approved, and a line that lost more than 2 LU is listed with
   the lift that restores it: listed, not lifted, since an approved mix once drew flags on 14 of its 30 lines.
 - **Checks that are measurements.** `verify` holds every track to the video's length (the final render's,
   to a frame), 48 kHz stereo, no clipped sample, the true peak under the ceiling, the original's music and
-  effects (files, times, gains), no original voice among its inputs, its placement current and its open
-  issues, and a transcription of the placed voice (paid, inside the job: the words that reached the track,
+  effects (files, times, gains), no original voice among its inputs, that it is made from what is there now
+  (the translation, the narration, anchors, levels, the placement, the video's words and mix: one shared
+  check for place, mix, verify and status), its placement's open issues, and a transcription of the placed
+  voice (paid, inside the job: the words that reached the track,
   cuts included); loudness against the original mix and across languages is listed to listen to, not failed.
   What nothing checks (an accent, a delivery, the translation's meaning) is said before the yes and in every
   hand-off.

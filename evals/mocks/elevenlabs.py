@@ -484,7 +484,9 @@ class H(BaseHTTPRequestHandler):
                 self._log(c, True)
                 return self._json(c, b)
             text = " ".join(STATE["tts_texts"]).replace("dum", "doom")
-            lang = "por" if re.search(r"[ãõçáéíóúâêô]", text.lower()) else "eng"  # the language it detects
+            asked = fields.get(b"language_code", b"").decode()
+            # the language it was held to, else the one it detects
+            lang = asked or ("por" if re.search(r"[ãõçáéíóúâêô]", text.lower()) else "eng")
             words, t = [], 0.4
             for wd in text.split():
                 words.append({"text": wd, "type": "word", "start": round(t, 3), "end": round(t + 0.3, 3),

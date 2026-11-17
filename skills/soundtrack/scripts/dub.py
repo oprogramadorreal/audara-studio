@@ -57,7 +57,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -92,9 +91,11 @@ V2_LANGS = {"en", "ja", "zh", "de", "hi", "fr", "ko", "pt", "it", "es", "id", "n
 FLASH_LANGS = V2_LANGS | {"hu", "no", "vi"}
 WIDE_MODELS = ("eleven_v3", "eleven_v4")
 FALLBACK_MODEL = "eleven_v4"
-CREDITS_PER_CHAR_MAX = 1.0  # list rate (Flash bills 0.5-1): the most a character can cost, what a reservation holds
+CREDITS_PER_CHAR_MAX = 1.0  # list rate (Flash bills 0.5-1): the least a reservation holds per character
+UNKNOWN_RATE = 3.0  # a voice with no billing record yet: its first request here is held at this (a multiplier)
 STT_CREDITS_PER_MIN = 330  # Scribe v2, as eleven.py estimates it
 RETRY_SHARE = 0.25  # the estimate's allowance for retakes and shortened sentences, on top of one take of each block
+PILOT_S = 30  # seconds of audio the estimate allows for each language's voice-test transcription
 
 # Placement (seconds). Tested bounds, not proof of sync: verify and the director's eye are.
 GAP_IN_LINE = 0.12  # between two pieces of one line, at least (less where the original's own pause was less)
@@ -226,6 +227,7 @@ class Lang:
         self.placed = self.dir / "data" / "words-placed.json"
         self.placement = self.dir / "placement.json"
         self.heard = self.dir / "heard.json"
+        self.pilot = self.dir / "pilot.json"
         self.mix_plan = self.dir / "mix.json"
         self.mix_wav = self.pkg / "mix.wav"
         self.mix_rec = self.pkg / "mix.wav.request.json"
@@ -473,22 +475,28 @@ class Original:
                 return j, c
         return None, None
 
-    def billed_rate(self, cfg_path: Path | None) -> float | None:
-        """Credits billed per character on the original narration, from its request records (the account's own)."""
+    def billed_rate(self, cfg_path: Path | None, voice_id: str) -> tuple[float | None, float | None]:
+        """Credits billed per character for this voice on the original narration, from its request records (the
+        account's own): on average, and the most one request cost (what a reservation holds)."""
         if cfg_path is None:
-            return None
+            return None, None
         billed = chars = 0
-        for r in cfg_path.parent.glob("*.request.json"):
+        top = None
+        for r in list(cfg_path.parent.glob("*.request.json")) + list(cfg_path.parent.glob("takes/*.request.json")):
             j = read_json(r) or {}
+            req = j.get("request") or {}
+            if f"/{voice_id}/" not in str(req.get("path", "")):
+                continue
             cc = (j.get("response") or {}).get("character_cost")
-            text = ((j.get("request") or {}).get("body") or {}).get("text")
+            text = (req.get("body") or {}).get("text")
             try:
                 if cc is not None and isinstance(text, str) and text:
                     billed += int(cc)
                     chars += len(text)
+                    top = max(top or 0.0, int(cc) / len(text))
             except (TypeError, ValueError):
                 continue
-        return billed / chars if chars else None
+        return (billed / chars if chars else None), top
 
     def video_duration(self) -> tuple[float, str]:
         """The length every track must have: the final render's, else the original mix's."""
@@ -612,9 +620,46 @@ def ledger_totals(job: dict, lang: str | None = None) -> dict:
     return t
 
 
+def char_rate(job: dict) -> float:
+    """Credits a character may cost with this voice: the most it was billed per character (the original narration's
+    requests, then this job's), never under the list rate; a voice billed nowhere yet is held at UNKNOWN_RATE until
+    its first request here measures it (a library voice can carry a credit multiplier the API doesn't state)."""
+    r = (job.get("rate") or {}).get("credits_per_char")
+    return max(CREDITS_PER_CHAR_MAX, float(r)) if r else UNKNOWN_RATE
+
+
+def learn_rate(job: dict, billed: float, chars: int) -> None:
+    """A settled request's billed credits per character, kept when it is the most this voice has cost."""
+    if chars <= 0 or billed <= 0:
+        return
+    r = billed / chars
+    old = (job.get("rate") or {}).get("credits_per_char")
+    if old is None or r > float(old) + 1e-9:
+        job["rate"] = {"credits_per_char": round(r, 4), "from": "a request of this job"}
+
+
+def stops(holder: dict) -> list[dict]:
+    """A language's (or the job's) stops, each {"kind", "why"}: charge (a request that may have been billed without
+    its audio), share (its share of the cap spent), cap (the cap passed), pilot (its voice test failed twice)."""
+    return [x if isinstance(x, dict) else {"kind": "charge", "why": str(x)} for x in holder.get("stopped") or []]
+
+
+def stop(holder: dict, why: str, kind: str) -> None:
+    cur = stops(holder)
+    if not any(x["why"] == why for x in cur):
+        cur.append({"kind": kind, "why": why, "at": now()})
+    holder["stopped"] = cur
+
+
+def stop_lang(job: dict, lang: str, why: str, kind: str = "charge") -> None:
+    ls = job["languages"].get(lang)
+    if ls is not None:
+        stop(ls, why, kind)
+
+
 def settle_pending(v: Video, job: dict) -> list[str]:
     """A ledger entry left pending by a run that stopped mid-request may have been billed: it becomes "possibly
-    charged" at its most, and its language stops."""
+    charged" at its most, and its language stops. Only under the job's lock (no other run is mid-request then)."""
     found = []
     for e in job.get("ledger") or []:
         if e.get("status") == "pending":
@@ -629,28 +674,21 @@ def settle_pending(v: Video, job: dict) -> list[str]:
     return found
 
 
-def stop_lang(job: dict, lang: str, why: str) -> None:
-    ls = job["languages"].get(lang)
-    if ls is not None:
-        ls.setdefault("stopped", [])
-        if why not in ls["stopped"]:
-            ls["stopped"].append(why)
-
-
-class PaidLock:
-    """One paid request at a time, across processes: the cap is checked against a ledger nobody else is writing."""
+class JobLock:
+    """The job's lock, across processes: whoever holds it reads the job fresh and writes it, and paid requests go one
+    at a time, so the cap is checked against a ledger nobody else is writing."""
 
     def __init__(self, v: Video):
-        self.p = v.dub / ".paid.lock"
+        self.p = v.dub / ".job.lock"
 
     def __enter__(self):
         self.p.parent.mkdir(parents=True, exist_ok=True)
         try:
             fd = os.open(self.p, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
-            raise Fail(SCOPE, f"{self.p} exists: another dub run is spending now (or one stopped without cleaning "
-                              "up: if no other run is going, its ledger entry is settled as possibly charged when "
-                              "the lock file is deleted and dub.py status runs)")
+            raise Fail(SCOPE, f"{self.p} exists: another dub run is working on the job now (or one stopped without "
+                              "cleaning up: if no other run is going, delete it; dub.py status then settles a request "
+                              "it left pending as possibly charged)")
         with os.fdopen(fd, "w") as f:
             f.write(f"{os.getpid()} {now()}\n")
         return self
@@ -670,10 +708,12 @@ def reserve(v: Video, job: dict, lang: str, what: str, kind: str, most: float) -
         raise Fail(SCOPE, f"{what} could cost up to {num(most)} credits; {num(cap - tot['committed'])} of the approved "
                           f"{num(cap)} are left. Going on is the director's call (a higher cap)")
     if mine["committed"] + most > share:
-        stop_lang(job, lang, f"{what} would pass {lang_name(lang)}'s share of the cap ({num(mine['committed'])} of "
-                             f"{num(share)} credits used): it stops here, the other languages go on")
+        why = (f"{what} would pass {lang_name(lang)}'s share of the cap ({num(mine['committed'])} of {num(share)} "
+               "credits used): it stops here, the other languages go on; a higher cap the director approves lets it "
+               "go on")
+        stop_lang(job, lang, why, "share")
         write_json(v.job_path, job)
-        raise Fail(SCOPE, job["languages"][lang]["stopped"][-1])
+        raise Fail(SCOPE, why)
     e = {"id": len(job.get("ledger") or []) + 1, "lang": lang, "what": what, "kind": kind, "max": round(most, 1),
          "status": "pending", "at": now()}
     job.setdefault("ledger", []).append(e)
@@ -691,13 +731,26 @@ def settle(v: Video, job: dict, e: dict, status: str, billed: float | None = Non
     write_json(v.job_path, job)
 
 
+def over_cap(v: Video, job: dict) -> None:
+    """After a request billed more than it reserved (a voice dearer than measured): past the cap, everything stops."""
+    tot = ledger_totals(job)
+    if tot["committed"] > float(job["cap"]) + 1e-6:
+        why = (f"the voice was billed more per character than reserved (up to {char_rate(job):.2f} credits a "
+               f"character): {num(tot['committed'])} spent or reserved, past the approved {num(job['cap'])}")
+        stop(job, why, "cap")
+        write_json(v.job_path, job)
+        raise Fail(SCOPE, why + ": going on is the director's call")
+
+
 def check_scope(v: Video, job: dict, lang: Lang) -> dict:
+    if stops(job):
+        raise Fail(SCOPE, "the job stopped: " + "; ".join(x["why"] for x in stops(job)))
     ls = job["languages"].get(lang.code)
     if ls is None:
         raise Fail(SCOPE, f"{lang_name(lang.code)} isn't in the approved job ({', '.join(job['languages'])}): adding it "
                           "is the director's call")
-    if ls.get("stopped"):
-        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: " + "; ".join(ls["stopped"]))
+    if stops(ls):
+        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: " + "; ".join(x["why"] for x in stops(ls)))
     return ls
 
 
@@ -760,7 +813,9 @@ def cmd_plan(a) -> dict:
     if not src:
         raise usage("--from <code>: the video's language (its narration's), which the estimate scales from")
     vdur, vsrc = o.video_duration()
-    rate = o.billed_rate(cfg_path)
+    avg_rate, top_rate = o.billed_rate(cfg_path, voice_id)
+    known = (job or {}).get("rate", {}).get("credits_per_char") or top_rate
+    per_char = max(CREDITS_PER_CHAR_MAX, float(known)) if known else CREDITS_PER_CHAR_MAX
     orig_chars = o.chars()
     rows = []
     for code in langs:
@@ -787,9 +842,9 @@ def cmd_plan(a) -> dict:
         r_src = CHAR_RATIO.get(base_lang(src), UNMEASURED_RATIO)
         r_dst = CHAR_RATIO.get(base_lang(code), UNMEASURED_RATIO)
         chars = exact if exact is not None else orig_chars * r_dst / r_src
-        tts = chars * CREDITS_PER_CHAR_MAX
-        stt = math.ceil(STT_CREDITS_PER_MIN * vdur / 60)
-        allowance = RETRY_SHARE * (orig_chars * r_dst / r_src) * CREDITS_PER_CHAR_MAX
+        tts = chars * per_char
+        stt = math.ceil(STT_CREDITS_PER_MIN * vdur / 60) + math.ceil(STT_CREDITS_PER_MIN * PILOT_S / 60)
+        allowance = RETRY_SHARE * (orig_chars * r_dst / r_src) * per_char
         done = ledger_totals(job, code)["committed"] if job else 0.0
         rows.append({"lang": code, "name": lang_name(code), "model": model, "chars": round(chars),
                      "exact": exact is not None, "measured_ratio": base_lang(code) in CHAR_RATIO,
@@ -808,7 +863,7 @@ def cmd_plan(a) -> dict:
         how = "exact, from the translation" if r["exact"] else (
             "estimated from the original's length" + ("" if r["measured_ratio"] else ", ratio unmeasured"))
         say(f"  {r['name']:<22} {r['model']:<24} {num(r['chars']):>7} characters ({how}): about {num(r['estimate'])} "
-            f"credits (speech {num(r['tts'])}, transcription check {num(r['stt'])}, retries {num(r['allowance'])})")
+            f"credits (speech {num(r['tts'])}, transcription checks {num(r['stt'])}, retries {num(r['allowance'])})")
         for n_ in r["notes"]:
             say(f"      {n_}")
     moved = [r for r in rows if r["model"] != orig_model]
@@ -816,49 +871,74 @@ def cmd_plan(a) -> dict:
         say(f"  The narration was made with {orig_model}, which doesn't speak {', '.join(r['name'] for r in moved)}: "
             f"{'they use' if len(moved) > 1 else 'it uses'} {', '.join(sorted({r['model'] for r in moved}))} with the same "
             "voice. The voice test is the first paid request there, and a language whose test fails stops.")
-    say(f"Estimate: about {num(total)} credits at the list rate (1 per character" +
-        (f"; this account was billed {rate:.2f} per character for the original narration, so it may cost less)"
-         if rate and rate < 0.95 else ")") + (f"; {num(spent)} spent or reserved so far." if spent else "."),
-        f"A cap of {num(cap_suggest)} credits covers it" + (f" (the approved cap is {num(job['cap'])})." if job else "."),
-        "Not included: a voice with a credit multiplier costs more per character (its page on elevenlabs.io says).")
+    if known and float(known) > CREDITS_PER_CHAR_MAX + 1e-6:
+        rate_line = (f"{per_char:.2f} credits a character: this voice was billed that much (a credit multiplier), "
+                     "and every request is reserved at it")
+    elif known:
+        rate_line = (f"the list rate, 1 credit a character; this voice was billed {float(avg_rate or known):.2f} a "
+                     "character for the original narration, so it may cost less")
+    else:
+        rate_line = (f"the list rate, 1 credit a character; this voice has no billing record here, so its first request "
+                     f"is reserved at {UNKNOWN_RATE:g} times that (a voice can carry a credit multiplier) until it is "
+                     "measured")
+    say(f"Estimate: about {num(total)} credits, at {rate_line}" + (f"; {num(spent)} spent or reserved so far." if spent
+                                                                   else "."),
+        f"A cap of {num(cap_suggest)} credits covers it" + (f" (the approved cap is {num(job['cap'])})." if job else "."))
     for x in account:
         say(x)
     res = {"video": v.name, "voice": {"id": voice_id, "name": voice_name}, "from": src, "model": orig_model,
            "duration": vdur, "rows": rows, "estimate": total, "spent": round(spent), "cap_suggested": cap_suggest,
-           "billed_rate": rate, "account": account}
+           "billed_rate": avg_rate, "rate_reserved": per_char if known else None, "account": account}
     if a.approve is not None:
         if not a.approve.strip():
             raise usage("--approve takes the director's own words, as they gave their yes")
         if a.cap is None:
             raise usage("--approve needs --cap N: the most the batch may spend, as the director agreed it")
-        if a.cap < spent:
-            raise usage(f"--cap {a.cap}: {num(spent)} credits are already spent or reserved")
-        new = job or {"tool": TOOL, "version": VERSION, "ledger": []}
-        new.update({"approved": now(), "words": a.approve.strip(), "from": src, "cap": int(a.cap),
-                    "voice": {"id": voice_id, "name": voice_name},
-                    "settings": {"voice_settings": (cfg or {}).get("voice_settings") or {}, "lufs": (cfg or {}).get("lufs"),
-                                 "from": v.rel(cfg_path) if cfg_path else None},
-                    "sources": o.fingerprint()})
-        langs_old = new.get("languages") or {}
-        new["languages"] = {r["lang"]: {**langs_old.get(r["lang"], {}), "model": r["model"], "estimate": r["estimate"]}
-                            for r in rows}
-        share_out(new)
-        new.setdefault("history", []).append({"at": new["approved"], "words": new["words"], "cap": new["cap"],
-                                              "languages": list(new["languages"])})
-        write_json(v.job_path, new)
+        with JobLock(v):
+            job = load_job(v, need=False)
+            spent = ledger_totals(job)["committed"] if job else 0.0
+            if a.cap < spent:
+                raise usage(f"--cap {a.cap}: {num(spent)} credits are already spent or reserved")
+            new = job or {"tool": TOOL, "version": VERSION, "ledger": []}
+            new.update({"approved": now(), "words": a.approve.strip(), "from": src, "cap": int(a.cap),
+                        "voice": {"id": voice_id, "name": voice_name},
+                        "settings": {"voice_settings": (cfg or {}).get("voice_settings") or {},
+                                     "lufs": (cfg or {}).get("lufs"), "from": v.rel(cfg_path) if cfg_path else None},
+                        "sources": o.fingerprint()})
+            if not new.get("rate") and top_rate:
+                new["rate"] = {"credits_per_char": round(top_rate, 4), "from": "the original narration's requests"}
+            # a new yes with its cap lifts what stopped on the old cap; a request that may have been billed, or a voice
+            # test that failed, stays stopped
+            new["stopped"] = [x for x in stops(new) if x["kind"] not in ("cap", "share")]
+            langs_old = new.get("languages") or {}
+            new["languages"] = {}
+            for r in rows:
+                ls = {**langs_old.get(r["lang"], {}), "model": r["model"], "estimate": r["estimate"] + r["spent_or_reserved"]}
+                ls["stopped"] = [x for x in stops(ls) if x["kind"] != "share"]
+                new["languages"][r["lang"]] = ls
+            share_out(new)
+            new.setdefault("history", []).append({"at": new["approved"], "words": new["words"], "cap": new["cap"],
+                                                  "languages": list(new["languages"])})
+            write_json(v.job_path, new)
         say(f"Approved: {v.rel(v.job_path)} ({len(rows)} languages, cap {num(a.cap)} credits, in the director's words: "
             f"\"{new['words']}\").")
         res["job"] = v.rel(v.job_path)
     elif job is not None and not a.langs:
         # after the translations: the updated estimate within the same approved cap, and the shares again
-        if total + spent > float(job["cap"]):
-            raise Fail(SCOPE, f"the updated estimate ({num(total)} credits, plus {num(spent)} spent) passes the approved "
-                              f"cap of {num(job['cap'])}: ask the director before spending")
-        for r in rows:  # (what a language has spent or reserved stays in its share)
-            job["languages"][r["lang"]]["estimate"] = r["estimate"] + r["spent_or_reserved"]
-        share_out(job)
-        write_json(v.job_path, job)
-        say(f"Within the approved cap of {num(job['cap'])} credits; each language's share updated in {v.rel(v.job_path)}.")
+        with JobLock(v):
+            job = load_job(v)
+            spent = ledger_totals(job)["committed"]
+            for r in rows:
+                r["spent_or_reserved"] = round(ledger_totals(job, r["lang"])["committed"])
+            if total + spent > float(job["cap"]):
+                raise Fail(SCOPE, f"the updated estimate ({num(total)} credits, plus {num(spent)} spent) passes the "
+                                  f"approved cap of {num(job['cap'])}: ask the director before spending")
+            for r in rows:  # (what a language has spent or reserved stays in its share)
+                job["languages"][r["lang"]]["estimate"] = r["estimate"] + r["spent_or_reserved"]
+            share_out(job)
+            write_json(v.job_path, job)
+        say(f"An updated estimate within the approved cap of {num(job['cap'])} credits; each language's share updated "
+            f"in {v.rel(v.job_path)}.")
     return res
 
 
@@ -878,7 +958,7 @@ def probe(v: Video, voice_id: str, model: str) -> tuple[list[str], tuple[int, st
 
 
 def share_out(job: dict) -> None:
-    """Each language's share of the cap, in proportion to its estimate (what it has spent counts against it)."""
+    """Each language's share of the cap, in proportion to its estimate (what it has spent counts in it)."""
     langs = job["languages"]
     total = sum(float(x.get("estimate") or 0) for x in langs.values()) or 1.0
     for code, x in langs.items():
@@ -891,24 +971,25 @@ def cmd_speak(a) -> dict:
     v = Video(a.video)
     lang = Lang(v, a.lang)
     o = Original(v)
-    job = load_job(v)
-    check_scope(v, job, lang)
     notes = check_translation(o, lang)
-    if job.get("sources") != o.fingerprint():
-        note("the video's words, mix or render changed since the job was approved: placement and mixes are made "
-             "again (free); new narration only for paragraphs whose text changed")
-    if a.pick is not None:
+    if a.pick is not None:  # free: a take already paid for becomes the block's file
+        job = load_job(v)
+        check_scope(v, job, lang)
         if a.block is None:
             raise usage("--pick K needs --block N")
         rc, j = eleven(tts_args(lang, job, ["--pick", str(a.pick), "--block", str(a.block)]), v)
         if rc:
             raise Fail(rc, msg_of(j))
         say(f"{lang_name(lang.code)}: take {a.pick} of block {a.block} kept (free).")
-        return assemble(v, lang, job, j)
-    with PaidLock(v):
+        return assemble(v, lang, job)
+    made = []
+    with JobLock(v):
         job = load_job(v)
-        if settle_pending(v, job):  # (a run that died mid-request: only now, holding the lock, is that certain)
-            check_scope(v, job, lang)
+        settle_pending(v, job)  # (a run that died mid-request: certain only now, holding the lock)
+        ls = check_scope(v, job, lang)
+        if job.get("sources") != o.fingerprint():
+            note("the video's words, mix or render changed since the job was approved: placement and mixes are made "
+                 "again (free); new narration only for paragraphs whose text changed")
         if a.takes is not None:
             if a.block is None:
                 raise usage("--takes K needs --block N")
@@ -919,11 +1000,12 @@ def cmd_speak(a) -> dict:
                 return j
             if rc != CONFIRM:
                 raise Fail(rc or ERROR, f"{lang_name(lang.code)}: {msg_of(j)}")
-            chars = sum(int(x.get("characters", 0)) for x in j.get("jobs") or [])
-            e = reserve(v, job, lang.code, f"{lang.code} block {a.block}: {len(j.get('jobs') or [])} more take(s)",
-                        "tts", chars * CREDITS_PER_CHAR_MAX)
-            run_paid(v, job, lang, e, plan_args, [x["file"] for x in j.get("jobs") or []])
-            say(f"{lang_name(lang.code)}: takes of block {a.block} made; compare them, then --pick K --block {a.block}.")
+            files = [(x["file"], int(x.get("characters", 0))) for x in j.get("jobs") or []]
+            e = reserve(v, job, lang.code, f"{lang.code} block {a.block}: {len(files)} more take(s)", "tts",
+                        sum(c for _, c in files) * char_rate(job))
+            run_paid(v, job, lang, e, plan_args, files)
+            say(f"{lang_name(lang.code)}: takes of block {a.block} made; compare them (hear --test {a.block} after "
+                f"picking one), then --pick K --block {a.block}.")
             return {"lang": lang.code, "takes": a.takes, "block": a.block}
         rc, j = eleven(tts_args(lang, job, []), v)
         if rc == NO_KEY:
@@ -935,21 +1017,26 @@ def cmd_speak(a) -> dict:
             jobs = [x for x in jobs if block_of(x) == a.test]
             if not jobs:
                 say(f"{lang_name(lang.code)}: block {a.test} exists already (free).")
-        made = []
+        elif jobs:
+            pilot = read_json(lang.pilot) or {}
+            if not pilot.get("pass") or sha256(Path(v.root / pilot.get("file", "-"))) != pilot.get("file_sha256"):
+                raise Fail(SCOPE, f"{lang_name(lang.code)}: the voice test hasn't passed yet. Make it on the hardest "
+                                  f"paragraph (speak --lang {lang.code} --test N), check it (hear --lang {lang.code} "
+                                  "--test N), then make the rest")
         for x in jobs:
-            n = block_of(x)
-            e = reserve(v, job, lang.code, f"{lang.code} block {n}", "tts", int(x.get("characters", 0)) * CREDITS_PER_CHAR_MAX)
-            run_paid(v, job, lang, e, ["--only", str(n)], [x["file"]])
+            n, chars = block_of(x), int(x.get("characters", 0))
+            e = reserve(v, job, lang.code, f"{lang.code} block {n}", "tts", chars * char_rate(job))
+            run_paid(v, job, lang, e, ["--only", str(n)], [(x["file"], chars)])
             made.append(n)
-            say(f"  {lang_name(lang.code)} block {n}: made ({x.get('characters')} characters; ledger entry {e['id']}: "
+            say(f"  {lang_name(lang.code)} block {n}: made ({chars} characters; ledger entry {e['id']}: "
                 f"{e['status']}, {num(e.get('billed') or 0)} billed)")
-    ls = job["languages"][lang.code]
-    ls["narration_sha"] = sha256(lang.narration_txt)
-    write_json(v.job_path, job)
-    res = assemble(v, lang, job, {}) if a.test is None else {"lang": lang.code, "made": made}
-    t = ledger_totals(job, lang.code)
-    say(f"{lang_name(lang.code)}: {len(made)} block(s) made this run; {num(t['committed'])} of its {num(ls.get('share') or 0)} "
-        f"credit share used ({num(ledger_totals(job)['committed'])} of the cap's {num(job['cap'])}).")
+        t, total = ledger_totals(job, lang.code), ledger_totals(job)
+    res = assemble(v, lang, job) if a.test is None else {"lang": lang.code, "made": made}
+    say(f"{lang_name(lang.code)}: {len(made)} block(s) made this run; {num(t['committed'])} of its "
+        f"{num(ls.get('share') or 0)} credit share used ({num(total['committed'])} of the cap's {num(job['cap'])}).")
+    if a.test is not None and made:
+        say(f"  Next: hear --video {v.name} --lang {lang.code} --test {a.test} (what the take says, and in which "
+            "language), before the rest.")
     for n_ in notes:
         say(f"  {n_}")
     return res
@@ -965,39 +1052,57 @@ def block_of(job_row: dict) -> int:
     return int(m.group(1))
 
 
-def run_paid(v: Video, job: dict, lang: Lang, e: dict, extra: list[str], files: list[str]) -> None:
+def run_paid(v: Video, job: dict, lang: Lang, e: dict, extra: list[str], files: list[tuple[str, int]]) -> None:
+    """Send the reserved requests (eleven.py makes them in order and stops at the first that fails), then settle the
+    ledger from what arrived: the files that came are billed as their records say; the first that didn't may have
+    been billed unless the server answered no, and stays reserved; the rest were never sent."""
     rc, j = eleven(tts_args(lang, job, extra + ["--yes"]), v)
-    billed, made = 0.0, 0
-    for f in files:
+    why = msg_of(j)[:300]
+    billed, made, chars_made = 0.0, [], 0
+    for f, chars in files:
         p = v.root / f
         rec = read_json(p.with_name(p.stem + ".request.json"))
         if isinstance(rec, dict) and rec.get("generated", "") >= e["at"]:
-            made += 1
+            made.append(f)
+            chars_made += chars
             try:
                 billed += float((rec.get("response") or {}).get("character_cost"))
             except (TypeError, ValueError):
-                billed += e["max"] / max(1, len(files))
-    if rc in (OK, CONFIRM) and made == len(files):
-        settle(v, job, e, "done", billed)
-        return
-    if made == len(files):  # the files arrived: what went wrong came after them
-        settle(v, job, e, "done", billed, why=msg_of(j)[:300])
-        return
-    if not surely_not_billed(rc, j):
-        settle(v, job, e, "possibly charged", why=msg_of(j)[:300])
-        stop_lang(job, lang.code, f"{e['what']}: {msg_of(j)[:200]} (counted as spent: up to {num(e['max'])} credits; "
-                                  "never sent again by itself)")
+                billed += chars * char_rate(job)
+    missing = [(f, c) for f, c in files if f not in made]
+    if made:
+        settle(v, job, e, "done", billed, why=why if missing or rc else "")
+        learn_rate(job, billed, chars_made)
         write_json(v.job_path, job)
-        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: {e['what']} may have been billed without its audio arriving "
-                          "(counted as spent); the other languages go on")
-    settle(v, job, e, "not charged", 0.0, why=msg_of(j)[:300])
-    if "insufficient" in msg_of(j).lower() or "402" in msg_of(j):
-        raise Fail(SCOPE, f"the account is out of credits ({msg_of(j)[:200]}): nothing more can be made until the "
-                          "director tops it up")
-    raise Fail(rc or ERROR, f"{lang_name(lang.code)}: {msg_of(j)}")
+        over_cap(v, job)
+    if not missing:
+        return
+    if surely_not_billed(rc, j):
+        if not made:
+            settle(v, job, e, "not charged", 0.0, why=why)
+        if "insufficient" in why.lower() or "HTTP 402" in why:
+            stop(job, f"the account is out of credits ({why[:160]})", "cap")
+            write_json(v.job_path, job)
+            raise Fail(SCOPE, f"the account is out of credits ({why[:200]}): nothing more can be made until the "
+                              "director tops it up")
+        raise Fail(rc or ERROR, f"{lang_name(lang.code)}: {msg_of(j)}")
+    f0, c0 = missing[0]
+    most0 = round(c0 * char_rate(job), 1)
+    if made:  # the requests that arrived stay billed; the one that failed gets an entry of its own
+        e = {"id": len(job["ledger"]) + 1, "lang": lang.code, "what": f"{e['what']} ({Path(f0).name})", "kind": "tts",
+             "max": most0, "status": "possibly charged", "at": e["at"], "settled": now(), "why": why}
+        job["ledger"].append(e)
+    else:
+        e["max"] = most0
+        settle(v, job, e, "possibly charged", why=why)
+    stop_lang(job, lang.code, f"{e['what']}: {why[:200]} (counted as spent: up to {num(e['max'])} credits; never sent "
+                              "again by itself)")
+    write_json(v.job_path, job)
+    raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: {e['what']} may have been billed without its audio arriving "
+                      "(counted as spent); the other languages go on")
 
 
-def assemble(v: Video, lang: Lang, job: dict, _j: dict) -> dict:
+def assemble(v: Video, lang: Lang, job: dict) -> dict:
     rc, j = eleven(tts_args(lang, job, []), v)
     if rc == OK and lang.take_wav.is_file() and lang.take_words.is_file():
         say(f"{lang_name(lang.code)}: {v.rel(lang.take_wav)} and {v.rel(lang.take_words)} are up to date.")
@@ -1007,42 +1112,61 @@ def assemble(v: Video, lang: Lang, job: dict, _j: dict) -> dict:
     return {"lang": lang.code, "missing": missing}
 
 
+ISO3 = {"en": "eng", "es": "spa", "pt": "por", "hi": "hin", "ar": "ara", "ru": "rus", "ja": "jpn", "de": "deu",
+        "bn": "ben", "fr": "fra", "vi": "vie", "tr": "tur", "id": "ind", "ko": "kor", "it": "ita", "zh": "zho",
+        "nl": "nld", "pl": "pol", "uk": "ukr", "th": "tha", "fa": "fas", "ur": "urd", "ta": "tam", "te": "tel"}
+OTHER3 = {"de": {"ger"}, "fr": {"fre"}, "zh": {"chi", "cmn"}, "fa": {"per"}, "nl": {"dut"}}
+
+
+def same_language(heard: str | None, base: str) -> bool | None:
+    if not heard:
+        return None
+    h = heard.lower().split("-")[0].split("_")[0]
+    return h == base or h == ISO3.get(base) or h in OTHER3.get(base, set())
+
+
+def paid_stt(v: Video, lang: Lang, args: list[str], what: str, secs: float) -> dict:
+    """A transcription through the job: free when eleven.py has it already (it keeps each by the audio's hash)."""
+    rc, j = eleven(args, v)
+    if rc == OK:
+        return j
+    if rc != CONFIRM:
+        raise Fail(rc or ERROR, msg_of(j))
+    with JobLock(v):
+        job = load_job(v)
+        settle_pending(v, job)
+        check_scope(v, job, lang)
+        e = reserve(v, job, lang.code, what, "stt", math.ceil(STT_CREDITS_PER_MIN * secs / 60))
+        rc, j = eleven(args + ["--yes"], v)
+        if rc == OK:
+            settle(v, job, e, "done", float(e["max"]))
+            return j
+        if surely_not_billed(rc, j):
+            settle(v, job, e, "not charged", 0.0, why=msg_of(j)[:300])
+            raise Fail(rc or ERROR, msg_of(j))
+        settle(v, job, e, "possibly charged", why=msg_of(j)[:300])
+        stop_lang(job, lang.code, f"{e['what']}: {msg_of(j)[:200]} (counted as spent)")
+        write_json(v.job_path, job)
+        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: the transcription may have been billed without an answer "
+                          "(counted as spent)")
+
+
 def cmd_hear(a) -> dict:
     v = Video(a.video)
     lang = Lang(v, a.lang)
-    job = load_job(v)
-    check_scope(v, job, lang)
+    check_scope(v, load_job(v), lang)
+    if a.test is not None:
+        return hear_pilot(v, lang, a.test)
     if not lang.voice.is_file() or not lang.placed.is_file():
         raise usage(f"place the voice first: dub.py place --video {v.name} --lang {lang.code}")
     args = ["stt", v.rel(lang.voice), "--out", v.rel(lang.dir), "--expect", v.rel(lang.placed), "--language", lang.base]
-    rc, j = eleven(args, v)
-    if rc == CONFIRM:
-        secs = float(sf.info(str(lang.voice)).duration)
-        with PaidLock(v):
-            job = load_job(v)
-            if settle_pending(v, job):
-                check_scope(v, job, lang)
-            e = reserve(v, job, lang.code, f"{lang.code} transcription of the placed voice", "stt",
-                        math.ceil(STT_CREDITS_PER_MIN * secs / 60))
-            rc, j = eleven(args + ["--yes"], v)
-            if rc == OK:
-                settle(v, job, e, "done", float(e["max"]))
-            elif not surely_not_billed(rc, j):
-                settle(v, job, e, "possibly charged", why=msg_of(j)[:300])
-                stop_lang(job, lang.code, f"{e['what']}: {msg_of(j)[:200]} (counted as spent)")
-                write_json(v.job_path, job)
-                raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: the transcription may have been billed without an "
-                                  "answer (counted as spent)")
-            else:
-                settle(v, job, e, "not charged", 0.0, why=msg_of(j)[:300])
-                raise Fail(rc or ERROR, msg_of(j))
-    elif rc != OK:
-        raise Fail(rc or ERROR, msg_of(j))
+    j = paid_stt(v, lang, args, f"{lang.code} transcription of the placed voice", float(sf.info(str(lang.voice)).duration))
     placed = read_json(lang.placed) or {}
     expected = " ".join(str(w.get("spoken") or w.get("w", "")) for l in placed.get("lines") or [] for w in l.get("words") or [])
     heard_text = str(j.get("transcript") or "")
     ratio = difflib.SequenceMatcher(None, norm(expected), norm(heard_text), autojunk=False).ratio()
     res = {"lang": lang.code, "similarity": round(ratio, 3), "language_heard": j.get("language"),
+           "same_language": same_language(j.get("language"), lang.base),
            "matched_words": j.get("matched"), "expected_words": j.get("expected_words"),
            "differences": (j.get("differences") or [])[:60], "voice_sha256": sha256(lang.voice), "at": now()}
     write_json(lang.heard, res)
@@ -1058,7 +1182,89 @@ def cmd_hear(a) -> dict:
     return res
 
 
+def hear_pilot(v: Video, lang: Lang, n: int) -> dict:
+    """The voice test checked before the rest is bought: block n transcribed, in its language, against its text."""
+    cands = [p for p in sorted(lang.blocks.glob("*")) if p.suffix in (".mp3", ".wav", ".pcm", ".opus")
+             and re.match(rf"0*{n}-", p.name) and p.with_name(p.stem + ".request.json").is_file()]
+    if not cands:
+        raise usage(f"block {n} isn't made yet: speak --video {v.name} --lang {lang.code} --test {n}")
+    f = cands[0]
+    rec = read_json(f.with_name(f.stem + ".request.json")) or {}
+    spoken = str(((rec.get("request") or {}).get("body") or {}).get("text") or rec.get("shown_text") or "")
+    exp = lang.dir / "out" / f"pilot-{n}.txt"
+    exp.parent.mkdir(parents=True, exist_ok=True)
+    exp.write_text(spoken + "\n", encoding="utf-8", newline="\n")
+    args = ["stt", v.rel(f), "--out", v.rel(lang.dir), "--expect", v.rel(exp), "--language", lang.base]
+    j = paid_stt(v, lang, args, f"{lang.code} voice test, block {n}", float(sf.info(str(f)).duration)
+                 if f.suffix in (".wav",) else len(decode(f)) / SR)
+    ratio = difflib.SequenceMatcher(None, norm(spoken), norm(str(j.get("transcript") or "")), autojunk=False).ratio()
+    same = same_language(j.get("language"), lang.base)
+    ok = ratio >= 0.85 and same is not False
+    old = read_json(lang.pilot) or {}
+    fails = int(old.get("fails", 0)) + (0 if ok else 1) if old.get("file_sha256") != sha256(f) else int(old.get("fails", 0))
+    res = {"block": n, "file": v.rel(f), "file_sha256": sha256(f), "similarity": round(ratio, 3),
+           "language_heard": j.get("language"), "same_language": same, "pass": ok, "fails": fails, "at": now()}
+    write_json(lang.pilot, res)
+    say(f"{lang_name(lang.code)}: the voice test (block {n}) heard as {j.get('language') or '?'}, its text at "
+        f"{ratio * 100:.1f}%: " + ("passed; make the rest." if ok else "failed."))
+    if not ok and fails >= 2:
+        with JobLock(v):
+            job = load_job(v)
+            stop_lang(job, lang.code, f"the voice test failed twice (block {n}: {ratio * 100:.0f}% of its text, heard "
+                                      f"as {j.get('language') or '?'}): another take, model or voice is the director's "
+                                      "call", "pilot")
+            write_json(v.job_path, job)
+        raise Fail(SCOPE, f"{lang_name(lang.code)} stopped: its voice test failed twice; the other languages go on")
+    if not ok:
+        say(f"  Make another take (speak --lang {lang.code} --block {n} --takes 2, then --pick 2 --block {n}) and hear "
+            "it again; a second failure stops this language.")
+    return res
+
+
 # ------------------------------------------------------------------------------------------------ place
+
+def placement_inputs(o: Original, lang: Lang) -> dict:
+    """Everything a placement is made from: if any of it changes, the voice is placed (and mixed) again."""
+    return {"take": sha256(lang.take_wav), "take_words": sha256(lang.take_words), "original": o.fingerprint(),
+            "anchors": sha256(lang.anchors), "levels": sha256(lang.levels), "tool": VERSION}
+
+
+def take_stale(lang: Lang) -> str | None:
+    """Whether the narration made in a language still says its translation (a paragraph changed since: speak)."""
+    if not lang.narration_txt.is_file() or not lang.take_words.is_file():
+        return None
+    said = ["".join(str(w.get("w", "")) for w in l.get("words") or []) for l in (read_json(lang.take_words) or {}).get("lines") or []]
+    text = ["".join(p.split()) for p in paragraphs(lang.narration_txt)]
+    if [re.sub(r"\s", "", x) for x in said] != text:
+        k = next((i for i, (a_, b_) in enumerate(zip(said, text)) if re.sub(r"\s", "", a_) != b_), min(len(said), len(text)))
+        return (f"the narration made in this language doesn't say youtube/{lang.code}/narration.txt any more (from paragraph "
+                f"{k + 1}): speak again (only what changed is made)")
+    return None
+
+
+def freshness(o: Original, lang: Lang) -> list[str]:
+    """What is out of date in a language's dub, step by step: [] when its track is made from what is there now."""
+    out = []
+    t = take_stale(lang)
+    if t:
+        out.append(t)
+    pl = read_json(lang.placement) or {}
+    if not lang.voice.is_file() or not pl:
+        return out + ["the voice isn't placed yet (place)"]
+    if pl.get("inputs") != placement_inputs(o, lang):
+        changed = [k for k, val in placement_inputs(o, lang).items() if (pl.get("inputs") or {}).get(k) != val]
+        out.append(f"placed before {', '.join(changed)} changed (place again)")
+    if pl.get("voice_sha256") != sha256(lang.voice) or pl.get("words_sha256") != sha256(lang.placed):
+        out.append("the placed voice or its words changed since placing (place again)")
+    rec = read_json(lang.mix_rec) or {}
+    if not lang.mix_wav.is_file() or not rec:
+        return out + ["no track yet (mix)"]
+    if (rec.get("outputs") or {}).get("mix.wav") != sha256(lang.mix_wav):
+        out.append("mix.wav isn't the file its record describes (mix again)")
+    if (rec.get("inputs") or {}).get(lang.v.rel(lang.voice)) != sha256(lang.voice) or \
+            (rec.get("data") or {}).get(lang.v.rel(lang.placed)) != sha256(lang.placed):
+        out.append("mixed from an earlier placement (mix again)")
+    return out
 
 def cmd_place(a) -> dict:
     tool("ffmpeg")
@@ -1072,8 +1278,10 @@ def cmd_place(a) -> dict:
     if len(D) != len(o.lines):
         raise usage(f"the {lang_name(lang.code)} narration has {len(D)} paragraphs and the original {len(o.lines)} "
                     "lines: one paragraph per line, in order")
-    inputs = {"take": sha256(lang.take_wav), "take_words": sha256(lang.take_words), "original": o.fingerprint(),
-              "anchors": sha256(lang.anchors), "levels": sha256(lang.levels), "tool": VERSION}
+    inputs = placement_inputs(o, lang)
+    stale = take_stale(lang)
+    if stale:
+        raise usage(f"{lang_name(lang.code)}: {stale}")
     old = read_json(lang.placement) or {}
     if (not a.force and old.get("inputs") == inputs and sha256(lang.voice) == old.get("voice_sha256")
             and sha256(lang.placed) == old.get("words_sha256")):
@@ -1175,20 +1383,22 @@ def cmd_place(a) -> dict:
             if start + sound > limit and limit > start:
                 tempo = min(TEMPO_MAX, sound / (limit - start))
         end = start + sound / tempo
+        # (the next sentence may start a little late; the video's end may not move at all)
         slip_next = (end + gap - nxt["target"]) if nxt is not None else max(0.0, end - (dur - END_ROOM))
+        allowed = SLIP_MAX if nxt is not None else 0.0
         row = {"line": p["line"] + 1, "piece": round(p["k"], 1), "why": p["why"], "text": " ".join(str(w["w"]) for w in p["words"]),
                "target": round(p["target"], 3), "start": round(start, 3), "end": round(end, 3),
                "lead": round(lead, 3), "slip": round(max(0.0, start - p["target"]), 3), "tempo": round(tempo, 4),
                "src": [round(cin, 3), round(s0, 3), round(s1, 3), round(cout, 3)]}
-        if slip_next > SLIP_MAX + 1e-6:
-            need = slip_next - SLIP_MAX
+        if slip_next > allowed + 1e-6:
+            need = slip_next - allowed
             cps = len(row["text"]) / max(0.2, sound)
             row["misfit"] = round(need, 2)
-            where = "the next sentence" if nxt is not None else "the video's end"
-            issues.append(f"line {row['line']}: \"{short(row['text'])}\" runs {need:.2f} s too long for its place (it would "
-                          f"push {where} {slip_next:.2f} s late, past {SLIP_MAX:g} s, even {int(round((tempo - 1) * 100))}% "
-                          f"faster): about {max(1, int(round(need * cps * tempo)))} characters shorter, or anchors that "
-                          "give it room")
+            issues.append(f"line {row['line']}: \"{short(row['text'])}\" runs {need:.2f} s too long for its place ("
+                          + (f"it would push the next sentence {slip_next:.2f} s late, past {SLIP_MAX:g} s"
+                             if nxt is not None else f"it would end {slip_next:.2f} s after the video leaves it room")
+                          + f", even {int(round((tempo - 1) * 100))}% faster): about "
+                          f"{max(1, int(round(need * cps * tempo)))} characters shorter, or anchors that give it room")
         peak_db = float(frame_db(y, int(s0 * SR), int(s1 * SR)).max()) if s1 > s0 + 0.01 else 0.0
         for edge, t_ in (("start", cin), ("end", cout)):
             at_db = frame_db(y, int(t_ * SR) - SR // 200, int(t_ * SR) + SR // 200)
@@ -1256,6 +1466,10 @@ def cmd_place(a) -> dict:
         at = int(round((r["start"] - (s0 - cin) / r["tempo"]) * SR))
         if at < 0:
             seg, at = seg[-at:], 0
+        cut = seg[max(0, n - at):]
+        if len(cut) and float(np.max(np.abs(cut))) > 10 ** (-50 / 20):
+            issues.append(f"line {r['line']}: \"{short(r['text'])}\" still sounds at the video's end: "
+                          f"{len(cut) / SR:.2f} s of it would be cut")
         seg = seg[:max(0, n - at)]
         out[at:at + len(seg)] += seg
         line = words_out[p["line"]]
@@ -1266,6 +1480,9 @@ def cmd_place(a) -> dict:
     for line in words_out:
         if line["words"]:
             line["start"], line["end"] = line["words"][0]["start"], line["words"][-1]["end"]
+            if line["end"] > dur + 1e-3:
+                issues.append(f"line {line['i'] + 1}: its last word ends at {line['end']:.2f} s, after the video's end "
+                              f"({dur:.2f} s)")
     peak = float(np.max(np.abs(out))) if len(out) else 0.0
     if peak > 0.98:
         out *= np.float32(0.98 / peak)
@@ -1321,12 +1538,9 @@ def cmd_mix(a) -> dict:
     v = Video(a.video)
     lang = Lang(v, a.lang)
     o = Original(v)
-    pl = read_json(lang.placement) or {}
-    if not lang.voice.is_file() or pl.get("voice_sha256") != sha256(lang.voice):
-        raise usage(f"place the voice first (or again): dub.py place --video {v.name} --lang {lang.code}")
-    if pl.get("inputs", {}).get("original") != o.fingerprint():
-        raise usage(f"the video's words, mix or render changed since the voice was placed: dub.py place --video "
-                    f"{v.name} --lang {lang.code} first")
+    stale = [x for x in freshness(o, lang) if "(mix" not in x and not x.startswith("no track")]
+    if stale:
+        raise usage(f"{lang_name(lang.code)}: {'; '.join(stale)}: dub.py place --video {v.name} --lang {lang.code} first")
     rec = o.rec
     raw = rec.get("plan") or {}
     res = rec.get("resolved") or {}
@@ -1351,7 +1565,8 @@ def cmd_mix(a) -> dict:
     if len(fx_raw) != len(frows):
         raise Fail(ERROR, f"the video's mix record lists {len(frows)} effects and its plan {len(fx_raw)}: build it again")
     plan["effects"] = [{"file": rebase(e["file"]), "at": fr["time"], "align": fr.get("align", "onset"),
-                        "gain_db": fr["gain_db"], "note": f"{fr.get('where')}: {fr.get('source')}, in the video's mix"}
+                        "gain_db": round(fr["gain_db"] - cluster_db(fr), 3),
+                        "note": f"{fr.get('where')}: {fr.get('source')}, in the video's mix"}
                        for e, fr in zip(fx_raw, frows)]
     write_json(lang.mix_plan, plan)
     lang.pkg.mkdir(parents=True, exist_ok=True)
@@ -1381,6 +1596,13 @@ def cmd_mix(a) -> dict:
         say("  Every line keeps at least the margin over the music and effects that it has in the video's mix.")
     write_json(lang.review / "mix-compare.json", {"lang": lang.code, "lines": cmp_, "at": now()})
     return {"lang": lang.code, "mix": v.rel(lang.mix_wav), "status": out.get("status"), "lines": cmp_}
+
+
+def cluster_db(frow: dict) -> float:
+    """The cut mix.py made to an effect within 150 ms of another (its record's gain includes it, and mix.py makes it
+    again on a plan that repeats that gain): taken out here, so the dub's effect sounds as the video's does."""
+    m = re.search(r"x([0-9.]+) \(within", str(frow.get("bound", "")))
+    return 20 * math.log10(float(m.group(1))) if m and float(m.group(1)) > 0 else 0.0
 
 
 def compare_lines(orig_rec: dict, dub_rec: dict) -> list[dict]:
@@ -1425,7 +1647,8 @@ def cmd_verify(a) -> dict:
     for code in codes:
         lang = Lang(v, code)
         fails, issues, diags, checked = [], [], [], []
-        stopped = ((job.get("languages") or {}).get(code) or {}).get("stopped") or []
+        stopped = [x["why"] for x in stops((job.get("languages") or {}).get(code) or {})] + \
+            [x["why"] for x in stops(job)]
         issues += [f"stopped: {x}" for x in stopped]
         if not lang.mix_wav.is_file():
             rows.append({"lang": code, "name": lang_name(code), "status": "incomplete" if not stopped else "stopped",
@@ -1460,25 +1683,23 @@ def cmd_verify(a) -> dict:
             if om_.get(k) != dm_.get(k):
                 fails.append(f"the music's {k} is {dm_.get(k)!r}, the video's mix has {om_.get(k)!r}")
         if om_.get("gain_db") != dm_.get("gain_db"):
-            diags.append(f"the music's gain is {dm_.get('gain_db')} dB, {om_.get('gain_db')} in the video's mix")
+            fails.append(f"the music's gain is {dm_.get('gain_db')} dB, {om_.get('gain_db')} in the video's mix")
         ofx = [(e.get("file"), e.get("placed_at"), e.get("gain_db")) for e in ores.get("effects") or []]
         dfx = [(e.get("file"), e.get("placed_at"), e.get("gain_db")) for e in dres.get("effects") or []]
         if [(f, t) for f, t, _ in ofx] != [(f, t) for f, t, _ in dfx]:
             fails.append("the effects aren't the video's mix's (files or times differ)")
         elif ofx != dfx:
-            diags.append("an effect's gain differs from the video's mix")
+            fails.append("an effect's gain differs from the video's mix: " + "; ".join(
+                f"{f} {g1} dB, {g0} in the video's mix" for (f, _, g0), (_, _, g1) in zip(ofx, dfx) if g0 != g1))
         else:
             checked.append(f"music and {len(ofx)} effect(s): the video's mix's files, times and gains")
         ovoice = {r.get("file") for r in ores.get("voice") or []}
         if ovoice & set(drec.get("inputs") or {}):
             fails.append("the original voice is among the track's inputs")
-        # placement and words
+        # placement and words: made from what is there now, and its open issues
         pl = read_json(lang.placement) or {}
-        if (pl.get("voice_sha256") != sha256(lang.voice)
-                or (drec.get("inputs") or {}).get(v.rel(lang.voice)) != sha256(lang.voice)):
-            fails.append("the track wasn't mixed from the voice as placed now: place and mix again")
-        if (pl.get("inputs") or {}).get("original") != o.fingerprint():
-            fails.append("the video's words, mix or render changed since the voice was placed: place and mix again")
+        stale = freshness(o, lang)
+        fails += [f"not current: {x}" for x in stale]
         issues += pl.get("issues") or []
         heard = read_json(lang.heard) or {}
         if heard.get("voice_sha256") == sha256(lang.voice):
@@ -1558,66 +1779,68 @@ def cmd_verify(a) -> dict:
 def cmd_status(a) -> dict:
     v = Video(a.video)
     job = load_job(v)
-    lock = v.dub / ".paid.lock"
-    if lock.is_file():
-        say(f"A paid run holds {v.rel(lock)}; if none is running, delete it and run status again.")
-    else:
-        settled = settle_pending(v, job)
+    try:  # a request a stopped run left pending is settled, unless another run holds the job now
+        with JobLock(v):
+            job = load_job(v)
+            settled = settle_pending(v, job)
         if settled:
             say(f"Settled as possibly charged (a run stopped mid-request): {', '.join(settled)}")
+    except Fail as e:
+        say(f"Another run holds the job ({v.rel(v.dub / '.job.lock')}): read as it stands. {e.msg}")
     try:
         o = Original(v)
-        fp = o.fingerprint()
     except Fail as e:
-        o, fp = None, None
+        o = None
         say(f"The reference: {e.msg}")
     tot = ledger_totals(job)
     say(f"Dub job for {v.name}: approved {job.get('approved')}, \"{job.get('words')}\"; voice "
         f"{job['voice'].get('name') or job['voice']['id']}; cap {num(job['cap'])} credits: {num(tot['billed'])} billed, "
-        f"{num(tot['possibly'])} possibly charged, {num(tot['pending'])} pending, {num(job['cap'] - tot['committed'])} left.")
-    if fp is not None and job.get("sources") != fp:
+        f"{num(tot['possibly'])} possibly charged, {num(tot['pending'])} pending, {num(job['cap'] - tot['committed'])} "
+        f"left; reserved at {char_rate(job):.2f} credits a character.")
+    for x in stops(job):
+        say(f"  THE JOB STOPPED: {x['why']}")
+    if o is not None and job.get("sources") != o.fingerprint():
         say("  The video's words, mix or render changed since the approval: each language is placed and mixed again "
             "(free) before it is delivered.")
     rows = []
     for code, ls in job["languages"].items():
         lang = Lang(v, code)
-        st = []
-        nxt = None
         n_par = len(paragraphs(lang.narration_txt)) if lang.narration_txt.is_file() else 0
-        made = len([p for p in lang.blocks.glob("*.request.json")]) if lang.blocks.is_dir() else 0
-        pl = read_json(lang.placement) or {}
-        placed = lang.voice.is_file() and pl.get("voice_sha256") == sha256(lang.voice) and (
-            fp is None or (pl.get("inputs") or {}).get("original") == fp) and (
-            (pl.get("inputs") or {}).get("take") == sha256(lang.take_wav))
+        made = len(list(lang.blocks.glob("*.request.json"))) if lang.blocks.is_dir() else 0
+        pilot = read_json(lang.pilot) or {}
+        pilot_ok = bool(pilot.get("pass")) and sha256(v.root / pilot.get("file", "-")) == pilot.get("file_sha256")
+        stale = freshness(o, lang) if o is not None else ["the reference can't be read"]
         heard = read_json(lang.heard) or {}
-        mixed = lang.mix_wav.is_file() and (read_json(lang.mix_rec) or {}).get("outputs", {}).get("mix.wav") == sha256(lang.mix_wav)
-        mixed = mixed and (read_json(lang.mix_rec) or {}).get("inputs", {}).get(v.rel(lang.voice)) == sha256(lang.voice)
-        if ls.get("stopped"):
-            st.append("STOPPED: " + "; ".join(ls["stopped"]))
+        h = lang.voice.is_file() and heard.get("voice_sha256") == sha256(lang.voice)
+        pl = read_json(lang.placement) or {}
+        st = [f"translation {'yes' if n_par else 'no'}", f"blocks {made}/{n_par or '?'}",
+              f"voice test {'passed' if pilot_ok else ('failed' if pilot else 'not yet')}"]
         if not n_par:
-            nxt = nxt or "translate (youtube/<code>/narration.txt)"
-        st.append(f"translation {'yes' if n_par else 'no'}")
-        st.append(f"blocks {made}/{n_par or '?'}")
-        if made < n_par:
-            nxt = nxt or f"speak (voice test first: --test N on the hardest block)" if made == 0 else nxt or "speak"
-        st.append(f"narration {'yes' if lang.take_wav.is_file() else 'no'}")
-        st.append(f"placed {'yes' if placed else 'no'}" + (f" ({len(pl.get('issues') or [])} open)" if placed and pl.get("issues") else ""))
-        if lang.take_wav.is_file() and not placed:
-            nxt = nxt or "place"
-        if placed and pl.get("issues"):
-            nxt = nxt or "fix the open placement issues (shorten, anchors), speak, place"
-        st.append(f"mixed {'yes' if mixed else 'no'}")
-        if placed and not mixed:
-            nxt = nxt or "mix"
-        h = heard.get("voice_sha256") == sha256(lang.voice) and lang.voice.is_file()
+            nxt = "translate (youtube/<code>/narration.txt, from dub.py source)"
+        elif made == 0:
+            nxt = "the voice test: speak --test N on the hardest paragraph, then hear --test N"
+        elif not pilot_ok:
+            nxt = "hear --test N (the voice test), or another take of it"
+        elif made < n_par or take_stale(lang):
+            nxt = "speak (the rest, or the paragraphs that changed)"
+        elif stale:
+            nxt = stale[0]
+        elif pl.get("issues"):
+            nxt = "the open placement issues (shorten a sentence, anchors), then speak, place and mix"
+        elif not h:
+            nxt = "hear (the placed voice transcribed)"
+        else:
+            nxt = "verify"
+        if stale:
+            st.append("not current: " + "; ".join(stale))
+        if pl.get("issues"):
+            st.append(f"{len(pl['issues'])} open in its placement")
         st.append(f"heard {'yes' if h else 'no'}")
-        if mixed and not h:
-            nxt = nxt or "hear"
         t = ledger_totals(job, code)
         st.append(f"{num(t['committed'])}/{num(ls.get('share') or 0)} credits")
-        if ls.get("stopped"):
+        if stops(ls) or stops(job):
+            st.insert(0, "STOPPED: " + "; ".join(x["why"] for x in stops(ls) + stops(job)))
             nxt = "the director's call (stopped)"
-        nxt = nxt or "verify"
         rows.append({"lang": code, "state": st, "next": nxt})
         say(f"  {lang_name(code):<22} {', '.join(st)}; next: {nxt}")
     return {"video": v.name, "ledger": tot, "rows": rows}
@@ -1656,6 +1879,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true", help="place again even when nothing it reads changed")
     p = P("hear", "transcribe the placed voice and compare it with its text (paid, inside the job)")
     p.add_argument("--lang", required=True)
+    p.add_argument("--test", type=int, metavar="N", help="the voice test instead: block N transcribed against its text "
+                                                        "and its language, before the rest is made")
     p = P("mix", "the language's complete track, youtube/<code>/mix.wav (free)")
     p.add_argument("--lang", required=True)
     p.add_argument("--force", action="store_true", help="mix again even when nothing changed")

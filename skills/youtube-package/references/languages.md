@@ -76,11 +76,13 @@ this, with the real values (adapt the words; keep every part):
 >
 > **More languages.** A 15-language preset of YouTube's largest audiences adds 14: Spanish, English, Hindi,
 > Arabic, Russian, Japanese, German, Bengali, French, Vietnamese, Turkish, Indonesian, Korean, Italian.
-> 1. **Packages only, no generation credits:** each language gets its title, description, thumbnail 1 with
->    its words translated (2 and 3 have none) and timed subtitles, in `youtube/<code>/`.
+> 1. **Packages only, no generation credits:** each language gets its title, description, every thumbnail
+>    that has words with them translated (those without words serve every language) and timed subtitles, in
+>    `youtube/<code>/`.
 > 2. **Packages and dubbed audio:** everything in 1, plus a full-length audio track per language in your
 >    voice "<name>", over the video's own music and effects (`youtube/<code>/mix.wav`). About N ElevenLabs
->    credits (voice tests, a check of every track and retries included); I won't spend more than C (you
+>    credits (each language's voice test checked before the rest is made, a check of every track, retries);
+>    I won't spend more than C (you
 >    have M). It takes hours: one yes covers all 14, and I'll finish without asking again unless finishing
 >    would need more than C or something you'd decide. The checks are measurements: nobody will have
 >    listened to the accent or the delivery until you do. Uploading audio tracks needs Studio's advanced

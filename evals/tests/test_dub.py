@@ -4,15 +4,18 @@
 # ///
 """dub.py, offline: uv run evals/tests/test_dub.py.
 
-A small audara project (music, an effect on a word, a three-paragraph English narration made by eleven.py against
-evals/mocks/elevenlabs.py, served in-process, and its mix), dubbed. What it holds dub.py to: the free steps spend
-nothing; nothing is paid for without an approved job, past its cap or past a language's share; a request billed
-without an answer stays reserved, stops its language (only it) and is never sent again; a run that stopped
-mid-request is settled the same way; paid audio is never bought twice when a run is made again; sentences land on
-their original sentences and an anchored word on its original word; a sentence too long for its place stays an
-open issue and its track is not "ready"; the dub's music and effects are the video's mix's, and the video's own
-mix.wav is untouched; mix.py refuses a mix with another voice and nowhere else to go. Needs ffmpeg and uv; no
-network, no paid call. A few minutes."""
+A small audara project (music, two effects on a word 0.1 s apart, a three-paragraph English narration made by
+eleven.py against evals/mocks/elevenlabs.py, served in-process, and its mix), dubbed. What it holds dub.py to: the
+free steps spend nothing; nothing is paid for without an approved job, past its cap or past a language's share; the
+rest of a language waits for its voice test to pass, and two failed tests stop it; a request billed without an
+answer stays reserved, stops its language (only it) and is never sent again; a run that stopped mid-request is
+settled the same way; a request billed then a later one refused keeps the first billed; a voice billed more per
+character than reserved stops the job at the cap; a higher cap lifts a stop on a language's share but not one on a
+possible charge; paid audio is never bought twice; sentences land on their original sentences and an anchored word
+on its original word; a sentence too long for its place, or one running past the video's end, stays open and its
+track is not "ready"; a track made before its inputs changed fails verify; the dub's music and effects (grouped
+ones included) are the video's mix's, and the video's own mix.wav is untouched; mix.py refuses a mix with another
+voice and nowhere else to go. Needs ffmpeg and uv; no network, no paid call. Two or three minutes."""
 import importlib.util
 import json
 import os
@@ -63,6 +66,12 @@ FR = ["Notre voyage commence ici, à cent kilomètres au-dessus de la surface. "
 IT = ["Il nostro viaggio comincia qui, a cento chilometri sopra la superficie. Questo è il bordo dello spazio.",
       "I colori vengono da vere foto satellitari. Anche le nuvole sono vere.",
       "Mettiamo tutto insieme, ed ecco il nostro pianeta."]
+PT = ["Nossa viagem começa aqui, a cem quilômetros acima da superfície. Esta é a borda do espaço.",
+      "As cores vêm de fotos de satélite de verdade. As nuvens também são reais.",
+      "Junte tudo, e este é o nosso planeta."]
+# a last paragraph that can't end before the end of a video cut close after the narration
+TIGHT = ES[:2] + ["Júntalo todo, y este es nuestro planeta, el único que conocemos, con sus océanos, sus nubes, sus "
+                  "montañas y sus ciudades encendidas en la noche."]
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("uv"), "needs ffmpeg and uv")
@@ -99,10 +108,11 @@ class DubTest(unittest.TestCase):
         (v / "mix.json").write_text(json.dumps({
             "kind": "calm", "voice": "audio/narration.wav",
             "music": {"file": "audio/music.wav", "under_voice": 14, "fade_out": 2},
-            "effects": [{"file": "audio/click.wav", "word": "clouds"}]}), encoding="utf-8")
+            "effects": [{"file": "audio/click.wav", "word": "clouds"},
+                        {"file": "audio/click.wav", "word": "clouds", "offset": 0.1}]}), encoding="utf-8")
         cls.uv(SK / "mix.py", "build", "--video", "demo")
         cls.orig_mix = dub.sha256(v / "audio" / "mix.wav")
-        for code, paras in (("es", ES), ("de", DE), ("fr", FR), ("it", IT)):
+        for code, paras in (("es", ES), ("de", DE), ("fr", FR), ("it", IT), ("pt", PT)):
             (v / "youtube" / code).mkdir(parents=True)
             (v / "youtube" / code / "narration.txt").write_text("\n\n".join(paras) + "\n", encoding="utf-8")
 
@@ -137,6 +147,12 @@ class DubTest(unittest.TestCase):
 
     def job(self) -> dict:
         return json.loads((self.v / "dub" / "job.json").read_text(encoding="utf-8"))
+
+    def pilot(self, code: str, block: int, heard: str) -> dict:
+        """The voice test, block `block` made and heard (the mock's transcriber hears what it is given here)."""
+        self.dub("speak", "--video", "demo", "--lang", code, "--test", str(block))
+        self.mock.STATE["tts_texts"][:] = [heard]
+        return self.dub("hear", "--video", "demo", "--lang", code, "--test", str(block), ok=(0, 5))[1]
 
     # ------------------------------------------------------------------------------------------- units
 
@@ -199,18 +215,19 @@ class DubTest(unittest.TestCase):
 
     def test_04_cap_refuses_before_sending(self):
         before = self.paid()
-        self.dub("plan", "--video", "demo", "--langs", "es,de,fr,it", "--from", "en", "--approve", "yes, up to 50",
+        self.dub("plan", "--video", "demo", "--langs", "es,de,fr,it,pt", "--from", "en", "--approve", "yes, up to 50",
                  "--cap", "50")
         code, j, _ = self.dub("speak", "--video", "demo", "--lang", "es", "--test", "1", ok=(5,))
         self.assertIn("approved", j["message"])
         self.assertEqual(self.paid(), before)
         self.assertEqual(self.job()["ledger"], [])
         # the director's second yes, a higher cap: the job's scope and history follow
-        self.dub("plan", "--video", "demo", "--langs", "es,de,fr,it", "--from", "en", "--approve",
-                 "yes, all four, up to 5000 credits", "--cap", "5000")
+        self.dub("plan", "--video", "demo", "--langs", "es,de,fr,it,pt", "--from", "en", "--approve",
+                 "yes, all five, up to 6000 credits", "--cap", "6000")
         job = self.job()
-        self.assertEqual((job["cap"], len(job["history"])), (5000, 2))
+        self.assertEqual((job["cap"], len(job["history"])), (6000, 2))
         self.assertEqual(job["voice"]["id"], VOICE)
+        self.assertEqual(job["rate"]["from"], "the original narration's requests")  # (the mock bills 1 a character)
 
     def test_05_spanish_end_to_end(self):
         before = self.paid()
@@ -219,10 +236,17 @@ class DubTest(unittest.TestCase):
         led = [e for e in self.job()["ledger"] if e["lang"] == "es"]
         self.assertEqual([(e["status"], e["what"]) for e in led], [("done", "es block 2")])
         self.assertEqual(led[0]["billed"], len(ES[1]))  # the mock's character-cost header
+        code, j, _ = self.dub("speak", "--video", "demo", "--lang", "es", ok=(5,))  # the rest waits for the test
+        self.assertIn("voice test", j["message"])
+        self.assertEqual(self.paid(), before + 1)
+        self.mock.STATE["tts_texts"][:] = [ES[1]]
+        code, pil, _ = self.dub("hear", "--video", "demo", "--lang", "es", "--test", "2")
+        self.assertTrue(pil["pass"] and pil["same_language"], pil)
+        self.assertEqual(self.paid(), before + 2)
         self.dub("speak", "--video", "demo", "--lang", "es")
-        self.assertEqual(self.paid(), before + 3)
+        self.assertEqual(self.paid(), before + 4)
         self.dub("speak", "--video", "demo", "--lang", "es")  # made again: nothing bought twice
-        self.assertEqual(self.paid(), before + 3)
+        self.assertEqual(self.paid(), before + 4)
         (self.v / "dub" / "es" / "anchors.tsv").write_text("2\tclouds\tnubes\n", encoding="utf-8")
         code, rec, _ = self.dub("place", "--video", "demo", "--lang", "es")
         self.assertEqual(rec["issues"], [])
@@ -243,7 +267,7 @@ class DubTest(unittest.TestCase):
         self.assertEqual([(e["file"], e["placed_at"], e["gain_db"]) for e in drec["resolved"]["effects"]],
                          [(e["file"], e["placed_at"], e["gain_db"]) for e in orec["resolved"]["effects"]])
         self.assertEqual(drec["resolved"]["music"]["gain_db"], orec["resolved"]["music"]["gain_db"])
-        self.mock.STATE["tts_texts"][:] = ES  # (the mock's transcriber hears every text it has spoken)
+        self.mock.STATE["tts_texts"][:] = ES  # (the mock's transcriber hears what it is given)
         before = self.paid()
         code, h, _ = self.dub("hear", "--video", "demo", "--lang", "es")
         self.assertGreater(h["similarity"], 0.85)
@@ -254,19 +278,29 @@ class DubTest(unittest.TestCase):
         row = v["rows"][0]
         self.assertEqual(row["status"], "ready", row)
         self.assertEqual(row["fails"], [])
+        # an anchor added after the mix: the track no longer comes from what is there, and verify says so
+        anchors = self.v / "dub" / "es" / "anchors.tsv"
+        anchors.write_text("2\tclouds\tnubes\n3\tplanet\tnubes\n", encoding="utf-8")
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es", ok=(1,))
+        self.assertEqual(v["rows"][0]["status"], "failed")
+        self.assertTrue(any("anchors" in f for f in v["rows"][0]["fails"]), v["rows"][0])
+        anchors.write_text("2\tclouds\tnubes\n", encoding="utf-8")
+        code, v, _ = self.dub("verify", "--video", "demo", "--langs", "es")
+        self.assertEqual(v["rows"][0]["status"], "ready")
 
     def test_06_billed_without_an_answer_stops_only_its_language(self):
+        self.assertTrue(self.pilot("de", 1, DE[0])["pass"])
         before = self.paid()
         code, j, _ = self.dub("speak", "--video", "demo", "--lang", "de", ok=(5,))
         self.assertIn("may have been billed", j["message"])
         led = [e for e in self.job()["ledger"] if e["lang"] == "de"]
-        self.assertEqual([e["status"] for e in led], ["done", "possibly charged"])
+        self.assertEqual([e["status"] for e in led], ["done", "done", "possibly charged"])  # (test, its check, block 2)
         self.assertTrue(self.job()["languages"]["de"]["stopped"])
         dropped = self.paid() - before
         code, j, _ = self.dub("speak", "--video", "demo", "--lang", "de", ok=(5,))
         self.assertEqual(self.paid() - before, dropped, "a possibly charged request was sent again")
         tot = dub.ledger_totals(self.job(), "de")
-        self.assertEqual(tot["possibly"], led[1]["max"])
+        self.assertEqual(tot["possibly"], led[2]["max"])
         code, s, _ = self.dub("status", "--video", "demo")
         st = {r["lang"]: r for r in s["rows"]}
         self.assertIn("STOPPED", " ".join(st["de"]["state"]))
@@ -285,20 +319,24 @@ class DubTest(unittest.TestCase):
         self.dub("speak", "--video", "demo", "--lang", "it", ok=(5,))
         self.assertEqual(self.paid(), before)
 
-    def test_08_a_share_spent_stops_its_language(self):
+    def test_08_a_share_spent_stops_its_language_until_a_higher_cap(self):
         job = self.job()
         job["languages"]["fr"]["share"] = 30  # less than a paragraph costs
         (self.v / "dub" / "job.json").write_text(json.dumps(job), encoding="utf-8")
         before = self.paid()
-        code, j, _ = self.dub("speak", "--video", "demo", "--lang", "fr", ok=(5,))
+        code, j, _ = self.dub("speak", "--video", "demo", "--lang", "fr", "--test", "1", ok=(5,))
         self.assertIn("share", j["message"])
         self.assertEqual(self.paid(), before)
+        self.dub("speak", "--video", "demo", "--lang", "fr", "--test", "1", ok=(5,))  # stopped now
+        # the director's yes to a higher cap: the share's stop lifts, a possible charge's doesn't
+        self.dub("plan", "--video", "demo", "--from", "en", "--approve", "yes, go on, up to 8000", "--cap", "8000")
         job = self.job()
-        job["languages"]["fr"]["share"] = 5000
-        job["languages"]["fr"].pop("stopped")
-        (self.v / "dub" / "job.json").write_text(json.dumps(job), encoding="utf-8")
+        self.assertEqual(job["languages"]["fr"]["stopped"], [])
+        self.assertTrue(job["languages"]["de"]["stopped"] and job["languages"]["it"]["stopped"])
+        self.assertGreater(job["languages"]["fr"]["share"], 30)
 
     def test_09_a_sentence_too_long_stays_open(self):
+        self.assertTrue(self.pilot("fr", 1, FR[0])["pass"])
         self.dub("speak", "--video", "demo", "--lang", "fr")
         code, rec, _ = self.dub("place", "--video", "demo", "--lang", "fr")
         self.assertTrue(any("too long" in x for x in rec["issues"]), rec["issues"])
@@ -307,6 +345,110 @@ class DubTest(unittest.TestCase):
         code, v, _ = self.dub("verify", "--video", "demo", "--langs", "fr,es")
         st = {r["lang"]: r["status"] for r in v["rows"]}
         self.assertEqual(st, {"fr": "incomplete", "es": "ready"})
+
+    def test_10_a_voice_test_failing_twice_stops_its_language(self):
+        before = self.paid()
+        r = self.pilot("pt", 1, "something else entirely, said in another way")
+        self.assertFalse(r["pass"])
+        code, j, _ = self.dub("speak", "--video", "demo", "--lang", "pt", ok=(5,))  # nothing more is bought
+        self.assertIn("voice test", j["message"])
+        self.dub("speak", "--video", "demo", "--lang", "pt", "--block", "1", "--takes", "2")
+        self.dub("speak", "--video", "demo", "--lang", "pt", "--block", "1", "--pick", "2")
+        self.mock.STATE["tts_texts"][:] = ["still not what it should say"]
+        code, j, _ = self.dub("hear", "--video", "demo", "--lang", "pt", "--test", "1", ok=(5,))
+        self.assertIn("failed twice", j["message"])
+        self.assertEqual([x["kind"] for x in self.job()["languages"]["pt"]["stopped"]], ["pilot"])
+        self.assertEqual(self.paid() - before, 4)  # the test, its check, the second take, its check
+
+    def test_11_ledger_from_what_arrived(self):
+        """run_paid in-process, eleven.py replaced: a take billed then one refused, a voice dearer than reserved, a
+        crash with nothing on disk."""
+        cwd = os.getcwd()
+        os.chdir(self.root)
+        self.addCleanup(os.chdir, cwd)
+        v = dub.Video("demo")
+        lang = dub.Lang(v, "nl")
+        tdir = lang.blocks / "takes"
+        tdir.mkdir(parents=True, exist_ok=True)
+        files = [(v.rel(tdir / "01-a.t2.mp3"), 100), (v.rel(tdir / "01-a.t3.mp3"), 100)]
+        real = dub.eleven
+        self.addCleanup(setattr, dub, "eleven", real)
+
+        def fake(made: list[tuple[str, int]], rc: int, msg: str):
+            def run(args, v_):
+                for f, cost in made:
+                    p = v_.root / f
+                    p.write_bytes(b"audio")
+                    p.with_name(p.stem + ".request.json").write_text(json.dumps(
+                        {"generated": dub.now(), "response": {"character_cost": str(cost)}}), encoding="utf-8")
+                return rc, ({"error": msg} if msg else {})
+            return run
+
+        def job(cap: int, rate: float | None) -> dict:
+            j = {"cap": cap, "languages": {"nl": {"share": cap}}, "ledger": [], "voice": {"id": VOICE}, "settings": {}}
+            if rate:
+                j["rate"] = {"credits_per_char": rate}
+            j["languages"]["nl"]["model"] = "eleven_multilingual_v2"
+            return j
+
+        jpath = self.tmp / "ledger-job.json"
+        v.job_path = jpath
+        # a take billed, then one refused for credits: the first stays billed
+        dub.eleven = fake([(files[0][0], 100)], 1, "text-to-speech for 01 take 3 failed: HTTP 402 insufficient_credits")
+        j = job(1000, 1.0)
+        e = dub.reserve(v, j, "nl", "nl block 1: 2 more take(s)", "tts", 200)
+        with self.assertRaises(dub.Fail) as cm:
+            dub.run_paid(v, j, lang, e, [], files)
+        self.assertEqual(cm.exception.code, dub.SCOPE)
+        self.assertEqual((e["status"], e["billed"]), ("done", 100.0))
+        self.assertEqual(dub.ledger_totals(j)["committed"], 100.0)
+        # a voice billed twice the list rate: the job stops at the cap
+        for f, _ in files:
+            (v.root / f).unlink(missing_ok=True)
+            (v.root / f).with_name(Path(f).stem + '.request.json').unlink(missing_ok=True)
+        dub.eleven = fake([(files[0][0], 200)], 0, "")
+        j = job(150, 1.0)
+        e = dub.reserve(v, j, "nl", "nl block 1", "tts", 100)
+        with self.assertRaises(dub.Fail) as cm:
+            dub.run_paid(v, j, lang, e, [], files[:1])
+        self.assertIn("more per character than reserved", cm.exception.msg)
+        self.assertEqual(j["rate"]["credits_per_char"], 2.0)
+        self.assertEqual([x["kind"] for x in dub.stops(j)], ["cap"])
+        self.assertEqual(dub.char_rate(j), 2.0)
+        # a voice with no billing record yet: its first request is held at three times the list rate
+        self.assertEqual(dub.char_rate(job(1000, None)), dub.UNKNOWN_RATE)
+        # a crash with nothing on disk: possibly charged, the language stopped
+        for f, _ in files:
+            (v.root / f).unlink(missing_ok=True)
+            (v.root / f).with_name(Path(f).stem + '.request.json').unlink(missing_ok=True)
+        dub.eleven = fake([], 1, "Traceback (most recent call last): KeyError")
+        j = job(1000, 1.0)
+        e = dub.reserve(v, j, "nl", "nl block 1", "tts", 100)
+        with self.assertRaises(dub.Fail):
+            dub.run_paid(v, j, lang, e, [], files[:1])
+        self.assertEqual(e["status"], "possibly charged")
+        self.assertEqual([x["kind"] for x in dub.stops(j["languages"]["nl"])], ["charge"])
+
+    def test_12_speech_past_the_videos_end_stays_open(self):
+        tight = self.root / "videos" / "tight"
+        shutil.copytree(self.v, tight, ignore=shutil.ignore_patterns("dub", "youtube"))
+        words = json.loads((tight / "data" / "words.json").read_text(encoding="utf-8"))
+        end = words["lines"][-1]["end"]
+        plan = json.loads((tight / "mix.json").read_text(encoding="utf-8"))
+        plan["duration"] = round(end + 0.6, 2)
+        (tight / "mix.json").write_text(json.dumps(plan), encoding="utf-8")
+        self.uv(SK / "mix.py", "build", "--video", "tight")
+        (tight / "youtube" / "es").mkdir(parents=True)
+        (tight / "youtube" / "es" / "narration.txt").write_text("\n\n".join(TIGHT) + "\n", encoding="utf-8")
+        self.dub("plan", "--video", "tight", "--langs", "es", "--from", "en", "--approve", "yes", "--cap", "3000")
+        self.dub("speak", "--video", "tight", "--lang", "es", "--test", "1")
+        self.mock.STATE["tts_texts"][:] = [TIGHT[0]]
+        self.dub("hear", "--video", "tight", "--lang", "es", "--test", "1")
+        self.dub("speak", "--video", "tight", "--lang", "es")
+        code, rec, _ = self.dub("place", "--video", "tight", "--lang", "es")
+        self.assertTrue(any("video" in x and ("end" in x or "room" in x) for x in rec["issues"]), rec["issues"])
+        placed = json.loads((tight / "dub" / "es" / "data" / "words-placed.json").read_text(encoding="utf-8"))
+        self.assertTrue(rec["issues"] or all(w["end"] <= plan["duration"] for l in placed["lines"] for w in l["words"]))
 
 
 if __name__ == "__main__":

@@ -4913,3 +4913,39 @@ and that mix is untouched; a sentence too long stays open), `test_youtube.ts` (6
 or Vietnamese with a cloned voice, and a 14-language batch's time and credits are unknown. No track was uploaded to
 YouTube. The three new task cases (`yp-languages-packages`, `yp-languages-dub`, `st-dub-asks-first`) wait for an
 `EVAL_DUB_PROJECT` and were not run.
+
+**Codex's review of the branch** (Herdr tab 2; it ran the tests and reproduced each finding in temp folders, with
+no paid call). Twelve findings, five it called blockers, all taken:
+
+- A voice's credit multiplier wasn't in any reservation: a request reserved at 100 credits billed 200 against a
+  100-credit cap. Now a character is reserved at the most the voice was billed per character in the narration's
+  records (never under the list rate), three times the list rate for a voice billed nowhere yet, and each
+  request that arrives sets the rate again; a request billed past its reservation that takes the job past its cap
+  stops the job.
+- A batch of takes where the first was billed and the second refused (402) was settled "not charged" as a whole,
+  so the committed total went to 0. Now the requests that arrived stay billed, a refused one is released, and one
+  that may have been billed gets an entry of its own.
+- A run wrote the job after releasing its lock, erasing another run's ledger entries. Every write now holds the
+  job's lock and reads the job fresh (`plan --approve` included).
+- `verify` called a track "ready" after an impossible anchor was added and after the take was replaced: it checked
+  the placed voice against the mix, not what the placement was made from. One check now serves place, mix, verify
+  and status: the translation against the narration made, the take, its words, the anchors, the levels, the
+  video's words and mix; a track made before any changed fails.
+- A last sentence could run 0.14 s past the end of a 2-second video and be cut, with no issue: the slip allowed
+  between sentences applied at the end too. The video's end is now a hard limit, and a placement that would cut
+  sound there, or put a word past it, is an open issue.
+- Also taken: a higher cap now lifts a stop on a language's share (a possible charge stays stopped); an effect
+  mix.py had turned down for sounding within 150 ms of another was turned down again in the dub ([0, -4.44] dB
+  became [0, -8.88]), and the bed's gains are now a failure, not a note, when they differ; the voice test had no
+  check before the rest was bought, so `hear --test N` transcribes it against its text and language, `speak`
+  makes the rest only after it passes, and a second failure stops the language; a subtitle could end at 10.75 s in
+  a 10-second video, and two notes could land on the narration (the second placed against an unsorted list);
+  `check --full` asked a video with no timed narration for subtitles; an empty SubRip file and a time of 99
+  seconds passed.
+- Not taken: its note that a face loaded from the platform's own fallback font (Malgun Gothic itself) still reads
+  as a fallback, since the pixels are the same; that predates the branch, and what's drawn is right.
+
+After the fixes `test_dub.py` has 12 tests (the voice test's gate and its two failures, the ledger kept from what
+arrived with eleven.py replaced in-process, a higher cap lifting a share's stop, a stale anchor failing verify,
+grouped effects, speech past a tight video's end) and `test_youtube.ts` 70; both pass, as do `test_mix_measure.py`
+and `test_eleven_pitch.py`.

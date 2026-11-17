@@ -344,6 +344,38 @@ try {
   r = inSub(['check', path.join('videos', 'v', 'youtube'), '--full']);
   expect('check --full: a package whose video has timed narration needs its subtitles', r.code === 1 && /FAIL\s+package\s+no subtitles\.<code>\.srt/.test(r.out), r.out);
 
+  // srt and check at the edges (codex's review): speech near the end, notes beside narration, no narration at all,
+  // and SubRip files that aren't
+  const ev = path.join(sub, 'videos', 'e');
+  mkdirSync(path.join(ev, 'data'), { recursive: true });
+  mkdirSync(path.join(ev, 'youtube', 'ja'), { recursive: true });
+  writeFileSync(path.join(ev, 'video.json'), JSON.stringify({ fps: 30, duration: 10, audio: null }));
+  const E1 = 'The planet turns.', E2 = 'And the night falls over the cities.';
+  writeFileSync(path.join(ev, 'data', 'words.json'), JSON.stringify({ lines: [
+    { text: E1, words: timed(E1, 1, 1.5) }, { text: E2, words: timed(E2, 8, 1.8) }] }));
+  writeFileSync(path.join(ev, 'youtube', 'ja', 'narration.txt'), '惑星は回ります。\n\nそして街の上に夜が来て、すべての明かりが一つずつ灯っていきます。\n');
+  writeFileSync(path.join(ev, 'youtube', 'notes.en.tsv'), '0:00\t2\t[day]\n0:08.5\t3\t[night]\n0:03\t2\t[noon]\n');
+  r = inSub(['srt', '--video', 'e', '--lang', 'ja']);
+  const endOf = (stamp: string) => { const m = /(\d\d):(\d\d):(\d\d),(\d\d\d)$/.exec(stamp)!; return +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000; };
+  const ends = (file: string) => readFileSync(file, 'utf8').trim().split(/\n\n+/).map((b) => b.split('\n')[1].split(' --> ')).map(([a, z]) => [endOf(a), endOf(z)]);
+  let span = r.code === 0 ? ends(path.join(ev, 'youtube', 'ja', 'subtitles.ja.srt')) : [];
+  expect('srt: a subtitle near the video\'s end stays inside it', r.code === 0 && span.length > 0 && span.every(([, z]) => z <= 10), r.out + JSON.stringify(span));
+  r = inSub(['srt', '--video', 'e', '--lang', 'en']);
+  span = r.code === 0 ? ends(path.join(ev, 'youtube', 'subtitles.en.srt')) : [];
+  expect('srt: notes placed one by one never overlap the narration or each other, and none runs past the end',
+    r.code === 0 && span.every(([a, z], i) => z <= 10 && (i === 0 || a >= span[i - 1][1])) && /\[noon\]/.test(readFileSync(path.join(ev, 'youtube', 'subtitles.en.srt'), 'utf8')), r.out + JSON.stringify(span));
+  const nv = path.join(sub, 'videos', 'n');
+  mkdirSync(path.join(nv, 'youtube', 'es'), { recursive: true });
+  writeFileSync(path.join(nv, 'video.json'), JSON.stringify({ fps: 30, duration: 60, audio: null }));
+  writeFileSync(path.join(nv, 'youtube', 'es', 'title.txt'), 'Un título\n');
+  writeFileSync(path.join(nv, 'youtube', 'es', 'description.txt'), 'Una descripción.\n');
+  r = inSub(['check', path.join('videos', 'n', 'youtube', 'es'), '--full']);
+  expect('check --full: a language\'s folder for a video with no timed narration needs no subtitles', r.code === 0 && /no timed narration, so no subtitles/.test(r.out), r.out);
+  writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.es.srt'), '\n');
+  writeFileSync(path.join(nv, 'youtube', 'es', 'subtitles.xx.srt'), '1\n00:00:99,000 --> 00:01:02,000\nnope\n');
+  r = inSub(['check', path.join('videos', 'n', 'youtube', 'es')]);
+  expect('check: an empty SubRip file fails, and so does a time with 99 seconds', r.code === 1 && /FAIL\s+subtitles\.es\.srt\s+no subtitles in it/.test(r.out) && /FAIL\s+subtitles\.xx\.srt\s+block 1: a time that isn't one/.test(r.out), r.out);
+
   // shoot: a Korean face draws its characters a square wide, as the fallback does; it is still the face that draws
   const malgun = 'C:\\Windows\\Fonts\\malgunsl.ttf';
   if (existsSync(malgun)) {

@@ -54,9 +54,15 @@ for something else (art, music), anything in YouTube Studio.
 - **Spending only through `dub.py`** (`speak`, `hear`), never `eleven.py --yes` by hand: each paid request
   gets a ledger entry in `job.json` before it is sent, reserving the most it can cost, and is refused past
   the cap or past its language's share (the cap split by the estimates), so one language's retries can't
-  starve the others. One paid request at a time.
-- **A request that may have been billed without its audio arriving** (a timeout, a dropped connection)
-  stays reserved at its most ("possibly charged"), is never sent again by itself, and stops its language:
+  starve the others. Only one run works on the job at a time (`dub/.job.lock`), so every write reads it fresh.
+- **What a character may cost:** the most this voice was billed per character in the original narration's
+  records, never less than the list rate; a voice with no record yet has its first request held at three
+  times the list rate (a library voice can carry a credit multiplier the API doesn't state), and each request
+  that arrives sets the rate from what it was billed. A request billed past what was reserved, taking the job
+  past its cap, stops the job.
+- **A request that may have been billed without its audio arriving** (a timeout, a dropped connection, a
+  crash, anything but the server's no) stays reserved at its most ("possibly charged"), is never sent again by
+  itself, and stops its language; the requests of the same run that did arrive stay billed:
   the hand-off names it and where to check (the account's history on elevenlabs.io). A run that died
   mid-request leaves its entry pending; the next `dub.py` run settles it the same way.
 - **After translating everything,** `dub.py plan --video <video>` (no `--langs`) gives the updated estimate
@@ -70,14 +76,17 @@ for something else (art, music), anything in YouTube Studio.
 1. `say.tsv` in `dub/<code>/` for the voice (numbers, names, acronyms as that language says them; the
    original's map shows what needed it).
 2. `dub.py speak --video <video> --lang <code> --test N`: the voice test on the hardest paragraph (most
-   numbers and names, the tightest place), not the first. Read what eleven.py measures on it (pace against
-   the original's, loudness); a take that is broken or speaks another language stops the language here.
+   numbers and names, the tightest place), not the first; then `dub.py hear --video <video> --lang <code>
+   --test N` transcribes it against its text and its language. The rest isn't made until it passes; a
+   failure gets another take (`speak --block N --takes 2`, `--pick 2 --block N`) heard again, and a second
+   failure stops the language. Read what eleven.py measures on it too (pace against the original's,
+   loudness).
 3. `dub.py speak --video <video> --lang <code>`: the other paragraphs, then the narration assembled.
 4. `dub.py place --video <video> --lang <code>`: each sentence where its original sentence starts, cut only
    in measured pauses; a sentence that runs long may start up to 0.25 s early, be sped up to 8% (pitch
    kept), or push the next one up to 0.4 s late; past that it is an open issue saying how much shorter it
-   must be. A line whose sentences don't match the original's one for one goes as one piece from the line's
-   start. Each line is matched to the original line's level. Words the picture follows go in
+   must be, and nothing may run past the video's end. A line whose sentences don't match the original's one
+   for one goes as one piece from the line's start. Each line is matched to the original line's level. Words the picture follows go in
    `dub/<code>/anchors.tsv` (`line<TAB>original words<TAB>translated words`, `#2` for a later occurrence):
    the translated word lands within 0.3 s of the original's, the sentence cut in the pause before it.
 5. `dub.py mix --video <video> --lang <code>`: `youtube/<code>/mix.wav`. It lists the lines where the voice
@@ -102,16 +111,19 @@ for something else (art, music), anything in YouTube Studio.
 ## Stops
 
 A language stops, and the others go on, when a request may have been billed without arriving, its share of
-the cap is spent, its model fails the voice test, or a fix would change what the video says. The job stops
-when the cap or the account's credits run out. The hand-off says, for each stopped language, why and what
-going on would need; only then is it the director's question.
+the cap is spent, its voice test fails twice, or a fix would change what the video says. The job stops when
+the cap or the account's credits run out. The hand-off says, for each stopped language, why and what going on
+would need; only then is it the director's question. A higher cap the director approves (`plan --approve`
+again, in their words) lifts a stop on a share or the cap; a possible charge and a failed voice test stay
+stopped.
 
 ## Checks
 
 `dub.py verify` (free) checks each track against the video (its final render's length, else the mix's, to a
 frame), 48 kHz stereo, no clipped sample, the true peak under the ceiling, the music and effects as in the
-video's mix (files, times, gains), the original voice absent, the placement up to date and its open issues,
-the transcription; and, as things to listen to rather than failures, the loudness against the original
+video's mix (files, times, gains), the original voice absent, that it is made from what is there now (the
+translation, the narration, the anchors and levels, the placement, the video's words and mix: a track made
+before any of them changed fails), the placement's open issues, the transcription; and, as things to listen to rather than failures, the loudness against the original
 (integrated, and 3-second stretches more than 3 LU apart) and the spread across languages. `--mp4` muxes each
 track on the final render in `out/<video>/dub/` to watch. Not checked by anything: the accent, the delivery,
 the translation's meaning. Say so in every hand-off: nobody has listened unless the director has.

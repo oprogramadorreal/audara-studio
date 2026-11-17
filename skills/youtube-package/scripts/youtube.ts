@@ -1245,6 +1245,12 @@ function buildCues(all: Tok[], lang: string, rule: SubRule, gap: number): { cues
   return { cues, long };
 }
 
+/** A note's time: seconds (12.5), m:ss or m:ss.s (0:08.5), or h:mm:ss. */
+function noteTime(t: string): number | undefined {
+  const m = /^(\d+):(\d{2}(?:\.\d+)?)$/.exec(t);
+  return m && +m[2] < 60 ? +m[1] * 60 + +m[2] : parseClock(t);
+}
+
 function stampSrt(t: number): string {
   const ms = Math.max(0, Math.round(t * 1000));
   const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60;
@@ -1335,7 +1341,14 @@ async function srt() {
       if (whole) notes.push(`${whole} paragraph(s) whose sentences don't match the original's one for one: shown across the original line`);
     }
   }
-  const { cues, long } = buildCues(toks(words, lang, rule.spaced), lang, rule, gap);
+  const built = buildCues(toks(words, lang, rule.spaced), lang, rule, gap);
+  const long = built.long;
+  // inside the video: a subtitle neither starts nor stays past its end (the reading time a last line would want)
+  const len = videoLength(path.join(vdir, 'youtube'), video, ROOT);
+  const end = len.seconds ?? Infinity;
+  const cues = built.cues.filter((c) => c.start < end - SUB_MIN / 2);
+  if (cues.length < built.cues.length) notes.push(`${built.cues.length - cues.length} subtitle(s) would start at the video's end (${clock(end)}, from ${len.from}): left out`);
+  for (const c of cues) c.end = Math.min(c.end, end);
   // timed notes for words the picture shows (youtube/<code>/notes.tsv: time, seconds, text), where no subtitle is
   const notesFile = existsSync(narration) ? path.join(pkg, 'notes.tsv') : path.join(vdir, 'youtube', `notes.${code}.tsv`);
   let placedNotes = 0;
@@ -1343,14 +1356,17 @@ async function srt() {
     for (const [k, raw] of readText(notesFile).split('\n').entries()) {
       if (!raw.trim() || raw.trim().startsWith('#')) continue;
       const [t, d, ...txt] = raw.split('\t');
-      const a = parseClock(t?.trim() ?? ''), len = +(d ?? '');
+      const a = noteTime(t?.trim() ?? ''), len = +(d ?? '');
       if (a === undefined || !(len > 0) || !txt.join('\t').trim()) fail(`${path.basename(notesFile)} line ${k + 1}: time<TAB>seconds<TAB>text`);
+      // (what is already there, narration and the notes placed so far, in order)
       const prev = [...cues].reverse().find((c) => c.start <= a), next = cues.find((c) => c.start > a);
       const s = Math.max(a, prev ? prev.end + gap : 0), e = Math.min(a + len, next ? next.start - gap : Infinity);
       if (e - s < 1) { notes.push(`note at ${clock(a)} dropped: under a second free of narration there`); continue; }
       const text = txt.join(' ').trim();
       const lines = breakLines(toks(text.split(/\s+/).map((w) => ({ w, start: s, end: e })), lang, rule.spaced), lang, rule) ?? [text];
-      cues.push({ start: s, end: e, lines, toks: [], note: true });
+      if (s >= end || Math.min(e, end) - s < 1) { notes.push(`note at ${clock(a)} dropped: under a second free of narration before the video's end`); continue; }
+      cues.push({ start: s, end: Math.min(e, end), lines, toks: [], note: true });
+      cues.sort((x, y) => x.start - y.start);
       placedNotes++;
     }
     cues.sort((x, y) => x.start - y.start);
@@ -1560,12 +1576,13 @@ async function checkFolder(dir: string, video?: string, proj?: string): Promise<
   } else add('note', 'tags.txt', 'none');
 
   // the request: the whole package, with --full (a narrower request makes some parts optional)
-  const wantSrt = langCode ? `subtitles.${langCode}.srt` : (video && proj && existsSync(path.join(proj, 'videos', video, 'data', 'words.json')) ? 'subtitles.<code>.srt' : '');
+  const timed = !!(video && proj && existsSync(path.join(proj, 'videos', video, 'data', 'words.json')));
+  const wantSrt = !timed ? '' : langCode ? `subtitles.${langCode}.srt` : 'subtitles.<code>.srt';
   if (langCode) {
-    const lm = ['title.txt', 'description.txt', wantSrt].filter((f) => !existsSync(path.join(dir, f)));
+    const lm = ['title.txt', 'description.txt', wantSrt].filter((f) => f && !existsSync(path.join(dir, f)));
     if (full) for (const f of lm) add('FAIL', 'package', `${f} is missing`);
     else if (lm.length) add('note', 'package', `no ${lm.join(', ')} yet`);
-    if (full && !lm.length) add('ok', 'package', `${langCode}: the title, the description and the subtitles${thumbs.length ? `, ${thumbs.length} thumbnail(s)` : ''}${existsSync(wav) ? ', the dubbed track' : ''}`);
+    if (full && !lm.length) add('ok', 'package', `${langCode}: the title, the description${wantSrt ? ' and the subtitles' : ' (no timed narration, so no subtitles)'}${thumbs.length ? `, ${thumbs.length} thumbnail(s)` : ''}${existsSync(wav) ? ', the dubbed track' : ''}`);
     for (const [name, [w, h, kind]] of full ? sizes : new Map()) if (w !== wantW || h !== wantH || kind !== (opts.has('jpg') ? 'JPEG' : 'PNG')) add('FAIL', 'package', `${name} is ${w}x${h} ${kind}, not the ${wantW}x${wantH} asked for`);
     return report(out, full);
   }
@@ -1606,6 +1623,7 @@ function checkSrt(file: string, len: { seconds?: number; from: string }, add: (l
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { add('FAIL', name, 'not UTF-8: YouTube asks for plain UTF-8'); return; }
   if (text.startsWith('\uFEFF')) { add('warn', name, 'starts with a byte-order mark: YouTube asks for plain UTF-8 without one'); text = text.slice(1); }
   const blocks = text.replace(/\r\n?/g, '\n').trim().split(/\n\s*\n/).filter((b) => b.trim());
+  if (!blocks.length) { add('FAIL', name, 'no subtitles in it'); return; }
   const T = /^(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/;
   const sec = (m: RegExpExecArray, o: number) => +m[o] * 3600 + +m[o + 1] * 60 + +m[o + 2] + +m[o + 3] / 1000;
   const bad: string[] = [], warn: string[] = [];
@@ -1617,6 +1635,7 @@ function checkSrt(file: string, len: { seconds?: number; from: string }, add: (l
     if (!m) { bad.push(`block ${i + 1} ("${ls[0].slice(0, 30)}"): no "00:00:01,000 --> 00:00:02,500" line`); return; }
     if (!n) warn.push(`block ${i + 1} has no number`);
     else if (+ls[0] !== i + 1) warn.push(`block ${i + 1} is numbered ${ls[0].trim()}`);
+    if ([m[2], m[3], m[6], m[7]].some((x) => +x > 59)) { bad.push(`block ${i + 1}: a time that isn't one (minutes and seconds run 0 to 59)`); return; }
     const a = sec(m, 1), z = sec(m, 5);
     if (z <= a) bad.push(`block ${i + 1}: ends before it starts`);
     if (a < prevStart) bad.push(`block ${i + 1} starts before block ${i}`);
