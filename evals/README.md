@@ -95,14 +95,20 @@ fixture has no cast or references; ns-new-subject's third turn tests the later s
 night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
 
-devlog's set asks to build something and then a video of how it was built, in eleven requests: three in Portuguese,
-three that aren't games (a physics simulation, a fluid simulator, a fractal explorer), a devlog of a project
+devlog's set asks to build something and then a video of how it was built, in twelve requests: four in Portuguese,
+five that aren't games (three simulations and two fractal explorers), a devlog of a project
 already built (dl-05), and one made inside a devlog project whose `docs/DEVELOPMENT_LOG.md` comes from the
 fixtures (dl-08). Its near-misses are the neighbours a devlog skill could take by mistake: a game alone with no
 video, ideas for a devlog (video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being
 typed, a log with no video, and a pixel-art game animation with nothing built. dl-21 and dl-22 are the same
 request to start by building a game, without and with a devlog in view: an earlier description that quoted
-"start by building the game" loaded on dl-21 too (1 of 1), the current one 0 of 3, and on dl-22 3 of 3. It has no scripts, so, as with
+"start by building the game" loaded on dl-21 too (1 of 1), 0.12.0's 0 of 3, and on dl-22 3 of 3. dl-23 and
+dl-24 are the same request to build a fractal fly-through prototype before a video, about the fractals and about
+how it was built: a 2026-11 session's prompt of that shape (an explainer and a flight showcase) was right to leave
+devlog alone, but dl-23 loaded it on the description before 0.14.1 (1 of 6 by a Skill call, 2 of 6 counting a read
+of its SKILL.md), which now names that prototype as code-video's (0 and 1 of 6); dl-25 is a near-miss of that kind
+in Portuguese. A run building an explorer may read devlog's SKILL.md or `capture.md` while it browses the skills,
+and a read of SKILL.md counts as a load. It has no scripts, so, as with
 video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the load.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
