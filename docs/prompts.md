@@ -22,7 +22,7 @@ critic's findings fixed or listed as open (the last fixes not yet reviewed), and
 with one more critic review before it. Since 0.11.0 a render waits for your yes to what you've watched; add
 "then render it without waiting for my review" to a prompt to get the MP4 in one go. None
 stopped to ask a question, and none spent money: the sound was synthesized in code, or was the user's own
-song. They haven't been run in Codex yet. Entry 6 came later and was run its own way, as it says.
+song. They haven't been run in Codex yet. Entries 6 and 7 came later and were run their own way, as they say.
 
 The same evening the maintainer ran all five again with the plugin disabled. Those runs were faster: 51, 38
 and 27 minutes to a final MP4 for 1, 3 and 4, against 74, 65 and 83 minutes to the plugin's draft, and 65
@@ -40,10 +40,12 @@ For 5 the picture made without the plugin was preferred (its entry below). The c
 | 4 | An explainer whose argument you write | 40 s | 1 h 23 min | 2 |
 | 5 | A music video, one thing transformed | 46.5 s | 4 h 55 min | 2 |
 | 6 | An explainer in a house style: Nutlight | 39 s | 2 h 2 min | 2 |
+| 7 | Flat cartoon characters in a 3D world | 10 s | 48 min | 1 |
+| 7, Nutlight | The same, with the Nutlight cast | 10 s | 54 min | 1 |
 
 Times run from the prompt to the hand-off, as each session reported it, on one machine; yours will differ.
-The sessions estimated the final render at 5 to 20 minutes for 1 to 4 and 30 to 60 minutes for 5, after a
-last critic review of about 10 to 15 minutes.
+The sessions estimated the final render at 5 to 20 minutes for 1 to 4, 30 to 60 minutes for 5 and a few
+minutes for 7, after a last critic review of about 10 to 15 minutes.
 
 ## 1. Ink wash, drawn in code
 
@@ -164,6 +166,55 @@ Make a 40-second explainer in the Nutlight style about how a hash table finds a 
   music folder the skill asks where your library is, and generates music only after a yes, with its cost.
   The same prompt before the skill shipped its squirrels as code drew its own, a different animal
   ([history.md](history.md), 0.9.0).
+
+## 7. Flat cartoon characters in a 3D world
+
+```text
+I want a 10 second animated scene in the style of history explainer cartoons: flat 2D characters with big heads and simple faces, acting inside a 3D world with real depth. Build it entirely in code. No image or video generators.
+```
+
+- **How it was run:** on 2026-11-18, with audara-studio 0.14.1 in Claude Code 2.1.327, Opus 5.5 at effort
+  xhigh, auto mode on, on Windows 11, in an empty folder. It was sent from Audara App, which adds a
+  paragraph after the prompt: the user directs and doesn't run commands, so the session keeps the preview
+  running and gives its link; audara-studio's skills are used whenever one fits; and they are loaded again
+  after a compaction. One message and no notes afterwards; like 1 to 5, it ended at the hand-off with the
+  final render offered. Nothing was spent.
+- **What it asks for:** a cast drawn flat, with the big heads and simple faces of history explainer
+  cartoons, acting inside a world built in real 3D, so the depth comes from the set and the camera and not
+  from the drawings. "Entirely in code" and "no image or video generators" keep generated images out.
+- **Left open:** the subject and its story, the characters, the world's look, the camera and the sound.
+- **In the test:** the agent chose the Trojan Horse and told it as one gag in a single camera move. A guard
+  with a big round head knocks on the horse and hauls it in through the gate, with the camera riding beside
+  it through the wall. Behind his back a Greek pops out of a hatch and shushes the viewer. The city, the horse
+  and the light are three.js geometry, toon-lit with real shadows and haze, and the people are flat Canvas2D
+  cut-outs on cards turned to the lens. The music and effects were synthesized in code from the picture's
+  timing. A caption says "as the legend goes", so the legend isn't presented as history. The critic's round
+  found a static knock, a thud with no visible stop, an ending stare that was too short, a wall smearing past
+  in the tunnel, and audio peaking at −0.2 dBTP. All were fixed, and the fixes wait for the review that comes
+  before the final render.
+- **To adapt:** name a subject or a moment if you have one, or let the agent pick. Describe the characters
+  as a way of drawing (big heads and simple faces, paper cut-outs, silhouettes), and keep "a 3D world with
+  real depth", which is what sets them apart. For a longer piece, give the length and what happens.
+
+**The same, with the Nutlight cast:**
+
+```text
+I want a 10 second animated scene in the style of history explainer cartoons: nutlight characters, acting inside a 3D world with real depth. Build it entirely in code. No image or video generators.
+```
+
+- **How it was run:** the same day and the same way, in another empty folder.
+- **What changes:** "nutlight characters" names the Nutlight style, so the nutlight-style skill loaded (see
+  6). Its kit draws the squirrels on a layered 2D stage. Here they stepped off that stage into a three.js
+  world, still drawn by the kit as 2D characters, each casting a real shadow.
+- **In the test:** ancient Egypt. Four squirrels drag a limestone block on a sledge and it won't budge, until
+  a small one pours water ahead of the runners and the sledge glides onto the dark, wet stripe. The camera
+  pulls back to a half-built step pyramid and other teams leaving wet tracks, and "WET SAND / HALF THE PULL"
+  is brushed on in red ochre. The treatment grounds the scene in a tomb painting (Djehutihotep's, about
+  1900 BC) and a 2014 study, and says the pyramid setting is a liberty. With no music folder, the score and
+  effects were synthesized in code, for free, and the hand-off asked where the director's music library is.
+  The critic's round found an opening that never showed the sledge stuck, a glide that was invisible because
+  the camera moved with it, no wet stripe, bare sand, and words landing late near the frame's edge. All were
+  fixed, and the fixes wait for the same review.
 
 ## Adding a prompt
 
