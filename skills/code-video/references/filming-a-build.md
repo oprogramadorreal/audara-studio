@@ -2,9 +2,10 @@
 
 Some videos show something built: a devlog about making it, an explainer that shows what a prototype draws, a
 showcase flown through it. Such a project often keeps `docs/DEVELOPMENT_LOG.md` (the devlog skill): the build's
-decisions, struggles, concepts and measured numbers, and a "Run it again" table of the moments a video may show,
-each with the command that brings it back at any size and its commit. The build kept no footage on purpose,
-so the video films what it needs now, at its final size. This file is how. A project with no log (a video about
+decisions, struggles, concepts and measured numbers, and a "Run it again" table of the moments a video may show.
+Each is either a recipe (the command that brings it back at any size, with its inputs and commit), filmed now at
+the video's final size, or a capture the build kept with its provenance (its path, size, time range and why),
+used as it is. This file is how. A project with no log (a video about
 something built before) starts from what it has: its history, tags, any replays or recordings.
 
 ## The log in the script
@@ -76,15 +77,17 @@ master asked for after the capture films again only what it would show enlarged 
 run, framing and frame numbers at the new size into `full/`, the manifest's `size` with it, proxies as they
 are. Say what the time and room come to before starting.
 
-**A capture from the build** (`devlog/captures/`, named in the log with its size) is a moment that couldn't be
-run again: it is cut into a shot like any footage (contract.md), at its own size, and at a bigger master it
-plays enlarged where it's smaller. The reply names it among what plays enlarged.
+**A capture from the build** (`devlog/captures/`, named in the log with its size) is a moment kept that way
+because it wouldn't come back, or keeping it runnable cost more. A clip is cut into a shot like any footage
+(contract.md), a still goes in as an image (images.md), each at its own size; at a bigger master it plays
+enlarged where it's smaller, and the reply names it among what plays enlarged.
 
 ## Into the video
 
 Scenes play shots through the engine's streamed footage: a scene opens a shot with
 `openFootage(this.ctx, '<shot>')` in `init()`, says what it will show in `prepare()`, and draws `frame(f.t)`.
-The manifest's `frames` and `fps` are what the engine reads; the rest is for re-shooting. The video's own
+The engine reads the manifest's `frames`, `fps`, `size` and `proxy` (`"proxy": false` makes the preview read
+`full/`); the rest is for re-shooting. The video's own
 motion blur doesn't apply to footage, which carries its own (the capture's samples and shutter). A capture's
 `events.json` gives the thing's own sounds at the right frames; soundtrack's mix places them from the video's
 timeline, so they move when the edit does. Labels pinned to things in the world (a callout on a character)

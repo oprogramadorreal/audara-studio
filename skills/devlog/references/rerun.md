@@ -19,9 +19,11 @@ need.
 
 Set before the first feature, sized to the thing:
 
-- **Any size.** The output size comes from a parameter (`?w=3840&h=2160`, `--size 3840x2160`), never the
+- **Any size.** The output size comes from a parameter (`?w=3840&h=2160`, `--size 3840x2160`), not the
   window. Layout, text and line widths are in the thing's own units and scale with the output, so a frame at
-  4K is the same picture as at 1080p, sharper. Canvases and textures it makes itself (text, an atlas) are made
+  4K is the same picture as at 1080p, sharper. An interface that lays itself out to its window (a tool, an
+  editor) keeps that layout: a fixed viewport and a pixel ratio draw its real screen sharper
+  (1920×1080 at a ratio of 2 for 4K) without rewriting it. Canvases and textures it makes itself (text, an atlas) are made
   at the output's scale. In GLSL, `gl_FragCoord`, `fwidth` and `dFdx` count physical pixels: a line drawn
   from `fwidth` gets thinner at 4K (code-video's contract.md, "4K", has the same traps for the video's own
   scenes). Assets set the detail ceiling: a 1K texture stays 1K at any size.
@@ -46,10 +48,13 @@ The cheapest that survives the next change and keeps the code clean:
 
 - **A commit and its command.** It costs the live code nothing and shows the stage as it was, bugs and limits
   included. It runs only what its code could, which is why the size parameter and the launch come first: a
-  commit from before them can't draw at 4K. A tag when the stage deserves a name (`stage/plain-bricks`,
-  `bug/tunneling-before`). To try it: `git worktree add ../plain-bricks stage/plain-bricks`, install from the
-  lockfile, run the command. A tag misses what git doesn't track: commit the assets it needs, or log where
-  they are.
+  commit from before them can't draw at 4K. A tag when the stage deserves a name, annotated
+  (`git tag -a stage/plain-bricks -m "the first look"`), with the full hash beside it in the log: a branch
+  pushed without its tags leaves the name behind, and a push with `--follow-tags` carries annotated ones. To
+  try it: `git worktree add ../plain-bricks stage/plain-bricks`, install from the lockfile, run the command.
+  A tag misses what git doesn't track: commit the assets it needs, or log where they are. Commit only your own
+  changes; the director's staged or uncommitted work stays out. If they'd rather commit themselves, or not
+  at all, the other ways below serve.
 - **A preset** (`?look=plain`, `?fx=off`) when the old look is a second view over the same state, costs a few
   lines, and is wanted beside the new one (a before and after in one run, a switch live on screen). Every
   later change to the state has to keep it drawing; when it starts spreading conditionals through the code,
@@ -91,8 +96,12 @@ evidence above warns against.
 
 ## Checks
 
-- **At each milestone,** run each command in the log's "Run it again" table: does it still show what its row
-  says? A preset that stopped drawing is fixed or retired to its commit, and the row says which.
-- **For a stage the video will show,** one frame at the video's size and at 4K (or the size the director named):
-  the same picture and framing, the larger sharper, nothing laid out by the window's size.
+Light, and when they can catch something:
+
+- **When a recipe is kept,** run it once (from a clean checkout when it depends on files of its time): it
+  shows what its row says. An old commit's recipe doesn't change after that; the log notes the run.
+- **A preset** again when the code it draws from changes: one that stopped drawing is fixed or retired to its
+  commit, and the row says which.
+- **A representative moment** at the video's size and at 4K (or the size the director named): the same picture
+  and framing, the larger sharper. A command-line fixture checks its output directly.
 - **Replays:** the hashes match, and one frame drawn twice is identical.

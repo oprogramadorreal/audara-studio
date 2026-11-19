@@ -307,9 +307,10 @@ video (one about a project already built included) is code-video's, and ideas or
 
 Why a skill of its own: in two long devlogs the build ran for days before any video skill had anything to say
 (one loaded only video-repo for ten days, by the director's own order to load code-video at the script), and
-the director wrote the log, the recording rules and the gates into their prompts themselves. Why it stopped making
-the video (0.15.0): filming as it went cost more than it gave (2,242 screenshots and 76 recordings in two days,
-about 16 and 9 used), footage taken at 1080p plays enlarged in a 4K master, and the rigs that made late notes
+the director wrote the log, the recording rules and the gates into their prompts themselves. Why it stopped
+filming as it went and loads on more builds (0.15.0): filming as it went cost more than it gave (2,242
+screenshots and 76 recordings in two days, about 16 and 9 used), footage taken at 1080p plays enlarged in a 4K
+master, and the rigs that made late notes
 cheap (16 shots re-filmed after a change, every hash equal; 31 after two fixes) did so by running moments
 again, which is the part kept. What carried those videos stays the director's: what to build and how far, the
 looks they pick, the escalation, the beats they seed, the jokes in their voice. Considered and left out: loading

@@ -24,12 +24,13 @@ commands, at its own size. Captures, where a run wasn't the better way, in `devl
 | The video | <planned / started (code-video) / done> |
 
 ## Run it again
-How to get back each moment a video may show. Checked at each milestone.
-| Moment | How to run it | Commit or tag | Sizes it takes | Role in a video |
+How to get back each moment a video may show: a recipe (run once when kept; a preset again when its code
+changes) or a capture with its provenance. The game runs with `bun run dev`; the queries below go on its URL.
+| Moment | How to run it | Commit (tag) | Sizes it takes | Role in a video |
 |---|---|---|---|---|
-| <the first look> | `?look=plain&replay=replays/level1.json&w=<w>&h=<h>` | `stage/plain-bricks` | any (from the parameters) | <the before> |
-| <a bug before its fix> | `bun run sim --seed 41 --to 900` | `bug/tunneling-before` | any | <a struggle beat> |
-| <a glitch seen once> | capture: `devlog/captures/<file>.mp4` 0:03-0:07 | <commit> | 1920×1080 only | <the moment it broke> |
+| <the first look> | `?look=plain&replay=replays/level1.json&w=<w>&h=<h>` | `<full hash>` (`stage/plain-bricks`) | any (from the parameters) | <the before> |
+| <a bug before its fix> | `bun run sim --seed 41 --to 900` | `<full hash>` (`bug/tunneling-before`) | any | <a struggle beat> |
+| <a glitch seen once> | capture: `devlog/captures/<file>.mp4` 0:03-0:07 | `<full hash>` | 1920×1080 only | <the moment it broke> |
 
 ## Decisions
 | Date | Decision | Why |
@@ -49,7 +50,7 @@ moment to show.
 
 ### <yyyy-mm-dd hh:mm> — <what happened, in a line a script could use>
 - <what was built or found, and how; what broke, why, the fix; the alternative turned down>
-- Commit `<hash>`. Run again: <the "Run it again" row>.
+- Commit `<full hash>`. Run again: <the "Run it again" row, or the capture>.
 - Numbers: <measured, with how: "triangles 1.9 M → 0.31 M (stats panel, same seed, commit a41c0d2)">
 ```
 
@@ -63,7 +64,8 @@ skill now writes it):
   (2,366 of 3,953 faces on one column vary both ways).
 - Fix: also merge along one axis where the corner values are constant along it: 77K against 127K (-39%), the
   same pixels.
-- Run again: `?mesher=culled|greedy&wire=1&seed=7&w=<w>&h=<h>`, the 9% at `stage/greedy-9pct`, the fix after it.
+- Run again (`bun run dev`): `?mesher=culled&wire=1&seed=7&w=<w>&h=<h>` and `?mesher=greedy&wire=1&seed=7&w=<w>&h=<h>`;
+  the 9% at `<full hash>` (`stage/greedy-9pct`), the fix at `<full hash>`.
 ```
 
 The video turned it into a beat the director kept and sharpened, and when the bug was rebuilt for the
@@ -102,10 +104,11 @@ session, a compacted one or another tool keeps the rules without this skill load
   concepts worth explaining, what broke and the fix, measured numbers with their method, commits; the
   director's words that turn the build go in its story ledger, verbatim.
 - Moments a video may show stay runnable at any size: <the launch: its parameters or command>, listed in the
-  log's "Run it again" table with their commit or tag; check them at each milestone. A capture only where it's
-  the better way, logged with its size.
-- The output size comes from a parameter; nothing is laid out by the window's size.
-- Commits stay local unless the director asks to push.
+  log's "Run it again" table with their commit (full hash, and a tag when named); a recipe is run once when
+  kept, a preset again when its code changes. A capture only where it's the better way, logged with its size.
+- The output size comes from a parameter (an interface: a fixed viewport and pixel ratio), not the window.
+- Commits stay local unless the director asks to push (then with the log's tags); only your own changes go in
+  them.
 - The director's gates: <what they set, e.g. the prototype approved before any video work>.
 - When the video starts, code-video films these moments from their commands at the render's size (its
   references/filming-a-build.md).

@@ -6,7 +6,8 @@
       "glitch.mp4"
     ],
     "mock": "elevenlabs",
-    "key": false
+    "key": false,
+    "git": false
   },
   "timeoutMinutes": 240,
   "turns": [
@@ -27,12 +28,13 @@
     "Turn 1's first reply says in a line that a development log is kept and the stages a video may show are kept runnable again, and the turn builds without waiting. No turn asks for a title, a thumbnail, music or a voice, and no video work happens: no videos/*/video.json, TREATMENT.md, scene file, narration, footage/ shot or render (transcript and files).",
     "docs/DEVELOPMENT_LOG.md exists by the end of turn 1 with a status, a \"Run it again\" table, decisions with their reasons and dated timeline entries naming their commits; by the end, its story ledger (or docs/VIDEO_NOTES.md) quotes turn 2's and turn 3's notes verbatim and names at least one concept or trade-off in a plain line.",
     "AGENTS.md has a Devlog section, outside init's <!-- audara:begin --> markers if they exist, with the standing rules: keep the log; moments a video may show stay runnable at any size from the log's commands; a capture only where it's the better way; commits stay local.",
-    "The project is a git repository with commits at the stages the log names, and nothing was pushed (no push in the transcripts).",
+    "The project, which starts with no repository, is a git repository by the end, with commits at the stages the log names (each with its full hash in the log beside any tag), and nothing was pushed (no push in the transcripts).",
     "The game's output size comes from a parameter: the grader runs the final game with the log's command at 1920x1080 and at 3840x2160, and the two frames show the same picture and framing (the 4K frame downscaled matches the 1080p one), the 4K one drawn at its size rather than enlarged (sharp brick edges and text).",
     "After turn 3, with the whole game neon, the plain look comes back from the log's \"Run it again\" table (a preset, or a commit or tag with its command): the grader runs it at 1920x1080 and at 3840x2160 and sees plain bricks in the same layout and framing.",
     "A demonstration runs again exactly: the game steps on a fixed tick with seeded randomness, and a replay (or a scripted input) re-runs a play-through to the same state (the grader runs it twice and compares the state hash or two frames).",
     "Turn 2 changes one row of bricks (or one brick set) to the neon look and hands it back before converting the rest (the transcript); turn 3 converts the rest.",
-    "Turn 4 fixes the tunnelling (a ball at full speed no longer passes through a brick: a test, a replay or a measurement in the reply), and the log keeps the moment: glitch.mp4 named with its path, its time range (around 0:03), its size (1920x1080) and what it shows, as a capture for the video; and either an input that makes the commit before the fix tunnel (with that commit named) or a line saying it couldn't be reproduced.",
+    "Turn 4 checks the reported tunnelling with a targeted test (a ball at full speed against a brick): when the test shows it, the fix lands and the commit before it is named with the input that makes it tunnel; when it doesn't, the reply shows the build already handles it.",
+    "Separately from the diagnosis, the log keeps the moment as a capture for the video: glitch.mp4 named with its path (where the director put it, or a copy in the project), its time range (around 0:03), its size (1920x1080) and what it shows (the ball passing through a brick that stays whole).",
     "No routine captures: every screenshot or recording kept in the project as material for a video (outside the agent's own checks) has a log entry giving its size and why a capture was the better way.",
     "Turn 1's hand-off says how to run the game, what to look at and what is still short, and a reply before any step that runs over about 10 minutes states how long it will take."
   ]

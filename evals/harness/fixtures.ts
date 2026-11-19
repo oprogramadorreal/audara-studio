@@ -95,8 +95,10 @@ const MEDIA: Record<string, string[]> = {
   'library-bright.mp3': ['-f', 'lavfi', '-i', SONG_AT(112, 90, 131), '-c:a', 'libmp3lame', '-b:a', '192k'],
   'library-drive.mp3': ['-f', 'lavfi', '-i', SONG_AT(128, 80, 110), '-c:a', 'libmp3lame', '-b:a', '192k'],
   'clip.mov': ['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=30:d=6', '-pix_fmt', 'yuv420p'],
-  // A screen recording the director made of a glitch while playing a game the agent built (dl-build-first).
-  'glitch.mp4': ['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=60:d=6', '-pix_fmt', 'yuv420p'],
+  // A screen recording the director made of a glitch while playing a game the agent built (dl-build-first): a
+  // ball rising from the paddle passes straight through a red brick around 0:03 and the brick stays whole.
+  'glitch.mp4': ['-f', 'lavfi', '-i', 'color=c=0x101018:s=1920x1080:r=60:d=6,drawbox=x=860:y=500:w=200:h=60:color=0xff3355:t=fill,drawbox=x=880:y=1030:w=160:h=16:color=0xdddddd:t=fill',
+    '-f', 'lavfi', '-i', 'color=c=white:s=20x20:r=60:d=6', '-filter_complex', "[0][1]overlay=x=950:y='1010-t*170'", '-pix_fmt', 'yuv420p'],
   'brand.png': ['-f', 'lavfi', '-i', 'color=c=0x1d3557:s=600x200,drawbox=x=400:y=0:w=200:h=200:color=0xe63946:t=fill,drawbox=x=200:y=0:w=200:h=200:color=0xf1faee:t=fill', '-frames:v', '1'],
 };
 
