@@ -867,33 +867,35 @@ const cases: Record<string, Case> = {
       'Every number the final reply states about the delivered files matches the measurement (within 10 ms, 1 LU, 0.3 dB; counts exact, sizes within 5%).',
     ],
   },
-  // A devlog that builds first, after two long devlogs where the build ran for days with no skill loaded: the
-  // director's gates, a log and a ledger kept as it goes, a way to film any moment again, one piece first for a
-  // new look, and a script made from the log once the prototype is approved.
+  // A build with a video in view (never called a devlog), after two long devlogs where the build ran for days
+  // with no skill loaded: the log kept as it goes, the stages a video may show runnable again at any size rather
+  // than filmed at the build's size, one piece first for a new look, a fixed bug kept showable, a recording of a
+  // glitch that won't come back kept as a capture, and no video work.
   'dl-build-first': {
-    skill: 'devlog', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 240,
+    skill: 'devlog', setup: { files: ['glitch.mp4'], mock: 'elevenlabs', key: false }, timeoutMinutes: 240,
     turns: [
-      { prompt: "I want to make a devlog for my YouTube channel. Let's start by building the game: a 3D Breakout for the browser, no game engine, three levels with bricks that break into pieces. Show it to me before you write any script." },
+      { prompt: "Build a 3D Breakout for the browser, no game engine, three levels with bricks that break into pieces. Later I'll make a video for my YouTube channel about how it was built. Show me the game first." },
       { prompt: "Nice, the ball feels great. But the bricks look plain. Give them a glowing neon look, and show me one row of them first before you change the rest." },
-      { prompt: "The neon row is approved, do the rest. I'll want the old plain look in the video as the before, so keep it." },
-      { prompt: "Approved, the game is done. Now write the script for a 4-minute devlog about how you built it, narrated in Portuguese. Script only for now." },
+      { prompt: "The neon row is approved, do the rest. I'll want the old plain look in the video as the before." },
+      { prompt: "One more thing: I recorded glitch.mp4 while playing. Around 0:03 the ball went straight through a brick at full speed, and I couldn't make it happen again. Fix it. I'd like that moment in the video." },
     ],
     assertions: [
-      "Turn 1's first reply asks, each with a default, about the scope or where it runs, a working promise (a title and a thumbnail idea), the gates and the director's own material (music, characters, voice), in one message, and the turn goes on building without waiting for the answers.",
-      "The game lives in its own folder (not the project root), and no video production happens before turn 4: no videos/*/video.json, TREATMENT.md, scene file, narration or render in turns 1-3 (transcript order and file times).",
-      "docs/DEVELOPMENT_LOG.md exists by the end of turn 1 with a status, decisions with their reasons and dated timeline entries, each naming its commit or its artifact paths; by the end, a story ledger in it (or docs/VIDEO_NOTES.md) quotes turn 2's and turn 3's notes verbatim.",
-      "AGENTS.md has a Devlog section, outside init's <!-- audara:begin --> markers if they exist, with the standing rules: keep the log, film now what a change will erase, keep shown stages recoverable, the director's gates.",
-      "A demonstration can be filmed again: the game steps on a fixed tick with seeded randomness, and a replay or a capture page (or command) re-runs a recorded play-through to the same state (the grader runs it twice and compares the state hash or two captured frames).",
+      "Turn 1's first reply says in a line that a development log is kept and the stages a video may show are kept runnable again, and the turn builds without waiting. No turn asks for a title, a thumbnail, music or a voice, and no video work happens: no videos/*/video.json, TREATMENT.md, scene file, narration, footage/ shot or render (transcript and files).",
+      'docs/DEVELOPMENT_LOG.md exists by the end of turn 1 with a status, a "Run it again" table, decisions with their reasons and dated timeline entries naming their commits; by the end, its story ledger (or docs/VIDEO_NOTES.md) quotes turn 2\'s and turn 3\'s notes verbatim and names at least one concept or trade-off in a plain line.',
+      "AGENTS.md has a Devlog section, outside init's <!-- audara:begin --> markers if they exist, with the standing rules: keep the log; moments a video may show stay runnable at any size from the log's commands; a capture only where it's the better way; commits stay local.",
+      'The project is a git repository with commits at the stages the log names, and nothing was pushed (no push in the transcripts).',
+      "The game's output size comes from a parameter: the grader runs the final game with the log's command at 1920x1080 and at 3840x2160, and the two frames show the same picture and framing (the 4K frame downscaled matches the 1080p one), the 4K one drawn at its size rather than enlarged (sharp brick edges and text).",
+      'After turn 3, with the whole game neon, the plain look comes back from the log\'s "Run it again" table (a preset, or a commit or tag with its command): the grader runs it at 1920x1080 and at 3840x2160 and sees plain bricks in the same layout and framing.',
+      'A demonstration runs again exactly: the game steps on a fixed tick with seeded randomness, and a replay (or a scripted input) re-runs a play-through to the same state (the grader runs it twice and compares the state hash or two frames).',
+      'Turn 2 changes one row of bricks (or one brick set) to the neon look and hands it back before converting the rest (the transcript); turn 3 converts the rest.',
+      "Turn 4 fixes the tunnelling (a ball at full speed no longer passes through a brick: a test, a replay or a measurement in the reply), and the log keeps the moment: glitch.mp4 named with its path, its time range (around 0:03), its size (1920x1080) and what it shows, as a capture for the video; and either an input that makes the commit before the fix tunnel (with that commit named) or a line saying it couldn't be reproduced.",
+      "No routine captures: every screenshot or recording kept in the project as material for a video (outside the agent's own checks) has a log entry giving its size and why a capture was the better way.",
       "Turn 1's hand-off says how to run the game, what to look at and what is still short, and a reply before any step that runs over about 10 minutes states how long it will take.",
-      "Turn 2 changes one row of bricks (or one brick set) to the neon look and hands it back before converting the rest (the transcript, and a capture or screenshot of the row); turn 3 converts the rest.",
-      "After turn 3, the plain look is recoverable (a flag, a style switch or a tagged commit), and the log's versions table, or an entry, names both looks with their role in the video (the before, the hero).",
-      "At least one state that a later change erased (the plain bricks, a first attempt, a bug before its fix) was filmed or captured before it went (a file under devlog/ or footage/ with its log entry).",
-      "Turn 4 delivers a script (a treatment or a script file) whose beats come from the log: each development beat names its log entry or artifact; the stages appear in story order (the neon look not shown before the chapter that makes it, except as a brief glimpse in the opening); and nothing is built or generated for the video yet.",
-      "Turn 4 names the words a pt-BR voice may get wrong (English terms, numbers) or says how they will be checked, and makes no ElevenLabs request (mock-requests.jsonl is empty).",
     ],
   },
-  // A devlog of something that isn't a game: the capture follows the thing (a camera path as data, not a game loop),
-  // and the video plays minutes of captured frames through the engine's streamed footage.
+  // A build whose video comes in the same session (a Mandelbrot explorer): the zoom kept as data during the build,
+  // then code-video films it at the render's size, by the explorer's own drawing in a scene or by frames captured
+  // from the path and streamed, with the script's beats from the log.
   'dl-explorer-video': {
     skill: 'devlog', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 300,
     turns: [
@@ -902,13 +904,13 @@ const cases: Record<string, Case> = {
       { prompt: "Approved." },
     ],
     assertions: [
-      "The explorer is shown to the director (how to run it) before any video production starts: no videos/*/video.json, treatment or scene before that message (transcript order); recordings and captures of the explorer don't count.",
-      "The zoom that the video shows is saved as data (a camera path: centre, zoom and iterations per frame, or equivalent) and captured from it into footage/<shot>/ with a manifest giving frames and fps; the grader re-captures three frames from that path and they match the shot's frames (pixel difference under 1 level).",
-      "The deepest zoom shown is tested for precision: its frames show detail, not blocks or noise from float precision (judged on full-size stills), or the reply says where precision ends and the video stops there.",
-      "The video plays the captured frames through the engine's streamed footage (src/engine/footage.ts, a scene's prepare), and render.ts verify passes.",
-      "The script or treatment's beats come from the explorer's log (docs/DEVELOPMENT_LOG.md), and at least one beat shows something the build went through (a problem, a discovery or a design choice) with its before and after.",
-      "Turn 2's build ends in the preview with the render offered; the only full render runs after turn 3's \"Approved.\" (the transcripts), and its MP4 is 2:00 +/- 10 s with an audio stream and no voice.",
-      "No paid generation (mock-requests.jsonl is empty): music is synthesized in code or asked for with its cost.",
+      'The explorer is shown to the director (how to run it) before any video work starts: no videos/*/video.json, treatment or scene before that message (transcript order). Turn 1 keeps no frames or recordings of the explorer as material for the video (screenshots to check the work are fine); its log\'s "Run it again" table names the moments with their commands.',
+      "The zoom that the video shows is saved as data (a camera path: centre, zoom and iterations per frame, or equivalent) and drawn at the render's size from it: either the explorer's own drawing code runs in a scene driven by time, or frames are captured from the path into footage/<shot>/ with a manifest giving frames and fps. The grader draws three frames from that path and they match the video's frames at those times (pixel difference under 1 level).",
+      'The deepest zoom shown is tested for precision: its frames show detail, not blocks or noise from float precision (judged on full-size stills), or the reply says where precision ends and the video stops there.',
+      "The video plays the zoom through the engine (a scene that draws it, or streamed footage through src/engine/footage.ts and a scene's prepare), and render.ts verify passes.",
+      "The script or treatment's beats come from the explorer's log (docs/DEVELOPMENT_LOG.md), and at least one beat shows something the build went through (a problem, a discovery or a design choice) with its before and after, the before run again from the log's command, not from a recording taken during the build (unless the log says why a capture was better).",
+      'Turn 2\'s build ends in the preview with the render offered; the only full render runs after turn 3\'s "Approved." (the transcripts), and its MP4 is 2:00 +/- 10 s with an audio stream and no voice.',
+      'No paid generation (mock-requests.jsonl is empty): music is synthesized in code or asked for with its cost.',
     ],
   },
   'st-asks-before-spending': {

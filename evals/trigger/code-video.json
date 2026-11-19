@@ -27,6 +27,8 @@
     { "id": "cv-23", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "put this project in a git repository so someone else can clone it and render the video, no renders or keys in it" },
     { "id": "cv-24", "should_trigger": false, "files": ["video.json => videos/promo/video.json", "song.mp3 => videos/promo/audio/song.mp3", "audara-agents.md => AGENTS.md", "audara-claude.md => CLAUDE.md"], "query": "make three YouTube thumbnails for this video, plus the title, the description with chapters and the tags" },
     { "id": "cv-25", "should_trigger": false, "files": ["ad-script.txt"], "query": "The shots and the picture edit of this 30-second ad are done in another tool. Narrate ad-script.txt in my existing ElevenLabs voice clone, compose the music and mix the ad's audio." },
-    { "id": "cv-27", "should_trigger": false, "files": [], "query": "write the script for a 60-second animated explainer about why the sky is blue. I'm not ready to make the video yet" }
+    { "id": "cv-27", "should_trigger": false, "files": [], "query": "write the script for a 60-second animated explainer about why the sky is blue. I'm not ready to make the video yet" },
+    { "id": "cv-28", "should_trigger": true, "files": [], "query": "Make a devlog video about how I built my roguelike. The game is in ./game and its git history has the whole story." },
+    { "id": "cv-29", "should_trigger": true, "files": ["devlog-DEVELOPMENT_LOG.md => docs/DEVELOPMENT_LOG.md"], "query": "The lander is approved. Before the script, film the landing again from a low angle in the final look." }
   ]
 }
