@@ -5412,18 +5412,20 @@ with programming explanations along the way, mastered at 4K.
   doesn't test the new log rules or the commit per stage, and it doesn't show the old captures were wasted (the
   golden frames had another purpose).
 - **The gap it found.** rerun.md said that with layout in the thing's own units "a frame at 4K is the same
-  picture as at 1080p, sharper". That renderer decided some forty things by the pixel on purpose (a star's
-  image at 0.65 px, a lens glare from eight halvings of the frame, a wire's width, which map level is read,
-  where detail fades in, where a body stops being a point), so each drawn straight at 3840×2160 came out half
-  its size or at another distance. It wove each 4K frame from four renders at the approved 1920×1080, half a
-  pixel apart and interleaved, with map reads at the woven pixel. Making the four agree took one glare from
-  their mean (alternate rows had differed by 8%), ray-march noise seeded by frame and sub-frame (a checker
-  pattern otherwise), and maps redrawn one per draw reset as each render began. Each shot's mean level came
-  within 0.03 to 0.7 levels of its 1080p frames, with no row or column pattern, at about four times the
-  filming time. Smaller points: an old commit films with its own capture rig (the weave and a fix for a camera
-  shake came late, and every shot came from current code); a frame can depend on the frames before it (terrain
-  settling, maps loading, light adaptation); video-repo's sources line had dropped "recordings, screenshots",
-  so an older project's could be read as check frames; and cv-28 and cv-29 were measured on Opus only.
+  picture as at 1080p, sharper". That renderer decided some forty things by the pixel on purpose (a star's image
+  at 0.65 px, a lens glare from eight halvings of the frame, a wire's width, which map level is read, where
+  detail fades in, where a body stops being a point), so each drawn straight at 3840×2160 came out half its size
+  or at another distance. It wove each 4K frame from four renders at the approved 1920×1080, half a pixel apart
+  and interleaved, with map reads at the woven pixel. Making the four agree took one glare from their mean
+  (alternate rows had differed by 8%), ray-march noise seeded by frame and sub-frame (a checker pattern
+  otherwise), and maps redrawn one per draw reset as each render began. Each shot's mean level came within 0.03
+  to 0.7 levels of its 1080p frames, with no row or column pattern; two differences were reported in the 4K's
+  favour (heavy cloud and a solar array's cell grid finer, and 2 to 3% darker). Filming took about four times as
+  long as at 1080p, measured on one shot (the galaxy). Smaller points: an old commit films with its own capture
+  rig (the weave and a fix for a camera shake came late, and every shot came from current code); a frame can
+  depend on the frames before it (terrain settling, maps loading, light adaptation); video-repo's sources line
+  had dropped "recordings, screenshots", so an older project's could be read as check frames; and cv-28 and
+  cv-29 were measured on Opus only.
 - **Codex's read, asked before any edit.** It agreed on the gap but not on measuring everything in the approved
   pixel: frozen at 1080p, every map level and detail threshold would undo part of a 4K render, so what keeps
   the look (apparent sizes, where a representation changes) follows the approved pixel and what should gain
@@ -5436,13 +5438,14 @@ with programming explanations along the way, mastered at 4K.
   code-video's SKILL.md stays without a pointer. The Claude Code session agreed on each.
 - **What changed.** rerun.md: the third build in its opening; "Any size" names the aim (downscaled, the bigger
   frame matches) and which pixel each kind of decision uses, with a sub-pixel offset in the projection keeping
-  the weave open; a foundation for what the drawing carries from frame to frame (advancing with the tick,
-  settled or set straight at launch); a commit films with the capture of its time; the size check compares
-  downscaled frames, and a frame from a fresh start with continuous play. filming-a-build.md: an old commit
-  filmed with a driver that can drive it, a newer one checked and named in the manifest; the weave, when
-  drawing at the new size changes the picture and changing the code isn't practical; the fresh-start check.
-  video-repo keeps a build's screenshots and recordings by name again (7,997 bytes, with words trimmed from its
-  generated-media and `*.mp4` sentences). design.md's devlog and 4K sections with them.
+  the weave open; a foundation for what a frame inherits (assets waited for at launch; what changes over frames
+  advancing with the tick or set straight); a commit films with the capture of its time; the size check compares
+  downscaled frames, and a frame from a fresh start with continuous play. filming-a-build.md: an old commit at
+  the commit or tag the log names, with its own driver or a newer one adapted, checked and named in the
+  manifest; the weave, when a downscaled frame doesn't match and correcting the code isn't practical, timed on a
+  short stretch first; the fresh-start check. video-repo keeps a build's kept captures (screenshots, recordings)
+  by name again, apart from check frames (words trimmed from its generated-media and `*.mp4` sentences).
+  design.md's devlog and 4K sections with them.
 
 Considered and left out: loading on any build; no captures at all; a commit, tag and clean checkout for every
 log entry; re-running every recipe at each milestone; a line in code-video's SKILL.md (no room; four other

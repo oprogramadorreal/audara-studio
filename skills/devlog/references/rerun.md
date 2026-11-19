@@ -48,10 +48,10 @@ Set before the first feature, sized to the thing:
   comes on screen wakes on the simulation's own rule, so a free camera doesn't change the game).
 - **A camera that reads the state** and moves nothing in it, so the same run can later be filmed from any
   angle.
-- **What the drawing carries from frame to frame** (streamed terrain and maps, light adaptation, a temporal
-  filter, caches) advances with the tick, not with frames drawn or the clock, and a launch can wait for it to
-  settle or set it straight (a joint sent to its angle), so a frame drawn slowly, or reached from a fresh
-  start, is the one continuous play shows.
+- **What a frame inherits from the frames before.** A launch waits for the assets the moment needs (terrain,
+  maps) before its first frame. What changes over frames (light adaptation, a temporal filter, a joint easing
+  to its angle) advances with the tick, not with frames drawn or the clock, or is set straight at launch, so a
+  frame drawn slowly, or reached from a fresh start, is the one continuous play shows.
 - **One launch for a moment:** a stage, its inputs and a size, from a URL's parameters or a command
   (`?stage=plain&replay=replays/first-win.json&w=3840&h=2160`), with a way to start paused and step one frame
   at a time, so a later capture can draw each frame as slowly as it needs.
@@ -63,8 +63,8 @@ The cheapest that survives the next change and keeps the code clean:
 - **A commit and its command.** It costs the live code nothing and shows the stage as it was, bugs and limits
   included. It runs only what its code could, which is why the size parameter and the launch come first: a
   commit from before them can't draw at 4K. It also films with the capture of its time: a later fix to the
-  camera path or the sampling reaches it only when the capture driver lives apart from the build and can
-  drive it. A tag when the stage deserves a name, annotated
+  camera path or the sampling reaches it only through a capture driver that can drive the old build (one kept
+  apart from the build, or a newer one adapted to it). A tag when the stage deserves a name, annotated
   (`git tag -a stage/plain-bricks -m "the first look"`), with the full hash beside it in the log. A branch pushed
   without its tags leaves the names behind, and a commit only a local tag reaches is lost to every clone: on a
   push they asked for, push the tags the log names by name (`git push origin stage/plain-bricks`) and check

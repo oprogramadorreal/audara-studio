@@ -284,18 +284,18 @@ video (one about a project already built included) is code-video's, and ideas or
   words that name a beat, the struggles, before and after pairs, concepts worth explaining, and joke ideas as
   options. An AGENTS.md section carries the standing rules, so a later or compacted session, or code-video's,
   keeps them.
-- **Moments that run again, at any size,** in place of footage taken as it goes. Foundations sized to the
-  thing come before the first feature: the output size from a parameter with layout in the thing's own units
-  and what the drawing decides by the pixel (a point's or a glare's size, where detail fades in) measured in
-  the approved size's pixel, so a bigger frame is the approved picture, sharper; what the drawing carries from
-  frame to frame advancing with the tick; and where timing changes the result, the state apart from what
-  draws it, a fixed tick and seeded randomness; a camera that moves nothing in the state; one launch for a stage with its inputs and a size. Then each
-  moment gets the cheapest way back that survives the next change and keeps the code clean: a commit and its
-  command (a tag when it deserves a name, tried from a clean checkout when it depends on files of its time), a
-  preset when an old look is a second view over the same state, inputs as data with a hash, and for a fixed bug
-  the commit before the fix with the smallest input that triggers it. A capture where that's better (keeping
-  the moment runnable would clutter the code, or it won't come back), at the largest size practical, logged
-  with its size. Commits stay local unless the director asks to push.
+- **Moments that run again, at any size,** in place of footage taken as it goes. Foundations sized to the thing
+  come before the first feature: the output size from a parameter with layout in the thing's own units and what
+  the drawing decides by the pixel (a point's or a glare's size, where detail fades in) measured in the approved
+  size's pixel, so a bigger frame is the approved picture, sharper; a launch that waits for its assets, with
+  what changes over frames advancing with the tick; and where timing changes the result, the state apart from
+  what draws it, a fixed tick and seeded randomness; a camera that moves nothing in the state; one launch for a
+  stage with its inputs and a size. Then each moment gets the cheapest way back that survives the next change
+  and keeps the code clean: a commit and its command (a tag when it deserves a name, tried from a clean checkout
+  when it depends on files of its time), a preset when an old look is a second view over the same state, inputs
+  as data with a hash, and for a fixed bug the commit before the fix with the smallest input that triggers it. A
+  capture where that's better (keeping the moment runnable would clutter the code, or it won't come back), at
+  the largest size practical, logged with its size. Commits stay local unless the director asks to push.
 - **The build's own hand-offs:** an ETA per stage, one representative piece shown before a new look is rolled
   out, the runner-up and close calls on an option sheet, a trade-off a check settled against their ask put to
   them as a before and after, and each version's role in a video in the log.
@@ -1009,8 +1009,9 @@ Beside sharp code-drawn type, a soft file shows more than at 1×. So before such
 verify and review so they see the final files, each file gets the most real pixels its source has, with
 its framing and frame numbers kept: footage cut again from a bigger original (`full/` only, so the
 preview's proxies stay as fast, and a 1× render draws those frames as cleanly as frames cut at 1×), a
-moment of a build filmed again from its log's command (woven from renders at the approved size when its
-drawing decides things by the pixel), a Blender or Manim clip rendered again, a found image at
+moment of a build filmed again from its log's command (woven from renders at the approved size if,
+drawn straight at the bigger size, it no longer matches the approved look and its code can't practically be
+corrected), a Blender or Manim clip rendered again, a found image at
 its source's largest. A generated image is not made again: the API takes no seed, so another generation is
 another picture, and it costs (the `cv-images-used` eval holds the 4K render to no image request). Its size
 is chosen when it is made instead, for its largest use at the scale the Deliver line names. What stays at
