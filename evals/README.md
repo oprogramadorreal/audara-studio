@@ -49,7 +49,9 @@ they compete as they do once the plugin is installed (an installed audara-studio
 in both tools, so each skill is there once, with the description under test); code-video's set ends with
 two requests for ideas only, which belong to video-ideas, a script alone (cv-27), also video-ideas', and one to put a project in git, which belongs to video-repo (on Codex,
 read cv-23 by its loads, `runs[].triggered`: its use signal matches any command that names
-`scripts/render.ts`, which video-repo's own work can do). A request
+`scripts/render.ts`, which video-repo's own work can do), and two requests that once were devlog's: a video
+about a project already built (cv-28) and filming a lander again inside a project that keeps a development log
+(cv-29), production work since 0.15.0. A request
 made inside a project places fixtures with `"<fixture> => <path>"` (video-repo's set gives each the outline
 of a finished one: `videos/promo/video.json`, its song, and the `AGENTS.md` and `CLAUDE.md` init writes,
 made by init itself and again whenever `init.ts` changes).
@@ -95,21 +97,26 @@ fixture has no cast or references; ns-new-subject's third turn tests the later s
 night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
 
-devlog's set asks to build something and then a video of how it was built, in twelve requests: four in Portuguese,
-five that aren't games (three simulations and two fractal explorers), a devlog of a project
-already built (dl-05), and one made inside a devlog project whose `docs/DEVELOPMENT_LOG.md` comes from the
-fixtures (dl-08). Its near-misses are the neighbours a devlog skill could take by mistake: a game alone with no
-video, ideas for a devlog (video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being
-typed, a log with no video, and a pixel-art game animation with nothing built. dl-21 and dl-22 are the same
-request to start by building a game, without and with a devlog in view: an earlier description that quoted
-"start by building the game" loaded on dl-21 too (1 of 1), 0.12.0's 0 of 3, and on dl-22 3 of 3. dl-23 and
-dl-24 are the same request to build a fractal fly-through prototype before a video, about the fractals and about
-how it was built: a 2026-11 session's prompt of that shape (an explainer and a flight showcase) was right to leave
-devlog alone, but dl-23 loaded it on the description before 0.14.1 (1 of 6 by a Skill call, 2 of 6 counting a read
-of its SKILL.md), which now names that prototype as code-video's (0 and 1 of 6); dl-25 is a near-miss of that kind
-in Portuguese. A run building an explorer may read devlog's SKILL.md or `capture.md` while it browses the skills,
-and a read of SKILL.md counts as a load. It has no scripts, so, as with
-video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the load.
+devlog's set asks to build something with a video about it in view, now or later, in sixteen requests: six in
+Portuguese, eight that aren't games (simulations, fractal explorers, a black hole, a flock), six with none of the
+words devlog, prototype or making-of (dl-03, dl-09, dl-27, dl-28, dl-29 and dl-26, which asks for more building
+inside a project whose `docs/DEVELOPMENT_LOG.md` comes from the fixtures), and the prototypes built before a video about their
+subject (dl-23, dl-25), code-video's alone until 0.15.0, when devlog stopped making the video and its log and
+moments that run again became worth having there too. Its near-misses are the neighbours it could take by mistake:
+a build with no video in view (a Snake game, dl-21's Pong, keyboard shortcuts in an existing app, a command-line
+tool: the plugin loads in every session, and a log in every repository would be noise), ideas for a devlog
+(video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being typed, a log with no video,
+a pixel-art game animation with nothing built, and production work: a video about a project already built
+(dl-05) and filming the lander again (dl-08, the same fixture as dl-26), both code-video's (cv-28, cv-29). dl-21
+and dl-22 are the same request to start by building a game, without and with a video in view: on Fable 5.2 at
+xhigh, dl-21 loaded devlog in 2 of 3 runs on 0.14's description and 3 of 3 on a draft that said "even if they
+never say devlog or prototype", and 0 of 3 once the description asked for a video to be mentioned. dl-26 and
+dl-08 are the same project, building and filming; on Fable at xhigh, dl-08 loads devlog beside code-video in 4 of 4
+runs on 0.15.0, once by a Skill call and three times by reading its SKILL.md for the log's conventions, with
+no devlog work begun. A run building an explorer may read devlog's SKILL.md or
+`references/rerun.md` while it browses the skills, and a read of SKILL.md counts as a load. It has no scripts,
+so, as with video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the
+load.
 
 A request passes when the skill loads in at least half its runs (or, for a near-miss, in fewer than
 half). Codex models often open a plausible skill just to decide, then decline it; for Codex a near-miss

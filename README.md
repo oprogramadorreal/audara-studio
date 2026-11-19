@@ -16,10 +16,11 @@ audara-studio is a plugin for Claude Code and Codex with seven skills:
   languages.
 - **video-ideas**: for when you don't know yet what to make. It offers a few different ideas, helps you pick
   one and writes it up as a prompt or a script, without building anything until you ask.
-- **devlog**: for when the video is about building something (a game, a physics simulation, a fractal explorer,
-  any prototype), or about a project you built. It builds in the order you set, keeping a development log, the
-  real bugs and their fixes, and a way to film any moment again, shows it to you as it goes, and hands that
-  material to code-video for the video about how it was made.
+- **devlog**: for when you build something you'll want a video about later (a game, a physics simulation, a
+  fractal explorer, any prototype), about how it was made or about what it shows. As it builds, it keeps a
+  development log (decisions, trade-offs, concepts, real bugs and their fixes) and keeps the moments worth
+  showing runnable again at any size, so code-video films them at the video's final size, 4K included, when
+  the video starts.
 - **video-repo**: for when you want a project in git, finished or not started yet. It keeps what someone
   else needs to clone it and render the video again, leaves renders and files too big for GitHub out (and
   says which), keeps API keys and personal details out, and writes a README people can read. Nothing is
@@ -92,9 +93,9 @@ Other ways in:
   design in every video; scenes flow into each other, and the score is cut from your own library (or generated,
   if you say yes to its cost). The style applies only when you name it, and anything you ask for differently
   wins over it.
-- **A devlog:** "I want to make a devlog: start by building a 3D Breakout for the browser, no engine". The thing
-  gets built and shown to you first, with a log of how it went and a way to film any moment again; the script
-  and the video come once you say it's ready, made from that material.
+- **A devlog:** "build a 3D Breakout for the browser, no engine; later I'll make a video about how it was made".
+  The game gets built and shown to you, with a log of how it went and each stage worth showing kept runnable;
+  when you ask for the video, code-video films those stages at its final size from that log.
 - **Another format:** "also a vertical one for Reels". The same video is recomposed for that frame, not
   cropped, and a later fix lands in both.
 - **Publishing:** "make three YouTube thumbnails for this video, with the title, description and tags". You

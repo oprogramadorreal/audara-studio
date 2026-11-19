@@ -294,7 +294,8 @@ screen recording, a long clip) would take tens of GB decoded, about 30 GB a minu
 frames load as the video reaches them and the oldest are let go. A shot is a folder at the project root,
 `footage/<shot>/`, which the dev server serves as `/footage/<shot>/` to the preview and to render.ts's own
 server alike. It isn't watched (a shot written while the preview runs shows when the page reloads), and
-`video --resume` sees it change.
+`video --resume` sees it change. Filming something built (its capture page, shot manifests, the checks, or its
+own drawing in a scene instead) is in `references/filming-a-build.md`.
 
 A project made before 0.12.0 has an engine without it: init never replaces `src/engine/`, not even with
 `--force`, whose report names `footage.ts` among the engine files that differ. Taking it is one port: `footage.ts`
@@ -415,14 +416,15 @@ numbers:
   flag), and a 1× render draws the bigger frames as cleanly, so one cut serves both. A clip decoded at boot
   takes the scale squared times the memory: past a second or two, stream it from `footage/` (streamed frames
   are JPEG, so a clip with alpha stays at boot, cropped).
-- **Frames made by code** (a capture of something built, the devlog skill's `references/capture.md`; a
+- **Frames made by code** (a capture of something built, `references/filming-a-build.md`; a
   Blender or Manim render): the stretches the timeline shows, rendered again at that size.
 - **Images:** a found one at its source's largest size. A generated one stays: the API takes no seed, so
   making it again makes another picture, and that costs. The reply names one that plays enlarged and
   offers it made again at its new size, with the cost (`references/images.md`, "Size and 4K").
-- **A source with no more pixels** (the director's 1080p footage, a small photo): it stays, enlarged.
+- **A source with no more pixels** (the director's 1080p footage, a capture a build kept because it couldn't
+  be run again, a small photo): it stays, enlarged.
 
-When re-making takes long or takes room (minutes of a devlog's capture filmed again: hours, and three to
+When re-making takes long or takes room (minutes of a build filmed again: hours, and three to
 four times the disk), say so before starting, with the other choice: those shots enlarged.
 
 **Check.** Stills at the render's scale beside the same at 1×, each with its own `--out` (the names don't

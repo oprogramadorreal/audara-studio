@@ -262,53 +262,66 @@ fresh session. The research behind it is in `docs/research/` (dated snapshots), 
 
 ### A devlog: the build is the story
 
-Some videos are about making something: a game, a physics simulation, a fractal explorer, a tool, built by the
-agent (or by the user, earlier) and then told as how it was made. Their story happens during the build, and
-much of it is gone once the next change lands: the first attempt, the bug before its fix, the look the
-director rejected, his reaction. `devlog` covers that phase and what it keeps, then hands the material to
-code-video, which makes the video by its usual steps. It loads on a devlog request, or in a project whose
-`docs/DEVELOPMENT_LOG.md` feeds a video; tutorials, product demos, videos that only show code and a prototype
-built to film a video about its subject rather than its making (an explorer to fly through a fractal for an
-explainer about it) stay with code-video, and ideas for one with video-ideas.
+Some builds end up in a video: a devlog about making a game, a physics simulation, a fractal explorer or a
+tool; an explainer that shows what a prototype draws; a showcase flown through it. Their story happens during
+the build (the first attempt, the bug before its fix, the look the director rejected, their reaction), and much
+of it is gone once the next change lands. The video comes later, and often at another size than the build was
+ever seen at (a 4K master of a 1080p video). `devlog` keeps two things while the build goes, and does nothing
+about the video itself: code-video makes that when it starts, filming what it needs at its final size.
 
-- **The director's order holds.** He may build first and approve the prototype before any script, script
-  while building, or bring a project already built; the skill's defaults (an early first look, the prototype
-  before the script, the script before production, the render on his yes) are offered in one opening message
-  that also asks for his scope, a working promise, and his own material (a music library and what each track
-  is for, characters from earlier videos, his photo, the voice, how far the video may tease him), and the
-  build starts without waiting. A project already built keeps its structure and starts from what it has.
-- **A log and a ledger as it goes.** `docs/DEVELOPMENT_LOG.md`: status, decisions and why, the versions with
-  their role in the video, known issues, next steps, and a timeline whose entries name their commit and
-  artifacts, with times from the session's messages. Its story ledger keeps his words that name a beat
-  verbatim, the struggles with their before and after, measured numbers, and joke ideas as options. An
-  AGENTS.md section carries the standing rules, so a later or compacted session keeps them.
-- **Any moment can be filmed again,** sized to the thing: replays on a fixed tick with seeded randomness for a
-  game or simulation, the camera path as data for an explorer, scripted input for a tool; a capture page
-  writes frames, a free camera moves nothing in the state, and a stage the video will show stays recoverable.
-  So only what a change will erase is filmed as it happens, and the rest at final quality against the script.
-  The engine streams minutes of such footage (code-video's contract.md).
+It loads when something is built with a video about it in view, now or later, whether or not the user says
+"devlog" or "prototype": a game they mean to show on their channel, a making-of, a prototype built before a
+video that shows it or its subject; and when building goes on in a project whose `docs/DEVELOPMENT_LOG.md` keeps
+such a log. A build with no video in view doesn't load it: the plugin is installed for every session, and a log
+and an AGENTS.md section in every repository someone codes in would be noise. Making, filming or rendering the
+video (one about a project already built included) is code-video's, and ideas or a script alone video-ideas'.
+
+- **The log.** `docs/DEVELOPMENT_LOG.md`: status, decisions with their reasons and the alternative turned down,
+  a "Run it again" table of the moments a video may show, known issues, next steps, and a timeline whose
+  entries name their commit, with times from the session's messages. An entry earns its place when a video
+  could use it (a trade-off, a concept the build makes visible, what broke and the fix, a number measured with
+  its method and revision, the director's turn verbatim); most work needs none. Its story ledger keeps their
+  words that name a beat, the struggles, before and after pairs, concepts worth explaining, and joke ideas as
+  options. An AGENTS.md section carries the standing rules, so a later or compacted session, or code-video's,
+  keeps them.
+- **Moments that run again, at any size,** in place of footage taken as it goes. Foundations sized to the thing
+  come before the first feature: the output size from a parameter with layout in the thing's own units and what
+  the drawing decides by the pixel (a point's or a glare's size, where detail fades in) measured in the approved
+  size's pixel, so a bigger frame is the approved picture, sharper; a launch that waits for its assets, with
+  what changes over frames advancing with the tick; and where timing changes the result, the state apart from
+  what draws it, a fixed tick and seeded randomness; a camera that moves nothing in the state; one launch for a
+  stage with its inputs and a size. Then each moment gets the cheapest way back that survives the next change
+  and keeps the code clean: a commit and its command (a tag when it deserves a name, tried from a clean checkout
+  when it depends on files of its time), a preset when an old look is a second view over the same state, inputs
+  as data with a hash, and for a fixed bug the commit before the fix with the smallest input that triggers it. A
+  capture where that's better (keeping the moment runnable would clutter the code, or it won't come back), at
+  the largest size practical, logged with its size. Commits stay local unless the director asks to push.
 - **The build's own hand-offs:** an ETA per stage, one representative piece shown before a new look is rolled
-  out, the runner-up and close calls on an option sheet, a trade-off a check settled against his ask put to
-  him as a before and after, and at each milestone what the video could already be and what it lacks. When
-  his scope is met it says so and offers the script; he decides whether to push further, which may be the
-  beat he wants.
-- **Into the video:** the script comes from the log through code-video's treatment, the log as its research and
-  not its outline (the turns that carry the promise, with their setups and payoffs; most entries stay out: an
-  explainer adapted faithfully from a good article left its director unsure the adaptation made an interesting
-  video, and a log is a source text in the same way), its stages in story order
-  (the treatment's Stage column), the picture showing a line that asks the viewer to see something happen,
-  explanations a first-time viewer can restate, his lines verbatim, provenance for each claim. soundtrack,
-  nutlight-style (only when named: its look for the scenes around the footage), youtube-package and video-repo
-  work as they always do; video-repo keeps the build's recordings and captures as sources.
+  out, the runner-up and close calls on an option sheet, a trade-off a check settled against their ask put to
+  them as a before and after, and each version's role in a video in the log.
+- **Into the video:** code-video's `references/filming-a-build.md` reads the log as research and not the
+  outline (an explainer adapted faithfully from a good article left its director unsure the adaptation made an
+  interesting video, and a log is a source text in the same way), keeps stages in story order (the treatment's
+  Stage column), and films each moment from its command at the render's size: the build's own drawing in a
+  scene where it runs in the browser from `t` or a fixed tick, otherwise a capture page writing frames into a
+  shot folder the engine streams (contract.md). When a build's drawing still changes at the bigger size and its
+  code can't practically change, each frame is woven from renders at the approved size, offset by fractions of
+  a pixel and interleaved. A capture the build kept plays at its own size, enlarged where it's smaller.
 
 Why a skill of its own: in two long devlogs the build ran for days before any video skill had anything to say
 (one loaded only video-repo for ten days, by the director's own order to load code-video at the script), and
-the director wrote the log, the recording rules and the gates into his prompts himself. code-video's Brief
-would start a treatment at once, and its SKILL.md has no room. What carried those videos stays the director's:
-what to build and how far, the looks he picks, the escalation, the beats he seeds, the jokes in his voice.
-Considered and left out: a fixed number of stages or required struggles as the test of enough (they could
-manufacture work), one capture architecture for every kind of thing, and an automatic point to stop building
-(history.md, 0.12.0).
+the director wrote the log, the recording rules and the gates into their prompts themselves. Why it stopped
+filming as it went and loads on more builds (0.15.0): filming as it went cost more than it gave (2,242
+screenshots and 76 recordings in two days, about 16 and 9 used), footage taken at 1080p plays enlarged in a 4K
+master, a third build's video showed none of its 522 screenshots and 37 recordings and filmed all 38 shots
+from saved camera paths, again at 4K for the master, and the rigs that made late notes
+cheap (16 shots re-filmed after a change, every hash equal; 31 after two fixes) did so by running moments
+again, which is the part kept. What carried those videos stays the director's: what to build and how far, the
+looks they pick, the escalation, the beats they seed, the jokes in their voice. Considered and left out: loading
+on any build (the director's no: "This will be very annoying and bad ux"), no captures at all (a moment that
+won't come back, or would clutter the code to keep, is better captured), one capture architecture for every
+kind of thing, a fixed number of stages or required struggles, and an automatic point to stop building
+(history.md, 0.12.0 and 0.15.0).
 
 ### Coming back later
 
@@ -744,8 +757,8 @@ small plugin manifests, one for Claude Code and one for Codex. No MCP server; ag
 extras.
 
 It has seven skills: **`code-video`** for the picture, **`soundtrack`** for the sound, **`video-ideas`**
-for deciding what to make, **`devlog`** for a video about building something (the build and what it keeps,
-see "A devlog: the build is the story"), **`video-repo`** for handing a finished project on, **`youtube-package`** for
+for deciding what to make, **`devlog`** for a build with a video about it in view (its log and its moments
+kept runnable, see "A devlog: the build is the story"), **`video-repo`** for handing a finished project on, **`youtube-package`** for
 publishing a finished video and **`nutlight-style`**, a house style the director can name (see "A house
 style you can name: Nutlight"). `soundtrack` turns a song
 or a script into audio files plus the timing data the engine reads, and does the sound of a video made
@@ -996,13 +1009,15 @@ Beside sharp code-drawn type, a soft file shows more than at 1×. So before such
 verify and review so they see the final files, each file gets the most real pixels its source has, with
 its framing and frame numbers kept: footage cut again from a bigger original (`full/` only, so the
 preview's proxies stay as fast, and a 1× render draws those frames as cleanly as frames cut at 1×), a
-devlog's capture filmed again from its replay, a Blender or Manim clip rendered again, a found image at
+moment of a build filmed again from its log's command (woven from renders at the approved size if,
+drawn straight at the bigger size, it no longer matches the approved look and its code can't practically be
+corrected), a Blender or Manim clip rendered again, a found image at
 its source's largest. A generated image is not made again: the API takes no seed, so another generation is
 another picture, and it costs (the `cv-images-used` eval holds the 4K render to no image request). Its size
 is chosen when it is made instead, for its largest use at the scale the Deliver line names. What stays at
 its source's size plays enlarged, and the reply says which and why, the same for the director's own 1080p
 footage, which has no more detail to give. Making again what takes hours or tens of GB (minutes of a
-devlog's capture) is said first, with the enlarged shots as the other choice. render.ts's file names don't
+build filmed again) is said first, with the enlarged shots as the other choice. render.ts's file names don't
 carry the scale, so stills compared at two scales, and a bigger master kept beside the 1× one, take their
 own `--out`.
 
@@ -1472,11 +1487,10 @@ audara-studio/
     │   └── assets/realism/           # the realism kit, copied into a project's src/realism/ on demand
     ├── video-ideas/                  # choosing what to make: ideas in, a starting prompt or script out
     │   └── SKILL.md                  # text only: directions, the prompt's three parts, where it stops
-    ├── devlog/                       # a video about building something: the build and what it keeps
-    │   ├── SKILL.md                  # text only: the opening message, the log, the build's hand-offs, enough
-    │   │                             # for the video, the hand-over to code-video
-    │   ├── references/capture.md     # filming the thing again: replays, shot folders, footage in the video
-    │   └── references/log-template.md  # DEVELOPMENT_LOG.md, the story ledger, the AGENTS.md section
+    ├── devlog/                       # a build with a video in view: its log, its moments runnable again
+    │   ├── SKILL.md                  # text only: the log, the foundations, the ways back, the build's hand-offs
+    │   ├── references/rerun.md       # getting a moment back at any size: by kind of thing, captures, checks
+    │   └── references/log-template.md  # DEVELOPMENT_LOG.md, its Run it again table, the ledger, AGENTS.md
     ├── video-repo/                   # handing a project on: a git repository someone else can clone
     │   ├── SKILL.md                  # where the repository goes, files by role, keys out, the clone check
     │   ├── references/repository-files.md  # the README, docs/REPOSITORY.md, AGENTS.md's section, ignores
@@ -1522,6 +1536,10 @@ the formats the engine's `audio.ts` and `words.ts` read.
 - `critique.md`: the director's loop, the stills loop, the critic and its prompts, the measured checks, the
   hand-off and the delivery.
 - `images.md`, `blender.md`, `math.md`: optional tools, each read only when in play.
+- `filming-a-build.md`: a video that shows something built: its log in the script, its own drawing in a
+  scene or a capture page, shot folders and manifests at the render's size, the checks. SKILL.md has no room
+  for it, so contract.md's footage and 4K sections, treatment-template.md and a devlog project's AGENTS.md
+  point to it.
 - `realism.md`: a photographic 3D shot, with the realism kit (`assets/realism/`).
 - `backends.md`: the order of choice (the engine, then HyperFrames, then Remotion as an optional last
   resort), and how to use the alternatives through their own skills.

@@ -1,94 +1,94 @@
 ---
 name: devlog
-description: "Makes a devlog: builds something worth watching being built (a game, a physics simulation, a fractal explorer, a visual tool, any prototype) while keeping what makes its making a story (a development log, the director's turns, before and after, real bugs, demonstrations that can be filmed again), then hands that material to code-video for the video about how it was made. Use it whenever the user wants a devlog or a making-of video, asks to build something and then a video of how it was built (even when the build comes first and the video much later), or wants a video about how a project of theirs was built, and in any project whose docs/DEVELOPMENT_LOG.md feeds a video. Not for building something with no video in view, a prototype built to film a video about its subject, not its making (code-video), tutorials, product demos or screen recordings of finished software, videos that only show code (code-video), or ideas alone (video-ideas)."
+description: "Keeps what a build will need for a video about it later: a development log (decisions and why, trade-offs, concepts worth explaining, bugs and their fixes, measured numbers, the director's words) and code whose stages run again at any size (an early look, a fixed bug, a demonstration), so the video films them at its final resolution. Use it when the user builds something and says a video about it is planned, now or later, in any words: a game, simulation, explorer or tool they mean to show on their channel, a devlog or making-of, a prototype built before a video that shows it or its subject; and when more is built in a project whose docs/DEVELOPMENT_LOG.md keeps such a log. Not for a build where no video is mentioned (most builds: a game, an app or a tool asked for on its own), making, filming or rendering the video itself, even in such a project or about one already built (code-video), ideas or a script alone (video-ideas), or tutorials and demos of finished software."
 ---
 
 # devlog
 
-A devlog is two works: the thing built, and a video about building it. Its story happens during the build (first
-attempts, bugs, the director's turns, the stages the thing passes through) and much of it is gone once the next
-change lands. This skill covers the build and what it keeps; code-video makes the video and soundtrack its sound,
-by their own steps, once the video starts. The thing can be anything a program shows; nothing here assumes a
-game, an engine or a look. The director's words outrank this skill: their order, gates and scope hold, whether
-they build first, script while building, or bring a project already built. Paths starting with `references/` are
-this skill's; the rest are the project's.
+Some builds end up in a video: a devlog about making it, an explainer that shows what it draws, a showcase
+flown through it. The video comes later, often at another size (a 4K master), and much of a build's story is
+gone once the next change lands. This skill keeps two things as the build goes, and does nothing about the
+video itself: code-video makes that when it starts, filming what it needs at its final size.
 
-## What carries one
-- **The thing is the show:** real behaviour from its own code, filmed at its best, explained by what it visibly
-  does.
-- **Real struggles are the beats:** what broke, why, the fix, with its before and after.
-- **Any moment can be filmed again:** repeatable demonstrations and recoverable stages make late notes cheap.
-- **The director's turns are turning points:** a reaction, an ask to go further. Their jokes and lines are theirs.
+1. **A development log** of what a video could use: decisions and why, trade-offs, concepts worth explaining,
+   what broke and the fix, numbers measured, the director's words.
+2. **Code whose moments run again:** an early look, a fixed bug, a demonstration, drawn again later at any
+   size from a command the log keeps.
+
+The thing can be anything a program does; nothing here assumes a game or a look. The director's words outrank
+this skill: their order, gates and scope hold. Paths starting with `references/` are this skill's; the rest
+are the project's.
 
 ## Start
-One message, each point with the default you'll take, then start; wait only for what they alone can decide:
-- what gets built, the scope they will judge ("both levels playable start to finish") and where it runs;
-- a working promise: a title and a thumbnail idea, provisional (youtube-package makes the final ones);
-- the order and gates (default, when they set none: a first look early, the prototype approved before the script, the script before
-  production, the render on their yes);
-- their own material: the music library and what each track is for, characters or props from earlier videos and
-  where they are, their photo, the narrator's voice, how far the video may tease them;
-- a repository now (video-repo) or later.
+- **Only with a video in view:** when nothing in the request, the conversation or the project says a video
+  about this work is planned, build what was asked and skip the rest of this skill (no log, no AGENTS.md
+  section, no repository started for it).
+- **Say it once,** in the first reply: you keep a development log and the stages a video may show runnable
+  again, in a local git repository (one started if there's none; nothing pushed unless they ask), committing
+  each such stage when it's reached. Commit only your own changes: their staged or uncommitted work stays
+  out. They can turn any of it off; without commits, the other ways back below still serve.
+- **The log,** `docs/DEVELOPMENT_LOG.md` (references/log-template.md), and a "Devlog" section in AGENTS.md
+  (outside init's markers) with the standing rules, so a later or compacted session, or code-video's, keeps
+  them. For a build already under way, write the log from its history first.
+- **Foundations sized to the thing,** before the first feature: added later, they mean hunting every hidden
+  clock and hard-coded pixel (references/rerun.md).
+  - The output size from a parameter, with layout, text and line widths in the thing's own units, so a stage
+    draws at 4K rather than being enlarged (an interface keeps its layout: a fixed viewport and pixel ratio).
+  - Where timing changes the result (a game, a simulation): the state apart from what draws it, a fixed
+    tick and seeded randomness.
+  - A camera that reads the state and moves nothing in it.
+  - One way to launch a given stage with given inputs at a given size: a URL's parameters, a command.
 
-## Setup
-- The prototype in its own folder (`game/`, `sim/`, `app/`), or a project already built as it is; the video
-  project (code-video's init) at the root when the video starts.
-- `docs/DEVELOPMENT_LOG.md` (references/log-template.md): status, decisions and why, known issues, next steps,
-  and a timeline whose milestones carry their commit, artifacts by path and time range, and times from the
-  session's messages. For a project already built, write it from its history first.
-- Its story ledger: the director's words that name a beat, verbatim; what broke, how it was found and fixed;
-  before and after pairs; numbers measured, not estimated; joke ideas as options, never written into their mouth.
-- A "Devlog" section in AGENTS.md (outside init's markers) with the standing rules, so a later or compacted
-  session keeps them.
-- A way to film it again, sized to the thing (references/capture.md): for a game or a simulation, a fixed tick,
-  seeded randomness and replays; for an explorer, the camera path as data; for a tool, scripted input. Set it up
-  before the first feature: determinism added later means hunting every hidden clock. A project already built
-  lists what it has first (recordings, history, tags) and adds only what the shots need.
+  A saved camera path may be all an explorer needs, and a fixture and a command all a tool needs.
 
-## Build
-- **Stages with an ETA,** said at the start and again when it slips. Hand off when the stage's own check passes:
-  how to run it, what to look at, what's still short and the next builds with their cost. Checks that only
-  polish run on while they look.
-- **One piece first:** a new look goes on one representative piece (a character, a level slice) and is shown
-  before the rest is converted. An option sheet shows the runner-up, and a close call says it was close.
-- **Trade-offs are theirs:** a check that blocks an impact they asked for, or a reviewer's change that narrows
-  their ask, goes to them as a before and after, not settled inside.
-- **Each version's role in the video** goes in the log (the before, a rejected first look, the hero), and polish
-  follows it. When what makes it work well and what makes it show well pull apart (a help text on a title, a
-  limit that tidies a spectacle away), film both and ask.
-- **Film now only what a change will erase:** a first attempt, a bug before its fix, a look about to go, anything
-  that can't be reproduced later. The rest is filmed later, at final quality, against the script. A stage that
-  will be shown stays recoverable (a flag, a style switch, a tagged commit).
+## The log
+An entry earns its place when a video could use it: a decision with its reason and the alternative turned
+down, a trade-off, a concept the build makes visible (in a plain line a first-time viewer could follow), a
+surprise, what broke (how it showed, why, the fix), a number measured with its method, a turn the director
+gave the build. Most work needs no entry; it isn't a diary. Each entry has its time (from the session's
+messages), its commit when there is one, and, for a moment a video may show, how to run it again or the
+capture that keeps it. A number keeps its method and revision: one fix measured 9% and, rebuilt later in a
+changed world, 22%, so the first is the one to quote.
+Their words that turn the build go in verbatim; a joke for their voice is an option, never put in their mouth.
 
-## Enough for the video
-Each milestone's hand-off says what the video could already be and what it still lacks, concretely: the
-promise's payoff is there to show; the stages a viewer would watch change have their before and after; there is
-footage for the struggles and for the mechanisms worth explaining. When their scope is met, say so and offer the
-script, naming what one more stage would add. They decide: another "push further" may be the beat they want.
-Don't stop short of their scope, and don't widen it silently.
+## Run it again
+For each moment a video may show, the cheapest way back that survives the next change and keeps the code
+clean (references/rerun.md):
+- **A commit** and the command that runs it, run once when kept; a tag when the stage deserves a name
+  (`stage/plain-bricks`), with the full hash beside it in the log. Try it from a clean checkout when it
+  depends on files of its time.
+- **A preset** (`?look=plain`) when the old look is a second view over the same state, a few lines, and
+  wanted beside the new one.
+- **Inputs as data:** a seed, inputs by tick, a camera path or a fixture, with an expected value or a hash
+  of the state.
+- **A bug** is fixed. To show it, the commit before the fix keeps it, with the smallest input that triggers
+  it; log what each commit does with that input. A toggle in live code only when it's a line or two.
+- **A capture** when that's better: keeping the moment runnable would clutter the code, or it won't come
+  back (an outside service, a race, a glitch seen once, the director's live session). Take it while it's
+  there, at the largest size practical, and log its path, size, time range and what it shows; a video at
+  another size plays it enlarged where it's smaller.
 
-## The video
-- **The script** comes from the log and the ledger, through code-video's treatment (its Promise, Never claim and
-  Decisions), or video-ideas when they want a script alone; their gates hold. The log is the research, not the
-  outline: keep the turns that carry the promise, with their setups and payoffs; most entries stay out. On a long
-  narrated piece, voice and roughly cut its least certain passage first and post it while building on.
-- **Story order:** a stage appears first in the chapter that builds it, unless the story is told out of order on
-  purpose (the treatment's Stage column); the hook may glimpse the payoff briefly and borrow later shots.
-- **The picture shows the line** where a line asks the viewer to see something happen: footage of it happening,
-  filmed for it. Reactions, metaphors and counterpoint stay open.
-- **Explanations a first-time viewer can follow:** one subject, a concept defined before it's used, one idea per
-  line, drawn as it is said (code-video's critic restates each one).
-- **Their lines verbatim,** their persona as they set it; a joke for their voice is offered with options.
-- **Provenance:** a claim, a number or a re-staged bug cites its log entry, the build and its settings.
-- **Footage** enters through the engine's streamed footage (code-video's contract.md, "Images and footage").
-- Then code-video and soundtrack as usual (carry the respellings approved before; test words the voice may
-  miss). nutlight-style only when named: its look is for the scenes around the footage, and the thing keeps its
-  own. video-repo keeps the recordings, screenshots and captures of old stages as sources.
+Screenshots and clips to check your own work are fine; keep only those the log names.
+
+## While building
+- **Stages with an ETA,** said at the start and again when it slips. Hand off when the stage's own check
+  passes: how to run it, what to look at, what's still short, the next builds with their cost.
+- **One piece first:** a new look goes on one representative piece (a character, a level slice) and is
+  shown before the rest is converted. An option sheet shows the runner-up, and a close call says so.
+- **Trade-offs are theirs:** a check that blocks an impact they asked for, or a reviewer's change that
+  narrows their ask, goes to them as a before and after, not settled inside.
+- **Each version's role** goes in the log (the before, a rejected first look, the hero). When what makes it
+  work well and what makes it show well pull apart, keep both runnable and ask.
+
+## When the video starts
+code-video makes it, reading the log as research and filming the stages from its commands at the render's
+size (its references/filming-a-build.md); video-ideas writes a script alone. Keep the log while the build
+goes on.
 
 ## Stays theirs
-What to build and how far; the look picks; the escalation; the story beats they seed; jokes in their voice; how
-they appear on screen; the final yes.
+What to build and how far; the look picks; the escalation; the story beats they seed; jokes in their voice;
+the final yes.
 
 ## Read when
-- references/capture.md: filming it again: replays, shot folders and manifests, footage in the video, the checks.
-- references/log-template.md: DEVELOPMENT_LOG.md, the ledger, the AGENTS.md section, an example entry.
+- references/rerun.md: getting a moment back, by kind of thing; any size; captures; the checks.
+- references/log-template.md: the log, its tables, the AGENTS.md section, an example entry.
