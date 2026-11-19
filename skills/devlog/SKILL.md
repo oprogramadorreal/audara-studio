@@ -20,6 +20,9 @@ this skill: their order, gates and scope hold. Paths starting with `references/`
 are the project's.
 
 ## Start
+- **Only with a video in view:** when nothing in the request, the conversation or the project says a video
+  about this work is planned, build what was asked and skip the rest of this skill (no log, no AGENTS.md
+  section, no repository started for it).
 - **Say it once,** in the first reply: you keep a development log and the stages a video may show runnable
   again, in a local git repository (one started if there's none; nothing pushed unless they ask), committing
   each such stage when it's reached. Commit only your own changes: their staged or uncommitted work stays
