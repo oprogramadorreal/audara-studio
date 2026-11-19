@@ -44,8 +44,8 @@ down, a trade-off, a concept the build makes visible (in a plain line a first-ti
 surprise, what broke (how it showed, why, the fix), a number measured with its method, a turn the director
 gave the build. Most work needs no entry; it isn't a diary. Each entry has its time (from the session's
 messages), its commit when there is one, and, for a moment a video may show, how to run it again or the
-capture that keeps it. A number keeps its method and
-revision: one fix measured 9% and, rebuilt later in a changed world, 22%, so the first is the one to quote.
+capture that keeps it. A number keeps its method and revision: one fix measured 9% and, rebuilt later in a
+changed world, 22%, so the first is the one to quote.
 Their words that turn the build go in verbatim; a joke for their voice is an option, never put in their mouth.
 
 ## Run it again
