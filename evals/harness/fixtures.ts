@@ -1,6 +1,6 @@
 // Small synthetic fixtures for the evals, generated with ffmpeg so the repo carries no media.
 // They only need to be realistic enough for a model to treat them as the files the user mentions.
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -127,16 +127,22 @@ export function ensureFixtures(dir: string) {
   dir = path.resolve(dir); // (ffmpeg runs in the repo: a relative folder would land somewhere else for it)
   mkdirSync(dir, { recursive: true });
   // (the cache is kept between runs, so a fixture whose definition changed is made again: a text one when its
-  // body differs, a media one when the ffmpeg arguments beside it, in <name>.args, differ)
+  // body differs, a media one when the ffmpeg arguments beside it, in <name>.args, differ. Each is written to a
+  // file of its own and renamed into place, so a harness running at the same time never copies half of one.)
+  const tmp = (p: string) => path.join(path.dirname(p), `.tmp-${process.pid}-${path.basename(p)}`);
   for (const [f, body] of Object.entries(TEXT)) {
     const p = path.join(dir, f);
-    if (!existsSync(p) || readFileSync(p, 'utf8') !== body) writeFileSync(p, body);
+    if (existsSync(p) && readFileSync(p, 'utf8') === body) continue;
+    writeFileSync(tmp(p), body);
+    renameSync(tmp(p), p);
   }
   for (const [f, args] of Object.entries(MEDIA)) {
     const p = path.join(dir, f), stamp = `${p}.args`, key = JSON.stringify(args);
     if (existsSync(p) && existsSync(stamp) && readFileSync(stamp, 'utf8') === key) continue;
-    ff([...args, p]);
-    writeFileSync(stamp, key);
+    ff([...args, tmp(p)]); // (the temporary name keeps the extension, which ffmpeg picks the format by)
+    renameSync(tmp(p), p);
+    writeFileSync(tmp(stamp), key);
+    renameSync(tmp(stamp), stamp);
   }
   agentsFixture(dir);
   return dir;
