@@ -285,9 +285,11 @@ video (one about a project already built included) is code-video's, and ideas or
   options. An AGENTS.md section carries the standing rules, so a later or compacted session, or code-video's,
   keeps them.
 - **Moments that run again, at any size,** in place of footage taken as it goes. Foundations sized to the
-  thing come before the first feature: the output size from a parameter with layout in the thing's own units,
-  and where timing changes the result, the state apart from what draws it, a fixed tick and seeded randomness;
-  a camera that moves nothing in the state; one launch for a stage with its inputs and a size. Then each
+  thing come before the first feature: the output size from a parameter with layout in the thing's own units
+  and what the drawing decides by the pixel (a point's or a glare's size, where detail fades in) measured in
+  the approved size's pixel, so a bigger frame is the approved picture, sharper; what the drawing carries from
+  frame to frame advancing with the tick; and where timing changes the result, the state apart from what
+  draws it, a fixed tick and seeded randomness; a camera that moves nothing in the state; one launch for a stage with its inputs and a size. Then each
   moment gets the cheapest way back that survives the next change and keeps the code clean: a commit and its
   command (a tag when it deserves a name, tried from a clean checkout when it depends on files of its time), a
   preset when an old look is a second view over the same state, inputs as data with a hash, and for a fixed bug
@@ -302,15 +304,17 @@ video (one about a project already built included) is code-video's, and ideas or
   interesting video, and a log is a source text in the same way), keeps stages in story order (the treatment's
   Stage column), and films each moment from its command at the render's size: the build's own drawing in a
   scene where it runs in the browser from `t` or a fixed tick, otherwise a capture page writing frames into a
-  shot folder the engine streams (contract.md). A capture the build kept plays at its own size, enlarged where
-  it's smaller.
+  shot folder the engine streams (contract.md). When a build's drawing still changes at the bigger size and its
+  code can't practically change, each frame is woven from renders at the approved size, offset by fractions of
+  a pixel and interleaved. A capture the build kept plays at its own size, enlarged where it's smaller.
 
 Why a skill of its own: in two long devlogs the build ran for days before any video skill had anything to say
 (one loaded only video-repo for ten days, by the director's own order to load code-video at the script), and
 the director wrote the log, the recording rules and the gates into their prompts themselves. Why it stopped
 filming as it went and loads on more builds (0.15.0): filming as it went cost more than it gave (2,242
 screenshots and 76 recordings in two days, about 16 and 9 used), footage taken at 1080p plays enlarged in a 4K
-master, and the rigs that made late notes
+master, a third build's video showed none of its 522 screenshots and 37 recordings and filmed all 38 shots
+from saved camera paths, again at 4K for the master, and the rigs that made late notes
 cheap (16 shots re-filmed after a change, every hash equal; 31 after two fixes) did so by running moments
 again, which is the part kept. What carried those videos stays the director's: what to build and how far, the
 looks they pick, the escalation, the beats they seed, the jokes in their voice. Considered and left out: loading
@@ -1005,7 +1009,8 @@ Beside sharp code-drawn type, a soft file shows more than at 1×. So before such
 verify and review so they see the final files, each file gets the most real pixels its source has, with
 its framing and frame numbers kept: footage cut again from a bigger original (`full/` only, so the
 preview's proxies stay as fast, and a 1× render draws those frames as cleanly as frames cut at 1×), a
-moment of a build filmed again from its log's command, a Blender or Manim clip rendered again, a found image at
+moment of a build filmed again from its log's command (woven from renders at the approved size when its
+drawing decides things by the pixel), a Blender or Manim clip rendered again, a found image at
 its source's largest. A generated image is not made again: the API takes no seed, so another generation is
 another picture, and it costs (the `cv-images-used` eval holds the 4K render to no image request). Its size
 is chosen when it is made instead, for its largest use at the scale the Deliver line names. What stays at

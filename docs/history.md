@@ -5394,6 +5394,56 @@ model, and a claim that code-video's Brief asks every question devlog dropped), 
   scripts, so its Codex near-misses fail on the load), the other skills' whole sets, and a build made with this
   text, so whether it keeps what a video needs with fewer notes is expected, not measured.
 
+**A review against a real build.** After the PR opened, a Claude Code session on the director's other machine
+reviewed the branch against a video project finished three days before, read-only. That project isn't in this
+repository, so its numbers are as that review reported them. It was a space simulation built over four days with
+devlog 0.12.2 to 0.13.2 (the director asked in the first message to preserve screenshots, prototype captures,
+milestones, experiments, bugs and before-and-after comparisons), then an 8-minute narrated journey through it
+with programming explanations along the way, mastered at 4K.
+- **What the build kept and the video used.** 522 screenshots (394 MB), 37 recordings (355 MB), 13,996 scratch
+  files (6.9 GB) and 452 golden frames for regression checks; no scene or timeline of the video references a
+  build screenshot, recording or scratch frame. All 38 shots were filmed from saved camera paths (110 in the
+  project) in the current code. One build screenshot was the director's reference for a shot: "Capture it
+  inside the simulation; do not use the screenshot itself." Asked for "4K at 60 FPS", the session filmed all 38
+  again at 3840×2160 in about five hours, then rendered for 126 minutes, with nobody at the machine. The stages
+  the video showed (a planet's layers one by one, a spacecraft as delivered and as triangles, terrain as its
+  mesh) came from switches in live code, about 45 URL flags and keys in its AGENTS.md, not from commits; its
+  log ran to 4,051 lines and about 100 timeline entries in four days. This supports filming late from runs; it
+  doesn't test the new log rules or the commit per stage, and it doesn't show the old captures were wasted (the
+  golden frames had another purpose).
+- **The gap it found.** rerun.md said that with layout in the thing's own units "a frame at 4K is the same
+  picture as at 1080p, sharper". That renderer decided some forty things by the pixel on purpose (a star's
+  image at 0.65 px, a lens glare from eight halvings of the frame, a wire's width, which map level is read,
+  where detail fades in, where a body stops being a point), so each drawn straight at 3840×2160 came out half
+  its size or at another distance. It wove each 4K frame from four renders at the approved 1920×1080, half a
+  pixel apart and interleaved, with map reads at the woven pixel. Making the four agree took one glare from
+  their mean (alternate rows had differed by 8%), ray-march noise seeded by frame and sub-frame (a checker
+  pattern otherwise), and maps redrawn one per draw reset as each render began. Each shot's mean level came
+  within 0.03 to 0.7 levels of its 1080p frames, with no row or column pattern, at about four times the
+  filming time. Smaller points: an old commit films with its own capture rig (the weave and a fix for a camera
+  shake came late, and every shot came from current code); a frame can depend on the frames before it (terrain
+  settling, maps loading, light adaptation); video-repo's sources line had dropped "recordings, screenshots",
+  so an older project's could be read as check frames; and cv-28 and cv-29 were measured on Opus only.
+- **Codex's read, asked before any edit.** It agreed on the gap but not on measuring everything in the approved
+  pixel: frozen at 1080p, every map level and detail threshold would undo part of a 4K render, so what keeps
+  the look (apparent sizes, where a representation changes) follows the approved pixel and what should gain
+  detail (texture reads, edges) the output's, with the weave as a fallback tried on a short moving stretch
+  first. It agreed on the commit's rig (a newer driver checked against the old look and named), on frame-to-frame
+  state (two cold renders can agree and both be wrong, so compare a frame from a fresh start with continuous
+  play), and on naming screenshots and recordings again. It disagreed with a Fable probe of cv-28 and cv-29
+  before merging: the saved Fable transcripts of the same requests (dl-05 once, dl-08 four times) already show
+  code-video called and `filming-a-build.md` read, which a trigger probe, stopping at the load, can't show, so
+  code-video's SKILL.md stays without a pointer. The Claude Code session agreed on each.
+- **What changed.** rerun.md: the third build in its opening; "Any size" names the aim (downscaled, the bigger
+  frame matches) and which pixel each kind of decision uses, with a sub-pixel offset in the projection keeping
+  the weave open; a foundation for what the drawing carries from frame to frame (advancing with the tick,
+  settled or set straight at launch); a commit films with the capture of its time; the size check compares
+  downscaled frames, and a frame from a fresh start with continuous play. filming-a-build.md: an old commit
+  filmed with a driver that can drive it, a newer one checked and named in the manifest; the weave, when
+  drawing at the new size changes the picture and changing the code isn't practical; the fresh-start check.
+  video-repo keeps a build's screenshots and recordings by name again (7,997 bytes, with words trimmed from its
+  generated-media and `*.mp4` sentences). design.md's devlog and 4K sections with them.
+
 Considered and left out: loading on any build; no captures at all; a commit, tag and clean checkout for every
 log entry; re-running every recipe at each milestone; a line in code-video's SKILL.md (no room; four other
 places point to the new reference).

@@ -41,8 +41,9 @@ A capture page (`capture.html` beside the build, or a command for one outside th
 launches the moment as the log's command does (its stage, inputs and size), replays to the shot's first tick,
 then steps and draws one frame at a time at the spec's size, writing numbered JPEGs. Run it headless in Chrome
 with the GPU (render.ts does the same for the video), on its own server with hot reload off, so another agent's
-edit can't reload it mid-shot. A moment kept at an old commit is filmed from a worktree at its tag, with the
-same page when the commit has the launch.
+edit can't reload it mid-shot. A moment kept at an old commit is filmed from a worktree at its tag, with
+its logged launch and a capture driver that can drive it; a newer driver (a smoother camera path, a finer
+sampling) is checked against the old look, timing and framing, and the manifest names it.
 
 A free camera for capture only (orbit, follow, low and close, crane, a path through the scene) reads the state
 and moves nothing in it, so the same run films from any angle.
@@ -76,6 +77,17 @@ rather than deleting it while it may still be compared. Film after the cut is se
 master asked for after the capture films again only what it would show enlarged (contract.md, "4K"): the same
 run, framing and frame numbers at the new size into `full/`, the manifest's `size` with it, proxies as they
 are. Say what the time and room come to before starting.
+
+**The same picture, finer.** Downscaled, the bigger frames match the approved ones (contract.md, "4K", its
+check). When drawing at the new size changes the picture, because the build decides things by the pixel (a
+star's or a glare's size, where detail fades in, which level of a map is read) and changing that code isn't
+practical, weave each frame: N×N renders at the approved size, offset by fractions of a pixel and interleaved
+into a frame N times larger, each one a frame the approved capture could have drawn. Keep what spans the frame
+the same across the N² (the time, the exposure, a glare from their mean), seed noise by frame and sub-frame
+rather than by a count of draws, reset what is redrawn a piece per draw as each render begins, and let texture
+reads use the woven pixel so they keep their detail. It takes about N² the filming time (four times for 4K from
+1080p): film a short moving stretch first and look for rows or columns that alternate, flicker and soft
+textures.
 
 **A capture from the build** (`devlog/captures/`, named in the log with its size) is a moment kept that way
 because it wouldn't come back, or keeping it runnable cost more. A clip is cut into a shot like any footage
@@ -112,6 +124,9 @@ matter), rather than being placed by eye.
   at the wrong field of view until a wall of cubes didn't fill its frame).
 - Its first frames show what its title names: decorations loaded, the effect switched on, nothing still
   streaming in.
+- A frame reached from a fresh start matches the same frame in continuous play, after a cut or a streaming
+  change too: what the build carries from frame to frame (streamed maps, light adaptation, caches) has settled
+  or been set straight. Two cold renders can agree and both be wrong.
 - Its frames seen at full size around the moment it is used, and in motion (a clip): flicker in leaves,
   water or distant geometry shows only in motion, and reached the director twice from captures judged on
   stills.

@@ -7,7 +7,10 @@ another angle, after a fix, with nothing else changed. Both devlogs this skill c
 their first day, and it is what made late notes cheap: one re-filmed 16 shots after a change to its game, every
 simulation hash equal, and the other re-captured 31 shots with identical timing after two fixes. Filming as
 they went cost more than it gave: one took 2,242 screenshots and 76 recordings in two days, and its video used
-about 16 and 9.
+about 16 and 9. A third, a space simulation flown through in an 8-minute video, kept 522 screenshots and 37
+recordings and its video shows none: all 38 shots were filmed from saved camera paths in the current code, and
+filmed again at 4K for the master with nobody at the machine (one screenshot was the reference for a shot,
+filmed again inside the simulation).
 
 How much of this a build needs depends on the thing: a tool needs scripted input, not a physics engine, and
 an explorer may need only its camera path saved. What every one needs is the result: each moment the log
@@ -21,13 +24,19 @@ need.
 Set before the first feature, sized to the thing:
 
 - **Any size.** The output size comes from a parameter (`?w=3840&h=2160`, `--size 3840x2160`), not the
-  window. Layout, text and line widths are in the thing's own units and scale with the output, so a frame at
-  4K is the same picture as at 1080p, sharper. An interface that lays itself out to its window (a tool, an
-  editor) keeps that layout: a fixed viewport and a pixel ratio draw its real screen sharper
-  (1920×1080 at a ratio of 2 for 4K) without rewriting it. Canvases and textures it makes itself (text, an atlas) are made
-  at the output's scale. In GLSL, `gl_FragCoord`, `fwidth` and `dFdx` count physical pixels: a line drawn
-  from `fwidth` gets thinner at 4K (code-video's contract.md, "4K", has the same traps for the video's own
-  scenes). Assets set the detail ceiling: a 1K texture stays 1K at any size.
+  window. Layout, text and line widths are in the thing's own units and scale with the output. The aim is the
+  approved picture, sharper: a 4K frame, downscaled, matches the 1080p one. What the drawing decides by the
+  pixel on purpose (a star's or a glare's size, where a body becomes a point, where detail fades in or a finer
+  level takes over) is measured in the pixel of the size the director approves, so it happens at the same
+  place at 4K; what should gain detail (texture reads, edges) uses the output's. A projection that takes a
+  sub-pixel offset keeps another way open for a build that missed some: code-video's
+  references/filming-a-build.md weaves each bigger frame from renders at the approved size. An interface
+  that lays itself out to its window (a tool, an editor) keeps that layout: a fixed viewport and a pixel ratio
+  draw its real screen sharper (1920×1080 at a ratio of 2 for 4K) without rewriting it. Canvases and textures
+  it makes itself (text, an atlas) are made at the output's scale. In GLSL, `gl_FragCoord`, `fwidth` and
+  `dFdx` count physical pixels: a line drawn from `fwidth` gets thinner at 4K (code-video's contract.md,
+  "4K", has the same traps for the video's own scenes). Assets set the detail ceiling: a 1K texture stays 1K
+  at any size.
 - **The state apart from what draws it** (a game, a simulation). State advances only in a step function;
   drawing reads the state and never changes it. A second look (an early art style, a debug view) is then a
   second view over the same state.
@@ -39,6 +48,10 @@ Set before the first feature, sized to the thing:
   comes on screen wakes on the simulation's own rule, so a free camera doesn't change the game).
 - **A camera that reads the state** and moves nothing in it, so the same run can later be filmed from any
   angle.
+- **What the drawing carries from frame to frame** (streamed terrain and maps, light adaptation, a temporal
+  filter, caches) advances with the tick, not with frames drawn or the clock, and a launch can wait for it to
+  settle or set it straight (a joint sent to its angle), so a frame drawn slowly, or reached from a fresh
+  start, is the one continuous play shows.
 - **One launch for a moment:** a stage, its inputs and a size, from a URL's parameters or a command
   (`?stage=plain&replay=replays/first-win.json&w=3840&h=2160`), with a way to start paused and step one frame
   at a time, so a later capture can draw each frame as slowly as it needs.
@@ -49,7 +62,9 @@ The cheapest that survives the next change and keeps the code clean:
 
 - **A commit and its command.** It costs the live code nothing and shows the stage as it was, bugs and limits
   included. It runs only what its code could, which is why the size parameter and the launch come first: a
-  commit from before them can't draw at 4K. A tag when the stage deserves a name, annotated
+  commit from before them can't draw at 4K. It also films with the capture of its time: a later fix to the
+  camera path or the sampling reaches it only when the capture driver lives apart from the build and can
+  drive it. A tag when the stage deserves a name, annotated
   (`git tag -a stage/plain-bricks -m "the first look"`), with the full hash beside it in the log. A branch pushed
   without its tags leaves the names behind, and a commit only a local tag reaches is lost to every clone: on a
   push they asked for, push the tags the log names by name (`git push origin stage/plain-bricks`) and check
@@ -105,6 +120,8 @@ Light, and when they can catch something:
   shows what its row says. An old commit's recipe doesn't change after that; the log notes the run.
 - **A preset** again when the code it draws from changes: one that stopped drawing is fixed or retired to its
   commit, and the row says which.
-- **A representative moment** at the video's size and at 4K (or the size the director named): the same picture
-  and framing, the larger sharper. A command-line fixture checks its output directly.
+- **A representative moment** at the video's size and at 4K (or the size the director named): downscaled, the
+  larger matches the smaller in framing, sizes and what's drawn where, only sharper; where it doesn't, look
+  for what is measured in the output's pixel ("Any size"). A frame reached from a fresh start matches the
+  same frame in continuous play. A command-line fixture checks its output directly.
 - **Replays:** the hashes match, and one frame drawn twice is identical.
