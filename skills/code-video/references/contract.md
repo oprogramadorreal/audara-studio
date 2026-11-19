@@ -389,9 +389,10 @@ scale applies to that format. A video renders at its own size unless the directo
 director approves at 1×, so the bigger frame must be the same picture, only sharper, and the work stays at
 1× (the preview, verify, drafts and the critic's rounds): at `--scale 2` each frame has four times the
 pixels to draw, read back and encode, and the preview would drop frames. Estimate the render's time from a
-few seconds rendered at its scale, not from the 1× draft. Scenes lay out in logical px (`W` and `H` never
-change), and the engine scales its targets, `Layer2D`, `LineBatch` and the post. What it can't scale for a
-scene:
+few seconds rendered at its scale with their own name (`video --from 0 --to 3 --scale 2 --out
+<folder>/timing-2x.mp4`: on a short video that range is the whole video and would take the master's name),
+not from the 1× draft. Scenes lay out in logical px (`W` and `H` never change), and the engine scales its targets,
+`Layer2D`, `LineBatch` and the post. What it can't scale for a scene:
 - In GLSL, `gl_FragCoord`, `fwidth` and `dFdx` are physical px. `FRAG_PX` is the fragment's position in
   logical px, with its origin at the bottom left like `gl_FragCoord`, while Canvas2D and `comp.draw`'s
   `rect` count from the top left. `PX_SCALE` converts.
@@ -410,10 +411,10 @@ files the video shows and give each the most real pixels its source has, keeping
 numbers:
 - **Footage cut from a bigger original** (a 4K camera file, a screen recording made at a higher resolution):
   cut `full/` again from the original at that size, the same frames by the same `-ss` and rate. `proxy/`
-  stays, so the preview is as fast (a shot without one, `"proxy": false`, gets one first), and a 1× render
-  draws the bigger frames as cleanly, so one cut serves both. A clip decoded at boot takes the scale squared
-  times the memory: past a second or two, stream it from `footage/` (streamed frames are JPEG, so a clip
-  with alpha stays at boot, cropped).
+  stays, so the preview is as fast (a shot without one, `"proxy": false`, gets one first and loses the
+  flag), and a 1× render draws the bigger frames as cleanly, so one cut serves both. A clip decoded at boot
+  takes the scale squared times the memory: past a second or two, stream it from `footage/` (streamed frames
+  are JPEG, so a clip with alpha stays at boot, cropped).
 - **Frames made by code** (a capture of something built, the devlog skill's `references/capture.md`; a
   Blender or Manim render): the stretches the timeline shows, rendered again at that size.
 - **Images:** a found one at its source's largest size. A generated one stays: the API takes no seed, so

@@ -5239,6 +5239,9 @@ Its second round, also taken: the `-4k.mp4` name goes in the format's folder wit
 treatment template still gave `--scale 2` as the 4K recipe; a square 1080×1080 becomes 2160×2160, which the
 render's offer now says; proxies are half the 1× size, not half the bigger `full/`, and a shot without proxies
 gets them first; and the render's offer estimates its time at the target scale.
+A third round, taken: the timing sample gets its own `--out` (on a short video its range is the whole video
+and would take the master's name), a shot given proxies loses its `"proxy": false`, and `design.md` no longer
+says every render target scales (the bloom pyramid and data targets stay at `pxScale: 1`).
 
 **Not run:** the task evals (`cv-images-used` and `cv-title-card` already state the 4K behavior and still hold);
 a real camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p
