@@ -5360,7 +5360,9 @@ found the stale fixtures, `--follow-tags` sending the wrong tags, the capture an
 the reusable texts, and a passing test claiming more than it showed, all fixed. Its third found a race between
 two harnesses refreshing a fixture, fixed. Shown the Fable result on a bare Pong request, it read "even if they
 never say devlog or prototype" as stressing which evidence may be absent right before a list with games in it,
-advised testing the stricter wording alone first, and proposed the guard after a stray load.
+advised testing the stricter wording alone first, and proposed the guard after a stray load. Its review of the
+whole branch asked for three corrections to this entry (how Fable loaded devlog on dl-08, what ran on each
+model, and a claim that code-video's Brief asks every question devlog dropped), all made; its verdict: AGREE.
 
 **What was checked.**
 - **Spec checks:** devlog, code-video, video-repo and video-ideas pass the three validators, no byte-order mark;
