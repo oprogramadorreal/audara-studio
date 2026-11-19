@@ -77,7 +77,8 @@ frame at 1600×600; Cycles about 2.5 s).
   centred on the frame, so the layer blurs like the rest.
 - Played through the footage path (`references/contract.md`, "Images and footage"): frames picked by
   `frameTime(t)`, drawn at 1:1. Crop to the object: each frame costs width × height × 4 bytes of GPU memory
-  (60 frames at 1600×600: 230 MB; full-frame 1080p: about 500 MB a second). 4K means rendering at 2×.
+  (60 frames at 1600×600: 230 MB; full-frame 1080p: about 500 MB a second). A master at `--scale 2` means rendering at 2×,
+  about four times the memory and the render time (`references/contract.md`, "4K").
 - 8-bit frames lose HDR: glow added in the engine, or baked into the frames.
 - Frames from the Blender app, not the bpy module: on a Windows laptop with two GPUs the module's EEVEE ran
   on the integrated one.

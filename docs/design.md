@@ -42,6 +42,10 @@ timelines and spliced soundtracks to upstream commit `bdbad53`.
   through the template's `scripts/font-instances.py` (after pdoom-video's `analysis/make_fonts.py`):
   Canvas2D and opentype.js draw a variable font only at its default instance, so each width or weight a
   video uses becomes its own static file.
+- **A bigger master on request; the work stays at 1×.** The user often asks for "the final render in 4K",
+  though not every video gets one and not every video is 16:9, and a preview at 4K isn't practical. So the
+  preview, checks and drafts run at the video's own size, and a render at a higher scale makes again at
+  that size what can be made the same way, saying what plays enlarged ("4K: drawn again, not enlarged").
 
 ## Principles from the user
 
@@ -973,6 +977,35 @@ would come with a clone, which leaves `out/` behind, but every agent making a fo
 remember to add to it; in a clone, the first command given `--size` lists the format again. Switching
 keeps the moment, since the timeline is shared, while another video still opens in its own format.
 
+### 4K: drawn again, not enlarged
+
+A bigger master is a common ask ("the final render in 4K"), though not every video gets one and not every
+video is 16:9. `--scale N` makes it the engine's way: the page opens with `?scale=N`, the canvas, the render
+targets made at the default scale, `Layer2D` and `LineBatch` are made N times the size, and every frame is
+drawn again while scenes keep laying out in the video's own pixels. 4K is `--scale 2` for a 1080p video
+(2160×3840 for a vertical one, 2160×2160 for a square one, said in the render's offer) and `--scale 3` for
+720p; with `--size`, the scale applies to that format. What code draws comes out with real detail at that
+size, and render.ts stops if the page renders any other. The work stays at 1×: at `--scale 2` a frame has
+four times the pixels to draw, read back and encode (4 s of the example rendered 3.6 times as long), the
+preview would drop frames, and the director approves the picture at 1×, which the bigger frame must match,
+only sharper.
+
+Files are the exception: `--scale` makes nothing new from an image or a footage frame, which the GPU
+draws from its own pixels and enlarges wherever it has fewer than its size on screen times the scale.
+Beside sharp code-drawn type, a soft file shows more than at 1×. So before such a render, ahead of its
+verify and review so they see the final files, each file gets the most real pixels its source has, with
+its framing and frame numbers kept: footage cut again from a bigger original (`full/` only, so the
+preview's proxies stay as fast, and a 1× render draws those frames as cleanly as frames cut at 1×), a
+devlog's capture filmed again from its replay, a Blender or Manim clip rendered again, a found image at
+its source's largest. A generated image is not made again: the API takes no seed, so another generation is
+another picture, and it costs (the `cv-images-used` eval holds the 4K render to no image request). Its size
+is chosen when it is made instead, for its largest use at the scale the Deliver line names. What stays at
+its source's size plays enlarged, and the reply says which and why, the same for the director's own 1080p
+footage, which has no more detail to give. Making again what takes hours or tens of GB (minutes of a
+devlog's capture) is said first, with the enlarged shots as the other choice. render.ts's file names don't
+carry the scale, so stills compared at two scales, and a bigger master kept beside the 1× one, take their
+own `--out`.
+
 ### Footage: frames, streamed when long
 
 Footage plays as frames, never through a video element, which runs on the wall clock and seeks
@@ -982,8 +1015,9 @@ seconds of it are decoded at boot from the video's `assets/`. Minutes of it can'
 built, wrote their own streaming module, the second copying and extending the first, so the template has
 it (`src/engine/footage.ts`):
 
-- A shot is a folder at the project root, `footage/<shot>/`: `full/` frames for the render, `proxy/` frames at
-  half the size for the preview, and a `manifest.json` with their count and rate. The dev server serves the
+- A shot is a folder at the project root, `footage/<shot>/`: `full/` frames for the render (at the size
+  they're shown, times the scale for a bigger master: "4K: drawn again, not enlarged"), `proxy/` frames at half the
+  1× size for the preview, and a `manifest.json` with their count and rate. The dev server serves the
   root, so the preview and render.ts's own server reach it alike; the preview doesn't watch it.
 - Frames load ahead of need. A scene's `prepare(t0, t1)` asks for what a stretch shows (the frames its video
   frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.

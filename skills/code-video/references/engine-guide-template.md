@@ -63,10 +63,11 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   blur by default (`--samples auto` over the video's shutter, 0.2 unless `video.json` says otherwise, or a
   fixed 12 sub-frames where a stateful or `refine` scene shows: see "Motion blur and sampling") and a slow,
   fine encode
-  (`--preset slow --crf 16`). Add `--scale 2` for 4K, `--noaudio` for the picture alone, `--fps 30` for
-  another rate than `video.json`'s. Only the whole video, every entry, on the full-quality path takes the
-  name `<video>.mp4`; anything less is named for what it is, so it can't replace the delivery: a range
-  adds its times (`<video>-20-25.mp4`), `--only` adds `-only-<ids>`, `--draft` `-draft` and `--as-preview`
+  (`--preset slow --crf 16`). Add `--scale 2` for twice the size (4K from 1080p; first "Output scale (4K)"
+  on the files it shows), `--noaudio` for the picture alone, `--fps 30` for another rate than `video.json`'s. Only
+  the whole video, every entry, on the full-quality path takes the name `<video>.mp4`; anything less is
+  named for what it is, so it can't replace the delivery: a range adds its times (`<video>-20-25.mp4`),
+  `--only` adds `-only-<ids>`, `--draft` `-draft` and `--as-preview`
   `-preview` (the quick look above writes `<video>-20-25-only-hook-draft.mp4`). `--out <file.mp4>` names
   it yourself. Its first line says what it will write (`-> out/<video>/<video>.mp4: 1920x1080 at 60 fps,
   20 s (1200 frames)`): the size is `video.json`'s times `--scale`, so check it before the minutes go by.
@@ -120,8 +121,10 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   video's `audio/` (a synthesized score, say) is checked with `scripts/`, under bun's types, not with the
   scenes: bun's typing of `import.meta.hot` would break the browser program's.
 - render.ts prints `SCENE ERRORS` and browser console errors: read them.
-- 4K: add `--scale 2` to any mode (`stills` then saves full-resolution PNGs). Check your scene at both
-  scales: downscaled, the 4K frame should look like the 1x one, only sharper.
+- 4K: add `--scale 2` to any mode for a 1080p video (`--scale 3` for 720p; `stills` then saves
+  full-resolution PNGs). Work and preview at 1x, and keep a bigger scale for the delivery the director
+  asks for. Check your scene at both scales: downscaled, the 4K frame should look like the 1x one, only
+  sharper.
 - render.ts starts a private dev server for each run, without live reload, so a file saved mid-run (by
   you, the director or another agent) can't reload the page under it. `--url http://127.0.0.1:5174` uses a
   running server instead; one started with `AUDARA_NO_HMR=1 bunx vite` (PowerShell:
@@ -442,7 +445,8 @@ frame at `t` of a clip rendered from the entry's start.
 
 A few seconds of a clip are decoded at boot from the video's `assets/`. Anything longer (a capture, a screen
 recording, minutes of a clip) streams from a shot folder at the project root, `footage/<shot>/`:
-`full/000001.jpg ...` for the render, `proxy/000001.jpg ...` at half the size for the preview, and
+`full/000001.jpg ...` for the render, at the size they're shown (times the scale for a bigger master,
+"Output scale (4K)"), `proxy/000001.jpg ...` at half the 1x size for the preview, and
 `manifest.json` (`{ "frames": 720, "fps": 60 }`). `src/engine/footage.ts` loads the frames as the video
 reaches them and lets the oldest go. The code-video skill's `references/contract.md`, "Images and footage",
 has both ways, the ffmpeg commands and the reasons.
@@ -572,6 +576,13 @@ laying out in logical px (`W`, `H`, `ctx.W`, `ctx.H` never change); the engine h
   which is identical at 1× and keeps the 1× ink with sharper edges at 4K (`rampLine` does the same for the
   linear-ramp idiom). `hatch`, `engrave` and `aaStroke` already do this. LOD thresholds and supersampling
   offsets expressed in pixels should be logical (`fwidth(u) * PX_SCALE`, offsets `/ PX_SCALE`).
+- Offscreen canvases used as textures (atlases, text planes) keep their own size: make them `SCALE`× larger
+  (with `ctx.scale(SCALE, SCALE)`) if they are shown large, or they look soft at 4K.
+- Post (bloom, halation, CA, grain, vignette) and the HUD scale automatically; the bloom pyramid stays at
+  the logical resolution.
+- Images and footage frames keep the pixels they have, enlarged wherever they have fewer than their size
+  on screen times the scale: before a render at a higher scale, the code-video skill's
+  `references/contract.md`, "4K", says what to make again and what the reply says.
 
 ## Another format
 
@@ -600,10 +611,6 @@ format.
   shape can collide, or leave the safe area, in the other.
 - A format that needs another edit (another length, other scenes) is another video, with its own
   timeline and its own timing data from the soundtrack skill: `--size` shares everything but the frame.
-- Offscreen canvases used as textures (atlases, text planes) keep their own size: make them `SCALE`× larger
-  (with `ctx.scale(SCALE, SCALE)`) if they are shown large, or they look soft at 4K.
-- Post (bloom, halation, CA, grain, vignette) and the HUD scale automatically; the bloom pyramid stays at
-  the logical resolution.
 
 ## Motion blur and sampling
 

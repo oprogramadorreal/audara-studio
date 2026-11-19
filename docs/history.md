@@ -5161,3 +5161,96 @@ keep the harness's criterion and report both counts. Its review of the PR found 
 director's views named as committed when none had been saved yet, any stage said to be recoverable from the code
 where a look discarded without a commit isn't, the PR's table mixing the two wordings, and the evals README
 miscounting the set (four requests in Portuguese, five not games).
+
+## A 4K master: drawn again, and files made again where they can be (0.14.3, 2026-11-19)
+
+The user asked whether `--scale 2` on a 1080p video gives a real 4K video or an enlarged one, and what happens
+to footage recorded in 1080p. Then: "the final render in 4K" will be a common ask, the preview at 4K isn't
+practical, and such a render should make again at 4K everything it can, simply. Then: not every video gets a
+4K render, and not every video is 16:9, so the text has to hold for any of them.
+
+**What `--scale` does (read in the code).** The page opens with `?scale=N`; `src/engine/scale.ts` sets `SCALE`
+(a whole number from 1 to 4), and `gl.ts` makes the canvas, `makeRT`'s targets, `Layer2D` and `LineBatch` N times
+the size while scenes keep laying out in logical px. Every frame is drawn again, and render.ts stops when the page
+renders any other size. So the code-drawn picture is real detail at that size, and 4K is `--scale 2` for a 1080p
+video of any shape but `--scale 3` for 720p; `--size` and `--scale` combine (both go into the page's URL). Files are
+not drawn again: `footage.ts` never reads `SCALE`, and an image or a footage frame is a texture drawn from its own
+pixels with linear filtering, enlarged wherever it has fewer than its place on screen. Nothing in the skills said
+to cut footage again for a bigger master: `contract.md` said to cut it "at the size they're shown", with
+`scale=1920:-2` in its example; `math.md` said 4K footage frames are "rarely worth their memory"; `images.md`
+already said a plate needs twice its shown width, and the `cv-images-used` eval already holds a 4K render to no
+image request. render.ts's file names don't carry the scale: stills at two scales overwrite each other (it
+happened in the check below), and a 4K render takes the 1× MP4's name.
+
+**Measured** in a scratch project made by init, on a laptop RTX 5070:
+- Time: 4 s of the example (240 frames, 12 sub-frames each) rendered in 16.1 s at 1× and 58.1 s at `--scale
+  2`, 3.6 times as long.
+- Footage: a 0.5 s 4K source (ffmpeg's `mandelbrot`, fine detail everywhere) cut into two shots, `full/` at
+  1920 and at 3840 wide, the same 960-wide proxies, shown full frame. At `--scale 2` the 1920 cut kept a
+  sixtieth of the source's fine detail (variance of the Laplacian 7.2, the source frame 485; 34.2 dB PSNR
+  against it); the 3840 cut kept nearly all of it (463; 44.2 dB). At 1×, the 3840 frames drawn at half size
+  came out as clean as the 1920 cut (43.0 and 42.7 dB against an area downscale of the source), so one
+  `full/` at the bigger size serves both renders. The 3840 JPEGs took 3.4 times the room (16 MB against
+  4.7 MB for 30 frames). `verify` passed with both shots, and the `--scale 2` render was 3840×2160 with BT.709
+  tags.
+- Formats: stills of the example at `--size 1080x1920 --scale 2` came out 2160×3840, and with its
+  `video.json` set to 1280×720, at `--scale 3` 3840×2160.
+
+**What changed.**
+- `contract.md`, "4K": `--scale N` and which N is 4K for which video; a video renders at its own size unless
+  the director asks for more; the work stays at 1× and the time is estimated from a few seconds at the scale.
+  "Files keep the pixels they have" says what a render at a higher scale does with each kind of file, before
+  its verify and review so they see the final files, framing and frame numbers kept: footage cut again from
+  a bigger original (`full/` only), frames made by code (a devlog capture, Blender, Manim) rendered again,
+  found images at their source's largest, generated images kept (another generation is another picture, and
+  it costs; the reply names those that play enlarged and offers them made again with the cost), sources with
+  no more pixels kept. Re-making that takes hours or much disk is said first. Stills compared at two scales
+  take their own `--out`. The footage memory note gives the 4K numbers and what lowering `BUDGET.full` does
+  to what one call loads, in place of "lower it for frames bigger than 1080p".
+- `critique.md`, Delivery: a bigger master prepares its files before step 1, checks stills at both scales,
+  renders and posters at the scale, keeps sheets at 1×, takes its own names when the 1× MP4 stays a delivery
+  too (`<video>-4k.mp4`), and its reply says what plays enlarged.
+- `images.md`: a plate's size is chosen when it is made, for its largest use at the scale the Deliver line
+  names, with imagegen.py's estimate for that size; otherwise the default. `treatment-template.md`'s
+  Deliverables says why a 4K master is worth knowing early.
+- The engine guide (`docs/ENGINE.md` in new projects): the render line and the 4K bullet give the scale for
+  1080p and 720p and point to "Output scale (4K)", which gains a one-line pointer for files and the two
+  bullets that had drifted under "Another format"; the footage section gives `full/`'s size for a bigger
+  master. init's AGENTS.md Render line and the template README say the same in a clause.
+- devlog's `capture.md`: full frames at the size the shot fills in the final render, in its pixels; a bigger
+  master asked for later films again only what would play enlarged, same replay, framing and frame numbers.
+  `math.md` and `blender.md`: what a master at `--scale 2` costs a clip decoded at boot (streamed footage is
+  JPEG, so a clip with alpha can't stream).
+- `design.md`: "4K: drawn again, not enlarged", and the user's decision among "Decisions made with the user".
+
+SKILL.md is unchanged: it is at 7,999 bytes, and its Read-when line already sends 4K to `contract.md`.
+Existing projects keep their `docs/ENGINE.md` (init never replaces `docs/`); the skill's references reach
+them, and running init again refreshes the AGENTS.md section. Nothing in the engine or render.ts changed, and
+this is not a change of taste (the look, pacing or the critic's bar), so the gate in `evals/README.md` doesn't
+apply.
+
+**Codex's review** (GPT-6.2-Astra, Herdr tab 2) of the first version, all taken: 4K was written as `--scale 2`
+and 3840×2160 throughout, which gives a 720p video a 1440p master and a vertical one landscape plates; the
+images' cost line offered a 4K price on every paid job, a decision most videos don't need; stills at two scales
+overwrite each other and a 4K master takes the 1× MP4's name; `capture.md` doubled a size it had already set
+for the final render; files were made again after verify and the review, so those checks saw the old ones; and
+the measurements and a second checklist sat in the working text (now here, and a pointer in the guide).
+Its second round, also taken: the `-4k.mp4` name goes in the format's folder with `--size`; `images.md` and the
+treatment template still gave `--scale 2` as the 4K recipe; a square 1080×1080 becomes 2160×2160, which the
+render's offer now says; proxies are half the 1× size, not half the bigger `full/`, and a shot without proxies
+gets them first; and the render's offer estimates its time at the target scale.
+A third round, taken: the timing sample gets its own `--out` (on a short video its range is the whole video
+and would take the master's name), a shot given proxies loses its `"proxy": false`, and `design.md` no longer
+says every render target scales (the bloom pyramid and data targets stay at `pxScale: 1`).
+
+**The task eval, after the reviews:** `cv-images-used` on Claude Code (Opus 5.5) with this text passed all five
+assertions. The mock's images are placeholder shapes, so the session left them out and drew everything in code, as
+the case allows. Turn 2, "Render it at 4K.", read the 4K section and said nothing would play enlarged; it compared
+1× and 2× stills and timed 3 s at `--scale 2` under its own name, `timing-2x.mp4`. The stills caught a scene that
+multiplied its `Layer2D` blur lengths by `SCALE`, which the engine already keeps in logical px, so its watercolour
+edges would have been twice as soft at 4K. No image request came after turn 1. The master is 3840×2160, 15.0 s,
+BT.709, and verify passes. There was no footage in it.
+
+**Not run:** the other task evals (`cv-title-card` already states the 4K behavior and still holds); a real
+camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p video at a
+bigger scale; a 4K render with `--jobs`.

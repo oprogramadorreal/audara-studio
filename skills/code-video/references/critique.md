@@ -414,12 +414,13 @@ reply gives the director, every time:
   left unchanged), a flag from the mix's listening lists alone is listed for them, not fixed: on a finished
   explainer they had accepted, its voice check's worst-window rule listed 10 of 23 paragraphs. That covers
   the mix's heuristics only, never a failed verify, a determinism error or a wrong word;
-- the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
-  if one was asked for), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
-  costs), the review it gets first when the picture changed since the last critic round (Delivery, step
-  2) and that review's time, and that its fixes come back to the preview before the render; what it brings:
-  the MP4 with motion blur, sheets, a poster and the QC report; and that the project's `README.md` has the
-  commands to watch and render it without an agent;
+- the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale` if one
+  was asked for, and then the files that play enlarged and what re-making the others takes: contract.md,
+  "4K"), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render costs; at a higher
+  scale, from a few seconds rendered at it), the review it gets first when the picture changed since the
+  last critic round (Delivery, step 2) and that review's time, and that its fixes come back to the preview
+  before the render; what it brings: the MP4 with motion blur, sheets, a poster and the QC report; and that
+  the project's `README.md` has the commands to watch and render it without an agent;
 - when the round left a lot on disk, the line on what could go and what the next round needs (Disk).
 
 The link works when it's sent: after the preview restarted, or files it reads moved (footage re-captured, a
@@ -447,10 +448,11 @@ When the director says yes to a version they've previewed, or says not to wait:
    and a render still running when your turn ends can die with the session (an idle session's background
    commands are also stopped when memory runs low: two renders were lost that way, one at 86%). It renders
    with adaptive motion blur by default (`docs/ENGINE.md`, "Motion blur and sampling"; with a `stateful`
-   scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale 2` gives
-   4K). A `--draft` is never the delivery. A long video takes hours (a 13.5-minute one, an estimated 7 as
-   one render): past about an hour by its estimate, add `--jobs 3` (2 on a laptop; none when `render.ts gpu`
-   names SwiftShader, no GPU), which renders the same frames in pieces at once, and check after a few
+   scene on screen it takes a fixed 12 sub-frames, `--samples <n>` for another count; `--scale` gives a
+   bigger master, below). A `--draft` is never the delivery. A long video takes hours (a 13.5-minute one, an
+   estimated 7 as one render): past about an hour by its estimate, add `--jobs 3` (2 on a laptop; none
+   when `render.ts gpu` names SwiftShader, no GPU), which renders the same frames in pieces at once, and
+   check after a few
    minutes that its rate beats the estimate. If it stops, the same command with `--resume` renders only
    what's missing, while the scenes, data and assets are unchanged. Its progress lines give the rate over
    the last minute, a recent measurement rather than a forecast: early frames say little about the rest.
@@ -473,6 +475,16 @@ leave the safe area in the other. Its files land in `out/<video>/<W>x<H>/`, so e
 out moves there too: the MP4 `qc.py` reads, its `--cuts` and `--out`, both sheets' `--out`, and the
 critic round's folder. An explicit `--out` wins over `--size`, so a sheet left at `out/<video>/sheet.png`
 replaces the first format's (render.ts warns when an `--out` given with `--size` lands outside its folder).
+
+A bigger master ("the final render in 4K": `--scale 2` for a 1080p video, `--scale 3` for 720p;
+contract.md, "4K"), on the Deliver line or asked for now, is the same video drawn again at that scale, so
+everything else stays at 1×. Before step 1, give every file the video shows the most real pixels its
+source has (contract.md, "4K"), so verify and the review see the final files; check stills at the scale
+beside 1×; and estimate the time from a few seconds at the scale. Steps 3 and 6 then take `--scale`; the
+sheets stay at 1×, and qc.py reads the MP4 as it is. When a 1× MP4 stays a delivery too, the bigger one
+gets its own names in the same folder (`out/<video>/`, or the format's with `--size`): `--out
+<folder>/<video>-4k.mp4`, and the same for its poster and QC report. The reply adds what plays enlarged,
+and why.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a
