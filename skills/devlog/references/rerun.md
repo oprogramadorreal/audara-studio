@@ -11,7 +11,8 @@ about 16 and 9.
 
 How much of this a build needs depends on the thing: a tool needs scripted input, not a physics engine, and
 an explorer may need only its camera path saved. What every one needs is the result: each moment the log
-says a video may show can be got back, at any size, from a command. A project already under way keeps its own
+says a video may show can be got back, either from a recipe that runs it at any size or from a capture kept
+with its provenance, and with its revision where there is one. A project already under way keeps its own
 structure: list what it has first (its history, tags, replays, a debug camera) and add only what the moments
 need.
 
@@ -49,8 +50,10 @@ The cheapest that survives the next change and keeps the code clean:
 - **A commit and its command.** It costs the live code nothing and shows the stage as it was, bugs and limits
   included. It runs only what its code could, which is why the size parameter and the launch come first: a
   commit from before them can't draw at 4K. A tag when the stage deserves a name, annotated
-  (`git tag -a stage/plain-bricks -m "the first look"`), with the full hash beside it in the log: a branch
-  pushed without its tags leaves the name behind, and a push with `--follow-tags` carries annotated ones. To
+  (`git tag -a stage/plain-bricks -m "the first look"`), with the full hash beside it in the log. A branch pushed
+  without its tags leaves the names behind, and a commit only a local tag reaches is lost to every clone: on a
+  push they asked for, push the tags the log names by name (`git push origin stage/plain-bricks`) and check
+  they resolve in a clone. To
   try it: `git worktree add ../plain-bricks stage/plain-bricks`, install from the lockfile, run the command.
   A tag misses what git doesn't track: commit the assets it needs, or log where they are. Commit only your own
   changes; the director's staged or uncommitted work stays out. If they'd rather commit themselves, or not

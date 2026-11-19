@@ -4,8 +4,8 @@
 video starts, code-video reads it as research and films its moments from the commands it keeps. Both devlogs
 this skill comes from kept one, and in both the script's best beats came from it (a fix that saved only 9%
 became a running joke; a bug kept for the camera became a chapter). It is worth what it points to, so every
-entry names its commit, every moment a video may show says how to run it again, and every number in it was
-measured.
+entry names its commit when there is one, every moment a video may show says how to run it again or which
+capture keeps it, and every number in it was measured.
 
 ## The log
 
@@ -107,8 +107,9 @@ session, a compacted one or another tool keeps the rules without this skill load
   log's "Run it again" table with their commit (full hash, and a tag when named); a recipe is run once when
   kept, a preset again when its code changes. A capture only where it's the better way, logged with its size.
 - The output size comes from a parameter (an interface: a fixed viewport and pixel ratio), not the window.
-- Commits stay local unless the director asks to push (then with the log's tags); only your own changes go in
-  them.
+- Commits: <the director's choice: the agent commits each stage a video may show / they commit themselves /
+  none>. Local unless they ask to push, and then with the tags the log names, pushed by name; only your own
+  changes go in them.
 - The director's gates: <what they set, e.g. the prototype approved before any video work>.
 - When the video starts, code-video films these moments from their commands at the render's size (its
   references/filming-a-build.md).

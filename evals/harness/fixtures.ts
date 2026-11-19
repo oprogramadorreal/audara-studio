@@ -1,6 +1,6 @@
 // Small synthetic fixtures for the evals, generated with ffmpeg so the repo carries no media.
 // They only need to be realistic enough for a model to treat them as the files the user mentions.
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -126,8 +126,18 @@ function agentsFixture(dir: string) {
 export function ensureFixtures(dir: string) {
   dir = path.resolve(dir); // (ffmpeg runs in the repo: a relative folder would land somewhere else for it)
   mkdirSync(dir, { recursive: true });
-  for (const [f, body] of Object.entries(TEXT)) if (!existsSync(path.join(dir, f))) writeFileSync(path.join(dir, f), body);
-  for (const [f, args] of Object.entries(MEDIA)) if (!existsSync(path.join(dir, f))) ff([...args, path.join(dir, f)]);
+  // (the cache is kept between runs, so a fixture whose definition changed is made again: a text one when its
+  // body differs, a media one when the ffmpeg arguments beside it, in <name>.args, differ)
+  for (const [f, body] of Object.entries(TEXT)) {
+    const p = path.join(dir, f);
+    if (!existsSync(p) || readFileSync(p, 'utf8') !== body) writeFileSync(p, body);
+  }
+  for (const [f, args] of Object.entries(MEDIA)) {
+    const p = path.join(dir, f), stamp = `${p}.args`, key = JSON.stringify(args);
+    if (existsSync(p) && existsSync(stamp) && readFileSync(stamp, 'utf8') === key) continue;
+    ff([...args, p]);
+    writeFileSync(stamp, key);
+  }
   agentsFixture(dir);
   return dir;
 }
