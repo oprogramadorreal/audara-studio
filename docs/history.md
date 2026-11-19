@@ -42,6 +42,9 @@ Contents
 - An editor watching the eval runs: 1,559 searches at once (0.13.1, 2026-11-10)
 - The preview's frames: one a refresh, and footage after a seek (0.13.2, 2026-11-13)
 - More languages: subtitles, packages and dubbed tracks (0.14.0, 2026-11-17)
+- A prototype for a video about its subject is code-video's, not devlog's (0.14.1, 2026-11-17)
+- A 4K master: drawn again, and files made again where they can be (0.14.3, 2026-11-19)
+- devlog keeps the log and moments that run again; filming moves to code-video (0.15.0, 2026-11-19)
 
 ## Definition of done
 
@@ -5254,3 +5257,138 @@ BT.709, and verify passes. There was no footage in it.
 **Not run:** the other task evals (`cv-title-card` already states the 4K behavior and still holds); a real
 camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p video at a
 bigger scale; a 4K render with `--jobs`.
+
+## devlog keeps the log and moments that run again; filming moves to code-video (0.15.0, 2026-11-19)
+
+The user asked to review devlog: "It needs to work when user asks to develop a prototype too (not necessarely
+a devlog explicitly) ... Anything that he wants to develop that is not a video yet, should activate this
+skill. And the skill must be simple: it will not make videos or take pictures of everything." It should do
+mainly two things: record development decisions, trade-offs, concepts and anything a later video could use,
+for code-video to find; and have the agent write the code so that a part of the build can be run again (a
+primitive look the final game replaced, a bug that was fixed). Their reason for avoiding pictures and
+recordings during the build: "the final render of the video might use a very different resolution (devlog
+photos and videos being taken in 1080p but the final render is in 4K). It would be more flexible if the agent
+could regenerate scenes of the prototype in 4K when making the final render." They asked to be told of any
+disagreement before anything changed.
+
+**Two points put to them first.**
+- **How far it loads.** Read literally, "anything he wants to develop" would load devlog on every coding
+  request in every session the plugin is installed in (a bug fix at work, a refactor), and write a log and an
+  AGENTS.md section into those repositories. Codex's independent view had gone wider still ("build or change
+  software"). Their answer: "No, I do not want it to load on everything. We need to be smart here to activate
+  only when the user has the intention of creating a video about what is being developed later. ... This will
+  be very annoying and bad ux." So devlog loads when something is built with a video about it in view, now or
+  later, whether or not they say devlog or prototype; a bare "build me a Snake game" stays a near-miss.
+- **Captures.** The proposal kept a narrow exception (a moment that can't be made to run again gets a capture).
+  They loosened it further: "It's not supposed to be strict: if a screenshot or video is the better approach,
+  do it. Just keep in mind that we later gonna need that in a video with different resolution. ... But also we
+  should not 'spoil' too much our code just because we want to avoid a screenshot or video." So a run again is
+  the first choice, a capture the better one when keeping the moment runnable would clutter the code or it
+  won't come back, at the largest size practical and logged with its size.
+
+**How it was read.** devlog's SKILL.md and references, design.md's section, the 0.12.0, 0.14.1 and 0.14.3
+entries, contract.md's footage and 4K sections, the trigger set and task cases. Codex (GPT-6.2-Astra, Herdr tab
+2) gave an independent view before seeing the plan, reviewed the plan, then reviewed the branch in three
+rounds, read-only; the Claude Code session decided and made the edits.
+
+**What changed.**
+- **devlog's SKILL.md** (7,254 bytes, from 7,992): two jobs said up front, and nothing about making the video.
+  The description asks for a video about the build to be mentioned, in any words, and names a game, an app or
+  a tool asked for on its own as a near-miss (below). With no video in view, a stray load builds what was asked
+  and skips the rest: no log, no AGENTS.md section, no repository. The first reply says, in a line, that a log is kept and the stages a video may show stay runnable, in a
+  local git repository with a commit per such stage, nothing pushed, only the agent's own changes in its
+  commits; they can turn any of it off. Foundations sized to the thing before the first feature: the output
+  size from a parameter (an interface keeps its layout, at a fixed viewport and pixel ratio), and where timing
+  changes the result, the state apart from drawing, a fixed tick and seeded randomness; a camera that moves
+  nothing; one launch for a stage, its inputs and a size. The log takes an entry when a video could use it
+  (most work needs none), with its commit when there is one and how to run it again or the capture that keeps
+  it; a number keeps its method and revision, since the meshing fix measured 9% and, rebuilt later, 22%. The
+  ways back, cheapest first: a commit and its command (run once when kept; an annotated tag with the full hash
+  in the log when it deserves a name), a preset when an old look is a second view over the same state, inputs
+  as data with a hash, a fixed bug's commit before the fix with the smallest input that triggers it, and a
+  capture where that's better. Kept from before: an ETA per stage, one piece first, trade-offs put to them,
+  each version's role, what stays theirs. Cut: the opening message about title, thumbnail, music, voice,
+  characters and repository (code-video's Brief asks those when a video starts), "Enough for the video" and
+  "The video".
+- **`references/rerun.md`** (was `capture.md`): the foundations, the ways back with their costs (a commit
+  costs the live code nothing but runs only what its code could, which is why the size parameter comes first;
+  a preset has to keep drawing as the state changes; a tag is pushed by name or lost to every clone), kinds of
+  thing (a game, a simulation, an explorer, a tool, something with no picture of its own), and light checks: a
+  recipe run once when kept, a preset again when its code changes, a representative moment at two sizes.
+- **`references/log-template.md`:** a "Run it again" table (moment, how to run it, the full hash and any tag,
+  the sizes it takes, its role in a video), concepts in the ledger, the meshing entry with a run line, and an
+  AGENTS.md section that records the director's commit choice.
+- **code-video's `references/filming-a-build.md`** (new): what left devlog. The log in the script (research,
+  not the outline; story order; the picture shows the line; explanations; their lines; provenance, the number
+  measured when it happened), the build's own drawing in a scene where it runs in the browser from `t` or a
+  fixed tick, or a capture page writing frames into a streamed shot at the render's size, shot folders and
+  manifests, a capture from the build used at its own size (a clip as footage, a still as an image), and the
+  checks. code-video's SKILL.md has no room (7,999 bytes), so contract.md's footage and 4K sections,
+  treatment-template.md (read at the Brief), init's AGENTS.md section and devlog's own AGENTS.md section point
+  to it.
+- **Around it:** init's AGENTS.md section says what devlog does now and what a video from such a build is
+  owed; video-repo keeps a build's replays, captures and the tags its log names (pushed by name), and its
+  pre-video setup says devlog commits its stages (the bytes came from its `*.mp4` sentence, 7,999); video-ideas
+  sends "make it" through devlog when something is built, not by genre; the README, AGENTS.md, both manifests'
+  descriptions and design.md (the section edited in place, the skill list, the 4K lines, the tree).
+- **Routing.** The 0.14.1 near-misses dl-23 and dl-25 (a prototype built before a video about its subject) now
+  load devlog: that verdict held for a skill that would put the prototype in its own folder, film as it went
+  and take the script from the log, and the user's first message named the case. dl-05 (a video about a
+  project already built) and dl-08 (filming the lander again inside a log project) are production work now,
+  code-video's cv-28 and cv-29. New: dl-26, more building in the same lander project (a pair with dl-08), dl-27
+  to dl-29 with a video in view and none of the words devlog, prototype or making-of, and near-misses for a
+  build with no video (dl-30, keyboard shortcuts in an existing app; dl-31, a command-line tool).
+- **Task cases:** `dl-build-first` never says devlog, starts with no repository, ends at the build, and grades
+  both looks at 1920x1080 and 3840x2160 from the log's commands after the whole game has gone neon, plus a turn
+  where the director brings `glitch.mp4` of a one-off tunnelling: the diagnosis graded apart from keeping the
+  clip as a capture. `dl-explorer-video` takes the explorer's own drawing in a scene or streamed frames, and
+  compares draws with draws.
+- **The fixtures cache:** `ensureFixtures` skipped any file already present, so a changed fixture kept its old
+  version (the first probes of dl-08, dl-26 and cv-29 ran on the old lander log). A text fixture is now written
+  again when its body differs, a media one when its ffmpeg arguments do, each to a file of its own renamed into
+  place, so two harnesses never copy half of one.
+
+**Codex's rounds.** Its independent view agreed on the two jobs and on dropping routine captures, and went
+wider on routing than the user wanted. On the plan: video intent required, with a pair on one fixture
+(building loads devlog, filming code-video); a recipe only for selected moments, not every entry; a capture
+allowed to win on cost or fidelity; the build case ending at the build and graded at two sizes after the build
+moved on. Its first review of the diff found seven issues, all taken: the glitch fixture was a test pattern
+with nothing to see at 0:03, and the case required a fix the game might not need; the explorer case compared
+frames with the finished video, which titles and grading change; devlog's commits contradicted video-repo's
+"nothing commits on its own"; filming-a-build.md assumed every moment had a command; the checks re-ran old
+commits at every milestone; a tag pushed without its name is lost; and video-ideas routed by genre. Its second
+found the stale fixtures, `--follow-tags` sending the wrong tags, the capture and commit opt-out missing from
+the reusable texts, and a passing test claiming more than it showed, all fixed. Its third found a race between
+two harnesses refreshing a fixture, fixed. Shown the Fable result on a bare Pong request, it read "even if they
+never say devlog or prototype" as stressing which evidence may be absent right before a list with games in it,
+advised testing the stricter wording alone first, and proposed the guard after a stray load.
+
+**What was checked.**
+- **Spec checks:** devlog, code-video, video-repo and video-ideas pass the three validators, no byte-order mark;
+  devlog 7,254 bytes (description 983 characters), code-video 7,999, video-repo 7,999, video-ideas 7,998.
+- **Routing, the shipped description.** Opus 5.5 at low effort, three runs each: devlog 31/31, every
+  should-load run loading it (48 of 48) and no near-miss run (0 of 45); code-video loaded on cv-28 and cv-29 in
+  3 of 3 each. Fable 5.2 at xhigh, the 0.14.1 session's model and effort, one run each: 30/31, every should-load
+  request loading it; the miss is dl-08, filming the lander again, where Fable called code-video and then read
+  devlog's SKILL.md and `rerun.md` to learn the log's conventions, in 4 of 4 runs counting three more: a read
+  counts as a load, but no run called devlog or began its work (a log, AGENTS.md, a repository). Left as it is.
+- **The draft before it** said "Use it whenever the user builds something with a video about it in view ...
+  even if they never say devlog or prototype". Opus at low effort: 31/31 over three runs, with one dl-08 run
+  loading devlog beside code-video (the first, one-run pass: 30/31, the same). Fable at xhigh: dl-21, "Let's
+  start by building the game: a Pong clone", loaded devlog 3 of 3 by Skill calls, the load the user called bad
+  UX, and 0.14's description 2 of 3 on the same request; dl-12, dl-30 and dl-31 0 of 3. The shipped wording
+  ("Use it when the user builds something and says a video about it is planned, now or later, in any words ...
+  Not for a build where no video is mentioned (most builds: a game, an app or a tool asked for on its own)")
+  took dl-21 and dl-12 to 0 of 3 on Fable and kept dl-23, dl-26, dl-27 and dl-28 at 3 of 3.
+- **Probes on the old fixture:** a three-run probe after the first fixes ran dl-08 and cv-29 on the old lander
+  log, which the cache kept: dl-08 loaded devlog 2 of 3 (once without code-video) and cv-29 code-video 2 of 3.
+  They measure the old fixture, not the text.
+- **Also:** `bun evals/tasks/cases.ts` writes every `case.json`; the fixtures parse and, in a fresh folder, all
+  are made with no temporary file left; `init.ts` builds.
+- **Not run:** the task cases (an hour or more each, waiting for the user's yes), routing on Codex (devlog has no
+  scripts, so its Codex near-misses fail on the load) and on Fable, the other skills' sets, and a build made with
+  this text, so whether it keeps what a video needs with fewer notes is expected, not measured.
+
+Considered and left out: loading on any build; no captures at all; a commit, tag and clean checkout for every
+log entry; re-running every recipe at each milestone; a line in code-video's SKILL.md (no room; four other
+places point to the new reference).

@@ -108,8 +108,11 @@ tool: the plugin loads in every session, and a log in every repository would be 
 (video-ideas'), an explainer, a promo, a tutorial, a demo of a finished app, code being typed, a log with no video,
 a pixel-art game animation with nothing built, and production work: a video about a project already built
 (dl-05) and filming the lander again (dl-08, the same fixture as dl-26), both code-video's (cv-28, cv-29). dl-21
-and dl-22 are the same request to start by building a game, without and with a video in view, and dl-26 and
-dl-08 the same project, building and filming. A run building an explorer may read devlog's SKILL.md or
+and dl-22 are the same request to start by building a game, without and with a video in view: on Fable 5.2 at
+xhigh, dl-21 loaded devlog in 2 of 3 runs on 0.14's description and 3 of 3 on a draft that said "even if they
+never say devlog or prototype", and 0 of 3 once the description asked for a video to be mentioned. dl-26 and
+dl-08 are the same project, building and filming; on Fable at xhigh, dl-08 loads code-video and then reads
+devlog's SKILL.md for the log's conventions (4 of 4 runs on 0.15.0), which counts as a load. A run building an explorer may read devlog's SKILL.md or
 `references/rerun.md` while it browses the skills, and a read of SKILL.md counts as a load. It has no scripts,
 so, as with video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the
 load.
