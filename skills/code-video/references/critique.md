@@ -483,8 +483,8 @@ source has (contract.md, "4K"), so verify and the review see the final files; ch
 beside 1×; and estimate the time from a few seconds at the scale. Steps 3 and 6 then take `--scale`; the
 sheets stay at 1×, and qc.py reads the MP4 as it is. When a 1× MP4 stays a delivery too, the bigger one
 gets its own names in the same folder (`out/<video>/`, or the format's with `--size`): `--out
-<folder>/<video>-4k.mp4`, and the same for its poster and QC report. The
-reply adds what plays enlarged, and why.
+<folder>/<video>-4k.mp4`, and the same for its poster and QC report. The reply adds what plays enlarged,
+and why.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),
 the MP4, the sheets and the poster (their paths); the QC report's numbers in two or three lines, with a
