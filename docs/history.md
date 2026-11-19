@@ -5307,9 +5307,8 @@ rounds, read-only; the Claude Code session decided and made the edits.
   in the log when it deserves a name), a preset when an old look is a second view over the same state, inputs
   as data with a hash, a fixed bug's commit before the fix with the smallest input that triggers it, and a
   capture where that's better. Kept from before: an ETA per stage, one piece first, trade-offs put to them,
-  each version's role, what stays theirs. Cut: the opening message about title, thumbnail, music, voice,
-  characters and repository (code-video's Brief asks those when a video starts), "Enough for the video" and
-  "The video".
+  each version's role, what stays theirs. Cut: the opening questionnaire (a title, a thumbnail, music, a
+  voice, characters, a repository), "Enough for the video" and "The video".
 - **`references/rerun.md`** (was `capture.md`): the foundations, the ways back with their costs (a commit
   costs the live code nothing but runs only what its code could, which is why the size parameter comes first;
   a preset has to keep drawing as the state changes; a tag is pushed by name or lost to every clone), kinds of
@@ -5369,9 +5368,10 @@ advised testing the stricter wording alone first, and proposed the guard after a
 - **Routing, the shipped description.** Opus 5.5 at low effort, three runs each: devlog 31/31, every
   should-load run loading it (48 of 48) and no near-miss run (0 of 45); code-video loaded on cv-28 and cv-29 in
   3 of 3 each. Fable 5.2 at xhigh, the 0.14.1 session's model and effort, one run each: 30/31, every should-load
-  request loading it; the miss is dl-08, filming the lander again, where Fable called code-video and then read
-  devlog's SKILL.md and `rerun.md` to learn the log's conventions, in 4 of 4 runs counting three more: a read
-  counts as a load, but no run called devlog or began its work (a log, AGENTS.md, a repository). Left as it is.
+  request loading it; the miss is dl-08, filming the lander again. In that run Fable called devlog's skill and then
+  code-video's; in three more runs it called code-video and then read devlog's SKILL.md (two of them `rerun.md`
+  too) for the log's conventions. All four count as loads, all four loaded code-video, and none began devlog's
+  work (a log, AGENTS.md, a repository). Left as it is.
 - **The draft before it** said "Use it whenever the user builds something with a video about it in view ...
   even if they never say devlog or prototype". Opus at low effort: 31/31 over three runs, with one dl-08 run
   loading devlog beside code-video (the first, one-run pass: 30/31, the same). Fable at xhigh: dl-21, "Let's
@@ -5379,15 +5379,18 @@ advised testing the stricter wording alone first, and proposed the guard after a
   UX, and 0.14's description 2 of 3 on the same request; dl-12, dl-30 and dl-31 0 of 3. The shipped wording
   ("Use it when the user builds something and says a video about it is planned, now or later, in any words ...
   Not for a build where no video is mentioned (most builds: a game, an app or a tool asked for on its own)")
-  took dl-21 and dl-12 to 0 of 3 on Fable and kept dl-23, dl-26, dl-27 and dl-28 at 3 of 3.
+  took dl-21 from 3 of 3 to 0 of 3 on Fable (dl-12 stayed at 0 of 3) and kept dl-23, dl-26, dl-27 and dl-28
+  at 3 of 3.
 - **Probes on the old fixture:** a three-run probe after the first fixes ran dl-08 and cv-29 on the old lander
   log, which the cache kept: dl-08 loaded devlog 2 of 3 (once without code-video) and cv-29 code-video 2 of 3.
   They measure the old fixture, not the text.
 - **Also:** `bun evals/tasks/cases.ts` writes every `case.json`; the fixtures parse and, in a fresh folder, all
   are made with no temporary file left; `init.ts` builds.
+- **What ran, in all:** on Opus, devlog's whole set three times and cv-28 and cv-29 three times each; on Fable,
+  devlog's whole set once, plus the repeats above (dl-08, dl-12, dl-21, dl-23 to dl-28, dl-30, dl-31).
 - **Not run:** the task cases (an hour or more each, waiting for the user's yes), routing on Codex (devlog has no
-  scripts, so its Codex near-misses fail on the load) and on Fable, the other skills' sets, and a build made with
-  this text, so whether it keeps what a video needs with fewer notes is expected, not measured.
+  scripts, so its Codex near-misses fail on the load), the other skills' whole sets, and a build made with this
+  text, so whether it keeps what a video needs with fewer notes is expected, not measured.
 
 Considered and left out: loading on any build; no captures at all; a commit, tag and clean checkout for every
 log entry; re-running every recipe at each milestone; a line in code-video's SKILL.md (no room; four other

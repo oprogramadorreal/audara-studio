@@ -111,8 +111,9 @@ a pixel-art game animation with nothing built, and production work: a video abou
 and dl-22 are the same request to start by building a game, without and with a video in view: on Fable 5.2 at
 xhigh, dl-21 loaded devlog in 2 of 3 runs on 0.14's description and 3 of 3 on a draft that said "even if they
 never say devlog or prototype", and 0 of 3 once the description asked for a video to be mentioned. dl-26 and
-dl-08 are the same project, building and filming; on Fable at xhigh, dl-08 loads code-video and then reads
-devlog's SKILL.md for the log's conventions (4 of 4 runs on 0.15.0), which counts as a load. A run building an explorer may read devlog's SKILL.md or
+dl-08 are the same project, building and filming; on Fable at xhigh, dl-08 loads devlog beside code-video in 4 of 4
+runs on 0.15.0, once by a Skill call and three times by reading its SKILL.md for the log's conventions, with
+no devlog work begun. A run building an explorer may read devlog's SKILL.md or
 `references/rerun.md` while it browses the skills, and a read of SKILL.md counts as a load. It has no scripts,
 so, as with video-ideas and nutlight-style, its use can't be seen on Codex and its Codex near-misses fail on the
 load.
