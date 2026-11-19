@@ -211,6 +211,14 @@ what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K rend
 2560×1440 counts as experimental), so for a move at 4K, keep the camera still and move layers, upscale, or
 use a provider that goes bigger. A soft background behind sharp code-drawn type survives a 1.5× upscale.
 
+The size is chosen when the image is made, since a 4K render doesn't make it again on its own (another
+generation is another picture, and costs: `references/contract.md`, "4K"). When the Deliver line names a
+4K master, plates are generated at 3840×2160 from the start (about $0.10 each at high, against $0.055 at
+the default 2560×1440).
+When it doesn't, the line that states the images' cost gives both, and says that a 4K master asked for
+later would show the smaller ones enlarged; the pick goes in Decisions. A found image is kept at its
+source's largest size, whatever the render.
+
 ## The record
 
 Every file in `videos/<video>/assets/` that didn't come from code has a row in `assets/SOURCES.md`:

@@ -264,9 +264,10 @@ The rule, applied to three.js:
   on the wall clock and seeks asynchronously, `render()` can't wait, and the preview, stills and render
   would each show a different frame for the same `t`. It plays as frames: a few seconds decoded at boot from
   the video's `assets/`, as here, and anything longer streamed from `footage/` (below). Extract the frames
-  with ffmpeg at the size they're shown and at the footage's own rate (`-ss` before `-i` cuts on the exact
-  frame; `f_0001.jpg` is the frame at `<in>`), into a folder made first, since ffmpeg doesn't create one
-  (`mkdir -p` works in PowerShell too):
+  with ffmpeg at the size they're shown (twice that for a 4K render, from a source that has it: "4K",
+  below) and at the footage's own rate (`-ss` before `-i` cuts on the exact frame; `f_0001.jpg` is the
+  frame at `<in>`), into a folder made first, since ffmpeg doesn't create one (`mkdir -p` works in
+  PowerShell too):
 
 ```
 mkdir -p videos/<video>/assets/<clip>
@@ -303,7 +304,7 @@ the project had changed on purpose). Footage that fits in memory can stay on the
 
 ```
 footage/<shot>/
-  full/000001.jpg ...    the frames at the size they're shown: what render.ts reads
+  full/000001.jpg ...    the frames at the size they're shown (twice that for a 4K master): what render.ts reads
   proxy/000001.jpg ...   the same frames at half that size: what the preview reads
   manifest.json          { "frames": 720, "fps": 60 }: how many files full/ holds, and their rate
                          ("proxy": false when there is no proxy/)
@@ -353,7 +354,9 @@ override dispose() { this.clip.dispose(); }
   and 360 proxies. Past it, the least recently asked for are let go, but never the one a shot shows while
   it plays, nor one asked since a prepare render.ts waits for began, until it settles and for a few prepares
   after, nor one the preview loads on demand for the frame it draws: a frame about to be drawn stays
-  (`BUDGET` in `footage.ts`; lower it for frames bigger than 1080p).
+  (`BUDGET` in `footage.ts`). 4K frames take four times as much, about 2.4 GB for the 72; on a machine
+  short of memory, lower `BUDGET.full` (36 holds about 1.2 GB). That also lowers what one call loads, so
+  check that no scene asks for more at once (a stateful scene's preroll at 60 fps asks for 61).
   Every scene of the timeline stays loaded, so a shot that has played lets its last frame go too, with its
   texture's GPU copy, and loads it again when it's shown again (in the preview, black until the first frame
   is in): a devlog's 140 shots stay within the budget. Those kept can
@@ -378,9 +381,15 @@ every frame; a frame taken out of `full/` stopped the render with its URL.
 
 ## 4K
 
-`--scale 2` renders twice the logical size. The director approves at 1×, so the 4K frame must be the same
-picture, only sharper. Scenes lay out in logical px (`W` and `H` never change), and the engine scales its
-targets, `Layer2D`, `LineBatch` and the post. What it can't scale for a scene:
+`--scale 2` draws every frame again at twice the logical size (3840×2160 for a 1920×1080 video), rather
+than enlarging a 1080p frame. The director approves at 1×, so the 4K frame must be the same picture, only
+sharper. The work stays at 1×: the preview, stills, sheets, verify, drafts and the critic's rounds, since a
+4K frame has four times the pixels to draw, read back and encode (4 s of the example took 3.6 times as
+long), and the preview would drop frames. A 4K master is the delivery's render and its poster
+(`poster --scale 2`); to look at 4K detail before then, take `stills --scale 2`. Estimate its time from a
+few seconds rendered at `--scale 2`, not from the 1× draft. Scenes lay out in logical px (`W` and `H`
+never change), and the engine scales its targets, `Layer2D`, `LineBatch` and the post. What it can't
+scale for a scene:
 - In GLSL, `gl_FragCoord`, `fwidth` and `dFdx` are physical px. `FRAG_PX` is the fragment's position in
   logical px, with its origin at the bottom left like `gl_FragCoord`, while Canvas2D and `comp.draw`'s
   `rect` count from the top left. `PX_SCALE` converts.
@@ -391,7 +400,40 @@ targets, `Layer2D`, `LineBatch` and the post. What it can't scale for a scene:
 - three.js's own lines (above). `makeRT(w, h)` takes logical px; `{ pxScale: 1 }` is for a target sized by
   its data.
 
-Check with stills at both scales: downscaled, the 4K frame should match the 1× one. The rest is in
+**Files keep the pixels they have.** `--scale` makes nothing new from a file: an image or a footage frame
+is drawn from its own pixels, enlarged on the GPU wherever it has fewer than its place on screen at 4K (its
+size there in logical px, times two). Code-drawn type and lines beside it come out sharp, which makes a
+soft file stand out more than at 1×. So before a 4K render, list every file the video shows, compare its
+pixels with that size, and give each the most real detail its source has:
+- **Footage cut from a bigger original** (a 4K camera file, a screen recording made at a higher
+  resolution): cut `full/` again from the original at twice the size it's shown (`scale=3840:-2` for a shot
+  that fills the frame), the same frames by the same `-ss` and rate; `proxy/` stays as it is, so the
+  preview is as fast as before. A 1× render reads them too and draws them at half size as cleanly as frames
+  cut at 1× (measured on a 4K source: 43.0 against 42.7 dB from an ideal downscale), so one cut serves
+  both. A shot cut at 1920 and shown full frame at 4K measured a sixtieth of the source's fine detail
+  (Laplacian variance 7 against 485; cut at 3840, 463). A clip decoded at boot from `assets/` takes four
+  times the memory at that size (33 MB a frame): past a second or two, stream it from `footage/` instead
+  (streamed frames are JPEG, so a clip with alpha stays at boot, cropped to its content).
+- **Frames made by code** (a capture of something built, the devlog skill's `references/capture.md`; a
+  Blender or Manim render): render them again at twice the size, the same frames, only sharper. Re-make
+  only the stretches the timeline shows.
+- **Images:** a found one at the largest size its source offers. A generated one stays: the API takes no
+  seed, so making it again makes another picture, and that costs. One under twice its shown size plays
+  enlarged; the reply names it, and offers it made again at 3840×2160 with its cost (the old one as
+  `--ref` keeps the composition), shown in the preview before any render uses it. When the Deliver line
+  asks for 4K from the start, plates are generated at that size (`references/images.md`, "Size and 4K").
+- **A source with no more pixels** (the director's 1080p footage, a small photo): it stays, and the reply
+  says it plays enlarged. Enlarging it again with ffmpeg first adds no detail the GPU's doesn't.
+
+Tell the director before the render when re-making takes long or takes room (a devlog's minutes of
+capture filmed again at 4K: hours of capture, and three to four times the 1080p frames' room on disk), with
+the other choice, those shots enlarged from 1080p. A streamed frame at 4K decodes to 33 MB, so the footage
+budget's 72 full frames come to about 2.4 GB in each browser render.ts starts (`--jobs 3` starts three).
+
+**Check, then deliver.** Stills at `--scale 2` at a moment of each scene that shows a file, a canvas of its
+own or hairlines, beside the same at 1×: downscaled, the 4K frame should match the 1× one, and looked at
+full size, a file still soft is one the list missed. The render's first line says `3840x2160 (2x the
+video's 1920x1080)`. The reply says what in it stays at its source's size, and why. The rest is in
 `docs/ENGINE.md`, "Output scale (4K)".
 
 ## Performance and the cheaper preview path

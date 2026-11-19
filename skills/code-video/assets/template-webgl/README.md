@@ -21,7 +21,8 @@ long one: add `--jobs 3` to render it in pieces on three browsers at once (2 on 
 stops, run the same command with `--resume`. It renders at the size and frame
 rate the video was made at (set in `videos/<video>/video.json`), and its first line says what it will
 write, such as `1920x1080 at 60 fps, 20 s`: if that isn't what you want, stop it with Ctrl+C. Add
-`--scale 2` for twice the size (4K from 1080p), or `--draft` for a quick look without motion blur.
+`--scale 2` for twice the size (4K from 1080p: every frame drawn again, while images and footage show the
+pixels their files have), or `--draft` for a quick look without motion blur.
 
 With several videos, add `--video <name>` (its folder in `videos/`) to either command. A video made in a
 second format too, a vertical version say, takes `--size 1080x1920` on either command; its render goes to

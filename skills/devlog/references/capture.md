@@ -64,7 +64,11 @@ The manifest holds what a later session needs to re-shoot it and what a scene ne
 Size the frames for where they play: full frames at the size the shot fills in the final render, proxies
 for the preview. JPEG at high quality is about 0.3-0.5 MB a 1080p frame, so a minute at 60 fps is 1-2 GB:
 keep full frames only for shots the cut uses, and let a retired take go to a folder outside the video's
-paths rather than deleting it while it may still be compared.
+paths rather than deleting it while it may still be compared. A 4K master films the shots again at twice
+that size rather than enlarging them (code-video's contract.md, "4K"): the same replay at 3840×2160 into
+`full/`, the manifest's `size` with it, proxies left as they are. Only the stretches the cut shows, since
+each frame takes three to four times the room and up to four times the capture time; say what that comes
+to before starting.
 
 ## Kinds of thing
 

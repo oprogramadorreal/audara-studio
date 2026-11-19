@@ -72,6 +72,8 @@ uv run --no-project --python 3.12 --with "manim[typst]" manim -qh --fps 60 --tra
   when extracting (an ffmpeg `geq` of r·255/alpha per channel), or the edges come out thin and dark.
 - Play the frames through the footage path (`references/contract.md`, "Images and footage"). Memory grows
   with area × frames (5 s of a 690×744 crop: about 600 MB), so end the clip on its last move and let the
-  engine hold the final frame; 4K footage frames are rarely worth their memory.
+  engine hold the final frame. For a 4K master, rendered again at twice the size it takes four times that
+  (that crop: about 2.4 GB), worth it for a short clip shown large; a long one plays enlarged, and the reply
+  says so (`references/contract.md`, "4K"; streamed footage is JPEG, without the alpha these clips need).
 - A deep `UV_CACHE_DIR` on Windows breaks the install (a dependency's build passes 260 characters): use the
   default cache or a short one.
