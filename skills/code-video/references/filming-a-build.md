@@ -81,7 +81,7 @@ are. Say what the time and room come to before starting.
 
 **The same picture, finer.** Downscaled, the bigger frames match the approved ones (contract.md, "4K", its
 check). When a frame drawn at the new size, downscaled, doesn't match the approved one, because the build
-decides things by the pixel (a star's or a glare's size, where detail fades in, which level of a map is read),
+decides things by the pixel (a star's or a glare's size, where detail fades in, where a finer map takes over),
 and correcting that code isn't practical, weave each frame: N×N renders at the approved size, offset by
 fractions of a pixel and interleaved into a frame N times larger, each one a frame the approved capture could
 have drawn. Keep what spans the frame the same across the N² (the time, the exposure, a glare from their mean),

@@ -5440,7 +5440,9 @@ with programming explanations along the way, mastered at 4K.
   only when a downscaled frame doesn't match, assets waited for at launch rather than stepped with the tick, the
   commit or tag the log names, and kept captures rather than every screenshot. All were made; it accepted the
   weave's pitfalls staying beside it and the third build's facts in rerun.md without attribution (history.md
-  carries it). Its verdict: AGREE.
+  carries it). Its verdict: AGREE. On a second read the reviewer agreed the PR was ready to merge and suggested
+  "where a finer map takes over" in place of "which level of a map is read" in the weave paragraph, since map
+  reads follow the output's pixel; adopted, with Codex agreeing.
 - **What changed.** rerun.md: the third build in its opening; "Any size" names the aim (downscaled, the bigger
   frame matches) and which pixel each kind of decision uses, with a sub-pixel offset in the projection keeping
   the weave open; a foundation for what a frame inherits (assets waited for at launch; what changes over frames
