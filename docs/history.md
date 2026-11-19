@@ -5243,6 +5243,14 @@ A third round, taken: the timing sample gets its own `--out` (on a short video i
 and would take the master's name), a shot given proxies loses its `"proxy": false`, and `design.md` no longer
 says every render target scales (the bloom pyramid and data targets stay at `pxScale: 1`).
 
-**Not run:** the task evals (`cv-images-used` and `cv-title-card` already state the 4K behavior and still hold);
-a real camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p
-video at a bigger scale; a 4K render with `--jobs`.
+**The task eval, after the reviews:** `cv-images-used` on Claude Code (Opus 5.5) with this text passed all five
+assertions. The mock's images are placeholder shapes, so the session left them out and drew everything in code, as
+the case allows. Turn 2, "Render it at 4K.", read the 4K section and said nothing would play enlarged; it compared
+1× and 2× stills and timed 3 s at `--scale 2` under its own name, `timing-2x.mp4`. The stills caught a scene that
+multiplied its `Layer2D` blur lengths by `SCALE`, which the engine already keeps in logical px, so its watercolour
+edges would have been twice as soft at 4K. No image request came after turn 1. The master is 3840×2160, 15.0 s,
+BT.709, and verify passes. There was no footage in it.
+
+**Not run:** the other task evals (`cv-title-card` already states the 4K behavior and still holds); a real
+camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p video at a
+bigger scale; a 4K render with `--jobs`.
