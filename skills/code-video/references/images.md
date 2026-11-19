@@ -204,10 +204,11 @@ Lighting and joining generated layers (from a 20 s piece made of a night plate, 
 
 ## Size and 4K
 
-Sizes in `video.json` are logical; `--scale 2` renders 4K, so a plate needs at least twice the logical
-width it's shown at (a 2560-wide plate shown 2100 px wide looked soft at 4K; the 3840 one held), plus room for
-what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K render pass imagegen.py
-`--size 3840x2160` (2160x3840 for a vertical video); the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
+Sizes in `video.json` are logical; a render at `--scale N` (4K is `--scale 2` for a 1080p video) needs a
+plate N times the logical width it's shown at (a 2560-wide plate shown 2100 px wide looked soft at 4K; the
+3840 one held), plus room for what the camera does: a 10% push at 3840 wide needs about 4220 px (a
+full-frame plate in a 1080p video's 4K render: `--size 3840x2160`, the model's largest). The script's
+default (the video's size × 4/3) suits the video's own size. OpenAI's largest is 3840×2160 (above
 2560×1440 counts as experimental), so for a move at 4K, keep the camera still and move layers, upscale, or
 use a provider that goes bigger. A soft background behind sharp code-drawn type survives a 1.5× upscale.
 

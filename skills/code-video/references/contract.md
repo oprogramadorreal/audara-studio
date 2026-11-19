@@ -305,7 +305,7 @@ the project had changed on purpose). Footage that fits in memory can stay on the
 ```
 footage/<shot>/
   full/000001.jpg ...    the frames at the size they're shown (times the scale for a bigger master): what render.ts reads
-  proxy/000001.jpg ...   the same frames at half that size: what the preview reads
+  proxy/000001.jpg ...   the same frames at half the 1× shown size: what the preview reads
   manifest.json          { "frames": 720, "fps": 60 }: how many files full/ holds, and their rate
                          ("proxy": false when there is no proxy/)
 ```
@@ -383,14 +383,15 @@ every frame; a frame taken out of `full/` stopped the render with its URL.
 ## 4K
 
 `--scale N` draws every frame again at N times the video's size (a whole number from 1 to 4), rather than
-enlarging a smaller frame. 4K is `--scale 2` for a 1080p video of any shape (3840×2160, or 2160×3840 for
-1080×1920) and `--scale 3` for 720p; with `--size`, the scale applies to that format. A video renders at
-its own size unless the director asks for more. The director approves at 1×, so the bigger frame must be
-the same picture, only sharper, and the work stays at 1× (the preview, verify, drafts and the critic's
-rounds): at `--scale 2` each frame has four times the pixels to draw, read back and encode, and the
-preview would drop frames. Estimate the render's time from a few seconds rendered at its scale, not from
-the 1× draft. Scenes lay out in logical px (`W` and `H` never change), and the engine scales its targets,
-`Layer2D`, `LineBatch` and the post. What it can't scale for a scene:
+enlarging a smaller frame. 4K is `--scale 2` for a 1080p video (3840×2160, 2160×3840 for 1080×1920; a square
+1080×1080 becomes 2160×2160, which the render's offer says) and `--scale 3` for 720p; with `--size`, the
+scale applies to that format. A video renders at its own size unless the director asks for more. The
+director approves at 1×, so the bigger frame must be the same picture, only sharper, and the work stays at
+1× (the preview, verify, drafts and the critic's rounds): at `--scale 2` each frame has four times the
+pixels to draw, read back and encode, and the preview would drop frames. Estimate the render's time from a
+few seconds rendered at its scale, not from the 1× draft. Scenes lay out in logical px (`W` and `H` never
+change), and the engine scales its targets, `Layer2D`, `LineBatch` and the post. What it can't scale for a
+scene:
 - In GLSL, `gl_FragCoord`, `fwidth` and `dFdx` are physical px. `FRAG_PX` is the fragment's position in
   logical px, with its origin at the bottom left like `gl_FragCoord`, while Canvas2D and `comp.draw`'s
   `rect` count from the top left. `PX_SCALE` converts.
@@ -407,11 +408,12 @@ counts) times the scale. Code-drawn type beside it comes out sharp, so a soft fi
 at a higher scale, ahead of its verify and review (`references/critique.md`, Delivery), go through the
 files the video shows and give each the most real pixels its source has, keeping its framing and frame
 numbers:
-- **Footage cut from a bigger original** (a 4K camera file, a screen recording made at a higher
-  resolution): cut `full/` again from the original at that size, the same frames by the same `-ss` and
-  rate. `proxy/` stays, so the preview is as fast, and a 1× render draws the bigger frames as cleanly, so
-  one cut serves both. A clip decoded at boot takes the scale squared times the memory: past a second or
-  two, stream it from `footage/` (streamed frames are JPEG, so a clip with alpha stays at boot, cropped).
+- **Footage cut from a bigger original** (a 4K camera file, a screen recording made at a higher resolution):
+  cut `full/` again from the original at that size, the same frames by the same `-ss` and rate. `proxy/`
+  stays, so the preview is as fast (a shot without one, `"proxy": false`, gets one first), and a 1× render
+  draws the bigger frames as cleanly, so one cut serves both. A clip decoded at boot takes the scale squared
+  times the memory: past a second or two, stream it from `footage/` (streamed frames are JPEG, so a clip
+  with alpha stays at boot, cropped).
 - **Frames made by code** (a capture of something built, the devlog skill's `references/capture.md`; a
   Blender or Manim render): the stretches the timeline shows, rendered again at that size.
 - **Images:** a found one at its source's largest size. A generated one stays: the API takes no seed, so

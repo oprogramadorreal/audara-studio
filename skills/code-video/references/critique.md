@@ -414,13 +414,13 @@ reply gives the director, every time:
   left unchanged), a flag from the mix's listening lists alone is listed for them, not fixed: on a finished
   explainer they had accepted, its voice check's worst-window rule listed 10 of 23 paragraphs. That covers
   the mix's heuristics only, never a failed verify, a determinism error or a wrong word;
-- the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale`
-  if one was asked for, and then the files that play enlarged and what re-making the others takes:
-  contract.md, "4K"), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render
-  costs), the review it gets first when the picture changed since the last critic round (Delivery, step
-  2) and that review's time, and that its fixes come back to the preview before the render; what it brings:
-  the MP4 with motion blur, sheets, a poster and the QC report; and that the project's `README.md` has the
-  commands to watch and render it without an agent;
+- the render on offer: the file it makes (its size and frame rate, from `video.json`, times `--scale` if one
+  was asked for, and then the files that play enlarged and what re-making the others takes: contract.md,
+  "4K"), its time estimated from the draft's (`docs/ENGINE.md`, "Rules": what a render costs; at a higher
+  scale, from a few seconds rendered at it), the review it gets first when the picture changed since the
+  last critic round (Delivery, step 2) and that review's time, and that its fixes come back to the preview
+  before the render; what it brings: the MP4 with motion blur, sheets, a poster and the QC report; and that
+  the project's `README.md` has the commands to watch and render it without an agent;
 - when the round left a lot on disk, the line on what could go and what the next round needs (Disk).
 
 The link works when it's sent: after the preview restarted, or files it reads moved (footage re-captured, a
@@ -482,7 +482,8 @@ everything else stays at 1×. Before step 1, give every file the video shows the
 source has (contract.md, "4K"), so verify and the review see the final files; check stills at the scale
 beside 1×; and estimate the time from a few seconds at the scale. Steps 3 and 6 then take `--scale`; the
 sheets stay at 1×, and qc.py reads the MP4 as it is. When a 1× MP4 stays a delivery too, the bigger one
-gets its own names (`--out out/<video>/<video>-4k.mp4`, and the same for its poster and QC report). The
+gets its own names in the same folder (`out/<video>/`, or the format's with `--size`): `--out
+<folder>/<video>-4k.mp4`, and the same for its poster and QC report. The
 reply adds what plays enlarged, and why.
 
 The reply gives the director, every time (also when the MP4 already existed or another size was made),

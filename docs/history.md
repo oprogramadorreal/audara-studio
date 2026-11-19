@@ -5235,6 +5235,10 @@ images' cost line offered a 4K price on every paid job, a decision most videos d
 overwrite each other and a 4K master takes the 1× MP4's name; `capture.md` doubled a size it had already set
 for the final render; files were made again after verify and the review, so those checks saw the old ones; and
 the measurements and a second checklist sat in the working text (now here, and a pointer in the guide).
+Its second round, also taken: the `-4k.mp4` name goes in the format's folder with `--size`; `images.md` and the
+treatment template still gave `--scale 2` as the 4K recipe; a square 1080×1080 becomes 2160×2160, which the
+render's offer now says; proxies are half the 1× size, not half the bigger `full/`, and a shot without proxies
+gets them first; and the render's offer estimates its time at the target scale.
 
 **Not run:** the task evals (`cv-images-used` and `cv-title-card` already state the 4K behavior and still hold);
 a real camera file or a devlog capture filmed again at 4K; a whole render (not stills) of a vertical or 720p

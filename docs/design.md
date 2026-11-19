@@ -982,12 +982,12 @@ keeps the moment, since the timeline is shared, while another video still opens 
 A bigger master is a common ask ("the final render in 4K"), though not every video gets one and not every
 video is 16:9. `--scale N` makes it the engine's way: the page opens with `?scale=N`, the canvas, every
 render target, `Layer2D` and `LineBatch` are made N times the size, and every frame is drawn again while
-scenes keep laying out in the video's own pixels. 4K is `--scale 2` for a 1080p video of any shape
-(2160×3840 for a vertical one) and `--scale 3` for 720p; with `--size`, the scale applies to that format.
-What code draws comes out with real detail at that size, and render.ts stops if the page renders any other.
-The work stays at 1×: at `--scale 2` a frame has four times the pixels to draw, read back and encode (4 s
-of the example rendered 3.6 times as long), the preview would drop frames, and the director approves the
-picture at 1×, which the bigger frame must match, only sharper.
+scenes keep laying out in the video's own pixels. 4K is `--scale 2` for a 1080p video (2160×3840 for a
+vertical one, 2160×2160 for a square one, said in the render's offer) and `--scale 3` for 720p; with
+`--size`, the scale applies to that format. What code draws comes out with real detail at that size, and
+render.ts stops if the page renders any other. The work stays at 1×: at `--scale 2` a frame has four times
+the pixels to draw, read back and encode (4 s of the example rendered 3.6 times as long), the preview would
+drop frames, and the director approves the picture at 1×, which the bigger frame must match, only sharper.
 
 Files are the exception: `--scale` makes nothing new from an image or a footage frame, which the GPU
 draws from its own pixels and enlarges wherever it has fewer than its size on screen times the scale.

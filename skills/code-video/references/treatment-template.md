@@ -339,7 +339,7 @@ video, and `sheet --cuts`: frame 0, the last frame and five frames around every 
 (`render.ts poster`), the QC report (`<skill>/scripts/qc.py`) and the critic's verdict
 (`references/critique.md`, "Delivery"). Keep it all: it is what the director checks and what a later
 session compares against. Work-in-progress clips (`--draft`) need none of it. The **Deliver** line adds
-only what this video needs beyond that, such as another format, a 4K master (`--scale 2`) or captions.
+only what this video needs beyond that, such as another format, a 4K master or captions.
 A 4K master known from the start lets generated images and captured footage be made at its size the
 first time (`references/contract.md`, "4K"); asked for later, the render makes again what it can and
 says what plays enlarged.
