@@ -1,35 +1,40 @@
 # The development log, the ledger and the standing rules
 
-`docs/DEVELOPMENT_LOG.md` is the build's index: a later session reads it before anything else, and the video's
-script is written from it. Both devlogs this skill comes from kept one, and in both the script's best beats came
-from it (a fix that saved only 9% became a running joke; a bug kept for the camera became a chapter). It is
-worth what it points to, so every milestone names its commit and its files, and every number in it was measured.
+`docs/DEVELOPMENT_LOG.md` is the build's index: a later session reads it before anything else, and when a
+video starts, code-video reads it as research and films its moments from the commands it keeps. Both devlogs
+this skill comes from kept one, and in both the script's best beats came from it (a fix that saved only 9%
+became a running joke; a bug kept for the camera became a chapter). It is worth what it points to, so every
+entry names its commit, every moment a video may show says how to run it again, and every number in it was
+measured.
 
 ## The log
 
 ```markdown
 # Development log
 
-The build's index. Read it first when resuming. Recordings in `devlog/recordings/`, screenshots in
-`devlog/screenshots/`, shots for the video in `footage/<shot>/` (references: path, and a time range for a
-recording).
+The build's index. Read it first when resuming. A video about this build is planned (<a devlog, an
+explainer that shows it, a showcase: what the director said>); it will film the moments below from their
+commands, at its own size. Captures, where a run wasn't the better way, in `devlog/captures/`.
 
 ## Status
 | | |
 |---|---|
 | Stage | <what is being built now> |
 | Waiting on the director | <the approval or answer, since when> |
-| The video | <not started / script / production / done> |
+| The video | <planned / started (code-video) / done> |
+
+## Run it again
+How to get back each moment a video may show. Checked at each milestone.
+| Moment | How to run it | Commit or tag | Sizes it takes | Role in a video |
+|---|---|---|---|---|
+| <the first look> | `?look=plain&replay=replays/level1.json&w=<w>&h=<h>` | `stage/plain-bricks` | any (from the parameters) | <the before> |
+| <a bug before its fix> | `bun run sim --seed 41 --to 900` | `bug/tunneling-before` | any | <a struggle beat> |
+| <a glitch seen once> | capture: `devlog/captures/<file>.mp4` 0:03-0:07 | <commit> | 1920×1080 only | <the moment it broke> |
 
 ## Decisions
 | Date | Decision | Why |
 |---|---|---|
-| <yyyy-mm-dd> | <what was decided, by whom: "the director:" for theirs, in their words> | <the reason, or the evidence> |
-
-## Versions and their role in the video
-| Version | How to get it back | Role in the video |
-|---|---|---|
-| <the first look> | `?style=classic`, commit <hash> | <the before: shown as the first attempt> |
+| <yyyy-mm-dd> | <what was decided, by whom: "the director:" for theirs, in their words; the alternative turned down> | <the reason, or the evidence> |
 
 ## Known issues
 - <issue>: <where it shows, how to reproduce, why it is left>
@@ -38,17 +43,18 @@ recording).
 - <the next build, with its cost in time>
 
 ## Timeline
-Newest last. Each entry: the time (from the session's messages, not memory), what happened, the commit, the
-artifacts.
+Newest last. Most work needs no entry: one earns its place when a video could use it. Each entry: the time
+(from the session's messages, not memory), what happened, the commit, and how to run it again when it's a
+moment to show.
 
 ### <yyyy-mm-dd hh:mm> — <what happened, in a line a script could use>
-- <what was built or found, and how; what broke, why, the fix>
-- Commit `<hash>`. Artifacts: `devlog/screenshots/<file>.png` (before), `devlog/recordings/<file>.mp4` 0:12-0:31
-  (the bug), `footage/<shot>/` (after).
-- Numbers: <measured, with how: "triangles 1.9 M → 0.31 M (stats panel, same seed)">
+- <what was built or found, and how; what broke, why, the fix; the alternative turned down>
+- Commit `<hash>`. Run again: <the "Run it again" row>.
+- Numbers: <measured, with how: "triangles 1.9 M → 0.31 M (stats panel, same seed, commit a41c0d2)">
 ```
 
-An entry worth having, from one of those builds (a block-world game; shortened):
+An entry worth having, from one of those builds (a block-world game; shortened, with its run line as this
+skill now writes it):
 
 ```markdown
 ### 2026-10-13 ~16:35 — Greedy meshing only saved 9%
@@ -57,11 +63,12 @@ An entry worth having, from one of those builds (a block-world game; shortened):
   (2,366 of 3,953 faces on one column vary both ways).
 - Fix: also merge along one axis where the corner values are constant along it: 77K against 127K (-39%), the
   same pixels.
-- Screenshots: `devlog/foundation-05-mesh-*-wire.png` (each mesher, wireframe, same view).
+- Run again: `?mesher=culled|greedy&wire=1&seed=7&w=<w>&h=<h>`, the 9% at `stage/greedy-9pct`, the fix after it.
 ```
 
 The video turned it into a beat the director kept and sharpened, and when the bug was rebuilt for the
-camera later its saving measured 22%, since the world had changed: a fragile state is filmed when it happens.
+camera later its saving measured 22%, since the world had changed: the number quoted is the one measured
+when it happened, and the stage is got back from its commit, not rebuilt in today's world.
 
 ## The story ledger
 
@@ -71,11 +78,12 @@ A section at the end of the log, or `docs/VIDEO_NOTES.md` when it grows. Candida
 ## Story ledger
 - **The director's beats**, verbatim, with the message's date: <"In the video, we can tell the story that this
   was your default art choice...">
-- **Struggles:** <what broke, how it showed, how it was found, the fix> → <log entry>
-- **Before and after:** <pair> → <how to film it: replay, flags>
-- **Numbers worth saying:** <figure> → <how it was measured>
+- **Struggles:** <what broke, how it showed, how it was found, the fix> → <log entry, its "Run it again" row>
+- **Before and after:** <pair> → <the two rows that show it>
+- **Concepts worth explaining:** <the idea, in a line a first-time viewer could follow> → <where the build shows it>
+- **Numbers worth saying:** <figure> → <how and when it was measured>
 - **Joke ideas:** <an idea, as an option for the director to take, rewrite or drop>
-- **Still missing for the video:** <a payoff not yet there to show, a stage without its before>
+- **Still missing for a video:** <a payoff not yet there to show, a stage without its before>
 ```
 
 Times on screen (a timestamp on a "real bug" tag, the hour a stage was finished) are the director's call: the log
@@ -89,13 +97,17 @@ session, a compacted one or another tool keeps the rules without this skill load
 ```markdown
 ## Devlog
 
-This project is a devlog: <the thing>, then a video about how it was built.
-- Read docs/DEVELOPMENT_LOG.md first. Add to it as you go: decisions, what broke and the fix, commits, artifacts
-  by path, measured numbers; the director's words that name a beat go in its story ledger, verbatim.
-- Film now only what a change will erase (a first attempt, a bug before its fix, a look about to go). The rest is
-  filmed later from replays (<how: the capture page, its command>).
-- Stages the video will show stay recoverable: <flags, tags>.
-- The director's gates: <the prototype approved before the script, the script before production, the render on
-  their yes>.
+<The thing> is being built for a video about it (<what kind>), made later with code-video.
+- Read docs/DEVELOPMENT_LOG.md first. Add to it what a video could use: decisions and why, trade-offs,
+  concepts worth explaining, what broke and the fix, measured numbers with their method, commits; the
+  director's words that turn the build go in its story ledger, verbatim.
+- Moments a video may show stay runnable at any size: <the launch: its parameters or command>, listed in the
+  log's "Run it again" table with their commit or tag; check them at each milestone. A capture only where it's
+  the better way, logged with its size.
+- The output size comes from a parameter; nothing is laid out by the window's size.
+- Commits stay local unless the director asks to push.
+- The director's gates: <what they set, e.g. the prototype approved before any video work>.
+- When the video starts, code-video films these moments from their commands at the render's size (its
+  references/filming-a-build.md).
 - Long work gets a status line with the time left.
 ```
