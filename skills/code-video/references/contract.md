@@ -424,7 +424,7 @@ numbers:
 - **A source with no more pixels** (the director's 1080p footage, a capture a build kept because it couldn't
   be run again, a small photo): it stays, enlarged.
 
-When re-making takes long or takes room (minutes of a devlog's capture filmed again: hours, and three to
+When re-making takes long or takes room (minutes of a build filmed again: hours, and three to
 four times the disk), say so before starting, with the other choice: those shots enlarged.
 
 **Check.** Stills at the render's scale beside the same at 1×, each with its own `--out` (the names don't

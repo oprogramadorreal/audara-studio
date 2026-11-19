@@ -4,9 +4,9 @@ A plugin for Claude Code and Codex with seven Agent Skills; `skills/` is the pro
 the picture (SKILL.md, references, scripts, and `assets/template-webgl/`, the engine `init.ts` copies into each
 user's project); `skills/soundtrack/` makes the audio and its timing data, and dubbed tracks of a narration;
 `skills/video-ideas/` (text only) helps choose what to make and writes a starting prompt or script;
-`skills/devlog/` (text only) builds something worth watching being built and keeps the material for the video
-about how it was made; `skills/video-repo/` puts a project in git for someone else to clone and render;
-`skills/youtube-package/` makes a finished video's thumbnails, title, description, tags and subtitles, and the
+`skills/devlog/` (text only), while something is built with a video about it in view, keeps a development log
+and the moments worth showing runnable again at any size, for code-video to film later; `skills/video-repo/`
+puts a project in git for someone else to clone and render; `skills/youtube-package/` makes a finished video's thumbnails, title, description, tags and subtitles, and the
 same in more languages; `skills/nutlight-style/` (loaded only when the style is named: text, reference images and
 a code kit a project copies, the squirrels and the stage they live on) directs the Nutlight house style through
 the other skills' steps. `evals/` tests all seven. `docs/design.md` says how it works and why, `docs/history.md`

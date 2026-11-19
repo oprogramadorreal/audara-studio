@@ -122,6 +122,10 @@ means (`references/motion.md`). A script too long for its length, a word the voi
 that can't work, an opening that doesn't pay what the title promises, an explanation that stops the story or repeats what it already made clear: say so with a fix and keep their version until they answer, building the rest meanwhile. Spoken words go to the soundtrack
 skill without the notes.
 
+A video that shows something built (a devlog, or a prototype's subject seen through it) starts from what the
+build kept: `docs/DEVELOPMENT_LOG.md` as research, not the outline, and the moments in its "Run it again" table,
+filmed at the render's size (`references/filming-a-build.md`).
+
 ## The skeleton
 
 ```markdown
