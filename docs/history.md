@@ -5435,7 +5435,12 @@ with programming explanations along the way, mastered at 4K.
   play), and on naming screenshots and recordings again. It disagreed with a Fable probe of cv-28 and cv-29
   before merging: the saved Fable transcripts of the same requests (dl-05 once, dl-08 four times) already show
   code-video called and `filming-a-build.md` read, which a trigger probe, stopping at the load, can't show, so
-  code-video's SKILL.md stays without a pointer. The Claude Code session agreed on each.
+  code-video's SKILL.md stays without a pointer. The Claude Code session agreed on each. Its review of the edits
+  asked for five corrections: the weave's draws apart from its time (4x was measured on one shot), the weave
+  only when a downscaled frame doesn't match, assets waited for at launch rather than stepped with the tick, the
+  commit or tag the log names, and kept captures rather than every screenshot. All were made; it accepted the
+  weave's pitfalls staying beside it and the third build's facts in rerun.md without attribution (history.md
+  carries it). Its verdict: AGREE.
 - **What changed.** rerun.md: the third build in its opening; "Any size" names the aim (downscaled, the bigger
   frame matches) and which pixel each kind of decision uses, with a sub-pixel offset in the projection keeping
   the weave open; a foundation for what a frame inherits (assets waited for at launch; what changes over frames
