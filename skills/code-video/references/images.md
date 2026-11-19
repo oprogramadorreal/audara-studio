@@ -207,17 +207,15 @@ Lighting and joining generated layers (from a 20 s piece made of a night plate, 
 Sizes in `video.json` are logical; `--scale 2` renders 4K, so a plate needs at least twice the logical
 width it's shown at (a 2560-wide plate shown 2100 px wide looked soft at 4K; the 3840 one held), plus room for
 what the camera does: a 10% push at 3840 wide needs about 4220 px. For a 4K render pass imagegen.py
-`--size 3840x2160`; the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
+`--size 3840x2160` (2160x3840 for a vertical video); the script's default (the video's size × 4/3) suits 1080p. OpenAI's largest is 3840×2160 (above
 2560×1440 counts as experimental), so for a move at 4K, keep the camera still and move layers, upscale, or
 use a provider that goes bigger. A soft background behind sharp code-drawn type survives a 1.5× upscale.
 
-The size is chosen when the image is made, since a 4K render doesn't make it again on its own (another
-generation is another picture, and costs: `references/contract.md`, "4K"). When the Deliver line names a
-4K master, plates are generated at 3840×2160 from the start (about $0.10 each at high, against $0.055 at
-the default 2560×1440).
-When it doesn't, the line that states the images' cost gives both, and says that a 4K master asked for
-later would show the smaller ones enlarged; the pick goes in Decisions. A found image is kept at its
-source's largest size, whatever the render.
+The size is chosen when the image is made, since a render at a higher scale doesn't make it again on its
+own (another generation is another picture, and costs: `references/contract.md`, "4K"). When the Deliver
+line names a bigger master, size each plate for its largest use on screen at that scale, within the
+model's limits, and give imagegen.py's estimate for that size; otherwise the default suits the video's own
+size. A found image is kept at its source's largest size.
 
 ## The record
 

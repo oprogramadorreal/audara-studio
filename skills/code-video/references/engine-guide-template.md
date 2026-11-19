@@ -63,8 +63,8 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   blur by default (`--samples auto` over the video's shutter, 0.2 unless `video.json` says otherwise, or a
   fixed 12 sub-frames where a stateful or `refine` scene shows: see "Motion blur and sampling") and a slow,
   fine encode
-  (`--preset slow --crf 16`). Add `--scale 2` for 4K (after "Output scale (4K)"'s check of the files
-  it shows), `--noaudio` for the picture alone, `--fps 30` for another rate than `video.json`'s. Only
+  (`--preset slow --crf 16`). Add `--scale 2` for twice the size (4K from 1080p; first "Output scale (4K)"
+  on the files it shows), `--noaudio` for the picture alone, `--fps 30` for another rate than `video.json`'s. Only
   the whole video, every entry, on the full-quality path takes the name `<video>.mp4`; anything less is
   named for what it is, so it can't replace the delivery: a range adds its times (`<video>-20-25.mp4`),
   `--only` adds `-only-<ids>`, `--draft` `-draft` and `--as-preview`
@@ -121,9 +121,10 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
   video's `audio/` (a synthesized score, say) is checked with `scripts/`, under bun's types, not with the
   scenes: bun's typing of `import.meta.hot` would break the browser program's.
 - render.ts prints `SCENE ERRORS` and browser console errors: read them.
-- 4K: add `--scale 2` to any mode (`stills` then saves full-resolution PNGs). Work and preview at 1x and
-  keep 4K for the delivery (a 4K frame costs about four times as much). Check your scene at both scales:
-  downscaled, the 4K frame should look like the 1x one, only sharper.
+- 4K: add `--scale 2` to any mode for a 1080p video (`--scale 3` for 720p; `stills` then saves
+  full-resolution PNGs). Work and preview at 1x, and keep a bigger scale for the delivery the director
+  asks for. Check your scene at both scales: downscaled, the 4K frame should look like the 1x one, only
+  sharper.
 - render.ts starts a private dev server for each run, without live reload, so a file saved mid-run (by
   you, the director or another agent) can't reload the page under it. `--url http://127.0.0.1:5174` uses a
   running server instead; one started with `AUDARA_NO_HMR=1 bunx vite` (PowerShell:
@@ -444,8 +445,8 @@ frame at `t` of a clip rendered from the entry's start.
 
 A few seconds of a clip are decoded at boot from the video's `assets/`. Anything longer (a capture, a screen
 recording, minutes of a clip) streams from a shot folder at the project root, `footage/<shot>/`:
-`full/000001.jpg ...` for the render, at the size they're shown (twice that for a 4K master, "Output
-scale (4K)"), `proxy/000001.jpg ...` at half the 1x size for the preview, and
+`full/000001.jpg ...` for the render, at the size they're shown (times the scale for a bigger master,
+"Output scale (4K)"), `proxy/000001.jpg ...` at half the 1x size for the preview, and
 `manifest.json` (`{ "frames": 720, "fps": 60 }`). `src/engine/footage.ts` loads the frames as the video
 reaches them and lets the oldest go. The code-video skill's `references/contract.md`, "Images and footage",
 has both ways, the ffmpeg commands and the reasons.
@@ -579,13 +580,9 @@ laying out in logical px (`W`, `H`, `ctx.W`, `ctx.H` never change); the engine h
   (with `ctx.scale(SCALE, SCALE)`) if they are shown large, or they look soft at 4K.
 - Post (bloom, halation, CA, grain, vignette) and the HUD scale automatically; the bloom pyramid stays at
   the logical resolution.
-- Files keep the pixels they have: an image or a footage frame is drawn from its own pixels, enlarged
-  wherever it has fewer than twice its shown size. Before a 4K render, footage cut from a bigger original
-  is cut again at twice the size it's shown (`full/` only; `proxy/` stays, so the preview is as fast),
-  frames made by code (a capture, a Blender or Manim render) are rendered again at twice the size, a found
-  image comes at its source's largest size, and a generated image stays (made again, it is another
-  picture, and it costs): the code-video skill's `references/contract.md`, "4K", has the list and what the
-  reply says about what stays enlarged.
+- Images and footage frames keep the pixels they have, enlarged wherever they have fewer than their size
+  on screen times the scale: before a render at a higher scale, the code-video skill's
+  `references/contract.md`, "4K", says what to make again and what the reply says.
 
 ## Another format
 
