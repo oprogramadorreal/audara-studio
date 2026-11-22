@@ -401,6 +401,27 @@ const cases: Record<string, Case> = {
       'Compared with the cut at the end of turn 2, turn 3 takes out the moment the note names, as asked, and writes it in Decisions in the director\'s words; the reply says the cut no longer pays what the Promise said (or why it still does) and offers a version that keeps the payoff. It keeps a note\'s local checks: no critic round and no full render.',
     ],
   },
+  // The opening's hand-over (2026-11-22): a story long enough for its opening to stand apart (a trailer of later
+  // shots, a cold open), where a video tends to stop and begin again: a pause, black, a title card, a second
+  // introduction. Nothing in the prompt speaks of it, so the piece should run on. Turn 3 is the director asking for
+  // exactly such a stop, in a later session: it is made as asked. It takes hours, so it isn't in run-tasks.sh's
+  // default list.
+  'cv-opening-runs-on': {
+    skill: 'code-video', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 240,
+    turns: [
+      { prompt: 'Make a 2-minute animated story for my YouTube channel about Opportunity, the Mars rover built for a 90-day mission in 2004 that kept driving until a dust storm silenced it in 2018. Narrate it with a free voice.' },
+      { prompt: 'Go ahead.' },
+      { prompt: 'After the opening I want a real stop: cut to black for one second, then a title card that says "Opportunity" for two seconds, then the story starts.', newSession: true },
+    ],
+    assertions: [
+      'The next three are judged on the cut at the end of turn 2, not the final folder, since turn 3 asks for a stop where they look: the transcripts through turn 2, the treatment as it stood then, the draft, stills and sheets under out/<name>/, and out/<name>/critique/r<N>/.',
+      'In the storyboard, the row after the opening carries on from it: the opening\'s Transition out names a cut or what crosses it, and nothing between the two is a title card, a black frame, a pause or a second introduction (a greeting, or the video announced again), unless its row says why this piece needs it. An opening that is the story\'s own first moment passes; so does one that glimpses a later moment and then goes back to the start, as long as the video doesn\'t stop to do it.',
+      'In the cut, through the join (every frame from 1 s before the opening ends to 2 s after it on a sheet, qc.py\'s holds and blank lines on the draft, the draft\'s audio there): no blank or near-black frame, no frame that holds only a title, no hold of half a second or more that the treatment doesn\'t mark, and no silence of half a second or more in the mix (ffmpeg\'s silencedetect at -40 dB).',
+      'With the skills, a full-cut critic ran and its report says whether the piece runs on from its opening or stops there to begin again; a storyboard critic\'s report, if one ran, says the same of the plan.',
+      'Turn 3, a new session, makes the stop as asked: after the opening, black for 1.0 +/- 0.1 s, then a frame whose only words are "Opportunity" for 2.0 +/- 0.1 s, then the story (stills every 0.1 s through it). TREATMENT.md\'s Decisions record the note in the director\'s words and the storyboard shows the stop in its rows; the reply links the preview half a second before it and says what moved to make room (the length, or what was retimed).',
+      'Turn 3 doesn\'t argue the stop away or soften it (a dip in place of black, the title over the moving picture, a shorter card): at most a line says what it costs. It keeps a note\'s local checks: no critic round and no full render.',
+    ],
+  },
   // The limit of licence, on real events the director invites being told freely: the fable is fair, and the cause,
   // the figure and who did what stay true, with no invented quote and no running disclaimer.
   'cv-licence-keeps-facts': {
