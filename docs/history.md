@@ -5522,3 +5522,41 @@ left):
   payoff" is read beside the template; in soundtrack and motion.md (the storyboard's rows tell the score and the
   scenes where the piece carries on); in the AGENTS.md init writes and the README, which state nothing about
   openings; and the channel's name in any skill.
+
+**A probe of the brief, not the gate.** The first turn of `cv-opening-runs-on` ("Make a 2-minute animated story
+for my YouTube channel about Opportunity, the Mars rover built for a 90-day mission in 2004 that kept driving
+until a dust storm silenced it in 2018. Narrate it with a free voice."), one run each on Claude Fable 5.2, Opus
+5.5 and Haiku 5.5 (Claude Code 2.1.330, `--effort high`), with main's skills (9bae0d0, text 09a502928236) and
+the branch's (f6fbd92, text 4b6adb41df21, both commits), in one cloud container within half an hour. Each was
+read at its treatment and at its narration's timings. The Haiku runs and Opus on the new text ended their turn
+at the treatment; the other three had gone on to voice the narration and were stopped by hand once the
+treatment was written (16 to 23 minutes in). Nothing was built, judged or heard.
+
+| Model | Text | The opening | How it hands over, in the storyboard | Silence in the voice there (the piece's other paragraph breaks) |
+|---|---|---|---|---|
+| Haiku 5.5 | main's | none apart: a plain, the launch and the plan, 12 s | "The bounce begins" | no voice made |
+| Haiku 5.5 | new | a 6-s hook, the counter running past 90 | "Hard cut on the downbeat" | no voice made |
+| Opus 5.5 | main's | a 7.6-s `hook` | "the lit line becomes the falling path" | 1.4 s (1.0 to 2.6) |
+| Opus 5.5 | new | a 15-s "Cold open" | "The sky darkens to night; a streak of light crosses it" | 2.4 s (1.0 to 3.4) |
+| Fable 5.2 | main's | a 10-s `hook` that ends with the title rising behind the dunes | "Hard cut on the silence; the sky stays", to an empty plain and "JANUARY 2004" | 4.0 s, the longest in the piece (1.6 to 3.0) |
+| Fable 5.2 | new | a 13-s cold open on the 2018 storm | the dust wall fills the frame and wipes it back to 2004 while the counter spins back; the name is set "as the voice says it" | 2.2 s (1.3 to 3.0) |
+
+- **No run on either text planned a black frame, a title card or a second introduction.** On Haiku and Opus,
+  main's text already hands over (a carried line, a cut on the beat), so the sentence had nothing to correct there.
+- **The one run near a stop was Fable on main's text:** its hook ends on the title in the longest silence of the
+  narration and cuts "on the silence" to an empty plain and a date. Fable on the new text wrote the rule into
+  its Promise line ("Then the dust itself wipes the frame back to 2004, no title card, no second start") and
+  planned the film as "one unbroken tracking shot". That is the change doing what it was written for, once.
+- **Against it:** Opus's silence at the join was longer on the new text, each inside its own piece's range. And
+  the sentence's examples came back as forms: Opus headed its first paragraph "Cold open" and Fable opened on a
+  cold open from the story's end, where no run on main's text used the words. Whether "(a trailer, a cold open)"
+  leans a reader toward an opening that stands apart is for the gate to watch; the wording stays as it ran.
+- One run a side can't tell a text from a run (the gate's own rule), and the two texts differed by both commits,
+  so nothing here is traced to one of them.
+
+**Not run:** the gate (whole builds of a piece long enough to have such an opening, main's text beside each of
+the two commits, on Fable 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind in pairs and
+by the director), so the text is a candidate until it has; `cv-opening-runs-on` past its first turn, which takes
+hours and waits for the user's yes; Codex in any form. No SKILL.md or script changed, so the sizes stand
+(code-video's 7,999 bytes) and the validators and script tests had nothing new to read; `bun evals/tasks/cases.ts`
+wrote the one new `case.json` and left the others as they were.
