@@ -241,6 +241,8 @@ Check:
   that the treatment rules out?
 - Where the treatment has a Promise, does the first row pay it, in the picture, and leave a reason to stay?
   Which rows say in words what the picture could show?
+- Does the piece run on from its opening, or stop there to begin again (a pause, a black frame, a title
+  card, a second introduction) where the director didn't ask for that?
 - Where the storyboard has a Stage column, does any row outside the opening show a state before the row
   that brings it, or linger on an old one after its replacement is revealed, without saying why (a
   flashback, a before and after)?
@@ -325,7 +327,9 @@ Report, under 900 words, also to out/<video>/critique/r<N>/full.md:
    restate loses the viewer: say where the thread went (a concept used before it was shown, two ideas in
    one line, a picture that didn't show what the line named) and how to make it plain. A belief in your first look that is false about the central point, or about anything
    that matters if repeated or acted on, outranks them all; a simplification that leaves those true is
-   not a finding. Where the treatment has a Promise, say whether the opening pays it.
+   not a finding. Where the treatment has a Promise, say whether the opening pays it. Say whether the piece
+   runs on from its opening or stops there to begin again (a pause, a black frame, a title card, a second
+   introduction): a stop the director's words don't ask for is a finding.
 1. Per scene: time range, what's on screen, its problems ranked.
 2. Against the sound: does the picture change where the music or narration does, and do hits land on
    their beat or word (how many frames off)? Where a line asks the viewer to see something happen ("it
