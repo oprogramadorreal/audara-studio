@@ -44,14 +44,14 @@
 // harness stops this run's at the end), and the model each turn ran, as the transcripts name it (Claude's
 // init event; Codex's session file). A Codex run's session files, its sub-agents' included, are copied to
 // codex-sessions/: `codex exec --json` leaves some tool calls out of the transcripts.
-import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, cpSync, existsSync, readdirSync, statSync, renameSync } from 'node:fs';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync, readFileSync, copyFileSync, cpSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { ensureFixtures } from './fixtures';
 import { plants } from './plant';
 import { cleanCodexTrust } from './codex-trust-cleanup';
-import { cleanClaudeProjects } from './claude-projects-cleanup';
+import { cleanClaudeProjects, moveDir } from './claude-projects-cleanup';
 
 const argv = process.argv.slice(2);
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
@@ -580,7 +580,7 @@ if (TOOL === 'claude' && !flag('keep-sessions')) {
   // headless sessions are saved under ~/.claude/projects/<folder slug>: move this run's next to its results
   const projects = path.join(os.homedir(), '.claude', 'projects');
   const slug = WORK.replace(/[^A-Za-z0-9]/g, '-');
-  for (const d of readdirSync(projects)) if (d.toLowerCase() === slug.toLowerCase()) renameSync(path.join(projects, d), path.join(RUN, 'claude-session'));
+  for (const d of readdirSync(projects)) if (d.toLowerCase() === slug.toLowerCase()) moveDir(path.join(projects, d), path.join(RUN, 'claude-session'));
   // (subagents and tools may have opened sessions in subfolders of the run: those go too)
   cleanClaudeProjects(false, path.join(RUN, 'claude-sessions-other'), RUN);
 }

@@ -5598,7 +5598,10 @@ the same way: the treatment and the narration's timings.
   trailer), and on it Opus and Fable opened apart too, so whether the sentence lengthens the opening at all is
   the gate's question: one run a side can't answer it.
 - The harness stopped each run with `EXDEV` when it moved the session folder from the home drive (C:) to the
-  repository's (E:); the three folders were copied into their runs by hand, and nothing else was lost.
+  repository's (E:); the three folders were copied into their runs by hand, and nothing else was lost. 0.12.0
+  had fixed the same failure in the projects cleanup, and `task.ts`'s own move of the run's session was left
+  out: it now uses the cleanup's `moveDir` (copy, then delete, across drives). Checked by bundling `task.ts`
+  and by `moveDir` moving a folder from C: to E: with its files; no run was repeated for it.
 
 **Not run:** the gate (whole builds of a piece long enough to have such an opening, main's text beside each of
 the two skill changes, on Fable 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind in pairs
