@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 /** Move a folder; across drives (the config on C:, the repo on another drive) rename fails with EXDEV: copy, then delete. */
-function moveDir(from: string, to: string) {
+export function moveDir(from: string, to: string) {
   try { renameSync(from, to); }
   catch (e: any) {
     if (e?.code !== 'EXDEV') throw e;

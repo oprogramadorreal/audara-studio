@@ -79,11 +79,13 @@ and it decides the opening: a surprising result is shown, or starts to be reveal
 the picture, since those seconds also play muted on hover and in phone feeds. Someone who clicked recognizes
 what they came for and has a reason to stay, so pay what was promised early and hold back how, why or what
 happens next. The opening can be a trailer of the best moving shots from later in the piece, the payoff only
-glimpsed: a glimpse pays the promise, while showing it at length spends the reveal. A twist the piece depends
-on is promised as a question, not given away. A video a feed plays on its own (Shorts, Reels) has no click to
-answer, so its first seconds make the promise themselves. A loop, a
-sting, a slot ad or a stream background needs no promise; a song's opening is the song's. A later cut that takes
-out what was promised says so and offers the version that keeps it. It stays a working promise: the
+glimpsed: a glimpse pays the promise, while showing it at length spends the reveal. Trailer or not, the
+opening hands over like any other moment, in picture and sound, so nobody notices where it ended: a pause, a
+fade to black, a title card or a second introduction there stops the video to begin it again, and gives
+viewers a place to leave. A stop the director asks for is made as asked, and its row says so. A twist the
+piece depends on is promised as a question, not given away. A video a feed plays on its own (Shorts, Reels)
+has no click to answer, so its first seconds make the promise themselves. A loop, a sting, a slot ad or a
+stream background needs no promise; a song's opening is the song's. A later cut that takes out what was promised says so and offers the version that keeps it. It stays a working promise: the
 youtube-package skill makes the final title and thumbnails from the finished video.
 
 ## Decide what's open, ask only what isn't yours

@@ -181,7 +181,9 @@ production's clutter, untracked, and `disk/manifest.json` beside `work/` says wh
 from the director's own screens, one missing (`cv-product-real-screens`), and a concept screen they ask
 for (`cv-product-concept-mockup`), and the three ways generated images come in: offered once, used within
 a budget, and no key (`cv-images-offered`, `cv-images-used`, `cv-images-no-key`), and what a video is for: the promise and the opening, and the limit of licence (`cv-promise-opening`,
-`cv-licence-keeps-facts`), a director who asks for the MP4 up front and gets the preview first, the render
+`cv-licence-keeps-facts`), a two-minute story whose opening should run on into the rest, and the director then
+asking for a stop there, which is made as asked (`cv-opening-runs-on`, which takes hours and isn't in
+`run-tasks.sh`'s default list), a director who asks for the MP4 up front and gets the preview first, the render
 waiting for their yes to what they watched, or who says not to wait (`cv-render-waits-for-yes`,
 `cv-render-no-review`), a photographic 3D shot asked
 for by its subject and its move (`cv-photoreal-shot`: the realism kit, judged blind with `--without` on how

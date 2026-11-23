@@ -198,6 +198,21 @@ a thumbnail idea: what it shows, and any words it carries), which decides how it
   answer, so its first seconds make the promise themselves; a twist the piece depends on is promised as a question.
   A script the director gives stays locked: an opening that doesn't pay, or an explanation that stops the story,
   is raised with a fix, not rewritten.
+- **The opening runs on.** Whether or not it is a trailer of later shots, the opening hands over like any other
+  moment, in picture and sound, so nobody notices where it ended: the user's rule, from channels built on
+  retention, whose videos open on a hook and never show where it ends. A pause, a fade to black, a title card or
+  a second introduction there stops the video to begin it again. It is said once, where the opening is decided
+  (the Promise paragraph, beside the trailer that paragraph lets an opening be), so it reaches only videos people
+  choose to click, and names no length: where no opening stands apart, there is no seam to hide. It names no
+  form an opening could take either: a first draft's "(a trailer, a cold open)" came back as cold opens and
+  longer openings in the briefs of all three models probed. It is checked where a plan or a cut exists, for a
+  piece with a Promise, as the paragraph it sits in (a song's opening stays the song's): the storyboard critic
+  and the full-cut critic's report say whether the piece runs on or stops there, and only the director's words
+  clear a stop. One they ask for is made as asked, and its row says so. Left out: a line in video-ideas (a
+  script alone is read by the user before it is locked, and the critics report a stop in a script they
+  brought), in filming-a-build.md and in soundtrack (the
+  treatment's rows already tell both where the piece carries on), and any way to do it (what crosses the join
+  is the piece's to find). It hasn't run the gate for a change of taste yet (history.md, 2026-11-22).
 - **"Before outlining" is the user's rule, not YouTube's.** YouTube asks that the intro deliver on the promise
   made by the thumbnail and title; none of its pages checked (2026-11-02) says to write them first.
 - **The package still decides the title.** The Promise is a working one, where the title ideas start; the finished
