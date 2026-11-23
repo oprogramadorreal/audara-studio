@@ -5636,7 +5636,7 @@ a glance yes, on inspection no", one more pass. Its findings and what they becam
 
 | Finding | Change | Measured after |
 |---|---|---|
-| lights soft, like a filter: 73% of the 2×2 cells on the screens' faces held 3 or 4 colours (a dither per channel) | light added in 4 flat steps of one intensity, its hue kept, never over the face of the screen or lamp it comes from | one colour per step |
+| lights soft, like a filter: 73% of the 2×2 cells on the screens' faces held 3 or 4 colours (a dither per channel) | light added in 4 flat steps of one intensity, its hue kept, never over the face of the screen it comes from | one colour per step |
 | resting characters crawled: a new drawing at every step (21 in 20), since a continuous pose was redrawn each time | the idle as a loop of three drawings (0, 1, 2, 1) three times a second, blinks of two, typing in two | 2 drawings in 9 steps |
 | the first 2 s a held postcard (qc.py: 0.27 to 2.33 s still at a glance) | the character types and a token lands on the screen per keystroke; the camera creeps a pixel at a time; the paw lifts and holds before the tap | `glance` 0% |
 | the packet a 4-pixel dot on a white wire, hidden twice in a row | the acorn itself rides the wire with a short trail, out of the router along a cable, its halo fading in; the wire's core mid-cyan; the foreground tree's pass moved a second before the tower's | |
@@ -5683,8 +5683,8 @@ part was one module that wraps the Stage, plus the craft of staging for it.
   The test had planned the 1080p render scaled ×2 nearest-neighbour, which render.ts has no path for. Measured on
   two of the test's frames (1.5 and 6.5 s), each encoded alone at the final render's settings (CRF 16, slow,
   `tune grain`, `aq-mode=3`, 4:2:0) and decoded: at 1080p, 1.1 to 1.3% of pixels came back more than 24/255 off,
-  along the 5×5 blocks' edges, where the encode's 2×2 colour pairs straddle two pixels; at 4K, none (mean errors
-  3.3 and 2.0/255; `tune animation` did no better). The redrawn 4K frames aren't the preview's exactly: 60% of
+  along the 5×5 blocks' edges, where the encode's 2×2 colour pairs straddle two pixels; at 4K, 0 and 3 of 8,294,400
+  (mean errors 3.3 and 2.0/255; `tune animation` did no better). The redrawn 4K frames aren't the preview's exactly: 60% of
   the grid's pixels kept their colour, 37% moved by one or two 15-bit steps and about 3% by more, since the kit
   draws a finer picture for the grid to sample. Drawing the layers at 1080p inside a 4K render brought that to
   72-76% unchanged, not to all, because the kit's edges and bakes follow the render's scale, so it was left out.
@@ -5729,6 +5729,13 @@ part was one module that wraps the Stage, plus the craft of staging for it.
   The approved video's 80 stills and the kit's cast sheet were identical again after these.
 - **A measurement stated too widely:** the critic's 3 or 4 colours were in 73% of the 2×2 cells on the screens'
   faces, not every one; the table says so and the check is scoped to a screen's face.
+- **A second round** found the checks' method loose: frames compared as raw RGB differ in every frame by the
+  engine's output dither (5,558 of 79,056 cell centres of a still plane, none once rounded to 15-bit), so the checks
+  now compare one colour per grid pixel, rounded to 15-bit, and count drawings against a still background; the
+  screen check became the light layer alone adding nothing inside its `holes` (an icon may hold three colours in a
+  2×2 cell, and the scene's glows at the bulbs are meant); the 4K block is twice the grid's pixel, not 10×10;
+  a project-wide 16-bit choice in STYLE.md routes like a treatment's (the Read-when line names both); pins are
+  counted before the 48-colour cap. It withdrew the init.ts point.
 - **The gate should block the merge,** in its view: 16-bit.md tells sessions how to stage and what critics ask,
   which can change the films each model makes. Two lines that leaned (give the opening an action; make the
   subject big enough) became checks on rendered frames, with the test's numbers. The gate itself is the user's

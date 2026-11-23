@@ -81,9 +81,10 @@ export function choosePalette(bytes: Uint8Array, n: number, o: { pins?: readonly
     const r = ((key >> 10) & 31) / 31, g = ((key >> 5) & 31) / 31, b = (key & 31) / 31;
     pts.push({ lab: oklab(toLin(r), toLin(g), toLin(b)), w: Math.pow(count, o.gamma ?? 0.5) });
   }
+  const distinct = new Set((o.pins ?? []).map((c) => paletteOf([c]).hex[0])).size;
+  if (distinct > Math.min(n, PN)) throw new Error(`choosePalette: ${distinct} pinned colours for a palette of ${Math.min(n, PN)}`);
   const pp = paletteOf(o.pins ?? []); // the pins in 15-bit colour, each once
   const pins: V3[] = Array.from({ length: pp.n }, (_, i) => [pp.lab[i * 3]!, pp.lab[i * 3 + 1]!, pp.lab[i * 3 + 2]!]);
-  if (pins.length > Math.min(n, PN)) throw new Error(`choosePalette: ${pins.length} pinned colours for a palette of ${n}`);
   const d2 = (a: V3, b: V3) => (a[0] - b[0]) ** 2 + CHROMA * ((a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
   const cen: V3[] = pins.map((p) => [...p] as V3);
   const want = Math.min(PN, Math.max(n, pins.length));
