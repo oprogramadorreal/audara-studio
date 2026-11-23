@@ -12,3 +12,4 @@ export { Path, cam, camKeys, camLerp, frameRect, zoomThrough, glide, pop, spring
 export { StarField, Counter, drawSun, drawMoon, flare, fadeIn, corner } from './live';
 export { FUR, GEAR, type FurPalette } from './palette';
 export { ease, smoothKeys, smootherstep, smoothstep, clamp, lerp, invLerp, remap, prog, hash, mulberry32, frameIdx, frameTime, noise1, noise2, fbm1, window01, pulse, mod, TAU, type V2 } from '../engine/util';
+export { PixelStage, PIXEL_POST, paletteOf, joinPalettes, choosePalette, type Palette, type LayerOpts, type FrameFx } from './pixel';
