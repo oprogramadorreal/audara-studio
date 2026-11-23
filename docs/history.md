@@ -5577,10 +5577,32 @@ kept the branch, its case and its probe, and changed three things:
   click (a song's opening is the song's).
 - **The source, read in full** (above): closer to the rule than the excerpts were, and still not in its words.
 
+**The probe again, on the reviewed wording** (94e0efa, text a800d8cfd302): the same first turn, one run each,
+Claude Code 2.1.330 at `--effort high`, from a copy of the skills, on the user's Windows machine rather than the
+cloud container, 2026-11-23 (UTC). Haiku ended its turn at the treatment (144 s) and Opus after voicing the
+narration (736 s); Fable built on past its brief, as its runs above had, until the probe's 45-minute cap. Read
+the same way: the treatment and the narration's timings.
+
+| Model | The opening | How it hands over, in the storyboard | Silence in the voice there (the piece's other paragraph breaks) |
+|---|---|---|---|
+| Haiku 5.5 | 8 s, picture only: the track runs toward a dust wall on the horizon | "The dust wall fills the frame and hands to the landing" | no voice made |
+| Opus 5.5 | a 6-s hook: a sol counter runs to 90, flashes and races on to 5111 | "The sky whites into dawn and the camera tilts up" | 1.6 s (every break 1.6) |
+| Fable 5.2 | 14.4 s from the story's end: June 2018, the sun going out, "SOL 5111 · PLANNED 90" | the count spins back to SOL 1 and the camera tilts into the landing's sky: "No stop, no title card." | 3.2 s, filled by that rewind (1.4 to 5.5) |
+
+- **No run planned a stop, and none used "cold open" or "trailer":** the echo is gone. Fable again wrote the rule
+  into its plan.
+- **Opus's opening is back near its length on main's text:** 6 s, against 7.6 s on main's and 15 s on the first
+  wording.
+- **Haiku and Fable still open apart, on a glimpse of the end:** 8 s where Haiku's run on main's text had none,
+  and 14.4 s where Fable's had 10 s and the first wording 13 s. Main's text already invites such an opening (the
+  trailer), and on it Opus and Fable opened apart too, so whether the sentence lengthens the opening at all is
+  the gate's question: one run a side can't answer it.
+- The harness stopped each run with `EXDEV` when it moved the session folder from the home drive (C:) to the
+  repository's (E:); the three folders were copied into their runs by hand, and nothing else was lost.
+
 **Not run:** the gate (whole builds of a piece long enough to have such an opening, main's text beside each of
 the two skill changes, on Fable 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind in pairs
-and by the director), so the text is a candidate until it has; the probe on the reviewed wording (it ran on the
-first); `cv-opening-runs-on` past its first turn, which takes hours and waits for the user's yes; Codex in any
+and by the director), so the text is a candidate until it has; `cv-opening-runs-on` past its first turn, which takes hours and waits for the user's yes; Codex in any
 form. No SKILL.md or script changed, so the sizes stand
 (code-video's 7,999 bytes) and the validators and script tests had nothing new to read; `bun evals/tasks/cases.ts`
 wrote the one new `case.json` and left the others as they were.
