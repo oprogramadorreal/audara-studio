@@ -90,11 +90,11 @@ PDF. On Opus 5.5 it loaded soundtrack in 7 of 10 runs, code-video first in the r
 code-video first and soundtrack only when the sound starts would be fine in a real session but fails here,
 since a run stops at six turns.
 
-nutlight-style's set names the style in ten requests: two in Portuguese, ideas alone (ns-05), a prompt alone
-(ns-09), the music alone (ns-07) and a note inside a project whose `docs/STYLE.md` names it (ns-08, which a
+nutlight-style's set names the style in eleven requests: two in Portuguese, ideas alone (ns-05), a prompt alone
+(ns-09), the music alone (ns-07), its 16-bit version (ns-21) and a note inside a project whose `docs/STYLE.md` names it (ns-08, which a
 session learns only from the project's files: a probe of discovery, since a run stops at the load and its
 fixture has no cast or references; ns-new-subject's third turn tests the later session's work). Its near-misses ask for squirrels, cute animals, a glowing
-night look or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
+night look, 16-bit pixel art (ns-22) or another channel's style without naming it. The skill has no scripts, so, as with video-ideas,
 its use can't be seen on Codex and its Codex near-misses fail on the load.
 
 devlog's set asks to build something with a video about it in view, now or later, in sixteen requests: six in
@@ -221,7 +221,10 @@ run-tasks.sh's default list.
 don't show (a swarm of bees choosing a home, from `article.md`), with a music library of three synthetic
 tracks in `music/`, a note that departs from the style (a hard cut, and a human the kit doesn't draw), a later
 session that has only the project's files, and a second video in another look that the kit must not touch;
-with its four turns it takes hours, so it isn't in run-tasks.sh's default list. The `vi-` cases are graded on the conversation, preservation of constraints,
+with its four turns it takes hours, so it isn't in run-tasks.sh's default list. `ns-16bit` names the style in
+16-bit with no library: its assertions read the kit (unchanged, its `PixelStage` used), the grid on stills (every
+block one colour), the pan, the drawings of a character at rest, the cast sheet in pixels, and a render at
+`--scale 2` whose blocks stay whole; it takes hours too. The `vi-` cases are graded on the conversation, preservation of constraints,
 faithful prompts and unwanted actions. The production cases' set comparisons use blind contact-sheet
 judging with and `--without` the skills: they are the check that the skills make the picture better than
 the model alone, not just correct.

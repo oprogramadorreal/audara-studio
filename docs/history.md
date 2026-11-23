@@ -5609,3 +5609,139 @@ and by the director), so the text is a candidate until it has; `cv-opening-runs-
 form. No SKILL.md or script changed, so the sizes stand
 (code-video's 7,999 bytes) and the validators and script tests had nothing new to read; `bun evals/tasks/cases.ts`
 wrote the one new `case.json` and left the others as they were.
+
+## Nutlight in 16-bit: a version of the style, not another skill (0.16.0, 2026-11-23)
+
+The user asked for a test before any change: "Create a 10 second video using nutlight style, however make it look
+like it was made for super nintendo (16-bit) graphics. Do not change the nutlight skill yet. Show me the video in
+that style, and let me approve before changing the skill." And then: keep the current style and add the 16-bit
+one as an option? A new skill (`nutlight-pixelart`, `nutlight-16bit`), an option in this one, or parameters? Which
+gives the most effective skills and reuses the most code?
+
+**The test,** in `evals/results/nutlight-16bit/` (git-ignored), with 0.15.1's skills: a project made by init, the
+kit copied into `src/nutlight/` as SKILL.md says, and one scene, one camera through one world. A squirrel at a
+lamp-lit desk types and taps a key, an acorn rides a glowing conduit across a night city, and a second squirrel on
+a tower terrace receives it, hops and sends a heart back. Everything 16-bit was one module written beside the kit,
+`src/nutlight16/pixel.ts` (455 lines): a `PixelStage` that takes a layer drawn by the kit at full size and turns
+it into pixel art on a 384×216 grid (a palette per layer chosen by k-means in Oklab from the layer as the kit
+lights it, a majority vote of 16 samples per pixel, ordered dither anchored to the layer, a 1-pixel outline on
+sprites, light added in flat steps, 15-bit colour, the hardware's mosaic, brightness and iris). The kit stayed
+byte-identical to the skill's (`diff -rq`), and the same scene file rendered the kit's own look with `hd: true`.
+The grid came from the cast sheet in pixels: at 320×180 the faces lost their mouths, at 384×216 they kept them.
+The sound was a cue synthesized in code in the manner of that era's sample-based chip (free, a stand-in; −14.0
+LUFS, −1.5 dBTP).
+
+**The critic, one round** (a fresh full-cut critic, first look before reading): "still Nutlight: yes"; 16-bit "at
+a glance yes, on inspection no", one more pass. Its findings and what they became:
+
+| Finding | Change | Measured after |
+|---|---|---|
+| lights soft, like a filter: 73% of the 2×2 cells on the screens' faces held 3 or 4 colours (a dither per channel) | light added in 4 flat steps of one intensity, its hue kept, never over the face of the screen it comes from | one colour per step |
+| resting characters crawled: a new drawing at every step (21 in 20), since a continuous pose was redrawn each time | the idle as a loop of three drawings (0, 1, 2, 1), a step every third of a second, blinks of two, typing in two | 2 drawings in 9 steps |
+| the first 2 s a held postcard (qc.py: 0.27 to 2.33 s still at a glance) | the character types and a token lands on the screen per keystroke; the camera creeps a pixel at a time; the paw lifts and holds before the tap | `glance` 0% |
+| the packet a 4-pixel dot on a white wire, hidden twice in a row | the acorn itself rides the wire with a short trail, out of the router along a cable, its halo fading in; the wire's core mid-cyan; the foreground tree's pass moved a second before the tower's | |
+| the hop one drawing moved 5 frames at a time | its height every frame in whole pixels; its drawings a crouch, a stretch and a landing | |
+| the second character off model (another outline colour; the crown tuft read as a third ear) | the same outline as the first, no tuft | |
+| nothing on the last chord | she turns to us with a heart emote | |
+| the draft's 4:2:0 H.264 smeared 37% of the 5×5 blocks | (delivery, below) | |
+
+Two faults came out of the measuring rather than the critic: a dither fixed to the screen made 3,263 pixels of
+the focal plane flip whenever it scrolled an odd number of pixels (anchored to the layer: at most 12), and the
+towers' bay lights, finer than the grid, turned to noise (set on the grid by hand). Each plane shown alone through
+the pan (`solo`) then came out the same picture every frame, moved by whole pixels: 0 pixels differed in four
+planes after the best whole-pixel shift, and at most 8 of 83,000 in the focal plane, where the wire is drawn live.
+`verify` passed. A piece under 30 s gets no second critic round before the render's, so the fixes weren't
+reviewed again. The director watched it: "yes, the look is approved. no need to do a final render now. let's
+work on the skill change you recommended."
+
+**Why one skill, with a version you name.** The test is the evidence: nothing in the kit changed, and the 16-bit
+part was one module that wraps the Stage, plus the craft of staging for it.
+
+- **A sibling skill** would answer to the same word as this one ("Nutlight"), so which loaded, or both, would be
+  a toss-up. It would copy the 500 KB kit, which drifts, or reach into this skill's folder. And an eighth skill
+  touches AGENTS.md, the README, both plugin.json files, init.ts's section and the evals for no gain.
+- **Parameters** (the grid, palette sizes, the outline) were picked by looking at frames, and a director steers
+  them in words, as everything else.
+- **A filter** isn't what it is: a scene is staged for the grid (pans rather than zooms, drawn frames, detail
+  set by hand), so the version is chosen with the Look, in the brief.
+
+**What changed:**
+
+- **The kit:** `assets/kit/pixel.ts`, the test's module unchanged in what it draws, plus the helpers the round
+  taught, moved out of the scene: `drawing(t)` (a drawing's time, 12 a second), `idle` (the loop of three),
+  `hop` (height per frame, three drawings), `cell` and `icon` (detail set on the grid). `index.ts` exports it; the
+  kit's README gained a section with an example scene (the one that ran, below).
+- **A cast sheet in 16-bit,** `assets/cast-sheet-16bit.ts`: the kit's sheet through the PixelStage, its palettes as
+  swatches. `cast-sheet.ts` is as it was, so it still loads in a project whose kit predates `pixel.ts`.
+- **`references/16-bit.md`:** what changes and why (the test's STYLE.md table, made general), what each step
+  asks, and the checks (a plane alone through a pan, the drawings at rest, light off a screen's face, whole blocks
+  at 4K, the opening not still, what carries the story big enough). The choice and its table go in the video's
+  treatment, or in `docs/STYLE.md` only when the director wants the whole project in 16-bit.
+- **SKILL.md:** one line in "Read when" names that file for a video the director, its treatment or STYLE.md puts
+  in 16-bit (7,988 bytes). The description doesn't change: the request still names Nutlight.
+- **Delivery:** `--scale 2`, which draws each frame again at 3840×2160 on the same grid, each pixel a 10×10 block.
+  The test had planned the 1080p render scaled ×2 nearest-neighbour, which render.ts has no path for. Measured on
+  two of the test's frames (1.5 and 6.5 s), each encoded alone at the final render's settings (CRF 16, slow,
+  `tune grain`, `aq-mode=3`, 4:2:0) and decoded: at 1080p, 1.1 to 1.3% of pixels came back more than 24/255 off,
+  along the 5×5 blocks' edges, where the encode's 2×2 colour pairs straddle two pixels; at 4K, 0 and 3 of 8,294,400
+  (mean errors 3.3 and 2.0/255; `tune animation` did no better). The redrawn 4K frames aren't the preview's exactly: 60% of
+  the grid's pixels kept their colour, 37% moved by one or two 15-bit steps and about 3% by more, since the kit
+  draws a finer picture for the grid to sample. Drawing the layers at 1080p inside a 4K render brought that to
+  72-76% unchanged, not to all, because the kit's edges and bakes follow the render's scale, so it was left out.
+- **Evals:** `ns-21` (Nutlight named in 16-bit) and `ns-22` (16-bit pixel-art squirrels, unnamed) in the trigger
+  set; `ns-16bit`, a 15-second piece in 16-bit with no library, then "Render it".
+- **design.md,** the Nutlight section, in place; the README's line on the style.
+
+**Checked** (the last two identities again after the review's fixes, below):
+
+- **The kit's copy draws the approved video exactly.** The test project took the new kit, its scene switched to
+  the kit's `PixelStage` and helpers (its own idle, hop and icon code removed), and 80 stills every 0.125 s
+  matched the ones from before the switch: no pixel differed at all. `bun run check` passed.
+- **The kit's cast sheet is unchanged** (3 stills identical); the 16-bit sheet renders both furs on the grid.
+- **The README's example runs:** written as a scene in the test project, typechecked and rendered, then copied in.
+- **Whole blocks at 4K:** on three stills of the test video and four of other 16-bit scenes at `--scale 2`, all
+  82,944 blocks of 10×10 were one colour within 2/255 (the engine dithers its output by 1/255); the same held for
+  5×5 blocks at 1080p. Those are the PNG frames; the encode's own error is under Delivery.
+- **Under `hd`, drawings move continuously:** `drawing()` returns `t`, where the test's scene had stepped them in
+  both looks, so only its comparison video changed.
+- **The two trigger queries,** three runs each on Opus 5.5 in Claude Code (`--only ns-21,ns-22`): ns-21 called the
+  Skill tool for nutlight-style in 3 of 3, and ns-22 loaded code-video in 3 of 3 and nutlight-style in none.
+- The three validators pass on nutlight-style; `bun evals/tasks/cases.ts` wrote the new `case.json`.
+
+**Review.** Codex (in the user's Codex CLI, as a reviewer only) read the branch and the test project and found:
+
+- **The new cast sheet broke the ordinary one in an older project:** it imported `PixelStage`, which a kit from
+  before 0.16.0 doesn't export, so copying the sheet failed even without `px`. The sheet went back to 0.15.1's,
+  the 16-bit one became its own file, and 16-bit.md says how an older project takes `pixel.ts` in (the file and
+  its export line, nothing else of the kit) and that a newer kit waits for the director.
+- **A one-video choice in the project's STYLE.md** would have reached every later Nutlight video there: the table
+  and Avoid items now go in the treatment, and the Read-when line covers a treatment that already names 16-bit, so
+  a later note ("slow the pan") finds the file. init.ts's AGENTS section was left as it is: it says which skill
+  does what in every project, and the treatment is already what a later session reads first.
+- **The delivery claims went past the evidence** ("an even block stays flat", "one step"): measured and restated
+  as above.
+- **The eval's 4K check assumed 10×10 blocks** where its grid check allows another size: it now asks for twice the
+  grid's pixel.
+- **Code:** `PIXEL_POST` now turns off the HUD, its frame and an inherited `invert`; `cover: 0` no longer fills
+  empty pixels (nor a shade layer its whole frame); pins are counted once and can't outgrow the palette; a sky or
+  raw layer takes `tone: false` for colours exactly as named (the 16-bit sheet's swatches); one full-size scratch
+  target per renderer instead of one per scene (about 100 MB each at 4K), and `dispose()` frees its materials.
+  The approved video's 80 stills and the kit's cast sheet were identical again after these.
+- **A measurement stated too widely:** the critic's 3 or 4 colours were in 73% of the 2×2 cells on the screens'
+  faces, not every one; the table says so and the check is scoped to a screen's face.
+- **A second round** found the checks' method loose: frames compared as raw RGB differ in every frame by the
+  engine's output dither (5,558 of 79,056 cell centres of a still plane, none once rounded to 15-bit), so the checks
+  now compare one colour per grid pixel, rounded to 15-bit, and count drawings against a still background; the
+  screen check became the light layer alone adding nothing inside its `holes` (an icon may hold three colours in a
+  2×2 cell, and the scene's glows at the bulbs are meant); the 4K block is twice the grid's pixel, not 10×10;
+  a project-wide 16-bit choice in STYLE.md routes like a treatment's (the Read-when line names both); pins are
+  counted before the 48-colour cap. It withdrew the init.ts point.
+- **The gate should block the merge,** in its view: 16-bit.md tells sessions how to stage and what critics ask,
+  which can change the films each model makes. Two lines that leaned (give the opening an action; make the
+  subject big enough) became checks on rendered frames, with the test's numbers. The gate itself is the user's
+  call (below).
+
+**Not run:** the gate. Every line here is new text that loads only when 16-bit is asked for, and the default text
+is unchanged but for the one line, so the gate would be main's skills beside these on a 16-bit request, on Fable
+5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind and by the director. Those are whole
+builds, hours each, and wait for the user's yes. `ns-16bit` hasn't run, in either tool.

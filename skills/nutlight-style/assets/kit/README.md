@@ -119,6 +119,68 @@ character passing behind something is drawn before all of it (its stand, its clo
 passing in front, after all of it, unless the staging plainly puts it between two parts (an arm reaching
 through). Its feet still need something to stand on: drawn before a counter, a squirrel loses its feet to it.
 
+## 16-bit (`pixel.ts`)
+
+When the director asks for the style in 16-bit (the skill's `references/16-bit.md` has the craft and the checks), a
+scene draws with the kit as above, inside `P.layer`s, and each layer becomes pixel art on a grid, the way that
+hardware composed a frame. `hd: true` renders the same file in the kit's own look, to compare.
+
+```ts
+import type * as THREE from 'three';
+import { Scene, type Frame } from '../../../src/engine/scene';
+import { Stage, rig, Squirrel, CAST, POSE, express, cam, bake, paintCloudBank, paintPines, PixelStage, frameTime, type Palette } from '../../../src/nutlight';
+
+const R = rig('city');
+export default class Pixel16 extends Scene {
+  st = new Stage(this.ctx, R);                                // FIRST field, as always
+  P = new PixelStage(this.ctx, this.st, { px: 5, hd: !!this.ctx.params.hd });   // a 384×216 grid; hd: the kit's own look
+  // painted once, at half resolution: the grid sees a fifth
+  clouds = bake(2400, 500, (c) => paintCloudBank(c, 2400, 500, R), { res: 0.5, anchor: [0, 0] });
+  pines = bake(2600, 320, (c) => paintPines(c, 2600, 320, { base: R.c.plant, lit: R.c.plantLit }), { res: 0.5, anchor: [0, 0] });
+  pip = new Squirrel({ ...CAST.amber, name: 'Pip' });
+  pal!: Record<'clouds' | 'pines' | 'pip', Palette>;
+  override dispose() { this.st.dispose(); this.P.dispose(); }
+  override async init() {                                     // palettes once, from what the pan will show
+    const st = this.st, P = this.P, v = (d: number) => P.views(960, 1440, d);
+    this.pal = {
+      clouds: P.extract(() => st.sprite(this.clouds, 0, 120), 6, { views: v(5) }),
+      pines: P.extract(() => st.sprite(this.pines, 0, 800), 6, { views: v(0.55) }),
+      pip: P.extract(() => this.pip.draw(st, 960, 800, POSE.stand, { view: 'front' }), 15),   // its model sheet
+    };
+  }
+  override render(f: Frame, out: THREE.WebGLRenderTarget) {
+    const st = this.st, P = this.P, t = frameTime(f.t);
+    P.begin(out, cam(960 + 480 * Math.min(1, f.lt / 4), 540, 1));          // a pan; each layer's camera is snapped
+    P.layer({ kind: 'sky', depth: Infinity, dither: 0.5 }, () => st.sky({ top: R.c.space, bottom: R.c.skyLow }));
+    P.layer({ depth: 5, palette: this.pal.clouds }, () => st.sprite(this.clouds, 0, 120));     // 1/5 the pan's speed
+    P.layer({ kind: 'light', levels: 4, dither: 0.5 }, () => st.glow(1150, 700, 160, R.c.warmLight, { gain: 0.3 }));
+    P.layer({ kind: 'raw' }, () => P.cell(1240, 640, 1, 1, Math.floor(t * 2) % 2 ? R.c.led : R.c.ledOff));   // set on the grid
+    P.layer({ kind: 'sprites', palette: this.pal.pip, outline: R.c.frame, selout: 0.3, bias: -0.25 },
+      () => this.pip.draw(st, P.snap(1150), P.snap(820), P.idle(express(POSE.stand, 'smile', 0.5), t, 1), { scale: 0.6 }));
+    P.layer({ depth: 0.55, palette: this.pal.pines }, () => st.sprite(this.pines, 0, 800));   // the foreground, fastest
+    return P.end({ mosaic: f.lt < 0.3 ? 4 : 1 });
+  }
+}
+```
+
+- `P.layer(o, draw)`: `kind` is `tiles` (a background plane, the default), `sprites` (a character: its own palette and
+  outline), `sky` (a 15-bit gradient), `raw` (already pixel art: icons, cells), `light` (added: `levels`, `gain`,
+  `holes` it leaves alone, up to 4) or `shade` (a translucent shadow, `color`, `alpha`). `depth` is the parallax
+  (`Infinity` fixed); `dither` and `ditherSize` where a gradient crosses two colours; `bias` which small details
+  survive (above 0 bright ones, below 0 dark ones such as a mouth); `cover`; `clean` (stray pixels; 0 keeps all);
+  `haze`; `tone: false` (sky, raw: colours exactly as named, not through the kit's tone shoulder). Inside `draw`, the Stage draws at depth 1 under the layer's camera: the layer's `depth` does the parallax.
+- `P.extract(draw, n, { views, pins, gamma, cover })` → a `Palette`, in `init()` only; `paletteOf(colours)` names one;
+  `joinPalettes` puts two characters in one layer.
+- Drawn frames: `P.drawing(t)` (the time a drawing shows), `P.idle(pose, t, seed)` (a loop of three drawings and
+  blinks of two; alive() under `hd`), `P.hop(pose, t, t0, height, dur)` (→ `{ pose, lift, air }`: draw at
+  `P.snap(y - lift)`), `P.snap(v)`; `P.cell(x, y, w, h, col)` and `P.icon(rows, colours, x, y, { clipX, map })` set
+  things on the grid by hand.
+- `P.end({ mosaic, bright, iris })`: the hardware's transitions. `P.solo = n` shows the nth layer alone (a check);
+  `P.camAt(depth)` is a layer's camera.
+- About 15 to 20 layers made the test's frames; each is a full-size draw and one pass, into one full-size target
+  that every PixelStage on the renderer shares. `cast-sheet-16bit.ts`, in the skill's `assets/`, is the cast sheet
+  through the PixelStage (`params: { px }`, 5 by default).
+
 ## Budget and rules
 
 About 12 megatexels baked per scene (the Stage warns), about 10 ms a frame in the live preview, no Canvas2D in
