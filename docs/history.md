@@ -45,7 +45,7 @@ Contents
 - A prototype for a video about its subject is code-video's, not devlog's (0.14.1, 2026-11-17)
 - A 4K master: drawn again, and files made again where they can be (0.14.3, 2026-11-19)
 - devlog keeps the log and moments that run again; filming moves to code-video (0.15.0, 2026-11-19)
-- An opening that stands apart hands over like any other moment (0.15.1, 2026-11-22)
+- The opening hands over like any other moment (0.15.1, 2026-11-22)
 
 ## Definition of done
 
@@ -5459,7 +5459,7 @@ Considered and left out: loading on any build; no captures at all; a commit, tag
 log entry; re-running every recipe at each milestone; a line in code-video's SKILL.md (no room; four other
 places point to the new reference).
 
-## An opening that stands apart hands over like any other moment (0.15.1, 2026-11-22)
+## The opening hands over like any other moment (0.15.1, 2026-11-22)
 
 The user brought a rule from watching the videos of YouTube's largest channel, MrBeast's: each opens on a hook,
 and a viewer doesn't notice where the hook ends and the video begins. The hook can be a scene of its own, but no
@@ -5467,15 +5467,19 @@ pause or break separates it from what follows. They asked whether it was worth s
 in few words: nothing that narrows what a model may make, the channel not named in any skill, and a director who
 asks for a stop after the hook gets one. They weren't sure it applies under about three minutes.
 
-**What the source says.** Read 2026-11-22 through search excerpts only: this session's network policy opened none
-of the copies. The production handbook attributed to that channel's company (leaked in 2024; two former
-producers told a reporter its contents are real, and the company declined to comment) calls the first minute
-"the most important minute of each video", and gives the stretch after it, minutes 1 to 3, a job of its own,
-"crazy progression": several days of a story covered in those minutes "so the viewer is now super invested".
-Summaries of it describe that stretch as the move from the opening's hype into the story, made without a seam;
-those are the summaries' words, and no excerpt found states the rule as the user put it. A third-party reading
-of 37 of the channel's transcripts found each opening on its hook, with no greeting first. YouTube's own page
-was already on record here (0.10.0): "Keep your intro concise and get straight to providing that value". So the
+**What the source says.** The first session read it through search excerpts only (its network policy opened
+none of the copies); the review below read a 36-page copy of the PDF in full, the same day. The production
+handbook attributed to that channel's company (leaked in 2024; two former producers told a reporter its contents
+are real, and the company declined to comment) never states the rule as the user put it, but its outline of a
+video comes close: "Hook people at the start of the video, transition them to an amazing story that they are
+invested in, have no dull moments, and then have a satisfying payoff at the end of the video with an abrupt
+ending." It calls the first minute "the most important minute of each video"; after it, "you have to transition
+from hype to execution (generally). Stop telling people what they will be watching and start showing them",
+which a second introduction does the opposite of. Of a viewer six minutes in: "They are watching the video
+without even realizing they are watching a video", and "Don't ever signal the end of the video unless it's to
+build hype for the prize or payoff". Its closing list has "No dull moments in videos". A third-party reading of
+37 of the channel's transcripts found each opening on its hook, with no greeting first. YouTube's own page was
+already on record here (0.10.0): "Keep your intro concise and get straight to providing that value". So the
 wording is the user's, from watching, and the sources agree with its direction.
 
 **What the skills said.** The promise paragraph of treatment-template.md decides the opening and, since 0.12.0,
@@ -5489,15 +5493,16 @@ rule, not a failed video.
 **What changed,** in two commits, so each can run the gate alone, and in no SKILL.md (code-video's had one byte
 left):
 
-- **critique.md, the check.** The storyboard critic asks whether the piece runs on from its opening or stops
-  there to begin again (a pause, a black frame, a title card, a second introduction) where the director didn't
-  ask for that. The full-cut critic's report says the same of the cut, and a stop the director's words don't
-  ask for is a finding. The storyboard round already runs for a long piece, before anything is built.
-- **treatment-template.md, where the opening is decided.** After the sentence on the trailer: "An opening that
-  stands apart (a trailer, a cold open) still hands over like any other moment, in picture and sound, so nobody
-  notices where it ended: a pause, a fade to black, a title card or a second introduction there stops the video
-  to begin it again, and gives viewers a place to leave. One the director asks for is made as asked, and its
-  row says so."
+- **critique.md, the check.** Where the treatment has a Promise, the storyboard critic asks whether the piece
+  runs on from the first row or stops to begin again (a pause, a black frame, a title card, a second
+  introduction) where the director didn't ask for that. The full-cut critic's report says the same of the cut,
+  and a stop the director's words don't ask for is a finding. The storyboard round already runs for a long
+  piece, before anything is built.
+- **treatment-template.md, where the opening is decided.** After the sentence on the trailer: "Trailer or not,
+  the opening hands over like any other moment, in picture and sound, so nobody notices where it ended: a pause,
+  a fade to black, a title card or a second introduction there stops the video to begin it again, and gives
+  viewers a place to leave. A stop the director asks for is made as asked, and its row says so." (The first
+  session's wording, which the probe below ran, is under "Review".)
 - **Evals:** `cv-opening-runs-on`, a two-minute story with nothing said about its opening, then, in a later
   session, the director asking for a second of black and a two-second title card after it. Its assertions read
   the storyboard's rows, the frames, holds and silence through the join, the critic's report, and the stop made
@@ -5506,9 +5511,9 @@ left):
 
 **Why this little.**
 
-- **No length in it.** The sentence speaks of an opening that stands apart, which a short piece rarely has, so it
-  is silent there without a threshold nobody measured; where a 30-second piece does open on a separate teaser,
-  the same stop costs it more of its length.
+- **No length in it.** Where no opening stands apart, as in most short pieces, there is no seam to hide, so the
+  sentence is idle there without a threshold nobody measured; where a 30-second piece does open on a separate
+  teaser, the same stop costs it more of its length.
 - **A bar, not a way.** "Nobody notices where it ended" is the user's own test. What crosses the join (a line of
   narration, a motion, the music, a plain cut on the beat) is the piece's to find, and motion.md already says
   hard cuts work: a cut is not a stop. The four stops are named so the sentence isn't read as a ban on going
@@ -5550,13 +5555,32 @@ treatment was written (16 to 23 minutes in). Nothing was built, judged or heard.
 - **Against it:** Opus's silence at the join was longer on the new text, each inside its own piece's range. And
   the sentence's examples came back as forms: Opus headed its first paragraph "Cold open" and Fable opened on a
   cold open from the story's end, where no run on main's text used the words. Whether "(a trailer, a cold open)"
-  leans a reader toward an opening that stands apart is for the gate to watch; the wording stays as it ran.
+  leans a reader toward an opening that stands apart was left for the gate to watch; the review took it out.
 - One run a side can't tell a text from a run (the gate's own rule), and the two texts differed by both commits,
   so nothing here is traced to one of them.
 
+**Review.** The user asked a second session (Opus 5.5 in Claude Code) to analyze the question on its own first,
+then judge this branch: accept it, build on it or start again. It reached the same design without reading the
+branch (the Promise paragraph and both critics; no SKILL.md, nothing in video-ideas, soundtrack or motion.md),
+kept the branch, its case and its probe, and changed three things:
+
+- **No form named.** "An opening that stands apart (a trailer, a cold open) still hands over" became "Trailer or
+  not, the opening hands over", and "One the director asks for" became "A stop the director asks for". In the
+  probe, every run on the first wording had a longer or more separate opening than its pair on main's (Haiku
+  none → 6 s, Opus 7.6 → 15 s, Fable 10 → 13 s), Opus headed its opening "Cold open" and Fable opened on one,
+  where no run on main's text used the words. One run a side traces nothing, but all three models moved the same
+  way, and the rule is about the seam, not whether an opening stands apart or how long it runs. The trailer stays,
+  since main's text offers it a sentence earlier.
+- **The critics' check is the Promise's.** Both critics asked it of every piece; it now sits in their Promise
+  question, as the template's sentence sits in the Promise paragraph, so a music video's prologue before the
+  song, or a showreel's title after its first shots, isn't held to a rule written for videos people choose to
+  click (a song's opening is the song's).
+- **The source, read in full** (above): closer to the rule than the excerpts were, and still not in its words.
+
 **Not run:** the gate (whole builds of a piece long enough to have such an opening, main's text beside each of
-the two commits, on Fable 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind in pairs and
-by the director), so the text is a candidate until it has; `cv-opening-runs-on` past its first turn, which takes
-hours and waits for the user's yes; Codex in any form. No SKILL.md or script changed, so the sizes stand
+the two skill changes, on Fable 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind in pairs
+and by the director), so the text is a candidate until it has; the probe on the reviewed wording (it ran on the
+first); `cv-opening-runs-on` past its first turn, which takes hours and waits for the user's yes; Codex in any
+form. No SKILL.md or script changed, so the sizes stand
 (code-video's 7,999 bytes) and the validators and script tests had nothing new to read; `bun evals/tasks/cases.ts`
 wrote the one new `case.json` and left the others as they were.
