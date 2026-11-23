@@ -92,8 +92,8 @@ the director asks for, in the prompt or a note, wins over the style and the kit:
 - references/motion.md: explaining by doing, acting, camera, transitions, checks.
 - references/music.md: where the music comes from, choosing tracks, building and mixing a score from
   several, checks.
-- references/16-bit.md: the style as a 16-bit console drew it, when the director asks for pixel art or
-  16-bit: what changes and why, each step, checks.
+- references/16-bit.md: the style as a 16-bit console drew it, for a video the director or its treatment
+  puts in pixel art or 16-bit: what changes and why, each step, checks.
 - assets/references/README.md (in a project, `docs/style/nutlight/README.md`): the author's own description
   of the look and the motion, and which kinds of scene each of the eight images guides. Read it before the
   style frames, and again whenever a scene's look is in doubt.

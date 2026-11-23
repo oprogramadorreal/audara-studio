@@ -168,7 +168,7 @@ export default class Pixel16 extends Scene {
   `holes` it leaves alone, up to 4) or `shade` (a translucent shadow, `color`, `alpha`). `depth` is the parallax
   (`Infinity` fixed); `dither` and `ditherSize` where a gradient crosses two colours; `bias` which small details
   survive (above 0 bright ones, below 0 dark ones such as a mouth); `cover`; `clean` (stray pixels; 0 keeps all);
-  `haze`. Inside `draw`, the Stage draws at depth 1 under the layer's camera: the layer's `depth` does the parallax.
+  `haze`; `tone: false` (sky, raw: colours exactly as named, not through the kit's tone shoulder). Inside `draw`, the Stage draws at depth 1 under the layer's camera: the layer's `depth` does the parallax.
 - `P.extract(draw, n, { views, pins, gamma, cover })` → a `Palette`, in `init()` only; `paletteOf(colours)` names one;
   `joinPalettes` puts two characters in one layer.
 - Drawn frames: `P.drawing(t)` (the time a drawing shows), `P.idle(pose, t, seed)` (a loop of three drawings and
@@ -177,8 +177,9 @@ export default class Pixel16 extends Scene {
   things on the grid by hand.
 - `P.end({ mosaic, bright, iris })`: the hardware's transitions. `P.solo = n` shows the nth layer alone (a check);
   `P.camAt(depth)` is a layer's camera.
-- About 15 to 20 layers made the test's frames; each is a full-size draw and one pass. The cast sheet takes
-  `params: { px: 5 }`.
+- About 15 to 20 layers made the test's frames; each is a full-size draw and one pass, into one full-size target
+  that every PixelStage on the renderer shares. `cast-sheet-16bit.ts`, in the skill's `assets/`, is the cast sheet
+  through the PixelStage (`params: { px }`, 5 by default).
 
 ## Budget and rules
 

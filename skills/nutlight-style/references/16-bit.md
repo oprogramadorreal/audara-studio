@@ -21,7 +21,7 @@ Contents: What changes, and why · At each step · Checks
 | crisp, smooth contours | a 384×216 grid (`px: 5`), each pixel a 5×5 block of the 1080p frame; 15-bit colour | about that hardware's line count at 16:9; on the cast sheet faces keep their mouths here and lose them at 320×180 (`px: 6`) |
 | any colour the light makes | a palette per layer, chosen from the layer as the kit lights it (`P.extract`): 15 colours a character, 5 to 14 a background plane, up to about 44 for the focal plane; ordered dither only where a gradient crosses two colours; the sky a 15-bit gradient | that hardware gave each layer and sprite its own palettes; the lights added over them still brought a frame to several hundred colours |
 | no outlines | a 1-pixel outline on characters only, in the setting's dark (`R.c.frame`) pulled toward the colour it borders (`selout: 0.3`), the same for every character; backgrounds keep the style's rule | small sprites read over busy planes; a black line breaks the style, and two characters with different outlines looked drawn by two hands |
-| soft glow and bloom | light layers added in 4 flat steps of one intensity, its hue kept, never over the face of the screen or lamp it comes from (`holes`); the engine's post off (`PIXEL_POST`); characters drawn over the light, in their own colours | colour math, as that hardware lit things; a blurred glow, or a dither per channel (3 or 4 colours in every 2×2 cell of a screen), read as a filter |
+| soft glow and bloom | light layers added in 4 flat steps of one intensity, its hue kept, never over the face of the screen or lamp it comes from (`holes`); the engine's post off (`PIXEL_POST`); characters drawn over the light, in their own colours | colour math, as that hardware lit things; a blurred glow, or a dither per channel (3 or 4 colours in 73% of the 2×2 cells on a lit screen's face), read as a filter |
 | far layers in haze | the same, painted into each plane's palette | a palette per plane is how it showed distance |
 | a camera that drifts, pushes and settles | pans only, in whole pixels, each plane scrolling 1/depth as fast (clouds 14, far 5, mid 2.3, focal 1, foreground 0.55 worked) | the grid has no zoom: a zoom resamples every pixel and the picture crawls; parallax in whole pixels is that era's signature |
 | characters always alive | the kit's poses and acting, drawn 12 times a second (`P.drawing`); at rest a loop of three drawings (`P.idle`); typing in two; blinks in two; a hop's height every frame in whole pixels, its drawings a crouch, a stretch and a landing (`P.hop`) | a sprite redrawn from a continuous pose was a new picture at every step and its outline crawled (21 drawings in 20 steps at rest; 2 in 9 with the loop) |
@@ -32,18 +32,24 @@ Contents: What changes, and why · At each step · Checks
 
 ## At each step
 
-- **Brief.** The treatment's Look names the variant and the grid, and its format says `shutter: 0`. Stage the
+- **Brief.** The treatment's Look names the version and the grid, and its format says `shutter: 0`; a later
+  session finds the version there. Stage the
   storyboard for what the grid does well: a pan with parallax, a character's action read in silhouette, a screen
   that changes. A push-in becomes a cut, a pan or the mosaic. The music plan is music.md's: the director's library
   first. A 16-bit piece may want that era's sound (a sample-based chip: 32 kHz voices, a short echo). Synthesized
   in code it's free, so it's a fair stand-in, named as one, until a library track or a yes to generated music.
-- **Setup.** As for any Nutlight video: `pixel.ts` comes with the kit.
+- **Setup.** As for any Nutlight video: `pixel.ts` comes with the kit. A project whose kit predates it gets
+  `pixel.ts` copied into `src/nutlight/` and its export line from the skill's `index.ts`, which adds the
+  converter and changes nothing the kit already draws; if it doesn't typecheck against that older kit, a newer
+  kit waits for the director's yes (SKILL.md, "Ideas, and later sessions").
 - **Look.** Style frames through the PixelStage, each beside its reference and beside the same frame with
-  `hd: true`. Make the key moment's subject big enough for the grid: a packet as a 4-pixel dot read as nothing,
-  and the acorn itself with a short trail did. STYLE.md opens as look.md says, adds a "16-bit" table of what
-  changes and why (this one, made the video's own), and lists in Avoid anything smooth beside the pixels (a
-  blurred glow, an anti-aliased edge, a sub-pixel move), zooms, black outlines and detail finer than the grid.
-- **Cast.** Render the cast sheet with `params: { px: 5 }` beside the kit's own: each character's silhouette,
+  `hd: true`. The "16-bit" table of what changes and why (this one, made the video's own) and its Avoid items
+  (anything smooth beside the pixels: a blurred glow, an anti-aliased edge, a sub-pixel move; zooms, black
+  outlines, detail finer than the grid) go where the choice was made: the treatment's Look for one video,
+  `docs/STYLE.md` when the director wants the whole project in 16-bit. A later Nutlight video in the same project
+  keeps the style's own look.
+- **Cast.** Render `assets/cast-sheet-16bit.ts` (copied into the video's scenes like the kit's cast sheet, its
+  grid set by `params: { px }`) beside the kit's own: each character's silhouette,
   eyes and mouth should survive the grid, and every character should look drawn by one hand (one outline colour
   and selout, the same palette size). A small feature that reads as something else at this size goes for this
   video (a crown tuft read as a third ear), noted in the cast table.
@@ -51,13 +57,16 @@ Contents: What changes, and why · At each step · Checks
   `P.end` (the kit's README has one). Choose the
   palettes once in `init()`, from the views the pan will show (`P.views`). Bake at half resolution, since the grid
   sees a fifth. A pose acted from the beats is still the kit's (`poseKeys`, `express`, `reach`), stepped at the
-  drawing rate; `P.idle` goes last. A frame that only breathes reads as a postcard: give the opening an action (the
-  test's first two seconds were still at a glance until its character typed and tokens landed on the screen).
+  drawing rate; `P.idle` goes last.
 - **Critic.** Run it as SKILL.md says, adding the checks below and two verdicts: still Nutlight? 16-bit at a
   glance, and on inspection?
-- **Render.** `--scale 2` draws each frame again at 3840×2160 on the same grid, each pixel a 10×10 block. A 4:2:0
-  encode keeps an even block flat, while a 1080p H.264 file smeared 37% of the 5×5 blocks. A colour here and there
-  can shift by one 15-bit step from the 1080p preview, and nothing moves.
+- **Render.** `--scale 2`: each frame drawn again at 3840×2160 on the same grid, each pixel a 10×10 block. The
+  H.264 file keeps its colour in 2×2 pairs, which 5×5 blocks split: on two of the test's frames encoded at the final
+  settings, 1.1 to 1.3% of the 1080p pixels came back more than 24/255 off, along the blocks' edges, and none of
+  the 4K ones (the encode still moves most pixels by a value or two). Drawn again, the 4K frames aren't the
+  preview's exactly: on those two frames 60% of the grid's pixels kept their colour, 37% moved by one or two
+  15-bit steps and about 3% by more, while nothing moved. So look at the key
+  moments' stills at `--scale 2` before the render.
 
 ## Checks
 
@@ -67,7 +76,11 @@ On stills and short clips, before scenes go out and in critic rounds, with look.
   of the focal plane flip; anchored to the layer, 0 in four planes and at most 8 of 83,000 in the focal plane);
 - a character at rest shows a few drawings, repeated (crop it at 12 steps a second and count the distinct
   pictures);
-- no light sits on the face of its own screen; no 2×2 cell of a light holds three colours;
-- on a 4K still, every 10×10 block is one colour (within the engine's 1/255 output dither);
-- the opening isn't still at a glance (qc.py's `glance` line);
-- what carries the story reads at the grid's size, and two characters side by side look drawn by one hand.
+- no light sits on the face of its own screen or lamp, and a screen's face holds its icon's flat colours (no 2×2
+  cell of it with three);
+- on a still at `--scale 2` (a PNG, before any encode), every 10×10 block is one colour, within the engine's
+  1/255 output dither;
+- the opening isn't still at a glance (qc.py's `glance` line: the test's first two seconds were, until its
+  character typed and a token landed on the screen at each keystroke);
+- what carries the story reads at the grid's size (a packet as a 4-pixel dot read as nothing; the acorn itself
+  with a short trail did), and two characters side by side look drawn by one hand.

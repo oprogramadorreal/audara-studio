@@ -81,10 +81,12 @@ export function choosePalette(bytes: Uint8Array, n: number, o: { pins?: readonly
     const r = ((key >> 10) & 31) / 31, g = ((key >> 5) & 31) / 31, b = (key & 31) / 31;
     pts.push({ lab: oklab(toLin(r), toLin(g), toLin(b)), w: Math.pow(count, o.gamma ?? 0.5) });
   }
-  const pins = (o.pins ?? []).map((c) => { const l = lin(c); return oklab(toLin(snap5(toS(l[0]))), toLin(snap5(toS(l[1]))), toLin(snap5(toS(l[2])))); });
+  const pp = paletteOf(o.pins ?? []); // the pins in 15-bit colour, each once
+  const pins: V3[] = Array.from({ length: pp.n }, (_, i) => [pp.lab[i * 3]!, pp.lab[i * 3 + 1]!, pp.lab[i * 3 + 2]!]);
+  if (pins.length > Math.min(n, PN)) throw new Error(`choosePalette: ${pins.length} pinned colours for a palette of ${n}`);
   const d2 = (a: V3, b: V3) => (a[0] - b[0]) ** 2 + CHROMA * ((a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
   const cen: V3[] = pins.map((p) => [...p] as V3);
-  const want = Math.min(PN, Math.max(n, pins.length + 1));
+  const want = Math.min(PN, Math.max(n, pins.length));
   if (pts.length) {
     // farthest-point start: the heaviest colour, then whichever is worst served so far
     if (!cen.length) cen.push([...pts.reduce((a, b) => (b.w > a.w ? b : a)).lab] as V3);
@@ -140,7 +142,7 @@ float bayer(vec2 p, float size) {
 const PIX_FRAG = /* glsl */ `
 uniform sampler2D src; uniform vec2 grid; uniform int mode; uniform int n;
 uniform vec3 palLab[${PN}]; uniform vec3 palRGB[${PN}];
-uniform float dither, ditherSize, bias, cover, hazeK, levels, gain, chroma; uniform vec3 hazeC; uniform vec4 shade; uniform vec2 scroll;
+uniform float dither, ditherSize, bias, cover, hazeK, levels, gain, chroma, tone; uniform vec3 hazeC; uniform vec4 shade; uniform vec2 scroll;
 uniform vec4 holes[4]; uniform int nHoles;
 ${SHOULDER_GLSL}
 ${GLSL_PIX}
@@ -164,7 +166,8 @@ void main() {
     int k = j * N + i;
     sum += s.rgb; asum += s.a;
     ok[k] = step(0.5, s.a);
-    rgb[k] = clamp(shoulder(s.rgb / max(s.a, 1e-4)), 0.0, 1.0);
+    vec3 c = s.rgb / max(s.a, 1e-4);
+    rgb[k] = clamp(tone > 0.5 ? shoulder(c) : c, 0.0, 1.0);
     mean += rgb[k] * ok[k]; cnt += ok[k];
   }
   // the dither's pattern belongs to the layer, not to the screen: it scrolls with what it shades (a pattern fixed to
@@ -183,11 +186,11 @@ void main() {
     return;
   }
   if (mode == 3) { // shade: a translucent shadow in the setting's deep colour
-    float a = step(cover, asum / float(S)) * shade.a;
+    float a = (asum > 0.0 ? step(cover, asum / float(S)) : 0.0) * shade.a;
     fragColor = vec4(shade.rgb * a, a);
     return;
   }
-  if (cnt / float(S) < cover) { fragColor = vec4(0.0); return; }
+  if (cnt < 0.5 || cnt / float(S) < cover) { fragColor = vec4(0.0); return; }
   mean /= cnt;
   if (mode == 4) { fragColor = vec4(toSRGB(mean), 1.0); return; } // extract: the colours a palette is chosen from
   if (mode == 1) { // 15-bit colour, no palette
@@ -287,6 +290,9 @@ export interface LayerOpts {
   /** stray pixels: one alone among its eight neighbours takes its neighbour's colour when it differs from it by
    * less than this (sRGB distance; default 0.22: a ramp's steps go, a glint stays; 0 keeps every pixel) */
   clean?: number;
+  /** sky and raw: the colours through the kit's tone shoulder, as its post would show them (default true); false
+   * keeps them exactly as named (a palette's own swatches) */
+  tone?: boolean;
   /** a far layer's palette, shifted toward the haze */
   haze?: number; hazeColor?: Col;
   /** light: its steps of intensity (default 4) and the strength it is added at */
@@ -307,7 +313,22 @@ export interface FrameFx {
 }
 
 /** What the engine's post does to a pixel frame: nothing. The pixels arrive as they were made. */
-export const PIXEL_POST: Partial<PostParams> = { exposure: 1, shoulder: 0, bloom: 0, halation: 0, ca: 0, grain: 0, vignette: 0, fade: 0, flash: 0, zoom: 1, shake: [0, 0] };
+export const PIXEL_POST: Partial<PostParams> = { exposure: 1, shoulder: 0, bloom: 0, halation: 0, ca: 0, grain: 0, vignette: 0, fade: 0, flash: 0, zoom: 1, shake: [0, 0], invert: 0, hud: 0, frame: 0 };
+
+/** The full-size target a layer is drawn into before it is turned into pixels: one per renderer, shared by every
+ * PixelStage (scenes render one at a time, and each layer is drawn and converted before the next begins), so a
+ * video of many 16-bit scenes holds one, not one per scene (about 100 MB each at 4K). */
+const SCRATCH = new WeakMap<THREE.WebGLRenderer, { rt: THREE.WebGLRenderTarget; users: number }>();
+function takeScratch(r: THREE.WebGLRenderer) {
+  let e = SCRATCH.get(r);
+  if (!e) { e = { rt: makeRT(), users: 0 }; SCRATCH.set(r, e); }
+  e.users++;
+  return e.rt;
+}
+function giveScratch(r: THREE.WebGLRenderer) {
+  const e = SCRATCH.get(r);
+  if (e && --e.users <= 0) { e.rt.dispose(); SCRATCH.delete(r); }
+}
 
 function lowRT(w: number, h: number) {
   return new THREE.WebGLRenderTarget(w, h, { type: THREE.UnsignedByteType, format: THREE.RGBAFormat, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
@@ -327,7 +348,7 @@ export class PixelStage {
   readonly gw: number; readonly gh: number;
   /** the camera (a pan: whole pixels; the grid has no zoom) */
   cam: Cam = mkCam();
-  private full = makeRT();
+  private full: THREE.WebGLRenderTarget;
   private low: THREE.WebGLRenderTarget; private acc: THREE.WebGLRenderTarget;
   private pix: FSPass; private blit: FSPass; private blitAdd: FSPass; private fin: FSPass;
   private out: THREE.WebGLRenderTarget | null = null;
@@ -345,13 +366,14 @@ export class PixelStage {
     this.hd = !!o.hd;
     this.gw = Math.round(W / this.px); this.gh = Math.round(H / this.px);
     if (this.gw * this.px !== W || this.gh * this.px !== H) throw new Error(`PixelStage: ${this.px} px doesn't divide the ${W}×${H} frame`);
+    this.full = takeScratch(ctx.renderer);
     this.low = lowRT(this.gw, this.gh); this.acc = lowRT(this.gw, this.gh);
     const grid = new THREE.Vector2(this.gw, this.gh), texel = new THREE.Vector2(1 / this.gw, 1 / this.gh);
     this.pix = new FSPass(PIX_FRAG, {
       src: { value: this.full.texture }, grid: { value: grid }, mode: { value: 0 }, n: { value: 0 },
       palLab: { value: this.black }, palRGB: { value: this.black }, dither: { value: 0 }, ditherSize: { value: 2 }, bias: { value: 0 },
       cover: { value: 0.5 }, hazeK: { value: 0 }, hazeC: { value: new THREE.Vector3() }, levels: { value: 12 }, gain: { value: 1 },
-      chroma: { value: CHROMA }, shade: { value: new THREE.Vector4() }, scroll: { value: new THREE.Vector2() },
+      chroma: { value: CHROMA }, tone: { value: 1 }, shade: { value: new THREE.Vector4() }, scroll: { value: new THREE.Vector2() },
       holes: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] }, nHoles: { value: 0 },
     });
     const bu = () => ({ src: { value: this.low.texture }, texel: { value: texel }, outline: { value: new THREE.Vector4() }, selout: { value: 0 }, clean: { value: 0 } });
@@ -359,7 +381,14 @@ export class PixelStage {
     this.blitAdd = over(new FSPass(BLIT_FRAG, bu(), { transparent: true }), true);
     this.fin = new FSPass(FINAL_FRAG, { src: { value: this.acc.texture }, grid: { value: grid }, mosaic: { value: 1 }, bright: { value: 1 }, iris: { value: new THREE.Vector4() }, irisC: { value: new THREE.Vector3() } });
   }
-  dispose() { this.full.dispose(); this.low.dispose(); this.acc.dispose(); }
+  private disposed = false;
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    giveScratch(this.ctx.renderer);
+    this.low.dispose(); this.acc.dispose();
+    for (const p of [this.pix, this.blit, this.blitAdd, this.fin]) p.mat.dispose(); // (the fullscreen triangle is the engine's, shared)
+  }
 
   /** A length or a position on the pixel grid (things that move take whole pixels, or their edges crawl). */
   snap(v: number) { return this.hd ? v : Math.round(v / this.px) * this.px; }
@@ -391,7 +420,7 @@ export class PixelStage {
     u.n!.value = p?.n ?? 0; u.palLab!.value = p?.lab ?? this.black; u.palRGB!.value = p?.srgb ?? this.black;
     u.dither!.value = o.dither ?? 0; u.ditherSize!.value = o.ditherSize ?? 2; u.bias!.value = o.bias ?? 0; u.cover!.value = o.cover ?? 0.5;
     u.hazeK!.value = o.haze ?? 0; (u.hazeC!.value as THREE.Vector3).set(...this.sRGB(o.hazeColor ?? this.st.look.haze));
-    u.levels!.value = o.levels ?? 4; u.gain!.value = o.gain ?? 1;
+    u.levels!.value = o.levels ?? 4; u.gain!.value = o.gain ?? 1; u.tone!.value = o.tone === false ? 0 : 1;
     const hs = (o.holes ?? []).slice(0, 4), ox = this.st.cam.x - W / 2, oy = this.st.cam.y - H / 2, px = this.px;
     hs.forEach((h, i) => (u.holes!.value as THREE.Vector4[])[i]!.set(Math.round((h.x - ox) / px), Math.round((h.y - oy) / px), Math.round((h.x + h.w - ox) / px), Math.round((h.y + h.h - oy) / px)));
     u.nHoles!.value = hs.length;

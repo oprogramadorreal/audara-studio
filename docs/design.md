@@ -750,8 +750,9 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   parameters. A 10-second test answered it (history.md, 0.16.0): the kit drew every scene unchanged, and all that
   was 16-bit was one module that turns what the Stage draws into pixel art, layer by layer, plus the craft of
   staging for it; the same scene file rendered both looks. So the converter is in the kit (`pixel.ts`, a
-  `PixelStage` wrapping the Stage), the craft is in `references/16-bit.md`, and SKILL.md names that file for when
-  the director asks.
+  `PixelStage` wrapping the Stage), the craft is in `references/16-bit.md`, and SKILL.md names that file for a
+  video the director or its treatment puts in 16-bit. The choice is a video's, written in its treatment, so a later
+  Nutlight video in the same project keeps the style's own look unless the director wants the whole project so.
   - Not a second skill: both would answer to "Nutlight", so which loaded would be a toss-up; it would copy a
     500 KB kit that drifts from this one, or reach into this skill's folder; and every list of skills would grow.
   - Not parameters: the grid, the palettes' sizes and the outline were picked by looking, and a director steers
@@ -1532,8 +1533,8 @@ audara-studio/
     │   │                             # project's docs/style/nutlight/
     │   ├── assets/kit/               # the code kit (squirrels, stage, light, props, camera, pixel.ts for
     │   │                             # 16-bit), copied into a project's src/nutlight/; README.md is its guide
-    │   └── assets/cast-sheet.ts      # a scene that renders a video's cast against references 01 and 02
-    │                                 # (in 16-bit with params { px: 5 })
+    │   ├── assets/cast-sheet.ts      # a scene that renders a video's cast against references 01 and 02
+    │   └── assets/cast-sheet-16bit.ts  # the same cast sheet in 16-bit, through the kit's PixelStage
     ├── youtube-package/              # publishing: three thumbnails with one title, the description, the tags
     │   ├── SKILL.md                  # the pair, the bar, the session's steps and its stop rules
     │   ├── references/art.md         # the pictures: ideas, plates, staging, photos, generation, type, critic
