@@ -20,6 +20,8 @@
     { "id": "ns-17", "should_trigger": false, "files": [], "query": "give me some ideas for a video about my coffee shop, I don't know what to make yet" },
     { "id": "ns-18", "should_trigger": false, "files": [], "query": "faz um vídeo de 30 segundos com um esquilo animado comendo nozes, estilo fofo" },
     { "id": "ns-19", "should_trigger": false, "files": ["song.mp3"], "query": "Make a lyric video for song.mp3 with warm, glowing night-city visuals." },
-    { "id": "ns-20", "should_trigger": false, "files": [], "query": "Make an animated explainer about Fourier series in a 3Blue1Brown style." }
+    { "id": "ns-20", "should_trigger": false, "files": [], "query": "Make an animated explainer about Fourier series in a 3Blue1Brown style." },
+    { "id": "ns-21", "should_trigger": true, "files": [], "query": "Make a 20-second video in the Nutlight style, but make it look like a Super Nintendo game, 16-bit pixel art." },
+    { "id": "ns-22", "should_trigger": false, "files": [], "query": "Make a 15-second 16-bit pixel-art intro of a squirrel gathering acorns, like an old SNES game." }
   ]
 }

@@ -513,6 +513,27 @@ const cases: Record<string, Case> = {
       "Turn 4, a new session, makes a second video that is flat black-and-white Swiss typography: no squirrel, nothing imported from src/nutlight/, no navy-teal palette or glow, its own treatment saying it departs from the project's Nutlight look; src/nutlight/ is unchanged by it (git diff), and the first video's frames are unchanged (render.ts verify on it names no changed stretch).",
     ],
   },
+  // Nutlight in 16-bit (0.16.0): the style named as a 16-bit console would have drawn it. The kit's PixelStage
+  // converts what the kit draws, the scenes are staged for the grid (pans, drawn frames, detail set by hand), and
+  // the render keeps every pixel a whole block. No library is given and nothing is paid.
+  'ns-16bit': {
+    skill: 'nutlight-style', setup: { files: [], mock: 'elevenlabs', key: false }, timeoutMinutes: 180,
+    turns: [
+      { prompt: 'Make a 15-second video in the Nutlight style, but make it look like it was made for Super Nintendo (16-bit) graphics: a squirrel sends a message to a friend across a night city. No paid music or voice for now.' },
+      { prompt: 'Looks good. Render it.' },
+    ],
+    assertions: [
+      "Turn 1 reads the skill's references/16-bit.md before the first scene file (transcript order); the treatment's Look names the Nutlight style and the 16-bit version, and video.json's shutter is 0.",
+      "src/nutlight/ holds the skill's kit unchanged, pixel.ts included (diff against skills/nutlight-style/assets/kit/); every scene draws through its PixelStage, imported from src/nutlight, and every character is the kit's Squirrel: no squirrel or pixel converter written anew.",
+      "On full-size stills at the treatment's key moments the picture is on one grid: every block of the grid's size (5×5 at 1080p, unless the treatment argues for another) is one colour within 2/255; no bloom, grain or vignette over it; the characters carry a 1-pixel outline that isn't black, and the backgrounds none.",
+      "It still reads as Nutlight beside the references on those stills: the kit's squirrels on model (silhouettes beside 01 and 02), light from visible sources, a dark framing foreground and hazier far layers.",
+      "The camera pans in whole pixels, with planes scrolling at different speeds (stills through the move), and never zooms or rotates.",
+      "A character at rest shows a few drawings, repeated: crops at 12 steps a second over 1.5 s show at most 6 distinct pictures, not a new one at every step.",
+      "A cast sheet was rendered through the PixelStage (the skill's cast-sheet.ts with a px param, or the like) and looked at before the production scenes (transcript order).",
+      "The music follows music.md: no library was given, so the brief's message asks where it is, and the sound used meanwhile is free (synthesized in code or a stand-in) and named as a stand-in; nothing paid is generated (mock-requests.jsonl: no paid=true entries).",
+      "Turn 2 renders at 3840×2160 with --scale 2 (or says why not); a still made at that scale has every 10×10 block one colour within 2/255, and the reply gives the critic's verdicts, verify's result and qc.py's motion, glance and blank lines.",
+    ],
+  },
   'vi-ideas-only': {
     skill: 'video-ideas', setup: { files: [] }, timeoutMinutes: 20,
     turns: [
