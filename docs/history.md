@@ -5637,7 +5637,7 @@ a glance yes, on inspection no", one more pass. Its findings and what they becam
 | Finding | Change | Measured after |
 |---|---|---|
 | lights soft, like a filter: 73% of the 2×2 cells on the screens' faces held 3 or 4 colours (a dither per channel) | light added in 4 flat steps of one intensity, its hue kept, never over the face of the screen it comes from | one colour per step |
-| resting characters crawled: a new drawing at every step (21 in 20), since a continuous pose was redrawn each time | the idle as a loop of three drawings (0, 1, 2, 1) three times a second, blinks of two, typing in two | 2 drawings in 9 steps |
+| resting characters crawled: a new drawing at every step (21 in 20), since a continuous pose was redrawn each time | the idle as a loop of three drawings (0, 1, 2, 1), a step every third of a second, blinks of two, typing in two | 2 drawings in 9 steps |
 | the first 2 s a held postcard (qc.py: 0.27 to 2.33 s still at a glance) | the character types and a token lands on the screen per keystroke; the camera creeps a pixel at a time; the paw lifts and holds before the tap | `glance` 0% |
 | the packet a 4-pixel dot on a white wire, hidden twice in a row | the acorn itself rides the wire with a short trail, out of the router along a cable, its halo fading in; the wire's core mid-cyan; the foreground tree's pass moved a second before the tower's | |
 | the hop one drawing moved 5 frames at a time | its height every frame in whole pixels; its drawings a crouch, a stretch and a landing | |
@@ -5677,8 +5677,8 @@ part was one module that wraps the Stage, plus the craft of staging for it.
   asks, and the checks (a plane alone through a pan, the drawings at rest, light off a screen's face, whole blocks
   at 4K, the opening not still, what carries the story big enough). The choice and its table go in the video's
   treatment, or in `docs/STYLE.md` only when the director wants the whole project in 16-bit.
-- **SKILL.md:** one line in "Read when" names that file for a video the director or its treatment puts in pixel
-  art or 16-bit (7,999 bytes). The description doesn't change: the request still names Nutlight.
+- **SKILL.md:** one line in "Read when" names that file for a video the director, its treatment or STYLE.md puts
+  in 16-bit (7,988 bytes). The description doesn't change: the request still names Nutlight.
 - **Delivery:** `--scale 2`, which draws each frame again at 3840×2160 on the same grid, each pixel a 10×10 block.
   The test had planned the 1080p render scaled ×2 nearest-neighbour, which render.ts has no path for. Measured on
   two of the test's frames (1.5 and 6.5 s), each encoded alone at the final render's settings (CRF 16, slow,

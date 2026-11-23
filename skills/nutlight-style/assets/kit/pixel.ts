@@ -498,7 +498,7 @@ export class PixelStage {
   drawing(t: number, fps = 12) { return this.hd ? t : Math.floor(frameTime(t) * fps + 1e-6) / fps; }
 
   /** A character at rest: alive()'s breathing, head drift and tail sway at three moments of their cycle, played as
-   * the loop 0, 1, 2, 1 three times a second (the same three drawings every time round), and blinks of two drawings
+   * the loop 0, 1, 2, 1, three steps a second (the same three drawings every time round), and blinks of two drawings
    * at the kit's own seeded times. Call it last, on the pose the scene has acted. */
   idle(p: SqPose, t: number, seed = 0): SqPose {
     if (this.hd) return alive(p, t, seed);
