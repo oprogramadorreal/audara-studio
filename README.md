@@ -33,7 +33,8 @@ audara-studio is a plugin for Claude Code and Codex with seven skills:
   and, as a separate paid choice you approve once, dubbed audio tracks in the narration's own voice.
 - **nutlight-style**: a house style you can name, for explainers: squirrels acting out the ideas in luminous
   geometric worlds, scenes that flow into each other and music cut from your own library. Ask for a video
-  "in the Nutlight style" and the other skills make it in that look; it stays out of everything else.
+  "in the Nutlight style" and the other skills make it in that look (or "in the Nutlight style, 16-bit" for
+  pixel art); it stays out of everything else.
 
 ## Install
 

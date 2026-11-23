@@ -745,6 +745,21 @@ project (history.md, 0.9.0). `nutlight-style` holds it:
   Nutlight project, is that video's own and doesn't use the kit; and a change for one video stays in its files,
   since `src/nutlight/` reaches every video in the project. The user asked for exactly this once the kit
   existed: consistency between videos, without the kit working against an explicit request.
+- **16-bit is a version you name, not another skill.** The director asked for a Nutlight video "made for super
+  nintendo (16-bit) graphics", and whether that belonged in this skill, in a sibling (`nutlight-16bit`) or behind
+  parameters. A 10-second test answered it (history.md, 0.16.0): the kit drew every scene unchanged, and all that
+  was 16-bit was one module that turns what the Stage draws into pixel art, layer by layer, plus the craft of
+  staging for it; the same scene file rendered both looks. So the converter is in the kit (`pixel.ts`, a
+  `PixelStage` wrapping the Stage), the craft is in `references/16-bit.md`, and SKILL.md names that file for when
+  the director asks.
+  - Not a second skill: both would answer to "Nutlight", so which loaded would be a toss-up; it would copy a
+    500 KB kit that drifts from this one, or reach into this skill's folder; and every list of skills would grow.
+  - Not parameters: the grid, the palettes' sizes and the outline were picked by looking, and a director steers
+    them in words ("chunkier pixels"), as everything else.
+  - Not a filter: the whole frame shrunk and recoloured at once came out muddy and crawling, so a scene is staged
+    for the grid from the brief (pans, not zooms; drawn frames; small detail set on the grid by hand).
+  - The converter knows nothing of squirrels. If another look is asked for in 16-bit, it can move to code-video
+    then.
 - **Music isn't bundled.** The tracks are licensed to the user, not for redistribution, and shipping them
   would make every video sound the same. The order is the director's library, then generated music after a
   yes with its cost (soundtrack's `eleven.py music`), then anything else the brief needs. The agent chooses
@@ -1512,12 +1527,13 @@ audara-studio/
     │   └── scripts/audit.ts          # (bun, read-only) sizes, duplicates, keys, home paths, e-mail addresses
     ├── nutlight-style/               # a house style, loaded when named: direction for the other skills' steps
     │   ├── SKILL.md                  # what defines it, what it asks of each step of code-video, ideas, later
-    │   ├── references/               # look.md, motion.md, music.md: the craft and the checks
+    │   ├── references/               # look.md, motion.md, music.md, 16-bit.md: the craft and the checks
     │   ├── assets/references/        # the author's eight reference images and README.md, copied into a
     │   │                             # project's docs/style/nutlight/
-    │   ├── assets/kit/               # the code kit (squirrels, stage, light, props, camera), copied into a
-    │   │                             # project's src/nutlight/; README.md is its guide
+    │   ├── assets/kit/               # the code kit (squirrels, stage, light, props, camera, pixel.ts for
+    │   │                             # 16-bit), copied into a project's src/nutlight/; README.md is its guide
     │   └── assets/cast-sheet.ts      # a scene that renders a video's cast against references 01 and 02
+    │                                 # (in 16-bit with params { px: 5 })
     ├── youtube-package/              # publishing: three thumbnails with one title, the description, the tags
     │   ├── SKILL.md                  # the pair, the bar, the session's steps and its stop rules
     │   ├── references/art.md         # the pictures: ideas, plates, staging, photos, generation, type, critic
