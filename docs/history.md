@@ -46,6 +46,8 @@ Contents
 - A 4K master: drawn again, and files made again where they can be (0.14.3, 2026-11-19)
 - devlog keeps the log and moments that run again; filming moves to code-video (0.15.0, 2026-11-19)
 - The opening hands over like any other moment (0.15.1, 2026-11-22)
+- Nutlight in 16-bit: a version of the style, not another skill (0.16.0, 2026-11-23)
+- Any program inside the loop: shots made outside the browser (0.17.0, 2026-11-25)
 
 ## Definition of done
 
@@ -5745,3 +5747,111 @@ part was one module that wraps the Stage, plus the craft of staging for it.
 is unchanged but for the one line, so the gate would be main's skills beside these on a 16-bit request, on Fable
 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind and by the director. Those are whole
 builds, hours each, and wait for the user's yes. `ns-16bit` hasn't run, in either tool.
+
+## Any program inside the loop: shots made outside the browser (0.17.0, 2026-11-25)
+
+The user asked whether the approach (video drawn in the browser with three.js and GLSL) could be limiting what
+Opus 5.5, Fable 5.2 and later models make, to search the web, and to say what would make the plugin less
+constraining. Then, with a session of Codex as consultant: make the change, without losing anything the skills
+do now (the live preview above all) and without ever lowering what a current or future model makes with them:
+"when opus 6 was release, it must work at its full capacity out of the box".
+
+**What the reading found.** The medium is not the narrow part. The browser holds HTML, SVG, Canvas2D, WebGL and
+three.js, the code models have seen most of, and GLSL is the thin part of it (in a Shadertoy code-completion
+benchmark, ICSE LLM4Code 2025, the best models failed to produce working code 31% of the time), which the
+cookbook and the stills loop already work on. This history's own runs point the same way: in 0.8.2 four of five
+pictures came out about the same with the plugin and without it, and Opus 5.5 alone didn't choose the browser
+at all (three on the CPU in Python, one with ModernGL); in 0.13.0 Fable 5.2's video with the plugin was slightly
+preferred to its own. A practitioner's comparison had one model build the same scene with more content in
+Blender and better light and faster iteration in three.js (one run: 49 s from an edit to seeing it, against
+about 5 minutes). What did narrow the model was leaving: a renderer it knows better for a shot (a path tracer,
+a simulation, Blender, Manim, its own Python) cost the preview and its `?t=` links, verify, stills, sheets and
+the QC report's cut times, and backends.md said so ("every note costs a full render"). Of the candidates the
+reading listed, only this one changes nothing a session reads by default: the others (the order of choice's
+lean toward the template, AI clips offered rather than taken only when asked, look defaults opt-in, fewer
+references read, a scene API closer to plain three.js) change taste or what every session reads, and wait for
+the gate (below).
+
+**What changed.** A program's frames play in the template as a streamed shot (design.md, "Any program: a shot
+made outside the browser"):
+
+- `scripts/shot.ts` (template): `make`, `check`, `status`, `clean`. A recipe, `shots/<shot>/shot.json` beside the
+  program, gives the command with placeholders and the shot's rate, length and size at 1×; `make` runs it only
+  when the command, a field that changes the frames or an input's bytes changed, checks the frames, hashes their
+  decoded pixels, encodes them and publishes a version folder, `made.json` and, last and atomically, the manifest
+  naming the version. `check` renders frames again alone and from mid-shot and compares pixels.
+- `src/engine/footage.ts`: a manifest's `"dir"` (one folder name, checked) is where `full/` and `proxy/` are, and
+  the manifest is read past the browser's cache. A manifest without it reads as before.
+- `vite.config.ts`: a shot's `manifest.json` reloads the preview at its moment, as a video's data, audio and assets
+  do; of `footage/` only each shot's folder and its manifest are watched. render.ts's own server watches nothing.
+- The text, only where a session already looks when the engine doesn't suit or a scene shows footage: backends.md
+  (a section after the order of choice, which keeps its wording; item 4 gains a clause pointing to it),
+  contract.md's "Images and footage" (and the port for an older `footage.ts`), the engine guide's Footage section
+  (and its reload list), blender.md, math.md and filming-a-build.md (when their frames can be a shot: opaque,
+  free, the same pixels in every run). init's AGENTS.md section gains a line only in a project with a recipe.
+  SKILL.md is unchanged.
+- A new eval case, `cv-own-renderer`: a prompt that names the renderer (a path tracer the session writes in
+  Python), a note by time on its shot, and the render. It checks the capability; it says nothing about what a
+  session picks on an ordinary brief.
+
+**Codex's review of the plan** (read-only, before any code) changed it in these ways, each taken:
+
+- **No preflight in AGENTS.md.** The plan had init's section tell every session to run `make` before stills and
+  verify: an unqualified make can run other videos' programs, an expensive one, or change the cut just before
+  verify takes its baseline. The line now appears only where recipes exist, and `make <shot>` stays explicit.
+- **The order of choice stays as it was,** with its warning, and the capability is a fact where a session already
+  looks, not a menu in the build path.
+- **The recipe apart from what's published.** Editing a recipe kept in the watched manifest would have reloaded
+  the preview before any pixel changed; recipes live in `shots/`.
+- **Versions instead of a folder swapped in.** Windows can't rename a folder over a full one, a move aside leaves a
+  moment with no shot, and a render reading fixed frame paths could mix two makes; Vite's dev server revalidates
+  a stable URL by size and time, so equal-size frames written in the same millisecond could come back stale.
+- **A precise protocol** (inclusive 1-based frames, the time of frame k, absolute `{out}`, argv with no shell),
+  frames checked for count, numbering, size and decoding before anything is published, and `check` comparing
+  decoded pixels (an encoder's metadata can differ between runs) with the first run's hashes.
+- **The watcher.** The bundled chokidar calls the ignore test before and after it stats a path and prunes ignored
+  folders, so the predicate lets `footage/`, each shot's folder and its manifest through and nothing else.
+- **render.ts's own server.** It passed `watch: null` inline, and Vite 8 skips a null given over the config file's
+  object, so its private server had been watching; the config file now sets null under `AUDARA_NO_HMR`.
+- **Scale kept,** so a plain make after `--scale 2` keeps the 4K master and its proxies; the recipe's size is the
+  shot's at its largest on screen.
+
+**What was checked.**
+
+- `evals/tests/test_shot.ts`, new, 10/10: in a throwaway project whose path has a space, a program writing BMP
+  frames; make, status and current; the placeholders and environment variables; check passing, and failing on a
+  program that carries state from frame to frame; an input changed (stale, named), the version before kept and
+  older ones removed, clean; a failed program, a missing frame, an extra frame and a wrong size each publishing
+  nothing and leaving no staging; `--scale 2` and the scale kept for later makes and checks; the recipe's own
+  manifest fields rewriting the manifest alone, and a sidecar published; an input written while the program runs
+  publishing nothing; footage a capture made left alone; an engine without `"dir"` refused with the port; a live
+  lock refusing and a dead process's lock taken over; inputs from the project root, one naming nothing, a bad size.
+- `test_footage.ts`, two new checks (34/34): frame URLs in a version folder and beside a manifest without one, the
+  manifest read with `cache: 'no-store'`, and a `"dir"` that isn't one folder name refused. `test_render_inputs`
+  19/19, `test_render_failures` 13/13, `test_init_gitignore` 3/3, `test_audit` 26/26.
+- In a project made by init from this branch, a scene playing a shot whose program is a bun script: make, status,
+  check (and check failing with carried state and with unseeded noise), an edited program reported stale and made
+  again, a failing program leaving the shot as it was, `--scale 2`; `bun run check` clean with `shot.ts` in it; the
+  live preview, driven by Playwright through its own Vite with the browser's cache on, read a pixel of the shot at
+  t = 1 (242,142,39), the program's colours changed, `make` ran, and the page reloaded once by itself, still at
+  t = 1, showing the new frames (28,141,235); render.ts verify passed and stills and a draft render showed the shot.
+- Projects without shots: init from main and from this branch on empty folders wrote the same AGENTS.md (the
+  project's name aside), and the example video's verify gave the same 48 frame hashes in both.
+
+**Considered, left out, for the gate** (each a change of what sessions read or lean toward: one at a time, the old
+text beside the new on every supported model, judged blind; evals/README.md):
+
+- backends.md's lean toward the template ("Leave it only for something it can't do well ... a better-known
+  framework is not a reason"): a run should look at whether a session without it picks a medium the piece gains
+  from, or one it knows from habit.
+- AI video clips offered, with their cost, where the picture needs what code draws poorly; today they come only
+  when the director asks. A shot cut from a generated clip already works (the clip is its input).
+- Look defaults as opt-in (bloom 0.35 on, the four-family font shelf): 0.13.0's bundle, which named post as a look,
+  left Opus 5.5's picture sparser.
+- An ablation arm: SKILL.md and the scripts alone against the full references, on each supported model, to find
+  what the reading earns now that the models are stronger ("A new model starts with a baseline").
+- Transparent shots (PNG on the streamed path, with premultiplied alpha), and a scene API closer to plain
+  three.js: engine changes no run has asked for yet.
+
+**Not run:** a task eval in Codex; `cv-own-renderer` without the skills; the gate (no text a default session reads
+changed). The `cv-own-renderer` run in Claude Code is below once it ends.

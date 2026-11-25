@@ -405,7 +405,17 @@ look-ahead's; a scrub of five look-aheads leaves the first one's waiting frames 
 for one a scene's own prepare asked for too, and render.ts's page fetches them all; and a frame not decoded
 yet shows the latest one before it (one after it only when there is none), counted in `footageStats`; a frame
 that fails to load fails its prepare with its URL and frees its turn; a disposed Footage lets its waiting
-frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone.
+frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone;
+and a manifest's `"dir"` (a version scripts/shot.ts made): frame URLs in that folder, read past the browser's
+cache, the URLs of a manifest without one as before, and a `"dir"` that isn't one folder name refused.
+`test_shot.ts` runs the template's `scripts/shot.ts` in a throwaway project whose path has a space, with a bun
+program writing BMP frames (ffmpeg and ffprobe on the PATH): make, status and current; the placeholders and
+their environment variables; check passing, and failing on a program that carries state between frames; an
+input changed (stale, named), the version before kept and older ones removed, clean; a failed program, a
+missing or extra frame and a wrong size each publishing nothing; `--scale 2` kept for later makes and checks;
+the recipe's own manifest fields rewriting the manifest alone, a sidecar published; an input written while the
+program runs publishing nothing; a capture's footage left alone; an engine without `"dir"` refused; a live lock
+refusing and a dead one taken over; inputs from the project root, one naming nothing, a bad size.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;
@@ -460,6 +470,7 @@ bun evals/tests/test_render_failures.ts
 bun evals/tests/test_render_inputs.ts
 bun evals/tests/test_judge_pick.ts
 bun evals/tests/test_footage.ts
+bun evals/tests/test_shot.ts
 bun evals/tests/test_soundtrack.ts
 ```
 
