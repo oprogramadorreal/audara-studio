@@ -70,8 +70,8 @@ function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<n
   };
   const decode = async (blob: string) => ({ url: blob, close() {} });
   // (render.ts's page has ?export=1)
-  const location = o.rendering ? { search: '?export=1' } : undefined;
-  const mod = new Function('fetch', 'createImageBitmap', 'location', `${js}\nreturn { Footage, footageRound, BUDGET, FETCHES, footageStats, openFootage, infoOf };`)(fetchStub, decode, location);
+  const location = o.rendering ? { search: '?export=1', href: 'http://127.0.0.1:5173/?v=one&export=1' } : undefined;
+  const mod = new Function('fetch', 'createImageBitmap', 'location', `${js}\nreturn { Footage, footageRound, BUDGET, FETCHES, footageStats, openFootage, infoOf, footageInfo };`)(fetchStub, decode, location);
   return { ...mod, fetched, waiting, options } as {
     Footage: new (o: { base: string; frames: number; fps?: number; full: boolean }) => {
       prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; frameAt(i: number): { image: unknown }; index(t: number): number;
@@ -81,6 +81,7 @@ function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<n
     BUDGET: { full: number; proxy: number };
     FETCHES: number;
     footageStats: { draws: number; standIns: number; blank: number };
+    footageInfo(base: string): Promise<{ frames: number; dir: string | null }>;
     openFootage(ctx: { start: number; export: boolean }, shot: string): Promise<{ url(i: number): string; frames: number; dispose(): void }>;
     infoOf(m: Record<string, unknown>, base?: string): { frames: number; dir: string | null };
     fetched: string[];
@@ -475,6 +476,11 @@ test('render.ts\'s page reads a shot\'s manifest once, so two entries opening it
   const b = await page.openFootage({ start: 0, export: true }, 'bars');
   check(a.url(0) === b.url(0) && a.url(0).includes('g1-00000000'), `export page: ${a.url(0)} then ${b.url(0)}`);
   check(page.fetched.filter((u) => u.endsWith('/manifest.json')).length === 1, 'the export page read the manifest twice');
+  // (a scene asking for the manifest itself, for a capture's per-frame data, by another spelling of the same URL)
+  const asked = await page.footageInfo('http://127.0.0.1:5173/footage/bars/');
+  check(asked.dir === 'g1-00000000', `footageInfo on the export page after a make: ${asked.dir}`);
+  const base = (a as unknown as { base: string }).base;
+  check(base === '/footage/bars/g1-00000000', `a Footage's base, for the files kept beside its frames: ${base}`);
   a.dispose(); b.dispose();
   const live = realFootage({ manifest: { ...manifest, dir: 'g1-00000000' } });
   const c = await live.openFootage({ start: 0, export: false }, 'bars');

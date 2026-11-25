@@ -1122,7 +1122,8 @@ come into the template as a streamed shot, and everything around a scene works o
   version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
   every version the manifest names. The version before stays for a render that opened it; older ones go, but
   only folders holding this script's record for the shot (a folder named like a version that it didn't make
-  stays), and one that can't be removed yet (a file open on Windows) is left, said, for the next make or clean.
+  stays), and one that can't be removed yet (a file open on Windows) is left, said, for the next make or clean,
+  its record removed last so it is still known as the script's.
   A version whose record is gone is made again at the scale its manifest gives, never smaller. Everything that
   reads or writes a shot's state holds one lock per shot, made whole before it appears; a lock whose process
   has ended is taken back under a second, short lock that re-reads it first, and a run releases its lock only
@@ -1134,8 +1135,9 @@ come into the template as a streamed shot, and everything around a scene works o
   any older shot reads `full/` and `proxy/` as before) and reads the manifest past the browser's cache. A
   `--jobs` render opens the shot in each of its browsers, so render.ts compares the shots' manifests before the
   join and stops if one was made again meanwhile, and keeps them, as they were before any page opened, in its
-  `run.json`, so `--resume` refuses pieces of two versions; render.ts's page reads each shot's manifest once,
-  so two entries that open one shot see the same version.
+  `run.json`, so `--resume` refuses pieces of two versions; render.ts's page reads each shot's manifest once
+  (`footageInfo`, by the manifest's absolute URL), so two entries that open one shot, and a scene that reads its
+  manifest or a file kept beside its frames (through the Footage's `base`), see the same version.
 - **The preview reloads at its moment** when a shot's manifest is written, as it does for a video's data,
   audio and assets: of the root's `footage/` the watcher sees each shot's folder and its manifest alone, so tens
   of thousands of frames are never watched, and a folder named `footage` anywhere else stays unwatched as

@@ -5870,6 +5870,21 @@ made outside the browser"):
   when that isn't a whole multiple), the version on screen is kept as the one before, and a sidecar the record
   names counts toward a version being whole.
 
+**Its third review** found two more, fixed:
+
+- **On one export page, a scene's own lookup could see a newer version than its frames:** the manifest was cached
+  per call of `openFootage`, so `footageInfo` (or another spelling of the same URL) read the manifest again after
+  a make, and per-frame data read from it could be drawn over the older frames. `footageInfo` itself now caches on
+  render.ts's page, by the manifest's absolute URL, and a Footage gives its `base` (the version it plays) for the
+  files kept beside its frames.
+- **A removal stopped by a held proxy left an orphan:** removing a version recursively could take its `made.json`
+  before reaching the held file, and the next clean no longer knew the folder as the script's. The record now goes
+  last.
+
+One run of the whole test file had the two-runs lock check fail once, the winning run's program exiting with code 1
+(its output went uncaptured); four runs of the same race on their own and every run of the file since passed. The
+check now prints the program's output if it fails.
+
 **What was checked.**
 
 - `evals/tests/test_shot.ts`, new, 19/19: in a throwaway project whose path has a space, a program writing BMP
@@ -5887,8 +5902,10 @@ made outside the browser"):
   folder named like a version but not made by the script surviving make and clean; on Windows, a frame of an old
   version held open by another process, the make succeeding and saying the version was left, then clean removing
   it; two runs started at once against one abandoned lock, one making the shot and the other refused; a lost
-  record made again at the manifest's 2× with the version on screen kept, and a missing sidecar read as stale.
-- `test_footage.ts`, three new checks (35/35): frame URLs in a version folder, beside a manifest without one, and
+  record made again at the manifest's 2× with the version on screen kept, and a missing sidecar read as stale (the
+  held-file check runs with a full frame held and with a proxy held).
+- `test_footage.ts`, three new checks (35/35, the export page's check also asking `footageInfo` by another spelling
+  of the URL after a make, and reading a Footage's `base`): frame URLs in a version folder, beside a manifest without one, and
   beside a capture's manifest with a `"dir"` of its own; the manifest read with `cache: 'no-store'`; render.ts's
   page reading a shot's manifest once while the preview reads it each time; a version folder that isn't one folder
   name refused. `test_render_inputs`, one new check (20/20): the shots' manifests a

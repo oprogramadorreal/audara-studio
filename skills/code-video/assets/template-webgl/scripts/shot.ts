@@ -44,8 +44,9 @@
 // (frames {first}..{last}: 000001.png and on for a whole shot, 000120.png for a run that starts at 120; png, jpg,
 // bmp, tif, ppm or webp, one kind per shot), each at exactly width x height, opaque (an alpha channel is dropped:
 // a transparent layer goes in as images, references/contract.md). Any other file the program writes there (an
-// events.json, the camera per frame) is kept with the frames, in their version's folder; manifest.json, made.json
-// and contact.jpg are this script's names. A frame must not depend on the frames written before it in the same
+// events.json, the camera per frame) is kept with the frames, in their version's folder, where a scene reads it
+// from the Footage that plays them (`${clip.base}/camera.json`); manifest.json, made.json and contact.jpg are this
+// script's names. A frame must not depend on the frames written before it in the same
 // run: check renders frames alone and compares. A program that must step from the start (a simulation) steps there
 // by itself, in every run, to the same pixels. Its command must be free and offline: make runs it whenever the
 // shot is stale, and check runs it again (a generated clip is cut from its file, which is the input).
@@ -301,8 +302,14 @@ function prune(shot: string, keep: (string | null | undefined)[]) {
   const removed: string[] = [], left: string[] = [];
   for (const v of versions(shot)) {
     if (keep.includes(v) || !madeHere(shot, v)) continue;
-    try { rmSync(path.join(shotDir(shot), v), { recursive: true, force: true, maxRetries: 3 }); removed.push(v); }
-    catch (e) { left.push(`${v} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); }
+    // (its record goes last: a removal stopped halfway by a file held open leaves a version still known as this
+    // script's, so the next make or clean finishes it)
+    const dir = path.join(shotDir(shot), v);
+    try {
+      for (const f of readdirSync(dir)) if (f !== 'made.json') rmSync(path.join(dir, f), { recursive: true, force: true, maxRetries: 3 });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+      removed.push(v);
+    } catch (e) { left.push(`${v} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); }
   }
   return { removed, left };
 }

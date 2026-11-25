@@ -231,6 +231,8 @@ export class Footage {
   get frames() { return this.o.frames; }
   get fps() { return this.o.fps; }
   get start() { return this.o.start; }
+  /** The folder its frames come from: the version it plays, for a file the program kept beside them (`${clip.base}/events.json`). */
+  get base() { return this.o.base; }
   get full() { return this.o.full; }
   /** Seconds of video the shot fills from `start` at its rate, to its last frame. */
   get duration() { return (this.o.frames - this.o.offset) / (this.o.fps * this.o.rate); }
@@ -458,9 +460,28 @@ export function infoOf(m: Record<string, any>, base = ''): FootageInfo {
   return { frames, fps, size, proxy: m.proxy !== false, dir, manifest: m };
 }
 
-/** Reads the manifest.json of the shot folder at `base`. */
-export async function footageInfo(base: string): Promise<FootageInfo> {
+/** The manifests render.ts's page has read, by the manifest's absolute URL (footageInfo). */
+const INFOS = new Map<string, Promise<FootageInfo>>();
+
+/**
+ * Reads the manifest.json of the shot folder at `base`. On render.ts's page each manifest is read once, whichever
+ * spelling of its URL asks, so every entry that opens a shot, and every scene that asks for its manifest (for a
+ * capture's per-frame data, say), sees the same version even if the shot is made again while the page renders;
+ * the preview reads it each time, and reloads when it changes.
+ */
+export function footageInfo(base: string): Promise<FootageInfo> {
   const b = base.replace(/\/+$/, ''), url = `${b}/manifest.json`;
+  if (!RENDERING) return readInfo(b, url);
+  const key = typeof location !== 'undefined' && location.href ? new URL(url, location.href).href : url;
+  let read = INFOS.get(key);
+  if (!read) {
+    read = readInfo(b, url);
+    INFOS.set(key, read);
+    read.catch(() => INFOS.delete(key));
+  }
+  return read;
+}
+async function readInfo(b: string, url: string): Promise<FootageInfo> {
   // (never from the browser's cache: a shot made again rewrites its manifest, and the page that reloads for it
   // must read the new one)
   const r = await fetch(url, { cache: 'no-store' });
@@ -472,9 +493,6 @@ export async function footageInfo(base: string): Promise<FootageInfo> {
   if (!m || typeof m !== 'object') throw new Error(`footage ${url}: not a JSON object`);
   return infoOf(m as Record<string, any>, b);
 }
-
-/** The manifests render.ts's page has read, by shot folder (openFootage). */
-const INFOS = new Map<string, Promise<FootageInfo>>();
 
 /** The URL of a project file by its path from the project root ('footage/intro/manifest.json'): the dev server serves the root. */
 export const projectUrl = (path: string) => import.meta.env.BASE_URL + path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
@@ -489,14 +507,7 @@ export const footageUrl = (shot: string) => projectUrl(`footage/${shot}`);
  */
 export async function openFootage(ctx: { start: number; export: boolean }, shot: string, o: Partial<Omit<FootageOptions, 'base' | 'frames'>> = {}) {
   const folder = (/^(\/|[a-z][a-z0-9+.-]*:)/i.test(shot) ? shot : footageUrl(shot)).replace(/\/+$/, '');
-  // (render.ts's page reads each shot's manifest once, so two entries that open one shot see the same version
-  // even if it is made again while the page loads; the preview reads it each time, and reloads when it changes)
-  let read = RENDERING ? INFOS.get(folder) : undefined;
-  if (!read) {
-    read = footageInfo(folder);
-    if (RENDERING) { INFOS.set(folder, read); read.catch(() => INFOS.delete(folder)); }
-  }
-  const info = await read;
+  const info = await footageInfo(folder);
   const base = info.dir ? `${folder}/${encodeURIComponent(info.dir)}` : folder;
   const f = new Footage({ ...o, base, frames: info.frames, fps: o.fps ?? info.fps, start: o.start ?? ctx.start, full: o.full ?? (ctx.export || !info.proxy) });
   try { await f.prepare(ctx.start, ctx.start); }

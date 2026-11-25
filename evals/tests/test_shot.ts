@@ -310,13 +310,14 @@ test('a folder named like a version that this script didn\'t make is never remov
   } finally { p.done(); }
 });
 
-test('a version that can\'t be removed after a publish is left for later: the make succeeds and says so', () => {
+test('a version that can\'t be removed after a publish is left for later, a frame or a proxy held: the make says so, clean finishes it', () => {
   if (process.platform !== 'win32') return; // (an open file holds a folder only on Windows)
+  for (const kind of ['full', 'proxy']) {
   const p = project();
   try {
     check(p.shot(['make']).code === 0, 'make 1 failed');
     const g1 = p.json('footage/bars/manifest.json').dir;
-    const held = path.join(p.root, 'footage/bars', g1, 'full', '000001.jpg');
+    const held = path.join(p.root, 'footage/bars', g1, kind, '000001.jpg');
     // (a PowerShell holding a frame of the oldest version open, shared with nobody, as a viewer can)
     const holder = Bun.spawn(['powershell', '-NoProfile', '-Command', `$f = [IO.File]::Open('${held.replace(/'/g, "''")}', 'Open', 'Read', 'None'); Start-Sleep -Seconds 30; $f.Close()`], { stdout: 'ignore', stderr: 'ignore' });
     Bun.sleepSync(1500);
@@ -325,12 +326,13 @@ test('a version that can\'t be removed after a publish is left for later: the ma
       check(p.shot(['make']).code === 0, 'make 2 failed');
       writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// 3\n');
       const r = p.shot(['make']);
-      check(r.code === 0 && /couldn't be removed yet/.test(r.out), `make 3 with ${g1} held: ${r.code} ${r.out}`);
+      check(r.code === 0 && /couldn't be removed yet/.test(r.out), `make 3 with ${g1}'s ${kind} held: ${r.code} ${r.out}`);
       check(p.json('footage/bars/manifest.json').dir.startsWith('g3-'), 'the manifest did not advance');
     } finally { holder.kill(); }
     Bun.sleepSync(500);
-    check(p.shot(['clean']).code === 0 && p.versions().length === 1, `clean afterwards: ${p.versions().join(', ')}`);
+    check(p.shot(['clean']).code === 0 && p.versions().length === 1, `clean afterwards (${kind} held before): ${p.versions().join(', ')}`);
   } finally { p.done(); }
+  }
 });
 
 test('two runs that find one abandoned lock: one takes it and makes the shot, the other is refused', async () => {
@@ -341,7 +343,7 @@ test('two runs that find one abandoned lock: one takes it and makes the shot, th
     const start = () => Bun.spawn(['bun', path.join(p.root, 'scripts', 'shot.ts'), 'make'], { cwd: p.root, env: { ...process.env, SLEEP: '2500' }, stdout: 'pipe', stderr: 'pipe' });
     const runs = [start(), start()];
     const codes = await Promise.all(runs.map((r) => r.exited));
-    const outs = await Promise.all(runs.map((r) => new Response(r.stderr as ReadableStream).text()));
+    const outs = await Promise.all(runs.map(async (r) => `${await new Response(r.stdout as ReadableStream).text()}${await new Response(r.stderr as ReadableStream).text()}`));
     check(codes.filter((c) => c === 0).length === 1 && codes.filter((c) => c === 1).length === 1, `exit codes ${codes.join(', ')}: ${outs.join(' | ')}`);
     check(outs.some((o) => /being made by another run/.test(o)), `the refused run said: ${outs.join(' | ')}`);
     check(p.versions().length === 1 && !existsSync(path.join(p.root, '.audara-cache/shots/bars.lock')), `versions ${p.versions().join(', ')}`);
