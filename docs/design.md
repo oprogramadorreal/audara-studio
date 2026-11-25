@@ -1120,15 +1120,22 @@ come into the template as a streamed shot, and everything around a scene works o
   other files, moved in whole under a name never used before and never written again, then the manifest naming
   it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
   version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
-  every version the manifest names. The version before stays for a render that opened it; older ones go.
-  Everything that reads or writes a shot's state holds one lock per shot, made whole before it appears.
+  every version the manifest names. The version before stays for a render that opened it; older ones go, but
+  only folders holding this script's record for the shot (a folder named like a version that it didn't make
+  stays), and one that can't be removed yet (a file open on Windows) is left, said, for the next make or clean.
+  A version whose record is gone is made again at the scale its manifest gives, never smaller. Everything that
+  reads or writes a shot's state holds one lock per shot, made whole before it appears; a lock whose process
+  has ended is taken back under a second, short lock that re-reads it first, and a run releases its lock only
+  while it is still its own.
 - **Versions, not frames rewritten in place.** Frames at fixed paths would let a render reading the shot mix
   two versions, and the browser revalidates a stable URL by size and time. A version folder per make gives
   every frame of a version its own URL, and Windows can't rename a folder over a full one anyway.
   `footage.ts` reads `"dir"` only from a manifest scripts/shot.ts wrote (a capture's, a project's own field or
   any older shot reads `full/` and `proxy/` as before) and reads the manifest past the browser's cache. A
   `--jobs` render opens the shot in each of its browsers, so render.ts compares the shots' manifests before the
-  join and stops if one was made again meanwhile.
+  join and stops if one was made again meanwhile, and keeps them, as they were before any page opened, in its
+  `run.json`, so `--resume` refuses pieces of two versions; render.ts's page reads each shot's manifest once,
+  so two entries that open one shot see the same version.
 - **The preview reloads at its moment** when a shot's manifest is written, as it does for a video's data,
   audio and assets: of the root's `footage/` the watcher sees each shot's folder and its manifest alone, so tens
   of thousands of frames are never watched, and a folder named `footage` anywhere else stays unwatched as

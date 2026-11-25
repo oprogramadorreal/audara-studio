@@ -408,8 +408,9 @@ yet shows the latest one before it (one after it only when there is none), count
 that fails to load fails its prepare with its URL and frees its turn; a disposed Footage lets its waiting
 frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone;
 and the version a manifest scripts/shot.ts wrote names (`"dir"`): frame URLs in that folder, the manifest read
-past the browser's cache, the URLs of a manifest without one, or with a `"dir"` of its own (a capture's), as
-before, and a version that isn't one folder name refused.
+past the browser's cache (render.ts's page reads it once per shot, the preview each time), the URLs of a
+manifest without one, or with a `"dir"` of its own (a capture's), as before, and a version that isn't one
+folder name refused.
 `test_shot.ts` runs the template's `scripts/shot.ts` in a throwaway project whose path has a space, with a bun
 program writing BMP frames (ffmpeg and ffprobe on the PATH): make, status and current; the placeholders and
 their environment variables; check passing with a scratch folder per run, and failing on a program that carries
@@ -420,7 +421,10 @@ an input or the recipe changed while the program runs publishing nothing; a capt
 engine that can't read a version refused; a live lock refusing, a dead one taken over, and a second make while
 one runs refused; inputs from the project root, one naming nothing, a bad size; a manifest that can't be
 replaced publishing nothing, with clean keeping the version on screen; a missing proxy read as stale; two files
-for one frame and a reserved name refused, an upper-case extension taken.
+for one frame and a reserved name refused, an upper-case extension taken; a folder named like a version that the
+script didn't make never removed; on Windows, an old version held open left for later while the make succeeds;
+two runs against one abandoned lock, one refused; a lost record made again at the manifest's scale, and a missing
+sidecar read as stale.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;

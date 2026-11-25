@@ -5852,9 +5852,27 @@ made outside the browser"):
   `vite.config.ts` can't, proxies at 4K are encoded again at the same size, a Blender run that starts mid-shot
   names its first file by `{first}`).
 
+**Its second review** found four more, each fixed and tested:
+
+- **make could remove a folder it never made:** a `g7-deadbeef/` put there by hand went with the next make, since
+  a name alone counted as a version. Only a folder holding this script's record for the shot is removed now; its
+  name is still never used for a new version. A version that can't be removed after a publish (a frame held open
+  on Windows had made make exit 1 after the manifest moved on) is left and said, for the next make or clean.
+- **`--resume` could join what the guard refused:** a shot made again after the first browser opened it but before
+  `run.json` took its fingerprint left pieces whose fingerprint matched the newer files. `run.json` now keeps the
+  shots' manifests as they were before any page opened, so those pieces are refused; and render.ts's page reads
+  each shot's manifest once, so two entries that open one shot can't land on either side of a make.
+- **Two runs could both take back one abandoned lock,** the slower then removing the faster's live lock (Codex
+  reproduced it with a delay after one run read the dead process). Taking a lock back now goes through a second,
+  short lock that re-reads the first before removing it, and a run removes its lock only while it is still its own.
+- **A version whose record was lost was made again at 1×,** replacing a 2× master, and a missing `events.json` left
+  the shot "current". The scale is read from the manifest's size against the recipe's (make stops for `--scale`
+  when that isn't a whole multiple), the version on screen is kept as the one before, and a sidecar the record
+  names counts toward a version being whole.
+
 **What was checked.**
 
-- `evals/tests/test_shot.ts`, new, 15/15: in a throwaway project whose path has a space, a program writing BMP
+- `evals/tests/test_shot.ts`, new, 19/19: in a throwaway project whose path has a space, a program writing BMP
   frames; make, status and current, with only the manifest and the version folder in the shot's folder; the
   placeholders and environment variables; check passing with a scratch folder per run, and failing on a program
   that carries state from frame to frame; an input changed (stale, named), the version before kept and older ones
@@ -5865,10 +5883,15 @@ made outside the browser"):
   port; a live lock refusing and a dead process's lock taken over; inputs from the project root, one naming
   nothing, a bad size; a manifest that can't be replaced publishing nothing, with `clean` then keeping the version
   on screen; a missing proxy read as stale; a recipe edited mid-make publishing nothing; two files for one frame
-  and a reserved name stopping a make, an upper-case extension working; a second make while one runs refused.
-- `test_footage.ts`, two new checks (34/34): frame URLs in a version folder, beside a manifest without one, and
-  beside a capture's manifest with a `"dir"` of its own; the manifest read with `cache: 'no-store'`; a version
-  folder that isn't one folder name refused. `test_render_inputs`, one new check (20/20): the shots' manifests a
+  and a reserved name stopping a make, an upper-case extension working; a second make while one runs refused; a
+  folder named like a version but not made by the script surviving make and clean; on Windows, a frame of an old
+  version held open by another process, the make succeeding and saying the version was left, then clean removing
+  it; two runs started at once against one abandoned lock, one making the shot and the other refused; a lost
+  record made again at the manifest's 2× with the version on screen kept, and a missing sidecar read as stale.
+- `test_footage.ts`, three new checks (35/35): frame URLs in a version folder, beside a manifest without one, and
+  beside a capture's manifest with a `"dir"` of its own; the manifest read with `cache: 'no-store'`; render.ts's
+  page reading a shot's manifest once while the preview reads it each time; a version folder that isn't one folder
+  name refused. `test_render_inputs`, one new check (20/20): the shots' manifests a
   `--jobs` render compares change with a manifest rewritten, not with a version folder written before it.
   `test_render_failures` 13/13, `test_init_gitignore` 3/3, `test_audit` 26/26.
 - In a project made by init from this branch, a scene playing a shot whose program is a bun script: make, status,
@@ -5877,6 +5900,10 @@ made outside the browser"):
   live preview, driven by Playwright through its own Vite with the browser's cache on, read a pixel of the shot at
   t = 1 (242,142,39), the program's colours changed, `make` ran, and the page reloaded once by itself, still at
   t = 1, showing the new frames (28,141,235); render.ts verify passed and stills and a draft render showed the shot.
+  A 12-second draft with `--jobs 2`, the shot made again 6 s in: the three pieces rendered, the join was refused
+  (nothing written), and `--resume` then refused the pieces as made before a change of the files. (Codex's exact
+  order, a make between the first browser opening and `run.json`, wasn't timed by hand; the manifests kept from
+  before any page opened are what refuses it.)
 - Projects without shots: init from main and from this branch on empty folders wrote the same AGENTS.md (the
   project's name aside), and the example video's verify gave the same 48 frame hashes in both.
 
