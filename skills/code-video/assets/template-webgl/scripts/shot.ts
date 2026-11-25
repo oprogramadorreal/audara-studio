@@ -22,8 +22,8 @@
 //   { "command": ["uv", "run", "render.py", "--out", "{out}", "--first", "{first}", "--last", "{last}"],
 //     "fps": 30, "frames": 240,       (or "duration": 8, in seconds)
 //     "size": [1920, 1080],           the frames' size at the 1x scale: the size the shot fills at its largest
-//     "inputs": ["**"],               what the frames are made from (default: every file of the recipe folder,
-//                                     the recipe included); a change to one makes the shot stale
+//     "inputs": ["**"],               what the frames are made from (default: every file of the recipe folder);
+//                                     a change to one, or to any field above, makes the shot stale
 //     "cwd": ".",                     where the command runs (default: the recipe folder)
 //     "quality": 2,                   the full frames' JPEG quality, 2 (best) to 31 (default 2)
 //     "manifest": { ... } }           fields of your own for the published manifest (a title, settings)
@@ -140,31 +140,27 @@ function recipe(shot: string): Recipe {
 /** A recipe path: the recipe folder's, or the project root's when it starts with /. */
 const resolveIn = (dir: string, p: string) => (p.startsWith('/') ? path.join(PROJECT, p.slice(1)) : path.resolve(dir, p));
 
-/** The files a recipe's inputs name, the recipe included: sorted project paths. */
+/**
+ * The files a recipe's inputs name: sorted project paths. The recipe itself counts by what it asks for (keyOf),
+ * not by its bytes, so a field of its own for the manifest changes the manifest alone.
+ */
 function inputFiles(r: Recipe): string[] {
-  const out = new Set<string>([rel(r.file)]);
+  const out = new Set<string>(), recipeFile = rel(r.file);
   for (const pattern of r.inputs) {
     const fromRoot = pattern.startsWith('/');
     const base = fromRoot ? PROJECT : r.dir;
     const pat = fromRoot ? pattern.slice(1) : pattern;
     let found = 0;
+    const take = (p: string) => { if (p !== recipeFile && !p.startsWith('..') && !NEVER.test(p)) { out.add(p); found++; } };
     if (!/[*?[{]/.test(pat)) {
       const f = path.resolve(base, pat);
-      if (existsSync(f) && statSync(f).isFile()) { out.add(rel(f)); found++; }
-      else if (existsSync(f) && statSync(f).isDirectory()) {
-        for (const g of new Bun.Glob('**').scanSync({ cwd: f, onlyFiles: true, dot: false })) {
-          const p = rel(path.join(f, g));
-          if (!NEVER.test(p)) { out.add(p); found++; }
-        }
-      }
+      if (existsSync(f) && statSync(f).isFile()) take(rel(f));
+      else if (existsSync(f) && statSync(f).isDirectory())
+        for (const g of new Bun.Glob('**').scanSync({ cwd: f, onlyFiles: true, dot: false })) take(rel(path.join(f, g)));
     } else {
-      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: false })) {
-        const p = rel(path.resolve(base, g));
-        if (p.startsWith('..')) continue;
-        if (!NEVER.test(p)) { out.add(p); found++; }
-      }
+      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: false })) take(rel(path.resolve(base, g)));
     }
-    if (!found) fail(`shots/${r.shot}/shot.json: the input ${pattern} names no file${fromRoot ? '' : ` in shots/${r.shot}/`} (a path from the project root starts with /)`);
+    if (!found) fail(`shots/${r.shot}/shot.json: the input ${pattern} names no file${fromRoot ? '' : ` in shots/${r.shot}/ (a path from the project root starts with /)`}`);
   }
   return [...out].sort();
 }
@@ -174,7 +170,7 @@ const sha = (data: string | Uint8Array) => new Bun.CryptoHasher('sha256').update
 /** What a shot's frames are made from, hashed: the protocol, the command as written, the frames asked for, the inputs' bytes. */
 function keyOf(r: Recipe, scale: number) {
   const files = inputFiles(r).map((f) => [f, sha(readFileSync(path.join(PROJECT, f)))] as [string, string]);
-  const what = { protocol: PROTOCOL, command: r.command, cwd: rel(r.cwd), fps: r.fps, frames: r.frames, size: r.size, scale, quality: r.quality };
+  const what = { protocol: PROTOCOL, command: r.command, cwd: rel(r.cwd), inputs: r.inputs, fps: r.fps, frames: r.frames, size: r.size, scale, quality: r.quality };
   return { key: sha(JSON.stringify({ ...what, files })), files, what };
 }
 

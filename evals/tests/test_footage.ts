@@ -48,7 +48,7 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
  * class and its budget, for what only they decide together (which frames stay when one arrives). A frame's
  * "bitmap" is its URL.
  */
-function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<number> } = {}) {
+function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<number>; manifest?: Record<string, unknown> } = {}) {
   const ts = source
     .replace("import * as THREE from 'three';", "const THREE = { Texture: class { image: unknown = null; needsUpdate = false; version = 0; colorSpace = ''; minFilter = 0; magFilter = 0; generateMipmaps = true; flipY = true; dispose() {} }, SRGBColorSpace: 'srgb', NearestFilter: 1, LinearFilter: 2 };")
     .replace("import { VIDEO } from '../video';", 'const VIDEO = { fps: 60 };')
@@ -57,8 +57,12 @@ function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<n
   const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(ts).replace(/^export /gm, '');
   /** Every fetch started, in order; `manual`: each waits until the test answers it (answer()). */
   const fetched: string[] = [], waiting: { url: string; answer(): void }[] = [];
-  const fetchStub = (url: string) => {
+  /** Each fetch's options, by URL (a manifest is read with cache: 'no-store'); `manifest`: what manifest.json answers. */
+  const options = new Map<string, unknown>();
+  const fetchStub = (url: string, init?: unknown) => {
     fetched.push(url);
+    options.set(url, init);
+    if (url.endsWith('/manifest.json')) return Promise.resolve({ ok: !!o.manifest, status: o.manifest ? 200 : 404, text: async () => JSON.stringify(o.manifest) });
     const gone = o.missing?.has(frameOf(url));
     const r = { ok: !gone, status: gone ? 404 : 200, blob: async () => url };
     if (!o.manual) return Promise.resolve(r);
@@ -67,8 +71,8 @@ function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<n
   const decode = async (blob: string) => ({ url: blob, close() {} });
   // (render.ts's page has ?export=1)
   const location = o.rendering ? { search: '?export=1' } : undefined;
-  const mod = new Function('fetch', 'createImageBitmap', 'location', `${js}\nreturn { Footage, footageRound, BUDGET, FETCHES, footageStats };`)(fetchStub, decode, location);
-  return { ...mod, fetched, waiting } as {
+  const mod = new Function('fetch', 'createImageBitmap', 'location', `${js}\nreturn { Footage, footageRound, BUDGET, FETCHES, footageStats, openFootage, infoOf };`)(fetchStub, decode, location);
+  return { ...mod, fetched, waiting, options } as {
     Footage: new (o: { base: string; frames: number; fps?: number; full: boolean }) => {
       prepare(t0: number, t1: number): Promise<void>; frame(t: number): { image: unknown }; frameAt(i: number): { image: unknown }; index(t: number): number;
       has(i: number): boolean; held(): unknown[]; dispose(): void; askedIn(i: number): number;
@@ -77,8 +81,11 @@ function realFootage(o: { rendering?: boolean; manual?: boolean; missing?: Set<n
     BUDGET: { full: number; proxy: number };
     FETCHES: number;
     footageStats: { draws: number; standIns: number; blank: number };
+    openFootage(ctx: { start: number; export: boolean }, shot: string): Promise<{ url(i: number): string; frames: number; dispose(): void }>;
+    infoOf(m: Record<string, unknown>, base?: string): { frames: number; dir: string | null };
     fetched: string[];
     waiting: { url: string; answer(): void }[];
+    options: Map<string, unknown>;
   };
 }
 /** The frame number in a stub frame's URL (…/000123.jpg is frame 122). */
@@ -439,6 +446,28 @@ test('a frame let go unfetched is fetched when asked again; its mark goes with i
   await drain(w);
   await again;
   check(range(600, 720).every((i) => clip.has(i)), 'the frames let go were not fetched when asked again');
+});
+
+test('a manifest naming a version ("dir") reads full/ and proxy/ from that folder; one without reads them beside it', async () => {
+  const made = realFootage({ manifest: { frames: 3, fps: 30, dir: 'g2-0123abcd' } });
+  const a = await made.openFootage({ start: 0, export: false }, 'bars');
+  check(a.url(0) === '/footage/bars/g2-0123abcd/proxy/000001.jpg', `a version's frame URL: ${a.url(0)}`);
+  check(made.fetched.includes('/footage/bars/g2-0123abcd/proxy/000001.jpg'), `fetched ${made.fetched.join(', ')}`);
+  check((made.options.get('/footage/bars/manifest.json') as { cache?: string } | undefined)?.cache === 'no-store', 'the manifest is read past the browser cache');
+  a.dispose();
+  const capture = realFootage({ manifest: { frames: 3, fps: 30 }, rendering: true });
+  const b = await capture.openFootage({ start: 0, export: true }, 'cap');
+  check(b.url(2) === '/footage/cap/full/000003.jpg', `a capture's frame URL: ${b.url(2)}`);
+  b.dispose();
+});
+test('a manifest\'s "dir" is one folder name in the shot\'s folder: anything else is refused', () => {
+  const { infoOf } = realFootage();
+  check(infoOf({ frames: 1, dir: 'g1-deadbeef' }).dir === 'g1-deadbeef' && infoOf({ frames: 1 }).dir === null, 'dir read');
+  for (const bad of ['../x', 'a/b', '', '.hidden', 'a\\b']) {
+    let threw = false;
+    try { infoOf({ frames: 1, dir: bad }); } catch { threw = true; }
+    check(threw, `"dir": ${JSON.stringify(bad)} was accepted`);
+  }
 });
 
 let passed = 0;
