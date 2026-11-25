@@ -473,6 +473,9 @@ export async function footageInfo(base: string): Promise<FootageInfo> {
   return infoOf(m as Record<string, any>, b);
 }
 
+/** The manifests render.ts's page has read, by shot folder (openFootage). */
+const INFOS = new Map<string, Promise<FootageInfo>>();
+
 /** The URL of a project file by its path from the project root ('footage/intro/manifest.json'): the dev server serves the root. */
 export const projectUrl = (path: string) => import.meta.env.BASE_URL + path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
 /** The URL of the shot folder footage/<shot>/ at the project root. */
@@ -486,7 +489,14 @@ export const footageUrl = (shot: string) => projectUrl(`footage/${shot}`);
  */
 export async function openFootage(ctx: { start: number; export: boolean }, shot: string, o: Partial<Omit<FootageOptions, 'base' | 'frames'>> = {}) {
   const folder = (/^(\/|[a-z][a-z0-9+.-]*:)/i.test(shot) ? shot : footageUrl(shot)).replace(/\/+$/, '');
-  const info = await footageInfo(folder);
+  // (render.ts's page reads each shot's manifest once, so two entries that open one shot see the same version
+  // even if it is made again while the page loads; the preview reads it each time, and reloads when it changes)
+  let read = RENDERING ? INFOS.get(folder) : undefined;
+  if (!read) {
+    read = footageInfo(folder);
+    if (RENDERING) { INFOS.set(folder, read); read.catch(() => INFOS.delete(folder)); }
+  }
+  const info = await read;
   const base = info.dir ? `${folder}/${encodeURIComponent(info.dir)}` : folder;
   const f = new Footage({ ...o, base, frames: info.frames, fps: o.fps ?? info.fps, start: o.start ?? ctx.start, full: o.full ?? (ctx.export || !info.proxy) });
   try { await f.prepare(ctx.start, ctx.start); }

@@ -467,6 +467,20 @@ test('a manifest scripts/shot.ts wrote reads full/ and proxy/ from the version i
     c.dispose();
   }
 });
+test('render.ts\'s page reads a shot\'s manifest once, so two entries opening it see one version; the preview reads it each time', async () => {
+  const manifest: Record<string, unknown> = { frames: 3, fps: 30, dir: 'g1-00000000', made: 'scripts/shot.ts' };
+  const page = realFootage({ manifest, rendering: true });
+  const a = await page.openFootage({ start: 0, export: true }, 'bars');
+  manifest.dir = 'g2-11111111';
+  const b = await page.openFootage({ start: 0, export: true }, 'bars');
+  check(a.url(0) === b.url(0) && a.url(0).includes('g1-00000000'), `export page: ${a.url(0)} then ${b.url(0)}`);
+  check(page.fetched.filter((u) => u.endsWith('/manifest.json')).length === 1, 'the export page read the manifest twice');
+  a.dispose(); b.dispose();
+  const live = realFootage({ manifest: { ...manifest, dir: 'g1-00000000' } });
+  const c = await live.openFootage({ start: 0, export: false }, 'bars');
+  check(c.url(0).includes('g1-00000000'), `preview: ${c.url(0)}`);
+  c.dispose();
+});
 test('in a manifest scripts/shot.ts wrote, "dir" is one folder name in the shot\'s folder: anything else is refused', () => {
   const { infoOf } = realFootage();
   const ours = (dir: unknown) => ({ frames: 1, dir, made: 'scripts/shot.ts' });

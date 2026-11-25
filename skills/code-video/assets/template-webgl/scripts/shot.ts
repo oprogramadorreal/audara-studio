@@ -16,7 +16,8 @@
 //                                     of its own, and two neighbours in one run started mid-shot, and compares
 //                                     their pixels with the shot's (exit code 1 when one differs). It samples:
 //                                     a frame it didn't render again can still be wrong
-//   clean [<shot>...]                 removes every version of a shot's frames but the one its manifest names
+//   clean [<shot>...]                 removes every version this script made of a shot but the one its manifest
+//                                     names (a folder without this script's record in it is never removed)
 //
 // A shot's recipe is shots/<shot>/shot.json at the project root, beside the program's own files. Its paths are
 // the recipe folder's; one that starts with / is the project root's:
@@ -232,7 +233,7 @@ function made(shot: string): Made | null {
   const m = readJson(f);
   return m && m['shot.ts'] && m.dir === man!.dir ? (m as Made) : null;
 }
-/** Whether a version's folder holds every frame, full and proxy, numbered 1..frames. */
+/** Whether a version's folder holds every frame, full and proxy, numbered 1..frames, and the program's other files it recorded. */
 function complete(shot: string, m: Made) {
   for (const kind of ['full', 'proxy']) {
     const dir = path.join(shotDir(shot), m.dir, kind);
@@ -240,7 +241,7 @@ function complete(shot: string, m: Made) {
     try { have = new Set(readdirSync(dir)); } catch { return false; }
     for (let k = 1; k <= m.frames; k++) if (!have.has(`${String(k).padStart(6, '0')}.jpg`)) return false;
   }
-  return true;
+  return (m.other ?? []).every((f) => existsSync(path.join(shotDir(shot), m.dir, f)));
 }
 
 type State =
@@ -278,12 +279,32 @@ function allShots() {
   return [...new Set([...dirs(SHOTS).filter(hasRecipe), ...dirs(FOOTAGE)])].sort();
 }
 
-/** The folders of a shot's versions, oldest first. */
+/** The folders named like a shot's versions, oldest first (a name taken: a new version never uses it). */
 function versions(shot: string) {
   try {
     return readdirSync(shotDir(shot), { withFileTypes: true }).filter((d) => d.isDirectory() && VERSION.test(d.name)).map((d) => d.name)
       .sort((a, b) => Number(VERSION.exec(a)![1]) - Number(VERSION.exec(b)![1]));
   } catch { return []; }
+}
+/** Whether a folder is a version this script made for this shot: its own record says so. Only those are ever removed. */
+function madeHere(shot: string, v: string) {
+  try {
+    const m = JSON.parse(readFileSync(path.join(shotDir(shot), v, 'made.json'), 'utf8'));
+    return !!m && m['shot.ts'] && m.shot === shot && m.dir === v;
+  } catch { return false; }
+}
+/**
+ * Removes the versions this script made for the shot but those in `keep`. One it can't remove (a file open in
+ * another program, on Windows) stays, named, for the next make or clean: what's published is published already.
+ */
+function prune(shot: string, keep: (string | null | undefined)[]) {
+  const removed: string[] = [], left: string[] = [];
+  for (const v of versions(shot)) {
+    if (keep.includes(v) || !madeHere(shot, v)) continue;
+    try { rmSync(path.join(shotDir(shot), v), { recursive: true, force: true, maxRetries: 3 }); removed.push(v); }
+    catch (e) { left.push(`${v} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); }
+  }
+  return { removed, left };
 }
 
 // ------------------------------------------------------------------ tools
@@ -326,35 +347,66 @@ function alive(pid: number) {
   if (!(pid > 0)) return false;
   try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
 }
+/** A lock file's owner: its process and the token that run wrote, or what was unreadable about it. */
+function lockOwner(f: string) {
+  try {
+    const age = Date.now() - statSync(f).mtimeMs;
+    try { const j = JSON.parse(readFileSync(f, 'utf8')); return { pid: Number(j.pid) || 0, token: String(j.token ?? ''), age }; }
+    catch { return { pid: 0, token: '', age }; }
+  } catch { return null; }
+}
 /**
- * Takes the shot's lock, or stops: one process at a time reads or writes a shot's state. The lock file is made
- * whole, with its process id in it, before it appears (a hard link to a file already written), so another run
- * never finds it empty; where the drive can't link, it is made empty and filled, and an empty one younger than a
- * minute counts as taken.
+ * Creates a lock file with `body` in it, or answers false when one is there. It appears whole (a hard link to a
+ * file already written), so another run never finds it empty; where the drive can't link, it is made empty and
+ * filled at once, and an empty one younger than a minute counts as held (lockOwner's age).
+ */
+function createLock(f: string, body: string) {
+  const tmp = `${f}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+  try {
+    writeFileSync(tmp, body);
+    try { linkSync(tmp, f); return true; }
+    catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'EEXIST') return false;
+      try { const fd = openSync(f, 'wx'); writeFileSync(fd, body); closeSync(fd); return true; }
+      catch (e2) { if ((e2 as NodeJS.ErrnoException).code === 'EEXIST') return false; throw e2; }
+    }
+  } finally { try { unlinkSync(tmp); } catch {} }
+}
+const held = (o: { pid: number; age: number } | null) => !!o && (alive(o.pid) || (!o.pid && o.age < 60_000));
+/** Removes a lock file only while it is still the one `owner` describes (its token), so a successor's is never removed. */
+function removeIfStill(f: string, token: string) {
+  const o = lockOwner(f);
+  if (o && o.token === token) try { unlinkSync(f); } catch {}
+}
+/**
+ * Takes the shot's lock, or stops: one process at a time reads or writes a shot's state. A lock whose process has
+ * ended is taken back under a second, short-held lock (<shot>.lock.reclaim), which re-reads it before removing it:
+ * two runs that both find it abandoned can't both take it, and none removes a lock another run has just taken.
+ * Released, a lock is removed only if it is still this run's.
  */
 function lock(shot: string) {
   mkdirSync(CACHE, { recursive: true });
-  const f = path.join(CACHE, `${shot}.lock`), body = JSON.stringify({ pid: process.pid, at: new Date().toISOString() });
-  for (let i = 0; i < 3; i++) {
-    const tmp = `${f}.${process.pid}.tmp`;
-    try {
-      writeFileSync(tmp, body);
-      try { linkSync(tmp, f); }
-      catch (e) {
-        const code = (e as NodeJS.ErrnoException).code;
-        if (code === 'EEXIST') throw e;
-        const fd = openSync(f, 'wx');
-        writeFileSync(fd, body);
-        closeSync(fd);
-      }
-      return () => { try { unlinkSync(f); } catch {} };
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      let pid = 0, age = Infinity;
-      try { age = Date.now() - statSync(f).mtimeMs; pid = Number(JSON.parse(readFileSync(f, 'utf8')).pid); } catch {}
-      if (alive(pid) || (!pid && age < 60_000)) fail(`${shot} is being made by another run${pid ? ` (process ${pid})` : ''}; wait for it, or end it`);
-      try { unlinkSync(f); } catch {}
-    } finally { try { unlinkSync(tmp); } catch {} }
+  const f = path.join(CACHE, `${shot}.lock`), reclaim = `${f}.reclaim`;
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const body = JSON.stringify({ pid: process.pid, token, at: new Date().toISOString() });
+  for (let i = 0; i < 50; i++) {
+    if (createLock(f, body)) return () => removeIfStill(f, token);
+    const o = lockOwner(f);
+    if (held(o)) fail(`${shot} is being made by another run${o!.pid ? ` (process ${o!.pid})` : ''}; wait for it, or end it`);
+    if (!o) continue; // (released meanwhile: try again)
+    const rtoken = `${token}-r`;
+    if (createLock(reclaim, JSON.stringify({ pid: process.pid, token: rtoken, at: new Date().toISOString() }))) {
+      try {
+        const again = lockOwner(f);
+        if (again && !held(again) && again.token === o.token) try { unlinkSync(f); } catch {}
+      } finally { removeIfStill(reclaim, rtoken); }
+    } else {
+      // (another run is taking it back: wait for it; one that died doing so leaves a reclaim lock to take back too)
+      const r = lockOwner(reclaim);
+      if (r && !held(r) && r.age > 10_000) removeIfStill(reclaim, r.token);
+      Bun.sleepSync(100);
+    }
   }
   return fail(`can't take ${rel(f)}`);
 }
@@ -456,6 +508,18 @@ const proxySize = (size: [number, number]): [number, number] => [Math.max(2, Mat
 function manifestFor(r: Recipe, m: Made) {
   return { ...r.manifest, frames: m.frames, fps: m.fps, size: m.pixels, proxy: proxySize(m.size), dir: m.dir, made: MADE_BY, recipe: `shots/${r.shot}/shot.json` };
 }
+/**
+ * The scale a shot is at when its version's record is gone: read from the size the manifest gives against the
+ * recipe's, when that is a whole multiple; otherwise make stops and asks for --scale rather than replace a bigger
+ * master with a smaller one.
+ */
+function scaleOf(shot: string, man: Record<string, any> | null, r: Recipe) {
+  if (!ours(man)) return 1;
+  const [w, h] = Array.isArray(man!.size) ? man!.size.map(Number) : [NaN, NaN];
+  const s = w / r.size[0];
+  if (Number.isInteger(s) && s >= 1 && s <= 4 && h === r.size[1] * s) return s;
+  return fail(`${shot}: its version's record is gone and its manifest's size (${man!.size}) isn't a whole multiple of the recipe's ${r.size.join('x')}: give --scale to make it again`);
+}
 const tidy = (shot: string) => { try { if (!readdirSync(path.join(CACHE, shot)).length) rmSync(path.join(CACHE, shot), { recursive: true, force: true }); } catch {} };
 
 // ------------------------------------------------------------------ the modes
@@ -466,7 +530,9 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
     const man = manifestOf(shot);
     if (man && !ours(man)) fail(`footage/${shot}/ holds footage this script didn't make (a capture, or cut footage): name the recipe's folder otherwise, or move that footage away`);
     const before = made(shot);
-    const scale = scaleOpt ?? before?.scale ?? 1;
+    // (the version on screen is the one the manifest names, its record there or not)
+    const current: string | null = ours(man) ? man!.dir : null;
+    const scale = scaleOpt ?? before?.scale ?? scaleOf(shot, man, r);
     const k = await keyOf(r, scale);
     if (!force && before && before.key === k.key && complete(shot, before)) {
       // (the recipe's own manifest fields changed alone: the frames stay, the manifest is written again)
@@ -508,7 +574,7 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       const now = recipe(shot), again = await keyOf(now, scale);
       if (again.key !== k.key) fail(`${shot}: its recipe or inputs changed while it was being made (${whyStale({ inputs: k.files, what: k.what }, again, true).join('; ')}): nothing was published; make it again (a program writes its scratch files to {tmp}, never to its recipe folder)`);
       const record: Made = {
-        'shot.ts': PROTOCOL, shot, key: k.key, dir, previous: before?.dir ?? null, frames: r.frames, fps: r.fps, size: r.size, scale, pixels: [w, h], hashes,
+        'shot.ts': PROTOCOL, shot, key: k.key, dir, previous: current, frames: r.frames, fps: r.fps, size: r.size, scale, pixels: [w, h], hashes,
         inputs: k.files, what: k.what, other: out.other, at: new Date().toISOString(), seconds: Math.round(out.seconds * 10) / 10,
       };
       writeFileSync(path.join(pub, 'made.json'), JSON.stringify(record, null, 1) + '\n');
@@ -526,9 +592,10 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
         rmSync(dest, { recursive: true, force: true });
         fail(`${shot}: footage/${shot}/manifest.json couldn't be replaced (${(e as Error).message}: open in another program?); the shot is as it was`);
       }
-      // (the version before stays, for a render that opened it before this one was published; older ones go)
-      for (const v of versions(shot)) if (v !== dir && v !== before?.dir) rmSync(path.join(folder, v), { recursive: true, force: true });
       log(`  ${shot}: made ${dir}: ${r.frames} frames at ${w}x${h} in ${record.seconds} s (footage/${shot}/${dir}/, contact.jpg there to look at)${out.other.length ? `; with ${out.other.join(', ')}` : ''}`);
+      // (the version before stays, for a render that opened it before this one was published; older ones go)
+      const pruned = prune(shot, [dir, current]);
+      if (pruned.left.length) log(`  ${shot}: published; ${pruned.left.join(', ')} couldn't be removed yet (open in another program?): the next make or clean removes it`);
       log(reloads() ? '  a running preview reloads at its moment' : '  reload the preview to see it (this project\'s vite.config.ts doesn\'t reload it on a new shot)');
     } finally {
       rmSync(stage, { recursive: true, force: true });
@@ -590,9 +657,9 @@ function clean(shot: string) {
   try {
     const man = manifestOf(shot);
     if (!ours(man)) { log(`  ${shot}: no versions made by this script`); return; }
-    const old = versions(shot).filter((v) => v !== man!.dir);
-    for (const v of old) rmSync(path.join(shotDir(shot), v), { recursive: true, force: true });
-    log(`  ${shot}: ${old.length ? `removed ${old.join(', ')}` : 'only the current version is there'}`);
+    const { removed, left } = prune(shot, [man!.dir]);
+    log(`  ${shot}: ${removed.length ? `removed ${removed.join(', ')}` : 'no other version of its own to remove'}${left.length ? `; couldn't remove ${left.join(', ')} (open in another program?)` : ''}`);
+    if (left.length) process.exitCode = 1;
   } finally { unlock(); }
 }
 

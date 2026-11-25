@@ -297,6 +297,72 @@ test('a second make of the same shot while one runs is refused; the first publis
   } finally { p.done(); }
 });
 
+test('a folder named like a version that this script didn\'t make is never removed, by make or by clean', () => {
+  const p = project();
+  try {
+    mkdirSync(path.join(p.root, 'footage/bars/g7-deadbeef'), { recursive: true });
+    writeFileSync(path.join(p.root, 'footage/bars/g7-deadbeef/sentinel.txt'), 'keep');
+    check(p.shot(['make']).code === 0, 'make failed');
+    check(/^g8-/.test(p.json('footage/bars/manifest.json').dir), `a new version past the folder there: ${p.json('footage/bars/manifest.json').dir}`);
+    writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// again\n');
+    check(p.shot(['make']).code === 0 && p.shot(['clean']).code === 0, 'make or clean failed');
+    check(existsSync(path.join(p.root, 'footage/bars/g7-deadbeef/sentinel.txt')), 'the folder this script did not make was removed');
+  } finally { p.done(); }
+});
+
+test('a version that can\'t be removed after a publish is left for later: the make succeeds and says so', () => {
+  if (process.platform !== 'win32') return; // (an open file holds a folder only on Windows)
+  const p = project();
+  try {
+    check(p.shot(['make']).code === 0, 'make 1 failed');
+    const g1 = p.json('footage/bars/manifest.json').dir;
+    const held = path.join(p.root, 'footage/bars', g1, 'full', '000001.jpg');
+    // (a PowerShell holding a frame of the oldest version open, shared with nobody, as a viewer can)
+    const holder = Bun.spawn(['powershell', '-NoProfile', '-Command', `$f = [IO.File]::Open('${held.replace(/'/g, "''")}', 'Open', 'Read', 'None'); Start-Sleep -Seconds 30; $f.Close()`], { stdout: 'ignore', stderr: 'ignore' });
+    Bun.sleepSync(1500);
+    try {
+      writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// 2\n');
+      check(p.shot(['make']).code === 0, 'make 2 failed');
+      writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// 3\n');
+      const r = p.shot(['make']);
+      check(r.code === 0 && /couldn't be removed yet/.test(r.out), `make 3 with ${g1} held: ${r.code} ${r.out}`);
+      check(p.json('footage/bars/manifest.json').dir.startsWith('g3-'), 'the manifest did not advance');
+    } finally { holder.kill(); }
+    Bun.sleepSync(500);
+    check(p.shot(['clean']).code === 0 && p.versions().length === 1, `clean afterwards: ${p.versions().join(', ')}`);
+  } finally { p.done(); }
+});
+
+test('two runs that find one abandoned lock: one takes it and makes the shot, the other is refused', async () => {
+  const p = project();
+  try {
+    mkdirSync(path.join(p.root, '.audara-cache/shots'), { recursive: true });
+    writeFileSync(path.join(p.root, '.audara-cache/shots/bars.lock'), JSON.stringify({ pid: 999999, token: 'dead' }));
+    const start = () => Bun.spawn(['bun', path.join(p.root, 'scripts', 'shot.ts'), 'make'], { cwd: p.root, env: { ...process.env, SLEEP: '2500' }, stdout: 'pipe', stderr: 'pipe' });
+    const runs = [start(), start()];
+    const codes = await Promise.all(runs.map((r) => r.exited));
+    const outs = await Promise.all(runs.map((r) => new Response(r.stderr as ReadableStream).text()));
+    check(codes.filter((c) => c === 0).length === 1 && codes.filter((c) => c === 1).length === 1, `exit codes ${codes.join(', ')}: ${outs.join(' | ')}`);
+    check(outs.some((o) => /being made by another run/.test(o)), `the refused run said: ${outs.join(' | ')}`);
+    check(p.versions().length === 1 && !existsSync(path.join(p.root, '.audara-cache/shots/bars.lock')), `versions ${p.versions().join(', ')}`);
+  } finally { p.done(); }
+});
+
+test('a version whose record is gone is made again at the scale its manifest says; a missing sidecar makes it stale', () => {
+  const p = project();
+  try {
+    check(p.shot(['make', '--scale', '2'], { SIDE: '1' }).code === 0, 'make --scale 2 failed');
+    const g1 = p.json('footage/bars/manifest.json').dir;
+    rmSync(path.join(p.root, 'footage/bars', g1, 'made.json'));
+    check(/stale: its version's record/.test(p.shot(['status']).out), 'a missing record should read as stale');
+    check(p.shot(['make'], { SIDE: '1' }).code === 0, 'make after the record was lost failed');
+    const man = p.json('footage/bars/manifest.json');
+    check(man.size.join('x') === '128x72' && p.versions().includes(g1), `scale kept and the version on screen kept: ${JSON.stringify(man.size)}, ${p.versions().join(', ')}`);
+    rmSync(path.join(p.root, 'footage/bars', man.dir, 'events.json'));
+    check(/stale: its frames aren't all there/.test(p.shot(['status']).out), 'a missing sidecar should read as stale');
+  } finally { p.done(); }
+});
+
 let passed = 0;
 for (const [name, run] of cases) {
   try { await run(); passed++; console.log('PASS ' + name); }

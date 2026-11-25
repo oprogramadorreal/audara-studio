@@ -1046,8 +1046,10 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   type Ends = { first?: string; after?: string; sha1?: string } | null;
   const endsOf = (x: [number, number]): Ends => { try { return JSON.parse(readFileSync(`${pieceFile(x)}.json`, 'utf8')) as Ends; } catch { return null; } };
   // what the pieces are made from: --resume reuses them only when all of it is the same (an edited scene,
-  // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ)
-  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version(), [out, `${out}.part`, dir]) };
+  // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ), the streamed shots'
+  // manifests as they were before any page opened among it (a shot made again before the fingerprint was taken
+  // would otherwise let pieces of two versions through)
+  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version(), [out, `${out}.part`, dir]), shots: new Bun.CryptoHasher('sha1').update(SHOTS_AT_START).digest('hex') };
   const run = JSON.stringify(runOf, null, 1);
   let kept = 0;
   // (files a run.json doesn't vouch for, from an older render.ts or put there by hand, are never adopted)
@@ -1057,7 +1059,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     let before: Record<string, unknown> = {};
     try { before = JSON.parse(readFileSync(runFile, 'utf8')); } catch {}
     const differs = Object.keys(runOf).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((runOf as Record<string, unknown>)[k]));
-    const changed = [...new Set(differs.map((k) => (k === 'inputs' ? 'the files (a scene, its data, an asset, the footage, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
+    const changed = [...new Set(differs.map((k) => (k === 'inputs' || k === 'shots' ? 'the files (a scene, its data, an asset, the footage, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
     const has = pieces.filter((x) => existsSync(pieceFile(x))).length;
     // (hours of pieces aren't thrown away for a forgotten flag, nor kept for a render they don't belong to)
     if (!differs.length && !flag('resume') && has)
@@ -1159,7 +1161,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   // (each browser opened the streamed shots when its page loaded: a shot made again meanwhile, scripts/shot.ts,
   // could leave pieces showing two versions of it)
   if (shotManifests() !== SHOTS_AT_START)
-    fail(`a shot was made again while the pieces rendered (a footage/<shot>/manifest.json changed), so they may show two versions of it; nothing was joined. Render again (with --resume too every piece renders again, since the footage changed)`);
+    fail(`a shot was made again while the pieces rendered (a footage/<shot>/manifest.json changed), so they may show two versions of it; nothing was joined. Delete ${dir} and render again (--resume refuses these pieces)`);
   // the join: the pieces as they are, one after the other, each placed by its exact length (by its
   // container's rounded one, a 29.97 fps join lost a frame), then the soundtrack over the frames' own span
   const list = path.join(dir, 'pieces.txt'), part = `${out}.part`;
