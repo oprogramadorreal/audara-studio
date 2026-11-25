@@ -492,14 +492,15 @@ override dispose() { this.clip.dispose(); }
   `{first}`, `{last}`, `{width}`, `{height}`, `{fps}` in its arguments, and the shot's `fps`, `frames` and
   `size` at 1x), and `bun scripts/shot.ts make <shot>` runs the program, checks and encodes its frames and
   publishes them in a folder of their own that the manifest names (`"dir"`): a running preview reloads on
-  them, and a render that opened the version before keeps it. `make` runs again only a shot whose inputs
-  changed; `status` says which are stale and why; `check <shot>` renders frames again, each alone, and
-  compares their pixels, the frame-from-its-time rule for the program (a frame that depends on the frames
-  drawn before it in the same run fails it). The rest (the protocol, the scale, sidecar files) is in
+  them, and a render that opened the version before keeps it (a `--jobs` render stops before its join
+  instead). `make` runs again only a shot whose inputs changed; `status` says which are stale and why;
+  `check <shot>` renders a sample of frames again, each alone, and compares their pixels, the
+  frame-from-its-time rule for the program (a frame that depends on the frames drawn before it in the same
+  run fails it). The rest (the protocol, the scale, the program's other files) is in
   `bun scripts/shot.ts --help`. A shot is opaque, its motion blur is the program's, and cuts drawn inside
-  one shot are invisible to verify's cut checks: one shot per entry, cut in the timeline. Its command must be
-  free and offline, since `make` and `check` run it again. A project without `scripts/shot.ts`: run the
-  code-video skill's init again (it adds the file and replaces nothing).
+  one shot are invisible to verify's cut checks, which look at the timeline's. Its command must be free and
+  offline, since `make` runs it whenever the shot is stale and `check` runs it again. A project without
+  `scripts/shot.ts`: run the code-video skill's init again (it adds the file and replaces nothing).
 
 ## Toolbox
 

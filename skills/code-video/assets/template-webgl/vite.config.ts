@@ -26,20 +26,33 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */
 const SCENE_FILE = /\/videos\/[^/]+\/scenes\/[^/]+\.ts$/;
-/** A shot's manifest.json: written last when a shot is made again, so it is the one file of a shot watched. */
-const SHOT_MANIFEST = /\/footage\/[^/]+\/manifest\.json$/;
-/** The folder served ('.', below: the one Vite starts in), as the watcher spells paths, for inFootageUnwatched. */
-const HERE = normalizePath(path.resolve('.'));
-const caseless = process.platform === 'win32' || process.platform === 'darwin';
 /**
- * Whether the watcher leaves a path under footage/ alone: everything but footage/ itself, each footage/<shot>
- * and each footage/<shot>/manifest.json. A shot's frames (tens of thousands of files that scenes fetch and never
- * import) and its other files are never watched, nor are the folders that hold them looked into.
+ * The served folder ('.', below: the one Vite starts in), as the watcher spells paths; configResolved sets it from
+ * the resolved root, which is the same folder.
+ */
+let ROOT = normalizePath(path.resolve('.'));
+const caseless = process.platform === 'win32' || process.platform === 'darwin';
+/** A path relative to ROOT, with / and, where the file system ignores case, in lower case; null outside it. */
+function underRoot(p: string) {
+  const f = normalizePath(p), at = `${ROOT}/`;
+  const inside = caseless ? f.toLowerCase().startsWith(at.toLowerCase()) : f.startsWith(at);
+  if (!inside) return null;
+  const rel = f.slice(at.length);
+  return caseless ? rel.toLowerCase() : rel;
+}
+/** A shot's footage/<shot>/manifest.json at the root: written last when a shot is made again, the one file of a shot watched. */
+const SHOT_MANIFEST = (p: string) => /^footage\/[^/]+\/manifest\.json$/.test(underRoot(p) ?? '');
+/**
+ * Whether the watcher leaves a path alone because of footage: under the root's footage/, everything but
+ * footage/<shot> and footage/<shot>/manifest.json; and any other folder named footage, with all it holds, as
+ * before. A shot's frames (tens of thousands of files that scenes fetch and never import) and its other files
+ * are never watched, nor are the folders that hold them looked into.
  */
 function inFootageUnwatched(p: string) {
-  const f = normalizePath(p), at = `${HERE}/footage/`;
-  if (!(caseless ? f.toLowerCase().startsWith(at.toLowerCase()) : f.startsWith(at))) return false;
-  return !/^[^/]+(\/manifest\.json)?$/i.test(f.slice(at.length));
+  const rel = underRoot(p);
+  if (rel === null) return /(^|\/)footage\//.test(normalizePath(p));
+  if (rel.startsWith('footage/')) return !/^footage\/[^/]+(\/manifest\.json)?$/.test(rel);
+  return /(^|\/)footage\//.test(rel);
 }
 const isScene = (code: string) => /\bexport\s+default\s+class\b[^{]*\bextends\b/.test(code);
 
@@ -59,7 +72,7 @@ function audara(): Plugin {
   let reloadTimer: ReturnType<typeof setTimeout> | undefined;
   return {
     name: 'audara',
-    configResolved(c) { root = normalizePath(c.root); },
+    configResolved(c) { root = normalizePath(c.root); ROOT = root; },
     configureServer(server) {
       server.watcher.on('error', (e) => server.config.logger.warn(`audara: the file watcher reported ${String((e as Error)?.message ?? e)}; the preview goes on`));
       // (before /__audara, which would answer it too: a path is matched by its prefix)
@@ -88,7 +101,7 @@ function audara(): Plugin {
     async hotUpdate({ file, modules, read }) {
       if (this.environment.name !== 'client') return;
       const f = normalizePath(file);
-      if (/\/videos\/[^/]+\/(data|audio|assets)\//.test(f) || SHOT_MANIFEST.test(f)) {
+      if (/\/videos\/[^/]+\/(data|audio|assets)\//.test(f) || SHOT_MANIFEST(f)) {
         // (debounced: a file being written fires several changes)
         clearTimeout(reloadTimer);
         reloadTimer = setTimeout(() => this.environment.hot.send({ type: 'full-reload', path: '*' }), 400);

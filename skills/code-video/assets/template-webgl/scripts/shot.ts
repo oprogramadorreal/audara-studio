@@ -7,15 +7,16 @@
 //   status [<shot>...]                each shot: current, stale (and what changed), not made yet, or footage
 //                                     this script didn't make (a capture, cut footage: left as it is)
 //   make [<shot>...] [--force] [--scale N]
-//                                     runs the program of each shot whose inputs changed since it was made (all
-//                                     shots with a recipe, or those named; --force: whatever changed), checks its
-//                                     frames, encodes them, and publishes them; a running preview reloads at its
-//                                     moment. --scale N: N times the recipe's size (a 4K master from a 1080p
-//                                     one); the scale a shot was last made at stays until another is given
+//                                     runs the program of each stale shot (all shots with a recipe, or those
+//                                     named; --force: current ones too), checks its frames, encodes them and
+//                                     publishes them; a running preview reloads at its moment. --scale N: N times
+//                                     the recipe's size (a 4K master from a 1080p one); the scale a shot was last
+//                                     made at stays until another is given
 //   check <shot> [--n 4]              the f(t) rule for a program: renders --n frames again, each alone in a run
 //                                     of its own, and two neighbours in one run started mid-shot, and compares
-//                                     their pixels with the shot's (exit code 1 when one differs)
-//   clean [<shot>...]                 removes every version of a shot's frames but the current one
+//                                     their pixels with the shot's (exit code 1 when one differs). It samples:
+//                                     a frame it didn't render again can still be wrong
+//   clean [<shot>...]                 removes every version of a shot's frames but the one its manifest names
 //
 // A shot's recipe is shots/<shot>/shot.json at the project root, beside the program's own files. Its paths are
 // the recipe folder's; one that starts with / is the project root's:
@@ -35,23 +36,27 @@
 //   {fps}    AUDARA_SHOT_FPS     their rate
 //   {width} {height}  AUDARA_SHOT_WIDTH, AUDARA_SHOT_HEIGHT  the pixels to write: the recipe's size times the scale
 //   {scale}  AUDARA_SHOT_SCALE
-//   {tmp}    AUDARA_SHOT_TMP     a scratch folder for this run (the recipe folder is an input: write nothing there)
+//   {tmp}    AUDARA_SHOT_TMP     a scratch folder for this run alone (the recipe folder is an input: write
+//                                nothing there)
 //   {shot}   AUDARA_SHOT_NAME
-// Frame k (from 1) is the picture at (k - 1) / fps seconds into the shot, written as <out>/<k, six digits>.<ext>
-// (000001.png ...; png, jpg, bmp, tif, ppm or webp), each at exactly width x height, opaque (an alpha channel is
-// dropped: a transparent layer goes in as images, references/contract.md). Any other file the program writes
-// there (events.json, the camera per frame) is published beside the manifest. A frame must not depend on the
-// frames written before it in the same run: check renders frames alone and compares. A program that must step
-// from the start (a simulation) steps there by itself, in every run, to the same pixels. Its command must be
-// free and offline: make and check run it again (a generated clip is cut from its file, which is the input).
+// Frame k (from 1) is the picture at (k - 1) / fps seconds into the shot, written as <out>/<k in six digits>.<ext>
+// (frames {first}..{last}: 000001.png and on for a whole shot, 000120.png for a run that starts at 120; png, jpg,
+// bmp, tif, ppm or webp, one kind per shot), each at exactly width x height, opaque (an alpha channel is dropped:
+// a transparent layer goes in as images, references/contract.md). Any other file the program writes there (an
+// events.json, the camera per frame) is kept with the frames, in their version's folder; manifest.json, made.json
+// and contact.jpg are this script's names. A frame must not depend on the frames written before it in the same
+// run: check renders frames alone and compares. A program that must step from the start (a simulation) steps there
+// by itself, in every run, to the same pixels. Its command must be free and offline: make runs it whenever the
+// shot is stale, and check runs it again (a generated clip is cut from its file, which is the input).
 //
-// Published, under footage/<shot>/: <version>/full/ (the frames, JPEG) and <version>/proxy/ (half the 1x size,
-// for the preview) in a folder of their own that is never written again, made.json (what they were made from:
-// the inputs' hashes, each frame's pixel hash, the scale), contact.jpg, the program's other files, then
-// manifest.json last, naming the version ("dir"), which the engine reads; the version before stays for a
-// render that opened it, older ones are removed. The frames are made under .audara-cache/shots/ first, so a
-// failed run leaves the shot as it was. One make at a time per shot (.audara-cache/shots/<shot>.lock).
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
+// Published, under footage/<shot>/: a version folder, never written again once it is there, holding full/ (the
+// frames, JPEG), proxy/ (half the 1x size, for the preview), made.json (what they were made from: the inputs'
+// hashes, each frame's pixel hash, the scale), contact.jpg and the program's other files; then manifest.json,
+// written last, naming that folder ("dir"): the engine reads it, and it alone says which version is current. The
+// version before stays (a render that opened it before keeps reading it), older ones are removed. The frames are
+// made under .audara-cache/shots/ first, so a failed run leaves the shot as it was. Everything that reads or writes
+// a shot's state runs under one lock per shot (.audara-cache/shots/<shot>.lock).
+import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
 const PROJECT = path.resolve(import.meta.dir, '..');
@@ -60,9 +65,13 @@ const FOOTAGE = path.join(PROJECT, 'footage');
 const CACHE = path.join(PROJECT, '.audara-cache', 'shots');
 /** The protocol between this script, the program and the engine: a change of it makes every shot stale. */
 const PROTOCOL = 1;
+/** What a manifest this script published says it is ("made"); the engine reads "dir" only from such a manifest. */
+const MADE_BY = 'scripts/shot.ts';
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FRAME = /^(\d{6})\.(png|jpe?g|bmp|tiff?|ppm|webp)$/i;
 const VERSION = /^g(\d+)-[0-9a-f]{8}$/;
+/** Names in a version folder that are this script's: a program that writes one of them is stopped. */
+const RESERVED = new Set(['manifest.json', 'made.json', 'contact.jpg', 'full', 'proxy']);
 /** Never inputs, wherever a pattern reaches: folders a program, a tool or this script write into. */
 const NEVER = /(^|\/)(node_modules|__pycache__|\.git|\.venv|\.audara-cache|out|footage)(\/|$)|\.pyc$/;
 
@@ -70,6 +79,7 @@ class Fail extends Error {}
 const fail = (msg: string): never => { throw new Fail(msg); };
 const rel = (p: string) => path.relative(PROJECT, p).split(path.sep).join('/');
 const log = (s = '') => console.log(s);
+const tail = (s: string) => s.trim().split('\n').slice(-3).join(' ');
 
 // ------------------------------------------------------------------ arguments
 const argv = process.argv.slice(2);
@@ -110,6 +120,9 @@ function readJson(file: string): any {
   try { return JSON.parse(text); } catch (e) { return fail(`${rel(file)} is not valid JSON: ${(e as Error).message}`); }
 }
 
+const hasRecipe = (shot: string) => existsSync(path.join(SHOTS, shot, 'shot.json'));
+
+/** The recipe as it is on disk now. */
 function recipe(shot: string): Recipe {
   const dir = path.join(SHOTS, shot), file = path.join(dir, 'shot.json');
   if (!existsSync(file)) fail(`no recipe for ${shot}: write shots/${shot}/shot.json (bun scripts/shot.ts --help)`);
@@ -165,11 +178,19 @@ function inputFiles(r: Recipe): string[] {
   return [...out].sort();
 }
 
+/** sha256 of a file, read a piece at a time (an input can be a long clip). */
+async function hashFile(file: string) {
+  const h = new Bun.CryptoHasher('sha256');
+  for await (const chunk of Bun.file(file).stream()) h.update(chunk);
+  return h.digest('hex');
+}
 const sha = (data: string | Uint8Array) => new Bun.CryptoHasher('sha256').update(data).digest('hex');
 
-/** What a shot's frames are made from, hashed: the protocol, the command as written, the frames asked for, the inputs' bytes. */
-function keyOf(r: Recipe, scale: number) {
-  const files = inputFiles(r).map((f) => [f, sha(readFileSync(path.join(PROJECT, f)))] as [string, string]);
+type Key = Awaited<ReturnType<typeof keyOf>>;
+/** What a shot's frames are made from, hashed: the protocol, the command as written, the fields that change the frames, the inputs' bytes. */
+async function keyOf(r: Recipe, scale: number) {
+  const files: [string, string][] = [];
+  for (const f of inputFiles(r)) files.push([f, await hashFile(path.join(PROJECT, f))]);
   const what = { protocol: PROTOCOL, command: r.command, cwd: rel(r.cwd), inputs: r.inputs, fps: r.fps, frames: r.frames, size: r.size, scale, quality: r.quality };
   return { key: sha(JSON.stringify({ ...what, files })), files, what };
 }
@@ -180,7 +201,8 @@ interface Made {
   shot: string;
   key: string;
   dir: string;
-  n: number;
+  /** The version the manifest named when this one was published (kept for a render that opened it). */
+  previous: string | null;
   frames: number;
   fps: number;
   size: [number, number];
@@ -189,28 +211,36 @@ interface Made {
   hashes: string[];
   inputs: [string, string][];
   what: Record<string, unknown>;
+  other: string[];
   at: string;
   seconds: number;
 }
 
 const shotDir = (shot: string) => path.join(FOOTAGE, shot);
-function made(shot: string): Made | null {
-  const f = path.join(shotDir(shot), 'made.json');
-  if (!existsSync(f)) return null;
-  const m = readJson(f);
-  return m && m['shot.ts'] ? (m as Made) : null;
-}
 function manifestOf(shot: string): Record<string, any> | null {
   const f = path.join(shotDir(shot), 'manifest.json');
   return existsSync(f) ? readJson(f) : null;
 }
-/** Whether the version a manifest names is all there: its full/ holds every frame. */
-function published(shot: string, m: Made | null) {
+/** Whether a manifest is one this script published. */
+const ours = (m: Record<string, any> | null) => !!m && m.made === MADE_BY && typeof m.dir === 'string' && VERSION.test(m.dir);
+/** The record of the version the manifest names: the manifest is what says which version is current. */
+function made(shot: string): Made | null {
   const man = manifestOf(shot);
-  if (!m || !man || man.dir !== m.dir) return false;
-  const full = path.join(shotDir(shot), m.dir, 'full');
-  if (!existsSync(full)) return false;
-  return readdirSync(full).filter((f) => /^\d{6}\.jpg$/.test(f)).length === m.frames;
+  if (!ours(man)) return null;
+  const f = path.join(shotDir(shot), man!.dir, 'made.json');
+  if (!existsSync(f)) return null;
+  const m = readJson(f);
+  return m && m['shot.ts'] && m.dir === man!.dir ? (m as Made) : null;
+}
+/** Whether a version's folder holds every frame, full and proxy, numbered 1..frames. */
+function complete(shot: string, m: Made) {
+  for (const kind of ['full', 'proxy']) {
+    const dir = path.join(shotDir(shot), m.dir, kind);
+    let have: Set<string>;
+    try { have = new Set(readdirSync(dir)); } catch { return false; }
+    for (let k = 1; k <= m.frames; k++) if (!have.has(`${String(k).padStart(6, '0')}.jpg`)) return false;
+  }
+  return true;
 }
 
 type State =
@@ -220,19 +250,18 @@ type State =
   | { kind: 'orphan'; made: Made }
   | { kind: 'foreign' };
 
-function stateOf(shot: string, scale?: number): State {
-  const hasRecipe = existsSync(path.join(SHOTS, shot, 'shot.json'));
-  const m = made(shot);
-  if (!hasRecipe) return m ? { kind: 'orphan', made: m } : { kind: 'foreign' };
-  if (!m && manifestOf(shot)) return { kind: 'foreign' };
-  if (!m) return { kind: 'unmade' };
-  const r = recipe(shot);
-  const k = keyOf(r, scale ?? m.scale);
-  if (k.key === m.key && published(shot, m)) return { kind: 'current', made: m };
-  return { kind: 'stale', made: m, why: whyStale(m, k, published(shot, m)) };
+async function stateOf(shot: string, scale?: number): Promise<State> {
+  const m = made(shot), man = manifestOf(shot);
+  if (!hasRecipe(shot)) return m ? { kind: 'orphan', made: m } : { kind: 'foreign' };
+  if (man && !ours(man)) return { kind: 'foreign' };
+  if (!m) return man ? { kind: 'stale', made: null, why: [`its version's record (footage/${shot}/${man.dir}/made.json) isn't there`] } : { kind: 'unmade' };
+  const k = await keyOf(recipe(shot), scale ?? m.scale);
+  const whole = complete(shot, m);
+  if (k.key === m.key && whole) return { kind: 'current', made: m };
+  return { kind: 'stale', made: m, why: whyStale(m, k, whole) };
 }
 
-function whyStale(m: Made, k: ReturnType<typeof keyOf>, whole: boolean) {
+function whyStale(m: Pick<Made, 'inputs' | 'what'>, k: Key, whole: boolean) {
   const why: string[] = [];
   if (!whole) why.push('its frames aren\'t all there');
   const was = new Map(m.inputs), now = new Map(k.files);
@@ -246,7 +275,15 @@ function whyStale(m: Made, k: ReturnType<typeof keyOf>, whole: boolean) {
 /** Every shot there is: a recipe in shots/, or a folder in footage/. */
 function allShots() {
   const dirs = (p: string) => { try { return readdirSync(p, { withFileTypes: true }).filter((d) => d.isDirectory() && NAME.test(d.name)).map((d) => d.name); } catch { return []; } };
-  return [...new Set([...dirs(SHOTS).filter((s) => existsSync(path.join(SHOTS, s, 'shot.json'))), ...dirs(FOOTAGE)])].sort();
+  return [...new Set([...dirs(SHOTS).filter(hasRecipe), ...dirs(FOOTAGE)])].sort();
+}
+
+/** The folders of a shot's versions, oldest first. */
+function versions(shot: string) {
+  try {
+    return readdirSync(shotDir(shot), { withFileTypes: true }).filter((d) => d.isDirectory() && VERSION.test(d.name)).map((d) => d.name)
+      .sort((a, b) => Number(VERSION.exec(a)![1]) - Number(VERSION.exec(b)![1]));
+  } catch { return []; }
 }
 
 // ------------------------------------------------------------------ tools
@@ -280,47 +317,71 @@ function renameRetry(from: string, to: string) {
 function writeAtomic(file: string, text: string) {
   const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, text);
-  renameRetry(tmp, file);
+  try { renameRetry(tmp, file); }
+  catch (e) { try { unlinkSync(tmp); } catch {} throw e; }
 }
 
+/** Whether the process a lock names is running. */
+function alive(pid: number) {
+  if (!(pid > 0)) return false;
+  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
+}
+/**
+ * Takes the shot's lock, or stops: one process at a time reads or writes a shot's state. The lock file is made
+ * whole, with its process id in it, before it appears (a hard link to a file already written), so another run
+ * never finds it empty; where the drive can't link, it is made empty and filled, and an empty one younger than a
+ * minute counts as taken.
+ */
 function lock(shot: string) {
   mkdirSync(CACHE, { recursive: true });
-  const f = path.join(CACHE, `${shot}.lock`);
-  for (let i = 0; i < 2; i++) {
+  const f = path.join(CACHE, `${shot}.lock`), body = JSON.stringify({ pid: process.pid, at: new Date().toISOString() });
+  for (let i = 0; i < 3; i++) {
+    const tmp = `${f}.${process.pid}.tmp`;
     try {
-      const fd = openSync(f, 'wx');
-      writeFileSync(fd, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
-      closeSync(fd);
+      writeFileSync(tmp, body);
+      try { linkSync(tmp, f); }
+      catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === 'EEXIST') throw e;
+        const fd = openSync(f, 'wx');
+        writeFileSync(fd, body);
+        closeSync(fd);
+      }
       return () => { try { unlinkSync(f); } catch {} };
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      let pid = 0;
-      try { pid = Number(JSON.parse(readFileSync(f, 'utf8')).pid); } catch {}
-      let alive = false;
-      try { if (pid) { process.kill(pid, 0); alive = true; } } catch {}
-      if (alive) fail(`${shot} is being made by another run (process ${pid}); wait for it, or end it`);
+      let pid = 0, age = Infinity;
+      try { age = Date.now() - statSync(f).mtimeMs; pid = Number(JSON.parse(readFileSync(f, 'utf8')).pid); } catch {}
+      if (alive(pid) || (!pid && age < 60_000)) fail(`${shot} is being made by another run${pid ? ` (process ${pid})` : ''}; wait for it, or end it`);
       try { unlinkSync(f); } catch {}
-    }
+    } finally { try { unlinkSync(tmp); } catch {} }
   }
   return fail(`can't take ${rel(f)}`);
 }
 
-/** The frames a program wrote into `out`, for frames first..last: their extension, and the other files there. */
+/** The frames a program wrote into `out`, for frames first..last: their extension as written, and the other files there. */
 function framesWritten(out: string, first: number, last: number) {
   const files = existsSync(out) ? readdirSync(out) : [];
   const frames = new Map<number, string>(), other: string[] = [];
+  const pad = (k: number) => String(k).padStart(6, '0');
   for (const f of files) {
     const m = FRAME.exec(f);
-    if (m) frames.set(Number(m[1]), m[2]!.toLowerCase());
-    else if (statSync(path.join(out, f)).isFile()) other.push(f);
+    if (m) {
+      const k = Number(m[1]);
+      if (frames.has(k)) fail(`the program wrote frame ${pad(k)} twice (${pad(k)}.${frames.get(k)} and ${f}): one file per frame`);
+      frames.set(k, m[2]!);
+    } else if (statSync(path.join(out, f)).isFile() || RESERVED.has(f)) {
+      if (RESERVED.has(f)) fail(`the program wrote ${f}, a name this script keeps for itself (${[...RESERVED].join(', ')}): name it otherwise`);
+      other.push(f);
+    }
   }
   const exts = new Set(frames.values());
   if (exts.size > 1) fail(`the program wrote frames of more than one kind (${[...exts].join(', ')}): one kind per shot`);
   const missing: number[] = [], extra: number[] = [];
   for (let k = first; k <= last; k++) if (!frames.has(k)) missing.push(k);
   for (const k of frames.keys()) if (k < first || k > last) extra.push(k);
-  const show = (a: number[]) => a.slice(0, 5).map((k) => String(k).padStart(6, '0')).join(', ') + (a.length > 5 ? ` and ${a.length - 5} more` : '');
-  if (!frames.size) fail(`the program wrote no frames into ${out} (it was asked for ${first}..${last} as 000001.png and so on; {out} is that folder)`);
+  const show = (a: number[]) => a.slice(0, 5).map(pad).join(', ') + (a.length > 5 ? ` and ${a.length - 5} more` : '');
+  if (!frames.size) fail(`the program wrote no frames into ${out} (it was asked for ${first}..${last}, as ${pad(first)}.png and on; {out} is that folder)`);
   if (missing.length) fail(`the program didn't write frame${missing.length > 1 ? 's' : ''} ${show(missing)} (asked for ${first}..${last})`);
   if (extra.length) fail(`the program wrote frame${extra.length > 1 ? 's' : ''} ${show(extra)}, outside the ${first}..${last} it was asked for`);
   return { ext: [...exts][0]!, other };
@@ -330,7 +391,7 @@ function framesWritten(out: string, first: number, last: number) {
 async function probeFrames(out: string, ext: string, first: number, count: number, fps: number) {
   const r = await run(['ffprobe', '-v', 'error', '-f', 'image2', '-framerate', String(fps), '-start_number', String(first), '-i', path.join(out, `%06d.${ext}`),
     '-show_entries', 'frame=width,height,pix_fmt', '-of', 'csv=p=0'], { quiet: true });
-  if (r.code !== 0) fail(`ffprobe can't read the frames in ${out}: ${r.err.trim().split('\n').slice(-3).join(' ')}`);
+  if (r.code !== 0) fail(`ffprobe can't read the frames in ${out}: ${tail(r.err)}`);
   const rows = r.out.trim().split(/\r?\n/).filter(Boolean).map((l) => { const [w, h, f] = l.split(','); return { w: Number(w), h: Number(h), fmt: f ?? '' }; });
   if (rows.length !== count) fail(`ffprobe read ${rows.length} of the ${count} frames in ${out}: one can't be decoded`);
   return rows;
@@ -342,6 +403,7 @@ async function pixelHashes(out: string, ext: string, first: number, count: numbe
     '-frames:v', String(count), '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'], { stdout: 'pipe', stderr: 'pipe', stdin: 'ignore' });
   const size = w * h * 3, hashes: string[] = [];
   let hasher = new Bun.CryptoHasher('sha256'), filled = 0;
+  const err = new Response(p.stderr as ReadableStream).text();
   for await (const chunk of p.stdout as ReadableStream<Uint8Array>) {
     let off = 0;
     while (off < chunk.length) {
@@ -351,12 +413,11 @@ async function pixelHashes(out: string, ext: string, first: number, count: numbe
       if (filled === size) { hashes.push(hasher.digest('hex')); hasher = new Bun.CryptoHasher('sha256'); filled = 0; }
     }
   }
-  const err = await new Response(p.stderr as ReadableStream).text();
-  if ((await p.exited) !== 0 || hashes.length !== count || filled) fail(`ffmpeg couldn't decode the frames in ${out}: ${err.trim().split('\n').slice(-3).join(' ') || `${hashes.length} of ${count}`}`);
+  if ((await p.exited) !== 0 || hashes.length !== count || filled) fail(`ffmpeg couldn't decode the frames in ${out}: ${tail(await err) || `${hashes.length} of ${count}`}`);
   return hashes;
 }
 
-/** Runs the program for frames first..last at `scale` into a new folder; returns the folder, the frames' kind, the other files. */
+/** Runs the program for frames first..last at `scale` into `out`, its scratch in `tmp`; checks what it wrote. */
 async function render(r: Recipe, scale: number, first: number, last: number, out: string, tmp: string) {
   const [w, h] = [r.size[0] * scale, r.size[1] * scale];
   mkdirSync(out, { recursive: true });
@@ -383,33 +444,43 @@ async function render(r: Recipe, scale: number, first: number, last: number, out
 function engineCheck() {
   const f = path.join(PROJECT, 'src', 'engine', 'footage.ts');
   if (!existsSync(f)) fail('this project\'s engine has no streamed footage (src/engine/footage.ts): the code-video skill\'s references/contract.md, "Images and footage", says how to take it');
-  if (!/\bm\.dir\b/.test(readFileSync(f, 'utf8')))
+  if (!readFileSync(f, 'utf8').includes(`'${MADE_BY}'`))
     fail('this project\'s src/engine/footage.ts reads no "dir" from a manifest, which a shot made by a program needs: copy the code-video skill\'s template src/engine/footage.ts over it (keep what the project changed in it on purpose), then make the shot');
 }
 /** Whether this project's preview reloads when a shot's manifest is written (its vite.config.ts, from 0.17.0). */
 const reloads = () => {
   try { return readFileSync(path.join(PROJECT, 'vite.config.ts'), 'utf8').includes('SHOT_MANIFEST'); } catch { return false; }
 };
+const proxySize = (size: [number, number]): [number, number] => [Math.max(2, Math.round(size[0] / 2)), Math.max(2, Math.round(size[1] / 2))];
+/** The manifest the engine reads: the recipe's own fields, then what the frames are (their version's folder in "dir"). */
+function manifestFor(r: Recipe, m: Made) {
+  return { ...r.manifest, frames: m.frames, fps: m.fps, size: m.pixels, proxy: proxySize(m.size), dir: m.dir, made: MADE_BY, recipe: `shots/${r.shot}/shot.json` };
+}
+const tidy = (shot: string) => { try { if (!readdirSync(path.join(CACHE, shot)).length) rmSync(path.join(CACHE, shot), { recursive: true, force: true }); } catch {} };
 
 // ------------------------------------------------------------------ the modes
 async function make(shot: string, force: boolean, scaleOpt?: number) {
-  const r = recipe(shot);
-  const before = made(shot);
-  if (!before && manifestOf(shot)) fail(`footage/${shot}/ holds footage this script didn't make (a capture, or cut footage): name the recipe's folder otherwise, or move that footage away`);
-  const scale = scaleOpt ?? before?.scale ?? 1;
-  const k = keyOf(r, scale);
-  if (!force && before && before.key === k.key && published(shot, before)) {
-    // (the recipe's own manifest fields changed alone: the frames stay, the manifest is written again)
-    const want = manifestFor(r, before);
-    if (JSON.stringify(manifestOf(shot)) !== JSON.stringify(want)) {
-      writeAtomic(path.join(shotDir(shot), 'manifest.json'), JSON.stringify(want, null, 1) + '\n');
-      log(`  ${shot}: current; its manifest written again for the recipe's own fields`);
-    } else log(`  ${shot}: current (${before.dir}, ${before.frames} frames at ${before.pixels.join('x')}): nothing to make`);
-    return;
-  }
   const unlock = lock(shot);
   try {
-    const n = (before?.n ?? 0) + 1, dir = `g${n}-${k.key.slice(0, 8)}`;
+    const r = recipe(shot);
+    const man = manifestOf(shot);
+    if (man && !ours(man)) fail(`footage/${shot}/ holds footage this script didn't make (a capture, or cut footage): name the recipe's folder otherwise, or move that footage away`);
+    const before = made(shot);
+    const scale = scaleOpt ?? before?.scale ?? 1;
+    const k = await keyOf(r, scale);
+    if (!force && before && before.key === k.key && complete(shot, before)) {
+      // (the recipe's own manifest fields changed alone: the frames stay, the manifest is written again)
+      const want = manifestFor(r, before);
+      if (JSON.stringify(man) !== JSON.stringify(want)) {
+        writeAtomic(path.join(shotDir(shot), 'manifest.json'), JSON.stringify(want, null, 1) + '\n');
+        log(`  ${shot}: current; its manifest written again for the recipe's own fields`);
+      } else log(`  ${shot}: current (${before.dir}, ${before.frames} frames at ${before.pixels.join('x')}): nothing to make`);
+      return;
+    }
+    // (a version's number is never used twice: past the highest folder there, or a run that died midway)
+    const taken = versions(shot).map((v) => Number(VERSION.exec(v)![1]));
+    let n = Math.max(0, ...taken) + 1, dir = `g${n}-${k.key.slice(0, 8)}`;
+    while (existsSync(path.join(shotDir(shot), dir)) || existsSync(path.join(shotDir(shot), `${dir}.partial`))) dir = `g${++n}-${k.key.slice(0, 8)}`;
     const stage = path.join(CACHE, shot, dir);
     rmSync(stage, { recursive: true, force: true });
     const raw = path.join(stage, 'raw'), pub = path.join(stage, 'pub');
@@ -421,103 +492,90 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       mkdirSync(path.join(pub, 'full'), { recursive: true });
       mkdirSync(path.join(pub, 'proxy'), { recursive: true });
       const input = ['-f', 'image2', '-framerate', String(r.fps), '-start_number', '1', '-i', path.join(raw, `%06d.${out.ext}`), '-frames:v', String(r.frames)];
-      const pw = Math.max(2, Math.round(r.size[0] / 2)), ph = Math.max(2, Math.round(r.size[1] / 2));
+      const [pw, ph] = proxySize(r.size);
       for (const [args, what] of [
         [[...input, '-pix_fmt', 'yuvj444p', '-q:v', String(r.quality), path.join(pub, 'full', '%06d.jpg')], 'full frames'],
         [[...input, '-vf', `scale=${pw}:${ph}:flags=lanczos`, '-q:v', '4', path.join(pub, 'proxy', '%06d.jpg')], 'proxies'],
       ] as [string[], string][]) {
         const e = await run(['ffmpeg', '-v', 'error', '-y', ...args], { quiet: true });
-        if (e.code !== 0) fail(`${shot}: ffmpeg couldn't encode the ${what}: ${e.err.trim().split('\n').slice(-3).join(' ')}`);
+        if (e.code !== 0) fail(`${shot}: ffmpeg couldn't encode the ${what}: ${tail(e.err)}`);
       }
-      const step = Math.max(1, Math.floor(r.frames / 12)), cols = Math.min(4, Math.ceil(r.frames / step)), rows = Math.ceil(Math.min(12, Math.ceil(r.frames / step)) / cols);
-      await run(['ffmpeg', '-v', 'error', '-y', '-i', path.join(pub, 'full', '%06d.jpg'), '-vf', `select='not(mod(n,${step}))',scale=320:-2,tile=${cols}x${rows}`, '-frames:v', '1', '-q:v', '4', path.join(stage, 'contact.jpg')], { quiet: true });
-      // (what the frames were made from, again: a file changed while the program ran would publish frames of another one)
-      const again = keyOf(r, scale);
-      if (again.key !== k.key) fail(`${shot}: its inputs changed while it was being made (${whyStale({ ...(before ?? {}), inputs: k.files, what: k.what } as Made, again, true).join('; ')}): nothing was published; make it again (a program writes its scratch files to {tmp}, never to its recipe folder)`);
-      // publish: the frames' folder, then what describes them, then the manifest that names them
+      const step = Math.max(1, Math.floor(r.frames / 12)), shown = Math.min(12, Math.ceil(r.frames / step)), cols = Math.min(4, shown), rows = Math.ceil(shown / cols);
+      const c = await run(['ffmpeg', '-v', 'error', '-y', '-i', path.join(pub, 'full', '%06d.jpg'), '-vf', `select='not(mod(n,${step}))',scale=320:-2,tile=${cols}x${rows}`, '-frames:v', '1', '-q:v', '4', path.join(pub, 'contact.jpg')], { quiet: true });
+      if (c.code !== 0) { rmSync(path.join(pub, 'contact.jpg'), { force: true }); log(`  ${shot}: no contact sheet (ffmpeg: ${tail(c.err)})`); }
+      for (const f of out.other) cpSync(path.join(raw, f), path.join(pub, f));
+      // (the recipe and the inputs again, read afresh: a change while the program ran would publish frames of another one)
+      const now = recipe(shot), again = await keyOf(now, scale);
+      if (again.key !== k.key) fail(`${shot}: its recipe or inputs changed while it was being made (${whyStale({ inputs: k.files, what: k.what }, again, true).join('; ')}): nothing was published; make it again (a program writes its scratch files to {tmp}, never to its recipe folder)`);
+      const record: Made = {
+        'shot.ts': PROTOCOL, shot, key: k.key, dir, previous: before?.dir ?? null, frames: r.frames, fps: r.fps, size: r.size, scale, pixels: [w, h], hashes,
+        inputs: k.files, what: k.what, other: out.other, at: new Date().toISOString(), seconds: Math.round(out.seconds * 10) / 10,
+      };
+      writeFileSync(path.join(pub, 'made.json'), JSON.stringify(record, null, 1) + '\n');
+      // publish: the version's folder whole, under a name nothing has used, then the manifest that names it
       const folder = shotDir(shot), dest = path.join(folder, dir);
       mkdirSync(folder, { recursive: true });
-      rmSync(dest, { recursive: true, force: true });
       try { renameRetry(pub, dest); }
       catch {
         const part = path.join(folder, `${dir}.partial`);
-        rmSync(part, { recursive: true, force: true });
         cpSync(pub, part, { recursive: true });
         renameRetry(part, dest);
       }
-      for (const f of out.other) cpSync(path.join(raw, f), path.join(folder, f));
-      if (existsSync(path.join(stage, 'contact.jpg'))) cpSync(path.join(stage, 'contact.jpg'), path.join(folder, 'contact.jpg'));
-      const record: Made = {
-        'shot.ts': PROTOCOL, shot, key: k.key, dir, n, frames: r.frames, fps: r.fps, size: r.size, scale, pixels: [w, h], hashes,
-        inputs: k.files, what: k.what, at: new Date().toISOString(), seconds: Math.round(out.seconds * 10) / 10,
-      };
-      writeAtomic(path.join(folder, 'made.json'), JSON.stringify(record, null, 1) + '\n');
-      writeAtomic(path.join(folder, 'manifest.json'), JSON.stringify(manifestFor(r, record), null, 1) + '\n');
-      // (the version before stays, for a render that opened it before this one was published)
-      const old = versions(shot).filter((v) => v !== dir && v !== before?.dir);
-      for (const v of old) rmSync(path.join(folder, v), { recursive: true, force: true });
-      log(`  ${shot}: made ${dir}: ${r.frames} frames at ${w}x${h} in ${record.seconds} s (footage/${shot}/, contact.jpg to look at)${out.other.length ? `; also ${out.other.join(', ')}` : ''}`);
+      try { writeAtomic(path.join(folder, 'manifest.json'), JSON.stringify(manifestFor(now, record), null, 1) + '\n'); }
+      catch (e) {
+        rmSync(dest, { recursive: true, force: true });
+        fail(`${shot}: footage/${shot}/manifest.json couldn't be replaced (${(e as Error).message}: open in another program?); the shot is as it was`);
+      }
+      // (the version before stays, for a render that opened it before this one was published; older ones go)
+      for (const v of versions(shot)) if (v !== dir && v !== before?.dir) rmSync(path.join(folder, v), { recursive: true, force: true });
+      log(`  ${shot}: made ${dir}: ${r.frames} frames at ${w}x${h} in ${record.seconds} s (footage/${shot}/${dir}/, contact.jpg there to look at)${out.other.length ? `; with ${out.other.join(', ')}` : ''}`);
       log(reloads() ? '  a running preview reloads at its moment' : '  reload the preview to see it (this project\'s vite.config.ts doesn\'t reload it on a new shot)');
     } finally {
       rmSync(stage, { recursive: true, force: true });
-      try { if (!readdirSync(path.join(CACHE, shot)).length) rmSync(path.join(CACHE, shot), { recursive: true, force: true }); } catch {}
+      tidy(shot);
     }
   } finally { unlock(); }
-}
-
-/** The manifest the engine reads: the recipe's own fields, then what the frames are (their version's folder in "dir"). */
-function manifestFor(r: Recipe, m: Made) {
-  return {
-    ...r.manifest, frames: m.frames, fps: m.fps, size: m.pixels, proxy: [Math.max(2, Math.round(m.size[0] / 2)), Math.max(2, Math.round(m.size[1] / 2))],
-    dir: m.dir, made: 'scripts/shot.ts', recipe: `shots/${r.shot}/shot.json`,
-  };
-}
-
-/** The folders of a shot's versions, oldest first. */
-function versions(shot: string) {
-  try {
-    return readdirSync(shotDir(shot), { withFileTypes: true }).filter((d) => d.isDirectory() && VERSION.test(d.name)).map((d) => d.name)
-      .sort((a, b) => Number(VERSION.exec(a)![1]) - Number(VERSION.exec(b)![1]));
-  } catch { return []; }
 }
 
 async function check(shot: string, n: number) {
-  const st = stateOf(shot);
-  if (st.kind !== 'current') return fail(st.kind === 'stale' ? `${shot} is stale (${st.why.join('; ')}): make it first, then check it` : `${shot} has no frames made by this script to check: bun scripts/shot.ts make ${shot}`);
-  const m = st.made, r = recipe(shot);
-  const N = m.frames;
-  // single frames spread over the shot, the last first, each in a run of its own, then two neighbours in one run started mid-shot
-  const c = Math.max(1, Math.min(n, N)), singles = [...new Set(Array.from({ length: c }, (_, i) => (c <= 1 ? 1 : 1 + Math.round((i * (N - 1)) / (c - 1)))))].reverse();
-  const pairAt = Math.max(1, Math.min(N - 1, Math.floor(N / 2) + 1));
-  const calls: [number, number][] = [...singles.map((k) => [k, k] as [number, number]), ...(N > 1 ? [[pairAt, pairAt + 1] as [number, number]] : [])];
+  const unlock = lock(shot);
   const dir = path.join(CACHE, shot, `check-${Date.now()}`);
   const bad: string[] = [];
-  const unlock = lock(shot);
+  let count = 0;
   try {
+    const st = await stateOf(shot);
+    if (st.kind !== 'current') return fail(st.kind === 'stale' ? `${shot} is stale (${st.why.join('; ')}): make it first, then check it` : `${shot} has no frames made by this script to check: bun scripts/shot.ts make ${shot}`);
+    const m = st.made, r = recipe(shot), N = m.frames;
+    // single frames spread over the shot, the last first, each in a run of its own, then two neighbours in one run started mid-shot
+    const c = Math.max(1, Math.min(n, N));
+    const singles = [...new Set(Array.from({ length: c }, (_, i) => (c <= 1 ? 1 : 1 + Math.round((i * (N - 1)) / (c - 1)))))].reverse();
+    const pairAt = Math.max(1, Math.min(N - 1, Math.floor(N / 2) + 1));
+    const calls: [number, number][] = [...singles.map((k) => [k, k] as [number, number]), ...(N > 1 ? [[pairAt, pairAt + 1] as [number, number]] : [])];
     for (const [a, b] of calls) {
       const out = path.join(dir, `${a}-${b}`);
-      const got = await render(r, m.scale, a, b, out, path.join(dir, 'tmp'));
+      const got = await render(r, m.scale, a, b, out, path.join(dir, `tmp-${a}-${b}`));
       const hashes = await pixelHashes(out, got.ext, a, b - a + 1, m.pixels[0], m.pixels[1]);
       hashes.forEach((h, i) => { if (h !== m.hashes[a - 1 + i]) bad.push(`frame ${a + i} (from a run of ${a}..${b})`); });
+      count += b - a + 1;
     }
   } finally { unlock(); }
   if (bad.length) {
-    log(`check ${shot}: ${bad.length} frame${bad.length > 1 ? 's' : ''} rendered again differ from the shot: ${bad.join(', ')}.`);
+    log(`check ${shot}: ${bad.length} of the ${count} frames rendered again differ from the shot: ${bad.join(', ')}.`);
     log(`  A frame depends on more than its time: on what the program drew before it in the same run (state carried from frame to frame),`);
     log(`  on something that isn't an input (the clock, unseeded randomness, a file outside "inputs"), or on the GPU's rounding.`);
     log(`  The frames rendered again are in ${rel(dir)}/ to compare.`);
     process.exitCode = 1;
   } else {
     rmSync(dir, { recursive: true, force: true });
-    try { if (!readdirSync(path.join(CACHE, shot)).length) rmSync(path.join(CACHE, shot), { recursive: true, force: true }); } catch {}
-    log(`check ${shot}: ${calls.reduce((s, [a, b]) => s + b - a + 1, 0)} frames rendered again, alone and from the middle, match the shot pixel for pixel`);
+    tidy(shot);
+    log(`check ${shot}: the ${count} frames rendered again, alone and from the middle, agree with the shot pixel for pixel (a sample: a frame not rendered again isn't checked)`);
   }
 }
 
-function status(shots: string[]) {
+async function status(shots: string[]) {
   if (!shots.length) { log('no shots: a shot made by a program has its recipe in shots/<shot>/shot.json (bun scripts/shot.ts --help)'); return; }
   for (const s of shots) {
-    const st = stateOf(s);
+    const st = await stateOf(s);
     const at = (m: Made) => `${m.dir}, ${m.frames} frames at ${m.pixels.join('x')}${m.scale > 1 ? ` (scale ${m.scale})` : ''}, made ${m.at.replace('T', ' ').slice(0, 16)}`;
     if (st.kind === 'current') log(`${s}: current (${at(st.made)})`);
     else if (st.kind === 'stale') log(`${s}: stale: ${st.why.join('; ')}${st.made ? ` (playing ${at(st.made)})` : ''}`);
@@ -528,11 +586,11 @@ function status(shots: string[]) {
 }
 
 function clean(shot: string) {
-  const m = made(shot);
-  if (!m) { log(`  ${shot}: no versions made by this script`); return; }
   const unlock = lock(shot);
   try {
-    const old = versions(shot).filter((v) => v !== m.dir);
+    const man = manifestOf(shot);
+    if (!ours(man)) { log(`  ${shot}: no versions made by this script`); return; }
+    const old = versions(shot).filter((v) => v !== man!.dir);
     for (const v of old) rmSync(path.join(shotDir(shot), v), { recursive: true, force: true });
     log(`  ${shot}: ${old.length ? `removed ${old.join(', ')}` : 'only the current version is there'}`);
   } finally { unlock(); }
@@ -543,10 +601,10 @@ try {
   for (const s of names) if (!NAME.test(s)) fail(`${s}: a shot's name is a folder name (letters, digits, . _ -)`);
   const scale = opts.has('scale') ? Number(opts.get('scale')) : undefined;
   if (scale !== undefined && !(Number.isInteger(scale) && scale >= 1 && scale <= 4)) fail(`--scale ${opts.get('scale')}: a whole number from 1 to 4`);
-  if (mode === 'status') status(names.length ? names : allShots());
+  if (mode === 'status') await status(names.length ? names : allShots());
   else if (mode === 'make') {
     needTools();
-    const todo = names.length ? names : allShots().filter((s) => existsSync(path.join(SHOTS, s, 'shot.json')));
+    const todo = names.length ? names : allShots().filter(hasRecipe);
     if (!todo.length) fail('no recipes: a shot made by a program has its recipe in shots/<shot>/shot.json (bun scripts/shot.ts --help)');
     engineCheck();
     for (const s of todo) await make(s, opts.has('force'), scale);

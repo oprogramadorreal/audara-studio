@@ -1113,34 +1113,42 @@ come into the template as a streamed shot, and everything around a scene works o
   same as environment variables, and the shot's rate, length and size at 1×. It lives outside `footage/`, so
   editing a program changes nothing on screen until a make publishes.
 - **`scripts/shot.ts make`** runs the program only when what the frames are made from changed (a hash of the
-  command, the fields that change the frames and the inputs' bytes), renders into `.audara-cache/shots/`,
-  checks the frames (count, numbering, size, decoding; an alpha channel is named and dropped), hashes each
-  frame's decoded pixels, encodes `full/` and `proxy/`, and publishes: the frames in a version folder of their
-  own, never written again, then `made.json`, then the manifest naming the version (`"dir"`), written last and
-  atomically. A failed run publishes nothing. The version before stays for a render that opened it; older
-  ones go. One make at a time per shot, by a lock that a dead process's run doesn't hold.
+  command, the fields that change the frames and the inputs' bytes, the recipe read again before publishing),
+  renders into `.audara-cache/shots/`, checks the frames (count, numbering, one file per frame, size, decoding;
+  an alpha channel is named and dropped), hashes each frame's decoded pixels, encodes `full/` and `proxy/`, and
+  publishes: a version folder holding the frames, its record (`made.json`), a contact sheet and the program's
+  other files, moved in whole under a name never used before and never written again, then the manifest naming
+  it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
+  version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
+  every version the manifest names. The version before stays for a render that opened it; older ones go.
+  Everything that reads or writes a shot's state holds one lock per shot, made whole before it appears.
 - **Versions, not frames rewritten in place.** Frames at fixed paths would let a render reading the shot mix
   two versions, and the browser revalidates a stable URL by size and time. A version folder per make gives
   every frame of a version its own URL, and Windows can't rename a folder over a full one anyway.
-  `footage.ts` reads `"dir"` (a manifest without it, a capture's or any older shot's, reads `full/` and
-  `proxy/` as before) and reads the manifest past the browser's cache.
+  `footage.ts` reads `"dir"` only from a manifest scripts/shot.ts wrote (a capture's, a project's own field or
+  any older shot reads `full/` and `proxy/` as before) and reads the manifest past the browser's cache. A
+  `--jobs` render opens the shot in each of its browsers, so render.ts compares the shots' manifests before the
+  join and stops if one was made again meanwhile.
 - **The preview reloads at its moment** when a shot's manifest is written, as it does for a video's data,
-  audio and assets: of `footage/` the watcher sees each shot's folder and its manifest alone, so tens of
-  thousands of frames are never watched. render.ts's own server watches nothing (`watch: null` with
-  `AUDARA_NO_HMR`, in the config file itself: Vite drops a null given inline over the file's object).
-- **`check` is the f(t) rule for a program:** frames rendered again, each alone in a run of its own and two
-  from mid-shot, compared with the shot's by decoded pixels, which catches state carried from frame to frame,
-  the clock and unseeded randomness. A program that must step from the start steps there in every run.
+  audio and assets: of the root's `footage/` the watcher sees each shot's folder and its manifest alone, so tens
+  of thousands of frames are never watched, and a folder named `footage` anywhere else stays unwatched as
+  before. render.ts's own server watches nothing (`watch: null` with `AUDARA_NO_HMR`, in the config file itself:
+  Vite drops a null given inline over the file's object).
+- **`check` is the f(t) rule for a program,** on a sample: frames rendered again, each alone in a run of its
+  own with a scratch folder of its own and two from mid-shot, compared with the shot's by decoded pixels, which
+  catches state carried from frame to frame, the clock and unseeded randomness in the frames it samples. A
+  program that must step from the start steps there in every run.
 - **What a shot doesn't do:** it is opaque (the streamed path is JPEG; a transparent layer stays on the
-  images path), its motion blur is its own, cuts drawn inside it are invisible to verify's cut checks (one
-  shot per entry), and each change is a make, not a hot swap. Its command must be free and offline, since
-  make and check run it again.
-- **Nothing a session reads by default changed.** SKILL.md is as it was. The shot is reached where a session
-  already looks when the engine doesn't suit or a scene shows footage: backends.md (a section beside its
-  order of choice, which stays as it was), contract.md's "Images and footage", ENGINE.md's Footage section,
-  blender.md, math.md and filming-a-build.md. init's AGENTS.md section gains a line only in a project that
-  has a recipe. A project without shots gets the same files as before but `scripts/shot.ts`, and the
-  example renders the same pixels.
+  images path), its motion blur is its own, cuts drawn inside it are invisible to verify's cut checks, which
+  look at the timeline's, and each change is a make, not a hot swap. Its command must be free and offline,
+  since make runs it whenever the shot is stale and check runs it again.
+- **What a session reads by default gained facts, no lean.** SKILL.md and backends.md's order of choice are as
+  they were. The engine guide, which every build reads by sections, names a shot's manifest among what reloads
+  the page, and its Footage section (read when a scene shows footage) says how a shot is made. The rest is where
+  a session already looks when the engine doesn't suit or a scene shows footage: backends.md (a section beside
+  its order of choice), contract.md's "Images and footage", blender.md, math.md and filming-a-build.md. init's
+  AGENTS.md section gains a line only in a project that has a recipe. A project without shots gets the same
+  files as before but `scripts/shot.ts`, and the example renders the same pixels.
 
 ### The preview's frames: one a refresh
 

@@ -36,7 +36,7 @@ checks and publishes its frames, and the preview reloads on them. The director k
 links and notes by time; the shot sits on the timeline beside drawn scenes, under the same post, sound and
 data, and stills, sheets, verify, the render and the QC report see it. What it costs: a change to the program
 is a `make` of that shot (seconds to minutes, by the program) rather than a hot swap, its motion blur is its
-own, it is opaque, and cuts drawn inside it are invisible to verify's cut checks (one shot per entry). The
+own, it is opaque, and cuts drawn inside it are invisible to verify's cut checks, which look at the timeline's. The
 program owes the f(t) rule as frames: frame k is the picture at `(k - 1) / fps`, whatever it drew before,
 which `shot.ts check` tests. The recipe, the protocol and the checks: `references/contract.md`, "Images and
 footage", and `bun scripts/shot.ts --help`.

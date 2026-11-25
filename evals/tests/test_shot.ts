@@ -3,7 +3,7 @@
 // Each check makes a throwaway project (in a folder whose path has a space) holding the template's shot.ts,
 // footage.ts and vite.config.ts, and a recipe whose program is a small bun script writing BMP frames; needs
 // ffmpeg and ffprobe on the PATH, as shot.ts does. No browser, no network, nothing spent.
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -17,14 +17,19 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
 
 /** A test program: frames of a bar moving with time, as BMP. Its environment varies it (see `env` below). */
 const PROGRAM = String.raw`
-import { writeFileSync, appendFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync, readFileSync } from 'node:fs';
 const e = process.env;
 const [out, first, last, w, h, fps] = process.argv.slice(2);
 const W = +(e.FORCE_W ?? w), H = +h, F = +fps;
 if (e.LOG) appendFileSync(e.LOG, JSON.stringify({ first: +first, last: +last, env: { out: e.AUDARA_SHOT_OUT, first: e.AUDARA_SHOT_FIRST, last: e.AUDARA_SHOT_LAST, frames: e.AUDARA_SHOT_FRAMES, fps: e.AUDARA_SHOT_FPS, width: e.AUDARA_SHOT_WIDTH, height: e.AUDARA_SHOT_HEIGHT, scale: e.AUDARA_SHOT_SCALE, tmp: e.AUDARA_SHOT_TMP, name: e.AUDARA_SHOT_NAME } }) + '\n');
 if (e.FAIL) process.exit(3);
 if (e.SIDE) writeFileSync(out + '/events.json', '{"jump": [3]}');
+if (e.RESERVED) writeFileSync(out + '/manifest.json', '{}');
 if (e.TOUCH) writeFileSync(e.TOUCH, String(Date.now()));
+if (e.RECIPE) { const r = JSON.parse(readFileSync(e.RECIPE, 'utf8')); r.fps = 25; writeFileSync(e.RECIPE, JSON.stringify(r)); }
+if (e.SLEEP) Bun.sleepSync(+e.SLEEP);
+if (e.DUP) writeFileSync(out + '/' + String(+first).padStart(6, '0') + '.png', 'x');
+const EXT = e.EXT ?? 'bmp';
 let carried = 0;
 for (let k = +first; k <= +last; k++) {
   if (e.SKIP && k === +e.SKIP) continue;
@@ -37,7 +42,7 @@ for (let k = +first; k <= +last; k++) {
     const o = 54 + y * row + x * 3, on = x >= x0 && x < x0 + W / 8;
     px[o] = on ? 40 : (shade * y) / H; px[o + 1] = on ? 140 : 30 + (carried % 7); px[o + 2] = on ? 250 : 20;
   }
-  writeFileSync(out + '/' + String(k).padStart(6, '0') + '.bmp', px);
+  writeFileSync(out + '/' + String(k).padStart(6, '0') + '.' + EXT, px);
 }
 if (e.EXTRA) writeFileSync(out + '/' + String(+last + 1).padStart(6, '0') + '.bmp', 'x');
 `;
@@ -70,12 +75,13 @@ test('status, make, then current: a version folder of full frames and proxies, m
     check(/bars: not made yet/.test(p.shot(['status']).out), 'status before a make');
     const m = p.shot(['make']);
     check(m.code === 0, `make failed: ${m.out}`);
-    const man = p.json('footage/bars/manifest.json'), made = p.json('footage/bars/made.json');
+    const man = p.json('footage/bars/manifest.json'), made = p.json(`footage/bars/${man.dir}/made.json`);
     check(man.frames === 12 && man.fps === 30 && man.size.join('x') === '64x36' && man.proxy.join('x') === '32x18', `manifest ${JSON.stringify(man)}`);
-    check(/^g1-[0-9a-f]{8}$/.test(man.dir) && made.dir === man.dir && made.hashes.length === 12, `dir ${man.dir}, made ${made.dir}, ${made.hashes?.length} hashes`);
+    check(/^g1-[0-9a-f]{8}$/.test(man.dir) && man.made === 'scripts/shot.ts' && made.dir === man.dir && made.hashes.length === 12, `dir ${man.dir}, made ${made.dir}, ${made.hashes?.length} hashes`);
     const full = readdirSync(path.join(p.root, 'footage/bars', man.dir, 'full')), proxy = readdirSync(path.join(p.root, 'footage/bars', man.dir, 'proxy'));
     check(full.length === 12 && full[0] === '000001.jpg' && full[11] === '000012.jpg' && proxy.length === 12, `full ${full.length}, proxy ${proxy.length}`);
-    check(existsSync(path.join(p.root, 'footage/bars/contact.jpg')), 'no contact sheet');
+    check(existsSync(path.join(p.root, 'footage/bars', man.dir, 'contact.jpg')), 'no contact sheet in the version');
+    check(readdirSync(path.join(p.root, 'footage/bars')).sort().join() === [man.dir, 'manifest.json'].sort().join(), `footage/bars holds ${readdirSync(path.join(p.root, 'footage/bars')).join(', ')}`);
     check(!existsSync(path.join(p.root, '.audara-cache/shots/bars')), 'staging left behind');
     check(!existsSync(path.join(p.root, '.audara-cache/shots/bars.lock')), 'lock left behind');
     check(/current \(g1-/.test(p.shot(['status']).out), 'status after a make');
@@ -100,9 +106,12 @@ test('the program gets the placeholders and the same as environment variables; {
 test('check passes for a program whose frames depend on their time alone, and fails (exit 1) when one carries state or noise', () => {
   const p = project();
   try {
+    const log = path.join(p.root, 'calls.jsonl');
     check(p.shot(['make']).code === 0, 'make failed');
-    const ok = p.shot(['check', 'bars']);
-    check(ok.code === 0 && /match the shot pixel for pixel/.test(ok.out), `check: ${ok.out}`);
+    const ok = p.shot(['check', 'bars'], { LOG: log });
+    check(ok.code === 0 && /agree with the shot pixel for pixel/.test(ok.out), `check: ${ok.out}`);
+    const tmps = readFileSync(log, 'utf8').trim().split(/\r?\n/).map((l) => JSON.parse(l).env.tmp);
+    check(tmps.length === 5 && new Set(tmps).size === 5, `each run of check gets its own {tmp}: ${tmps.join(', ')}`);
     check(p.shot(['make', '--force'], { STATE: '1' }).code === 0, 'make with state failed');
     const bad = p.shot(['check', 'bars'], { STATE: '1' });
     check(bad.code === 1 && /differ from the shot/.test(bad.out), `check with state: ${bad.code} ${bad.out}`);
@@ -117,6 +126,7 @@ test('an input changed makes the shot stale, naming it; the next make keeps the 
     const st = p.shot(['status']).out;
     check(/stale: shots\/bars\/draw\.ts changed/.test(st), `status: ${st}`);
     check(/stale/.test(p.shot(['check', 'bars']).out), 'check of a stale shot should refuse');
+    check(!existsSync(path.join(p.root, '.audara-cache/shots/bars.lock')), 'a refused check left its lock');
     check(p.shot(['make']).code === 0, 'make 2 failed');
     writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// changed again\n');
     check(p.shot(['make']).code === 0, 'make 3 failed');
@@ -155,7 +165,9 @@ test('--scale 2 makes the frames twice the size with proxies at half the 1x size
     check(man.size.join('x') === '128x72' && man.proxy.join('x') === '32x18', `manifest ${JSON.stringify(man)}`);
     check(/nothing to make/.test(p.shot(['make']).out), 'a plain make after --scale 2 should be current');
     check(p.shot(['check', 'bars', '--n', '2']).code === 0, 'check at the kept scale');
-    check(/stale: its scale changed/.test(p.shot(['make', '--scale', '1']).out) || p.json('footage/bars/made.json').scale === 1, 'back to 1');
+    check(p.shot(['make', '--scale', '1']).code === 0, 'make --scale 1 failed');
+    const back = p.json('footage/bars/manifest.json');
+    check(back.size.join('x') === '64x36' && p.json(`footage/bars/${back.dir}/made.json`).scale === 1, `back to 1: ${JSON.stringify(back)}`);
   } finally { p.done(); }
 });
 
@@ -163,7 +175,7 @@ test('the recipe\'s own manifest fields changed alone rewrite the manifest, not 
   const p = project();
   try {
     check(p.shot(['make'], { SIDE: '1' }).code === 0, 'make failed');
-    check(JSON.parse(readFileSync(path.join(p.root, 'footage/bars/events.json'), 'utf8')).jump[0] === 3, 'events.json not published');
+    check(JSON.parse(readFileSync(path.join(p.root, 'footage/bars', p.json('footage/bars/manifest.json').dir, 'events.json'), 'utf8')).jump[0] === 3, 'events.json not kept with its version');
     writeFileSync(path.join(p.root, 'shots/bars/shot.json'), JSON.stringify({ ...RECIPE, manifest: { title: 'a bar' } }));
     check(/current \(g1-/.test(p.shot(['status']).out), 'a title alone should leave the frames current');
     const r = p.shot(['make']);
@@ -194,7 +206,8 @@ test('footage this script didn\'t make is left alone; an engine that can\'t read
     rmSync(path.join(p.root, 'footage'), { recursive: true });
     const engine = path.join(p.root, 'src/engine/footage.ts');
     const src = readFileSync(engine, 'utf8');
-    writeFileSync(engine, src.replace(/\bm\.dir\b/g, 'm.other'));
+    // (an engine from before 0.17.0: its footage.ts doesn't know a manifest scripts/shot.ts wrote)
+    writeFileSync(engine, src.split("'scripts/shot.ts'").join("'another'"));
     const old = p.shot(['make']);
     check(old.code === 1 && /reads no "dir"/.test(old.out), `old engine: ${old.out}`);
     writeFileSync(engine, src);
@@ -219,6 +232,68 @@ test('inputs from the project root (a leading /), an input that names nothing, a
     check(/stale: data\/notes\.txt changed/.test(p.shot(['status']).out), 'a root input changed should make it stale');
     writeFileSync(path.join(p.root, 'shots/bars/shot.json'), JSON.stringify({ ...RECIPE, size: [64.5, 36] }));
     check(/"size" must be/.test(p.shot(['make']).out), 'a bad size should be reported');
+  } finally { p.done(); }
+});
+
+test('a manifest that can\'t be replaced publishes nothing: the version it names stays, and clean keeps it', () => {
+  const p = project();
+  try {
+    check(p.shot(['make']).code === 0, 'make failed');
+    const g1 = p.json('footage/bars/manifest.json').dir;
+    const manifest = path.join(p.root, 'footage/bars/manifest.json');
+    // (a read-only file can't be replaced by a rename on Windows; elsewhere, a read-only folder stops the rename)
+    const lockDown = process.platform === 'win32' ? manifest : path.join(p.root, 'footage/bars');
+    chmodSync(lockDown, 0o555);
+    let r;
+    try { r = p.shot(['make', '--force']); } finally { chmodSync(lockDown, process.platform === 'win32' ? 0o644 : 0o755); }
+    check(r.code === 1 && /couldn't be replaced|EPERM|EACCES/.test(r.out), `make over a locked manifest: ${r.code} ${r.out}`);
+    check(p.json('footage/bars/manifest.json').dir === g1 && p.versions().join() === g1, `after the failure: manifest ${p.json('footage/bars/manifest.json').dir}, versions ${p.versions().join(', ')}`);
+    check(p.shot(['clean']).code === 0 && p.versions().join() === g1, `clean removed the version on screen: ${p.versions().join(', ')}`);
+    check(/current/.test(p.shot(['status']).out), 'status after the failure');
+  } finally { p.done(); }
+});
+
+test('a version missing a proxy or a full frame is stale, not current, and make makes it again', () => {
+  const p = project();
+  try {
+    check(p.shot(['make']).code === 0, 'make failed');
+    const g1 = p.json('footage/bars/manifest.json').dir;
+    rmSync(path.join(p.root, 'footage/bars', g1, 'proxy', '000001.jpg'));
+    check(/stale: its frames aren't all there/.test(p.shot(['status']).out), 'a missing proxy should read as stale');
+    const r = p.shot(['make']);
+    check(r.code === 0 && p.json('footage/bars/manifest.json').dir !== g1, `make after a missing proxy: ${r.out}`);
+  } finally { p.done(); }
+});
+
+test('a recipe edited while its program runs publishes nothing', () => {
+  const p = project();
+  try {
+    const r = p.shot(['make'], { RECIPE: path.join(p.root, 'shots/bars/shot.json') });
+    check(r.code === 1 && /changed while it was being made/.test(r.out) && /its fps changed/.test(r.out), `${r.code} ${r.out}`);
+    check(!existsSync(path.join(p.root, 'footage/bars/manifest.json')), 'a manifest was published');
+  } finally { p.done(); }
+});
+
+test('two files for one frame, or a file named like one of the script\'s own, stop the make; an upper-case extension works', () => {
+  const p = project();
+  try {
+    const dup = p.shot(['make'], { DUP: '1' });
+    check(dup.code === 1 && /wrote frame 000001 twice/.test(dup.out), `duplicate: ${dup.out}`);
+    const reserved = p.shot(['make'], { RESERVED: '1' });
+    check(reserved.code === 1 && /manifest\.json, a name this script keeps/.test(reserved.out), `reserved: ${reserved.out}`);
+    check(p.shot(['make'], { EXT: 'BMP' }).code === 0, 'frames written as .BMP');
+  } finally { p.done(); }
+});
+
+test('a second make of the same shot while one runs is refused; the first publishes', async () => {
+  const p = project();
+  try {
+    const first = Bun.spawn(['bun', path.join(p.root, 'scripts', 'shot.ts'), 'make'], { cwd: p.root, env: { ...process.env, SLEEP: '3000' }, stdout: 'pipe', stderr: 'pipe' });
+    for (let i = 0; i < 100 && !existsSync(path.join(p.root, '.audara-cache/shots/bars.lock')); i++) await Bun.sleep(50);
+    const second = p.shot(['make', '--force']);
+    check(second.code === 1 && /being made by another run/.test(second.out), `second make: ${second.code} ${second.out}`);
+    check((await first.exited) === 0, 'the first make failed');
+    check(p.versions().length === 1, `versions ${p.versions().join(', ')}`);
   } finally { p.done(); }
 });
 

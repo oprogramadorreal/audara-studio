@@ -5767,10 +5767,10 @@ Blender and better light and faster iteration in three.js (one run: 49 s from an
 about 5 minutes). What did narrow the model was leaving: a renderer it knows better for a shot (a path tracer,
 a simulation, Blender, Manim, its own Python) cost the preview and its `?t=` links, verify, stills, sheets and
 the QC report's cut times, and backends.md said so ("every note costs a full render"). Of the candidates the
-reading listed, only this one changes nothing a session reads by default: the others (the order of choice's
-lean toward the template, AI clips offered rather than taken only when asked, look defaults opt-in, fewer
-references read, a scene API closer to plain three.js) change taste or what every session reads, and wait for
-the gate (below).
+reading listed, only this one adds what a model can do without adding a lean to what sessions read by default:
+the others (the order of choice's lean toward the template, AI clips offered rather than taken only when asked,
+look defaults opt-in, fewer references read, a scene API closer to plain three.js) change taste or what every
+session reads, and wait for the gate (below).
 
 **What changed.** A program's frames play in the template as a streamed shot (design.md, "Any program: a shot
 made outside the browser"):
@@ -5778,18 +5778,23 @@ made outside the browser"):
 - `scripts/shot.ts` (template): `make`, `check`, `status`, `clean`. A recipe, `shots/<shot>/shot.json` beside the
   program, gives the command with placeholders and the shot's rate, length and size at 1×; `make` runs it only
   when the command, a field that changes the frames or an input's bytes changed, checks the frames, hashes their
-  decoded pixels, encodes them and publishes a version folder, `made.json` and, last and atomically, the manifest
-  naming the version. `check` renders frames again alone and from mid-shot and compares pixels.
-- `src/engine/footage.ts`: a manifest's `"dir"` (one folder name, checked) is where `full/` and `proxy/` are, and
-  the manifest is read past the browser's cache. A manifest without it reads as before.
+  decoded pixels, encodes them and publishes a version folder (the frames, its `made.json`, a contact sheet, the
+  program's other files) and then, last and atomically, the manifest naming it. `check` renders a sample of
+  frames again alone and from mid-shot and compares pixels.
+- `src/engine/footage.ts`: in a manifest scripts/shot.ts wrote (`"made": "scripts/shot.ts"`), `"dir"` (one folder
+  name, checked) is where `full/` and `proxy/` are; the manifest is read past the browser's cache. Any other
+  manifest reads as before, a `"dir"` of its own included.
 - `vite.config.ts`: a shot's `manifest.json` reloads the preview at its moment, as a video's data, audio and assets
-  do; of `footage/` only each shot's folder and its manifest are watched. render.ts's own server watches nothing.
+  do; of the root's `footage/` only each shot's folder and its manifest are watched, and other folders named
+  `footage` stay unwatched as before. render.ts's own server watches nothing.
+- `render.ts`: a `--jobs` render compares the shots' manifests before its join and stops if a shot was made again
+  while its pieces rendered, since each browser opened the shot when its page loaded.
 - The text, only where a session already looks when the engine doesn't suit or a scene shows footage: backends.md
   (a section after the order of choice, which keeps its wording; item 4 gains a clause pointing to it),
   contract.md's "Images and footage" (and the port for an older `footage.ts`), the engine guide's Footage section
-  (and its reload list), blender.md, math.md and filming-a-build.md (when their frames can be a shot: opaque,
-  free, the same pixels in every run). init's AGENTS.md section gains a line only in a project with a recipe.
-  SKILL.md is unchanged.
+  (and its reload list, which every build reads), blender.md, math.md and filming-a-build.md (when their frames
+  can be a shot: opaque, free, the same pixels in every run). init's AGENTS.md section gains a line only in a
+  project with a recipe. SKILL.md is unchanged.
 - A new eval case, `cv-own-renderer`: a prompt that names the renderer (a path tracer the session writes in
   Python), a note by time on its shot, and the render. It checks the capability; it says nothing about what a
   session picks on an ordinary brief.
@@ -5816,19 +5821,56 @@ made outside the browser"):
 - **Scale kept,** so a plain make after `--scale 2` keeps the 4K master and its proxies; the recipe's size is the
   shot's at its largest on screen.
 
+**Codex's review of the implementation** found these, each fixed and tested:
+
+- **A failed publication could let `clean` delete the version on screen.** `made.json` was replaced at the shot's
+  root before the manifest: with the manifest held open, the manifest named the old version, `made.json` the new
+  one, and `clean` removed the old. The record now lives inside its version, the manifest alone says which
+  version is current, a manifest that can't be replaced takes back the new folder, and the program's other files
+  go in the version too (a program that writes `manifest.json`, `made.json` or `contact.jpg` is stopped).
+- **The lock didn't cover every decision.** `make` read the shot's state before taking it, the manifest-only path
+  wrote without it, `clean` read first, and a lock file made empty and filled after could be taken for abandoned.
+  Every mode now takes the lock first; the lock file appears whole (a hard link to a file already written); a
+  version's number is never used twice and no existing folder is removed to make room.
+- **A `--jobs` render could join pieces of two versions,** its browsers opening the shot at different times: it
+  now stops before the join (above), and the docs no longer promise more than a single page gives.
+- **A manifest with a `"dir"` of its own** (a capture's, before 0.17.0) would have been read as a version folder,
+  or refused for a slash: `"dir"` now counts only beside `"made": "scripts/shot.ts"`.
+- **A recipe edited while its program ran** published stale frames (the recheck reused the recipe read at the
+  start); it is read again before publishing. Inputs are hashed a piece at a time (a long clip read whole twice
+  took its size in memory).
+- **A version missing a proxy read as current;** both `full/` and `proxy/` are checked frame by frame. A contact
+  sheet that fails is said, never an older one kept.
+- **The frame protocol:** two files for one frame are refused, an extension keeps its case on a case-sensitive
+  drive, and each run of `check` has its own `{tmp}`, so a cache in it can't carry state between runs that are
+  meant to be independent; a pass is described as agreement on the sampled frames.
+- **The watcher's scope:** decisions are made against the served root, and a folder named `footage` elsewhere
+  stays unwatched, as the old pattern had it; only the root's shots' manifests reload the page.
+- **The text:** the default-reading claim narrowed (the engine guide every build reads gained a fact), "one shot
+  per entry" became the fact it stood for (verify's cut checks look at the timeline's), and three promises made
+  exact (make runs a command when the shot is stale, the preview reload is said by shot.ts where an older
+  `vite.config.ts` can't, proxies at 4K are encoded again at the same size, a Blender run that starts mid-shot
+  names its first file by `{first}`).
+
 **What was checked.**
 
-- `evals/tests/test_shot.ts`, new, 10/10: in a throwaway project whose path has a space, a program writing BMP
-  frames; make, status and current; the placeholders and environment variables; check passing, and failing on a
-  program that carries state from frame to frame; an input changed (stale, named), the version before kept and
-  older ones removed, clean; a failed program, a missing frame, an extra frame and a wrong size each publishing
-  nothing and leaving no staging; `--scale 2` and the scale kept for later makes and checks; the recipe's own
-  manifest fields rewriting the manifest alone, and a sidecar published; an input written while the program runs
-  publishing nothing; footage a capture made left alone; an engine without `"dir"` refused with the port; a live
-  lock refusing and a dead process's lock taken over; inputs from the project root, one naming nothing, a bad size.
-- `test_footage.ts`, two new checks (34/34): frame URLs in a version folder and beside a manifest without one, the
-  manifest read with `cache: 'no-store'`, and a `"dir"` that isn't one folder name refused. `test_render_inputs`
-  19/19, `test_render_failures` 13/13, `test_init_gitignore` 3/3, `test_audit` 26/26.
+- `evals/tests/test_shot.ts`, new, 15/15: in a throwaway project whose path has a space, a program writing BMP
+  frames; make, status and current, with only the manifest and the version folder in the shot's folder; the
+  placeholders and environment variables; check passing with a scratch folder per run, and failing on a program
+  that carries state from frame to frame; an input changed (stale, named), the version before kept and older ones
+  removed, clean; a failed program, a missing frame, an extra frame and a wrong size each publishing nothing and
+  leaving no staging; `--scale 2` kept for later makes and checks, and back to 1; the recipe's own manifest fields
+  rewriting the manifest alone, and a sidecar kept in its version; an input written while the program runs
+  publishing nothing; footage a capture made left alone; an engine that can't read a version refused with the
+  port; a live lock refusing and a dead process's lock taken over; inputs from the project root, one naming
+  nothing, a bad size; a manifest that can't be replaced publishing nothing, with `clean` then keeping the version
+  on screen; a missing proxy read as stale; a recipe edited mid-make publishing nothing; two files for one frame
+  and a reserved name stopping a make, an upper-case extension working; a second make while one runs refused.
+- `test_footage.ts`, two new checks (34/34): frame URLs in a version folder, beside a manifest without one, and
+  beside a capture's manifest with a `"dir"` of its own; the manifest read with `cache: 'no-store'`; a version
+  folder that isn't one folder name refused. `test_render_inputs`, one new check (20/20): the shots' manifests a
+  `--jobs` render compares change with a manifest rewritten, not with a version folder written before it.
+  `test_render_failures` 13/13, `test_init_gitignore` 3/3, `test_audit` 26/26.
 - In a project made by init from this branch, a scene playing a shot whose program is a bun script: make, status,
   check (and check failing with carried state and with unseeded noise), an edited program reported stale and made
   again, a failing program leaving the shot as it was, `--scale 2`; `bun run check` clean with `shot.ts` in it; the
@@ -5853,5 +5895,5 @@ text beside the new on every supported model, judged blind; evals/README.md):
 - Transparent shots (PNG on the streamed path, with premultiplied alpha), and a scene API closer to plain
   three.js: engine changes no run has asked for yet.
 
-**Not run:** a task eval in Codex; `cv-own-renderer` without the skills; the gate (no text a default session reads
-changed). The `cv-own-renderer` run in Claude Code is below once it ends.
+**Not run:** a task eval in Codex; `cv-own-renderer` without the skills; the gate (what a default session reads
+gained facts and no lean). The `cv-own-renderer` run in Claude Code is below once it ends.

@@ -448,8 +448,8 @@ test('a frame let go unfetched is fetched when asked again; its mark goes with i
   check(range(600, 720).every((i) => clip.has(i)), 'the frames let go were not fetched when asked again');
 });
 
-test('a manifest naming a version ("dir") reads full/ and proxy/ from that folder; one without reads them beside it', async () => {
-  const made = realFootage({ manifest: { frames: 3, fps: 30, dir: 'g2-0123abcd' } });
+test('a manifest scripts/shot.ts wrote reads full/ and proxy/ from the version it names ("dir"); any other reads them beside it', async () => {
+  const made = realFootage({ manifest: { frames: 3, fps: 30, dir: 'g2-0123abcd', made: 'scripts/shot.ts' } });
   const a = await made.openFootage({ start: 0, export: false }, 'bars');
   check(a.url(0) === '/footage/bars/g2-0123abcd/proxy/000001.jpg', `a version's frame URL: ${a.url(0)}`);
   check(made.fetched.includes('/footage/bars/g2-0123abcd/proxy/000001.jpg'), `fetched ${made.fetched.join(', ')}`);
@@ -459,13 +459,21 @@ test('a manifest naming a version ("dir") reads full/ and proxy/ from that folde
   const b = await capture.openFootage({ start: 0, export: true }, 'cap');
   check(b.url(2) === '/footage/cap/full/000003.jpg', `a capture's frame URL: ${b.url(2)}`);
   b.dispose();
+  // (a capture whose manifest kept a "dir" of its own, before 0.17.0 gave the word a meaning, plays as it did)
+  for (const dir of ['capture', 'takes/a']) {
+    const own = realFootage({ manifest: { frames: 3, fps: 30, dir } });
+    const c = await own.openFootage({ start: 0, export: false }, 'cap');
+    check(c.url(0) === '/footage/cap/proxy/000001.jpg', `a capture with its own "dir": ${dir}: ${c.url(0)}`);
+    c.dispose();
+  }
 });
-test('a manifest\'s "dir" is one folder name in the shot\'s folder: anything else is refused', () => {
+test('in a manifest scripts/shot.ts wrote, "dir" is one folder name in the shot\'s folder: anything else is refused', () => {
   const { infoOf } = realFootage();
-  check(infoOf({ frames: 1, dir: 'g1-deadbeef' }).dir === 'g1-deadbeef' && infoOf({ frames: 1 }).dir === null, 'dir read');
+  const ours = (dir: unknown) => ({ frames: 1, dir, made: 'scripts/shot.ts' });
+  check(infoOf(ours('g1-deadbeef')).dir === 'g1-deadbeef' && infoOf({ frames: 1 }).dir === null && infoOf({ frames: 1, dir: 'a/b' }).dir === null, 'dir read');
   for (const bad of ['../x', 'a/b', '', '.hidden', 'a\\b']) {
     let threw = false;
-    try { infoOf({ frames: 1, dir: bad }); } catch { threw = true; }
+    try { infoOf(ours(bad)); } catch { threw = true; }
     check(threw, `"dir": ${JSON.stringify(bad)} was accepted`);
   }
 });

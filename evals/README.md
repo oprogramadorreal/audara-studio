@@ -382,8 +382,9 @@ a sentence too long for its place left open, its track "incomplete"; and speech 
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
-included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
-`shutter` a render takes or reports; neither needs Chrome or ffmpeg.
+included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
+`shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
+(changed by a manifest rewritten, not by a version folder written before it); neither needs Chrome or ffmpeg.
 `test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
 started (a stand-in for the judge's CLI comes first on PATH, so no failure reaches a model): which video
 `judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to touch, two runs told
@@ -406,16 +407,20 @@ for one a scene's own prepare asked for too, and render.ts's page fetches them a
 yet shows the latest one before it (one after it only when there is none), counted in `footageStats`; a frame
 that fails to load fails its prepare with its URL and frees its turn; a disposed Footage lets its waiting
 frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone;
-and a manifest's `"dir"` (a version scripts/shot.ts made): frame URLs in that folder, read past the browser's
-cache, the URLs of a manifest without one as before, and a `"dir"` that isn't one folder name refused.
+and the version a manifest scripts/shot.ts wrote names (`"dir"`): frame URLs in that folder, the manifest read
+past the browser's cache, the URLs of a manifest without one, or with a `"dir"` of its own (a capture's), as
+before, and a version that isn't one folder name refused.
 `test_shot.ts` runs the template's `scripts/shot.ts` in a throwaway project whose path has a space, with a bun
 program writing BMP frames (ffmpeg and ffprobe on the PATH): make, status and current; the placeholders and
-their environment variables; check passing, and failing on a program that carries state between frames; an
-input changed (stale, named), the version before kept and older ones removed, clean; a failed program, a
-missing or extra frame and a wrong size each publishing nothing; `--scale 2` kept for later makes and checks;
-the recipe's own manifest fields rewriting the manifest alone, a sidecar published; an input written while the
-program runs publishing nothing; a capture's footage left alone; an engine without `"dir"` refused; a live lock
-refusing and a dead one taken over; inputs from the project root, one naming nothing, a bad size.
+their environment variables; check passing with a scratch folder per run, and failing on a program that carries
+state between frames; an input changed (stale, named), the version before kept and older ones removed, clean; a
+failed program, a missing or extra frame and a wrong size each publishing nothing; `--scale 2` kept for later
+makes and checks; the recipe's own manifest fields rewriting the manifest alone, a sidecar kept in its version;
+an input or the recipe changed while the program runs publishing nothing; a capture's footage left alone; an
+engine that can't read a version refused; a live lock refusing, a dead one taken over, and a second make while
+one runs refused; inputs from the project root, one naming nothing, a bad size; a manifest that can't be
+replaced publishing nothing, with clean keeping the version on screen; a missing proxy read as stale; two files
+for one frame and a reserved name refused, an upper-case extension taken.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;

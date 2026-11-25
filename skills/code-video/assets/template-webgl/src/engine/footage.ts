@@ -10,9 +10,10 @@
 //   manifest.json         { "frames": <how many>, "fps": <their rate> } ("proxy": false: there is no proxy/,
 //                         and the preview reads full/ too)
 // A shot a program makes (scripts/shot.ts) keeps each version of its frames in a folder of its own, never
-// written again once it is there, and its manifest names the current one ("dir": "<folder>"): full/ and
-// proxy/ are read from footage/<shot>/<dir>/, so a page or a render that opened the shot before it was made
-// again goes on reading the frames it opened, and a new version never reaches a page under an old URL.
+// written again once it is there, and its manifest ("made": "scripts/shot.ts") names the current one ("dir":
+// "<folder>"): full/ and proxy/ are read from footage/<shot>/<dir>/, so a page that opened the shot before it
+// was made again goes on reading the frames it opened, and a new version never reaches a page under an old URL.
+// Any other manifest's "dir" (a project's own field) means nothing here.
 //
 // Frames load asynchronously (fetch, then createImageBitmap) and render() can't wait, so the engine calls each
 // scene's prepare(t0, t1) before it renders that stretch (Engine.prepare): render.ts waits for it before every
@@ -438,7 +439,7 @@ export interface FootageInfo {
   size: [number, number] | null;
   /** Whether the shot has proxy/ ("proxy": false says it hasn't: the preview reads full/). */
   proxy: boolean;
-  /** The folder of the shot's current frames ("dir": a version scripts/shot.ts made), or null: full/ and proxy/ beside the manifest. */
+  /** The folder of the shot's current frames ("dir" in a manifest scripts/shot.ts wrote), or null: full/ and proxy/ beside the manifest. */
   dir: string | null;
   /** The manifest as written (a project may keep fields of its own there). */
   manifest: Record<string, unknown>;
@@ -451,7 +452,8 @@ export function infoOf(m: Record<string, any>, base = ''): FootageInfo {
   const frames = Number(m.frames ?? Math.round(Number(m.duration ?? 0) * fps));
   if (!(Number.isInteger(frames) && frames > 0)) throw new Error(`footage ${base}: manifest.json needs "frames", how many files full/ holds`);
   const size: [number, number] | null = Array.isArray(m.size) && m.size.length === 2 ? [Number(m.size[0]), Number(m.size[1])] : null;
-  const dir = m.dir == null ? null : String(m.dir);
+  // (a version folder only in a manifest scripts/shot.ts wrote: a capture's or a project's own "dir" is left alone)
+  const dir = m.made === 'scripts/shot.ts' && m.dir != null ? String(m.dir) : null;
   if (dir !== null && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(dir)) throw new Error(`footage ${base}: manifest.json's "dir" must be a folder name in the shot's folder (got ${JSON.stringify(m.dir)})`);
   return { frames, fps, size, proxy: m.proxy !== false, dir, manifest: m };
 }

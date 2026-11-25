@@ -18,7 +18,7 @@
   ],
   "assertions": [
     "With the skills, the picture comes from a Python program the session wrote, played as a shot: a recipe in shots/<shot>/shot.json, footage/<shot>/manifest.json naming a version folder (\"dir\") that holds full/ and proxy/, and made.json beside it (scripts/shot.ts made it); a timeline entry plays it through src/engine/footage.ts. Without them, the MP4's frames come from the Python program.",
-    "With the skills, `bun scripts/shot.ts status` reports the shot current and `bun scripts/shot.ts check <shot>` passes (run both): its frames depend on their time alone.",
+    "With the skills, `bun scripts/shot.ts status` reports the shot current and `bun scripts/shot.ts check <shot>` passes (run both).",
     "With the skills, turn 1 ends in the preview with this project's link (?v=<name>), the render offered and no full render run; a reply before the turn ends gives a &t= link at a time other than 0; stills at 1 s and 6 s show the marble in different places on the floor.",
     "Turn 2's note is made: the shot made again (with the skills, a new version folder named by the manifest), its reply giving a link at about 4 s; stills at 4 s before and after show the floor's dark squares darker and the light squares grey, the marble unchanged.",
     "render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline). By the end an MP4 of 8.0 +/- 0.1 s exists, 16:9, with no audio stream and no paid request.",

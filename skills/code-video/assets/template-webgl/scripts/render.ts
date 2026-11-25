@@ -55,7 +55,9 @@
 //            it says what changed and stops.
 //            Without --resume, pieces of the same render stop the run instead of being thrown away. Where two
 //            pieces meet, the frame rendered after a jump is compared with the one rendered straight on: a
-//            difference means a scene there depends on what was drawn before it
+//            difference means a scene there depends on what was drawn before it. A streamed shot made again
+//            while the pieces render (scripts/shot.ts) stops the run before the join: each browser opened it
+//            when its page loaded, so pieces could show two versions of it
 //   perf:    bun scripts/render.ts perf --from 0 --to 5 [--only ids] [--samples 1]   (ms per frame: what the preview pays,
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
@@ -1154,6 +1156,10 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     const done = pieces.filter((x) => existsSync(pieceFile(x))).length;
     fail(`${failure}\n${done} of ${pieces.length} pieces are done in ${dir}; once the cause is fixed, the same command with --resume renders only the rest (while what they're made from is unchanged)`);
   }
+  // (each browser opened the streamed shots when its page loaded: a shot made again meanwhile, scripts/shot.ts,
+  // could leave pieces showing two versions of it)
+  if (shotManifests() !== SHOTS_AT_START)
+    fail(`a shot was made again while the pieces rendered (a footage/<shot>/manifest.json changed), so they may show two versions of it; nothing was joined. Render again (with --resume too every piece renders again, since the footage changed)`);
   // the join: the pieces as they are, one after the other, each placed by its exact length (by its
   // container's rounded one, a 29.97 fps join lost a frame), then the soundtrack over the frames' own span
   const list = path.join(dir, 'pieces.txt'), part = `${out}.part`;
@@ -1191,6 +1197,15 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   if (seams.length)
     console.log(`WARNING: where ${seams.length} of the ${checked} pieces meet, the first frame of a piece, rendered after a jump, differs from the same frame rendered straight on from the one before it: a scene there remembers what it drew before (docs/ENGINE.md: every frame a function of t), so the video may jump at ${seams.map((n) => `${(n / fps).toFixed(3)} s`).join(', ')}. Make that scene a function of t and render again.`);
 }
+/** Every shot's footage/<shot>/manifest.json as written, which scripts/shot.ts writes last when it makes a shot again. */
+function shotManifests() {
+  const dir = path.join(PROJECT, 'footage');
+  let shots: string[] = [];
+  try { shots = readdirSync(dir).sort(); } catch { return ''; }
+  return shots.map((s) => { try { return `${s}\n${readFileSync(path.join(dir, s, 'manifest.json'), 'utf8')}`; } catch { return ''; } }).join('\n');
+}
+/** The shots' manifests when this run started, before any page opened (videoInPieces compares them before the join). */
+let SHOTS_AT_START = '';
 /** Browsers a --jobs run opened besides the first, closed when the run ends however it ends. */
 const extraBrowsers: Browser[] = [];
 
@@ -1668,6 +1683,7 @@ async function main() {
       console.log(`warning: --out ${opt('out')} is outside out/${name}/${sizeTag()}/, where --size keeps this format's files: if a file of the video's own format is there, this run replaces it`);
   }
 
+  SHOTS_AT_START = shotManifests();
   const server = await ensureServer();
   let browser: Browser | undefined;
   let ok = true;
