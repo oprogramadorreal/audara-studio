@@ -83,3 +83,9 @@ frame at 1600×600; Cycles about 2.5 s).
 - Frames from the Blender app, not the bpy module: on a Windows laptop with two GPUs the module's EEVEE ran
   on the integrated one.
 - Record the script, the Blender version and the command in `assets/SOURCES.md`, like any asset.
+- A shot whose whole picture is Blender's (opaque: no `film_transparent`) can instead be a shot made by
+  `scripts/shot.ts` (`references/contract.md`, "Images and footage"): its recipe runs
+  `blender -b --factory-startup --python-exit-code 1 -P render.py -- {out} {first} {last} {width} {height} {fps}`,
+  the script renders frames `{first}`..`{last}` as `{out}/000001.png` and on, and `make`, the preview's reload,
+  `check` (whether the seed and the denoiser give the same pixels in every run) and a 4K make are the script's.
+  A transparent layer stays on the path above: a shot drops alpha.

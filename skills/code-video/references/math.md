@@ -77,3 +77,7 @@ uv run --no-project --python 3.12 --with "manim[typst]" manim -qh --fps 60 --tra
   says so (`references/contract.md`, "4K"; streamed footage is JPEG, without the alpha these clips need).
 - A deep `UV_CACHE_DIR` on Windows breaks the install (a dependency's build passes 260 characters): use the
   default cache or a short one.
+- A Manim scene that fills the frame (opaque: its own background, no `--transparent`) can be a shot made by
+  `scripts/shot.ts` (`references/contract.md`, "Images and footage"): a recipe whose command renders the MOV
+  and extracts frames `{first}`..`{last}` into `{out}`, so each change is one `make` and the preview reloads on
+  it. A transparent layer keeps the path above.

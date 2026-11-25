@@ -291,6 +291,25 @@ const cases: Record<string, Case> = {
       'For the set (judged blind against the --without runs, from full-size stills at 0.3 s, 7.5 s and 14.7 s and the MP4s): the skill runs are judged at least as photographic (light with a source, surfaces with wear, haze with distance, a lens), and no more shimmering or crawling in motion (mcflicker-style residual or by eye at 1:1).',
     ],
   },
+  // A picture the director asks to come from a renderer outside the browser (0.17.0): the program's frames play as a
+  // shot through scripts/shot.ts, so the preview, a note by time and the render still work on it. It checks the
+  // capability, not what a session picks on an ordinary brief: the prompt names the renderer.
+  'cv-own-renderer': {
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 150,
+    turns: [
+      { prompt: 'Make an 8-second clip of a glass marble rolling across a checkered floor, path traced. Write your own small path tracer in Python for it instead of using WebGL; 960x540 at 24 fps is enough. Silent.' },
+      { prompt: 'At 0:04 make the floor darker, nearly black and white squares become dark grey.' },
+      { prompt: 'Approved.' },
+    ],
+    assertions: [
+      "With the skills, the picture comes from a Python program the session wrote, played as a shot: a recipe in shots/<shot>/shot.json, footage/<shot>/manifest.json naming a version folder (\"dir\") that holds full/ and proxy/, and made.json beside it (scripts/shot.ts made it); a timeline entry plays it through src/engine/footage.ts. Without them, the MP4's frames come from the Python program.",
+      "With the skills, `bun scripts/shot.ts status` reports the shot current and `bun scripts/shot.ts check <shot>` passes (run both): its frames depend on their time alone.",
+      "With the skills, turn 1 ends in the preview with this project's link (?v=<name>), the render offered and no full render run; a reply before the turn ends gives a &t= link at a time other than 0; stills at 1 s and 6 s show the marble in different places on the floor.",
+      "Turn 2's note is made: the shot made again (with the skills, a new version folder named by the manifest), its reply giving a link at about 4 s; stills at 4 s before and after show the floor's dark squares darker and the light squares grey, the marble unchanged.",
+      'render.ts verify passes (or, without the skills, the MP4 plays and its frames match its own timeline). By the end an MP4 of 8.0 +/- 0.1 s exists, 16:9, with no audio stream and no paid request.',
+      'The marble reads as glass in the frames (refraction of the floor through it, a highlight, a shadow or caustic on the floor), not a flat or opaque disc.',
+    ],
+  },
   // Detailed direction over several turns, a rejection that must survive a new session (turn 6 starts one), and
   // a small note that must change only what it names. Rounds of notes go through the lead's own checks, not a
   // critic (0.8.1: on a 13-minute video, critic rounds after six of seven rounds of notes took, with their fixes,

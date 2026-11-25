@@ -429,10 +429,18 @@ function renderer() {
   return { size: text.includes('--size WxH'), changes: text.includes('--since <report>'), refine: text.includes('sets `refine = true`'), jobs: text.includes('--jobs N') };
 }
 
+/** The shots a program makes here (scripts/shot.ts): each folder of shots/ that holds a recipe, shot.json. */
+function shotRecipes() {
+  try {
+    return readdirSync(path.join(P, 'shots'), { withFileTypes: true }).filter((d) => d.isDirectory() && existsSync(path.join(P, 'shots', d.name, 'shot.json'))).map((d) => d.name).sort();
+  } catch { return []; }
+}
+
 /** AGENTS.md's generated section: what a later session in this folder needs to know. */
 function agentsSection(): string {
   const vids = listVideos();
   const r = renderer();
+  const shots = shotRecipes();
   const lacks = [...(r.size ? [] : ['`--size` for a second format']), ...(r.changes ? [] : ["`verify`'s list of what changed since its last run"]), ...(r.jobs ? [] : ['`video --jobs` for a long render'])];
   const cell = (s: string) => s.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
   const rows = vids.length
@@ -451,6 +459,7 @@ function agentsSection(): string {
     '',
     `- **Shared look:** \`docs/STYLE.md\` in words and \`src/look.ts\` in code (palette, post). **Engine guide:** \`docs/ENGINE.md\` (the scene API, its rules, the render commands; every option is in the header of \`scripts/render.ts\`).`,
     ...(existsSync(path.join(P, 'src', 'realism')) ? ["- **Photographic 3D:** `src/realism/` is the code-video skill's realism kit, used by scenes that should read as photographed; its `README.md` has the rules that keep the shared renderer and the frames stable (shadows only inside `withRenderer`, samples from the sub-frame's index, `refine = true` on its scenes, " + (r.refine ? 'whose stretches render.ts then renders with a fixed 12 sub-frames).' : "and `--samples 12` on renders of their stretches: this project's render.ts predates that default).")] : []),
+    ...(shots.length ? [`- **Shots made by programs:** ${shots.map((s) => `\`${s}\``).join(', ')} ${shots.length > 1 ? 'are' : 'is'} drawn outside the browser by a program in \`shots/<shot>/\` (its recipe, \`shot.json\`) and played from \`footage/<shot>/\`. After a change to a shot's program or inputs, \`bun scripts/shot.ts make <shot>\` (the preview reloads on it); \`status\` says which are stale and why, \`check <shot>\` holds the program to the f(t) rule, and \`--help\` has the rest. Its command runs again on every make and check, so it stays free and offline.`] : []),
     "- **Preview:** `bun scripts/render.ts preview --video <video> --t <seconds>` starts it unless it runs and prints its link, `<preview>/?v=<video>&t=<seconds>`, after checking the server is this project's: another app may hold Vite's default port, 5173. Run it yourself (the director doesn't run commands), before the first scene and again in a new session; the preview runs in a process of its own, so it outlives your turn, until `preview --stop`. Every change gets a link.",
     `- **Render:** \`bun scripts/render.ts stills|sheet|verify|video|poster --video <video>\` (into \`out/<video>/\`${r.size ? '; a second format of the video, recomposed for its frame, is `--size 1080x1920` on any of them and on `preview`, into `out/<video>/1080x1920/`' : ''}; \`video --draft\` for a quick look; \`--scale 2\` for twice the size (4K from 1080p; \`--scale 3\` from 720p), every frame drawn again, once the files it shows have the most pixels their sources give (the code-video skill's \`references/contract.md\`, "4K"); a full \`video\` render takes minutes${r.jobs ? ', hours for a long video (`--jobs 3` renders it in pieces at once, 2 on a laptop; `--resume` after an interruption)' : ''}: wait for it before replying). Before calling a change to a video done: \`bun run check\` and \`verify\`${r.changes ? ", whose last lines name the stretches whose frames changed since its last run: they should be the ones the note names or forces, and any other is a side effect to undo or to report with its link. With no `out/<video>/verify.json` yet (`out/` isn't committed), run `verify` once before you change anything, so there is something to compare with." : '.'}`,
     ...(lacks.length ? [`- **This project's \`scripts/render.ts\` is older than the code-video skill's:** it lacks ${lacks.join(' and ')}. Running the skill's \`scripts/init.ts\` here again with \`--force\` updates it, and every other file that differs from the template's, the example video's included (\`videos/example/\`: its timeline, scenes, audio and data); it keeps each replaced file beside it as \`<file>.orig\`, and never replaces \`src/engine/\`, \`src/look.ts\`, \`docs/\`, \`README.md\` or any other video. Read what it reports as replaced, and bring back from the \`.orig\` copies what the project had changed on purpose. Until then, don't use what it lacks.`] : []),
