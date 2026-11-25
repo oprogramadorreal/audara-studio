@@ -5939,5 +5939,17 @@ text beside the new on every supported model, judged blind; evals/README.md):
 - Transparent shots (PNG on the streamed path, with premultiplied alpha), and a scene API closer to plain
   three.js: engine changes no run has asked for yet.
 
-**Not run:** a task eval in Codex; `cv-own-renderer` without the skills; the gate (what a default session reads
-gained facts and no lean). The `cv-own-renderer` run in Claude Code is below once it ends.
+**`cv-own-renderer`, one run in Claude Code** (2.1.329, Opus 5.5 at xhigh, started on this branch's first commits,
+so its project's `shot.ts` was the first version, with `made.json` at the shot's root): the session wrote its own
+path tracer in Python (`shots/marble/render.py`, NumPy and Numba on the CPU, its dependencies in the script's
+header), its recipe in `shots/marble/shot.json` from the references alone, and played the shot through a timeline
+entry. It made the shot twice with `shot.ts make` (the second after its own look pass; 1,574 s for 192 frames at
+960×540 and 256 samples a pixel), verify passed, and it wrote the renderer's commands into the project's AGENTS.md
+for a later session. Its frames read as glass (refraction of the squares, a caustic in the shadow, a highlight,
+depth of field). The turn reached the case's 150 minutes inside its first critic round, before its hand-off: turn
+2's note and turn 3's render never ran, and no grader ran. The case's limit is 300 minutes now. What it shows: a
+fresh session found and used the shot path from the references, unprompted on how; what it doesn't: the loop
+around a note, which turn 2 was for.
+
+**Not run:** a task eval in Codex; `cv-own-renderer` to its end, and without the skills; the gate (what a default
+session reads gained facts and no lean).

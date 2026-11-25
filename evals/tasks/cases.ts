@@ -293,9 +293,10 @@ const cases: Record<string, Case> = {
   },
   // A picture the director asks to come from a renderer outside the browser (0.17.0): the program's frames play as a
   // shot through scripts/shot.ts, so the preview, a note by time and the render still work on it. It checks the
-  // capability, not what a session picks on an ordinary brief: the prompt names the renderer.
+  // capability, not what a session picks on an ordinary brief: the prompt names the renderer. Its first run (0.17.0)
+  // took 26 minutes a make of 192 frames on the CPU and reached 150 minutes inside turn 1's critic round.
   'cv-own-renderer': {
-    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 150,
+    skill: 'code-video', setup: { files: [] }, timeoutMinutes: 300,
     turns: [
       { prompt: 'Make an 8-second clip of a glass marble rolling across a checkered floor, path traced. Write your own small path tracer in Python for it instead of using WebGL; 960x540 at 24 fps is enough. Silent.' },
       { prompt: 'At 0:04 make the floor darker, nearly black and white squares become dark grey.' },

@@ -4,7 +4,7 @@
   "setup": {
     "files": []
   },
-  "timeoutMinutes": 150,
+  "timeoutMinutes": 300,
   "turns": [
     {
       "prompt": "Make an 8-second clip of a glass marble rolling across a checkered floor, path traced. Write your own small path tracer in Python for it instead of using WebGL; 960x540 at 24 fps is enough. Silent."
