@@ -390,6 +390,9 @@ async function link(video: string) {
  */
 function portsTaken(said: Answer[]): string | null {
   if (!said.length || said.some((a) => a === null)) return null;
+  // (nothing answered anywhere, only timeouts: this machine's own address may not be reachable from here, a
+  // sandbox say, which isn't ports taken; the start below says what it finds)
+  if (said.every((a) => a === 'no answer')) return null;
   const previews = said.flatMap((a, i) => (a && typeof a === 'object' ? [`  ${PREVIEW_PORTS[i]}  ${a.root}`] : []));
   const apps = said.length - previews.length;
   const by = [...(previews.length ? [`${previews.length} by other projects' previews`] : []), ...(apps ? [`${apps} by other apps`] : [])].join(' and ');

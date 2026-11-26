@@ -181,6 +181,7 @@ const cases: [string, () => void | Promise<void>][] = [
     const last = full.split('\n').at(-1)!;
     assert.match(last, /^No preview was started: all 3 of the preview's ports \(127\.0\.0\.1, ports 5173-5175\) are taken, 2 by other projects' previews and 1 by other apps\./);
     assert.match(last, /preview --stop/);
+    assert.equal(taken(['no answer', 'no answer', 'no answer']), null, 'only timeouts: not known to be taken');
     const apps = taken(['another app', 'no answer', 'another app'])!;
     assert.match(apps, /taken, 3 by other apps\./);
     assert.doesNotMatch(apps, /preview --stop/, 'no preview to stop where other apps hold them all');
