@@ -6020,7 +6020,8 @@ above the guidance bears this way, as an order to try them in, not as a result:
    had on the final result" (Anthropic, "Harness design for long-running application development", 2026-03-24).
    This history's own numbers say where to look: with the skills a video takes 1.5 to 4 times as long, and its
    picture comes out about the same, slightly preferred on the newest model and once worse (0.8.2's music video),
-   so what the reading and the rounds cost is the open question, more than what they forbid.
+   so what the reading and the rounds cost is the open question, more than what they forbid. The saved sessions
+   (below) say which of the two: the rounds.
 2. **backends.md's "Leave it only for ... is not a reason".** "The model treats an instruction that contains
    'never' as absolute", and the advice is to "rewrite absolute rules with their scope and reason" ("Prompting
    Claude Fable 5.2"). A default with its reason and its way out is what the skill-authoring guide asks for
@@ -6029,9 +6030,42 @@ above the guidance bears this way, as an order to try them in, not as a result:
 3. **Look defaults as opt-in.** The same guidance on instructions that "raised cost, caused side effects, or no
    longer had an effect", and 0.13.0's own run, where naming post as a look left one model's picture sparser:
    one change, one run a side at least.
-4. **The critic's cadence** stays as it is: "Separate, fresh-context verifier subagents tend to outperform
-   self-critique" ("Prompting Claude Fable 5"). What the run above adds is narrower: a fix found after the
-   director's "Approved." was applied before the render, which then wasn't made.
+4. **The critic stays; its round at delivery is what the minutes point at.** "Separate, fresh-context verifier
+   subagents tend to outperform self-critique" ("Prompting Claude Fable 5"), and nothing read argues against the
+   round before the hand-off. The round after the director's yes is the narrower question (below).
+
+**Where a session's time goes, timed from the sessions already saved (2026-11-26).** Before running an ablation
+the review timed three sessions on disk from their session files: each tool call from its call to its result,
+and the model's own time (thinking and writing) given to what it did next. They are 0.13.0's baseline pair on
+Fable 5.2 (the 20-second sky video, with main's text and alone) and this release's `cv-own-renderer` run on
+Opus 5.5.
+
+| | Fable 5.2, with the skills | Fable 5.2, alone | Opus 5.5, with (own renderer) |
+|---|---|---|---|
+| The whole session | 102 min | 28 min | 295 min |
+| Critic rounds | two, 15.0 and 13.1 min (28%) | none | two, 12.8 and 16.1 min (10%) |
+| `render.ts video` and `verify` | 22.5 min (22%) | none | 4.6 min, beside about 170 min of the shot's own makes |
+| Reading the skill's references and `docs/ENGINE.md` | 0.3 min | none | 0.5 min |
+| Model calls in the main thread, and their median context | 109, 341K tokens | 36, 171K | 160, 289K |
+| Input tokens, cached ones included (main thread + subagents) | 36.6M + 14.9M | 5.5M | 43.6M + 9.2M |
+
+- **Reading is not where the minutes go:** under a minute in each run. Fewer references read would save
+  context, which these numbers can't split from the rest (the median call carried twice the alone run's), and no
+  time to speak of. So a copy of the skills without their craft references, the ablation this review first
+  named, was not run: it would have moved under 1% of the time, on a picture one run a side can't tell apart.
+- **The critic's rounds are the largest named cost,** 13 to 20 minutes each (a third session on Fable, on a
+  candidate text of 0.13.0's gate, ran one round of 19.7), then the renders and verify. The alone run has
+  neither: 24 of its 28 minutes were the model's own.
+- **The round at delivery, after the director's yes, went both ways.** On Fable, the round after "Go ahead. I
+  want the MP4" took 13 minutes and ended SHIP: one small defect "masked by the title's hit" and five matters
+  of taste, as critique.md records of a short piece's second round ("found only polish in four test runs out of
+  four"). On Opus, the round after "Approved." took 16 minutes and found glitter in the path-traced glass "worth
+  the 55-minute remake"; the session patched the renderer and asked again, so that turn ended without a render
+  (Delivery's step 2 sends such fixes back to the preview for a new yes). One round of polish and one real find
+  don't settle it. The candidate for the gate, then: on a short piece, whether a yes to
+  a previewed cut, changed since its round only by that round's fixes, renders without another round. It is a
+  change to the critic's bar, so it takes more than one run a side on each model, which this review did not
+  start: about 100 minutes a run with the skills on Fable.
 
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
