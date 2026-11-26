@@ -5940,16 +5940,38 @@ text beside the new on every supported model, judged blind; evals/README.md):
   three.js: engine changes no run has asked for yet.
 
 **`cv-own-renderer`, one run in Claude Code** (2.1.329, Opus 5.5 at xhigh, started on this branch's first commits,
-so its project's `shot.ts` was the first version, with `made.json` at the shot's root): the session wrote its own
-path tracer in Python (`shots/marble/render.py`, NumPy and Numba on the CPU, its dependencies in the script's
-header), its recipe in `shots/marble/shot.json` from the references alone, and played the shot through a timeline
-entry. It made the shot twice with `shot.ts make` (the second after its own look pass; 1,574 s for 192 frames at
-960×540 and 256 samples a pixel), verify passed, and it wrote the renderer's commands into the project's AGENTS.md
-for a later session. Its frames read as glass (refraction of the squares, a caustic in the shadow, a highlight,
-depth of field). The turn reached the case's 150 minutes inside its first critic round, before its hand-off: turn
-2's note and turn 3's render never ran, and no grader ran. The case's limit is 300 minutes now. What it shows: a
-fresh session found and used the shot path from the references, unprompted on how; what it doesn't: the loop
-around a note, which turn 2 was for.
+so its project's `shot.ts` was the first version, with `made.json` at the shot's root, and it was graded against
+that version): the session wrote its own path tracer in Python (`shots/marble/render.py`, NumPy and Numba on the
+CPU, its dependencies in the script's header), found `shot.ts` through `backends.md` (its `--help` ran 45 s after
+the skill loaded), wrote its recipe in `shots/marble/shot.json` and played the shot through a timeline entry; it
+wrote the renderer's commands into the project's AGENTS.md for a later session. Three turns: 9,001 s (stopped at
+the case's 150 minutes), 7,541 s and 1,184 s. A fresh grader passed three of the six assertions:
 
-**Not run:** a task eval in Codex; `cv-own-renderer` to its end, and without the skills; the gate (what a default
-session reads gained facts and no lean).
+- **Passed.** The picture is the session's program played as a shot. Verify passes, and an 8.000 s, 16:9 MP4
+  with no audio stream exists (a draft, the only full-length one); nothing was spent. The marble reads as glass:
+  refraction of the squares, a highlight, bubbles, a shadow with a caustic.
+- **`shot.ts status` stale at the end.** Turn 3 changed `render.py` after the last make, so `check` refuses to
+  run. In a copy with the published version's `render.py` (its hash matching `made.json`), `check` passed on six
+  frames.
+- **Turn 1 never reached its hand-off.** None of its 20 replies had a link; no full render ran, and the marble
+  moves between 1 s and 6 s.
+- **Turn 2's note, made, missed the still at 4 s.** It came as a new version with a `&t=4` link, but as an
+  18-frame fade from 4.00 to 4.75 s, so a still at 4 s is unchanged. It also shipped a path change turn 1's critic
+  had asked for, which moved the marble 52 px from turn 1's published version.
+
+Where the time went: five makes, about 170 minutes of tracing. One remake was for a black frame at 1.58 s that
+`shot.ts make`, `check` and verify all passed and only `qc.py` caught. Turn 1 had 40 minutes with no tool call
+(seven API retries), and a version that passed `check` and verify at minute 94 was not shown before a critic
+round and a 55-minute remake. Other projects' previews held all of ports 5173-5199 on this machine, so `render.ts
+preview` couldn't start: in turn 1 a `| tail -3` hid the error, and in turn 2 the session ran Vite by hand on
+5240. On "Approved." turn 3 ran a second critic, patched `render.py` against glitter and floor grain, and asked
+again instead of rendering. The case's limit is 300 minutes now.
+
+What it shows: a fresh session found and used the shot path from the references, unprompted on how, and a note
+went through it (a new version, the preview, verify). What it doesn't: a hand-off on time, the render on
+approval, and a black frame caught by the shot's own checks. None of these failures is in the shot path's code.
+A warning in `shot.ts make` for a near-black frame is a candidate; holding a found fix until after the render
+on approval is a candidate for the gate.
+
+**Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
+gate (what a default session reads gained facts and no lean).
