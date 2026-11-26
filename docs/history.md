@@ -6257,5 +6257,17 @@ named a runner; a process the system gives no name for is left running. `test_le
 grader's name against each form and a name cut at 15 characters; the five previews here are `node.exe` by both.
 Not run: the second `ps` call on a system that has one, and a link (a venv's python) followed to its name.
 
+Three more on that check, all taken. **Two runners are not one:** a line starting `python3 <folder>/log.txt`
+with the system naming the process `node` passed, each name a runner's; it is a node process running a script
+called python3. Both names have to be the same runner, by any name it goes by (python, python3.12, pythonw,
+py; node, nodejs). **A whole name read as one cut short:** `long-tool-prefix.exe`, 15 characters and more,
+matched `long-tool-prefix-more.exe` on Windows, which cuts nothing. A name is the start of a file's only at the
+length the system cuts at, 15 bytes on Linux and 16 on macOS. **A script started by its own first line was no
+longer the run's on Linux,** which names the process after the script while its line starts with the
+interpreter (`/usr/bin/python3 <folder>/render.py`, named `render.py`: a tool pip puts in a venv starts so). It
+counts again when the script carries the system's name and its first line puts exactly the words before its
+path. `test_left_running.ts` 18/18, the first-line form on real files read as Linux tells them; not run on
+Linux.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

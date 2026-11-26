@@ -279,7 +279,8 @@ and elsewhere `ps` joins the arguments with spaces and marks nothing, so there a
 in its path keeps these processes (its servers are still found). And the line's first word is the program only
 when the system's own name for what the process runs agrees (Windows' image name, the kernel's elsewhere): a
 command line is what a process was given to show, and macOS's `ps` starts it at the second argument when the
-first is empty. A process
+first is empty. A script started by its own first line (`#!`), which Linux names after the script, is known by
+that line. A process
 is stopped with everything that descends from it, read from the process table first. A server is stopped as the process its answer names, when the system says
 that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
 port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
@@ -410,7 +411,8 @@ listeners written out, how a command line comes apart into arguments (by Windows
 joins one, an empty argument kept), which command lines run a program from a folder, each read both ways (none with an option before
 the path, none whose path leaves the folder again through `..`, and none whose path has a space where the line
 doesn't say where an argument ends: a grader's script and its argument are never read as one path; and none
-the system names otherwise than its line does, or doesn't name) and which
+the system names otherwise than its line does, or doesn't name: the same runner by both, a name cut short only
+where the system cuts names, and a script started by its own first line known by that line) and which
 process an answer stops (none that listens
 on another address or port, and none where two processes could have answered); on a table of processes, that
 a tree is a process and all that descends from it, the deepest first; with three node processes each

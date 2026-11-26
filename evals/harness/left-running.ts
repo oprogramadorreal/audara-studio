@@ -26,7 +26,7 @@
 // doesn't listen there, or two processes that could have answered), the process is left running and, for a
 // server, the port is printed. So outside Windows a run in a folder whose path has a space keeps the first
 // sweep's processes: `ps` joins a command's arguments with spaces and marks nothing. Its servers are still found.
-import { realpathSync } from 'node:fs';
+import { closeSync, openSync, readSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -195,10 +195,33 @@ export function words(cmd: string, windows = WIN): Word[] {
   }
 }
 
+/**
+ * How a system tells of its processes: whether a command line keeps its quotes (Windows), and the length at which
+ * the kernel cuts the name it keeps for a program (in bytes: 15 on Linux, 16 on macOS; 0 where it keeps the whole
+ * name, Windows, or where the length isn't known, so that only a whole name counts there).
+ */
+export interface Telling { quotes: boolean; cut: number }
+export const TELLING: Telling = { quotes: WIN, cut: process.platform === 'linux' ? 15 : process.platform === 'darwin' ? 16 : 0 };
+
 /** The programs that run the script given first: node, bun, deno, python (python3.12, pythonw, py). */
 const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py)(\.exe)?$/i;
 /** The ones whose `run` takes the script next: `bun run`, `uv run`, `deno run`. */
 const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
+/** Which runner a name is, the same for each name it goes by (python, python3.12, pythonw and py; node and nodejs), or none. */
+const runner = (n: string) => { const m = RUNNER.exec(n)?.[1]?.toLowerCase(); return !m ? '' : m.startsWith('py') ? 'python' : m === 'nodejs' ? 'node' : m; };
+/**
+ * What a script's first line, `#!`, puts before the script's own path on the line of the process running it:
+ * the interpreter, then all that follows it as one argument (Linux's rule). Nothing for a file without one.
+ */
+function shebang(file: string): string | undefined {
+  try {
+    const fd = openSync(file, 'r'), buf = Buffer.alloc(256);
+    let n = 0;
+    try { n = readSync(fd, buf, 0, buf.length, 0); } finally { closeSync(fd); }
+    const m = /^#![ \t]*(\S+)(?:[ \t]+(.*?))?[ \t\r]*$/.exec(buf.subarray(0, n).toString('utf8').split('\n')[0]!);
+    return m ? (m[2] ? `${m[1]} ${m[2]}` : m[1]) : undefined;
+  } catch { return undefined; }
+}
 /** A `..` among a path's parts. */
 const UP = /(^|[\\/])\.\.([\\/]|$)/;
 /**
@@ -223,16 +246,22 @@ const UP = /(^|[\\/])\.\.([\\/]|$)/;
  * was given to show: its first argument can be empty, and macOS's ps then starts the line at the second, a file
  * of the folder that some other program is reading. So `name`, the system's own name for the program the process
  * runs (`processes`), has to agree: with the file the first word names (itself, or what it links to: a venv's
- * python) for an executable of the folder, and with a runner's name for a runner. A process the system gives no
- * name for is left running.
+ * python) for an executable of the folder, and with the same runner for a runner, by any of the names it goes by
+ * (a node process whose line starts `python3 <folder>/log.txt` runs a script called python3). A name counts as
+ * cut short only at the length the system cuts names at. A process the system gives no name for is left running.
  *
- * `windows`: whether the line is one Windows kept as given (its quotes say where an argument ends) or one ps
- * joined; the system's own unless a test says.
+ * One more form, where ps joined the line: a script started by its own first line (`#!/usr/bin/python3`, a tool
+ * pip put in a venv). Linux names such a process after the script, and its line is the interpreter, then the
+ * script's path. It counts when the script leads into the folder, carries the system's name, and its first line
+ * puts exactly the words that come before its path.
+ *
+ * `how`: how the system that gave the line and the name tells of its processes (`Telling`); this system's own
+ * unless a test says.
  */
-export function runsFrom(cmd: string, dir: string, name: string, windows = WIN) {
+export function runsFrom(cmd: string, dir: string, name: string, how: Telling = TELLING) {
   // (spelled as the system compares paths: its separators, and its case where it ignores it)
   const spell = (s: string) => { const t = WIN ? s.replaceAll('\\', '/') : s; return caseless ? t.toLowerCase() : t; };
-  const a = words(cmd, windows), d = spell(path.resolve(dir)).replace(/\/+$/, '');
+  const a = words(cmd, how.quotes), d = spell(path.resolve(dir)).replace(/\/+$/, '');
   const leads = (k: number) => {
     const w = a[k];
     if (!w || !spell(w.text).startsWith(`${d}/`) || !within(dir, w.text)) return false;
@@ -240,13 +269,23 @@ export function runsFrom(cmd: string, dir: string, name: string, windows = WIN) 
   };
   // (a file's name as a system has it for a process: the last part of its path, without Windows' .exe)
   const base = (p: string) => { const b = p.split(/[\\/]/).pop()!.replace(/\.exe$/i, ''); return caseless ? b.toLowerCase() : b; };
-  const sys = base(name), first = a[0]?.text ?? '';
-  if (!sys) return false;
-  // (the kernel's name is cut at 15 characters, or 16: a name that long is the start of the file's)
-  const named = (p: string) => { const b = base(p); return b === sys || (sys.length >= 15 && b.startsWith(sys)); };
+  const told = base(name), first = a[0]?.text ?? '';
+  if (!told) return false;
+  // (a name as long as the kernel keeps is the start of the file's, cut there; any other is the whole name)
+  const named = (p: string) => { const b = base(p); return b === told || (how.cut > 0 && Buffer.byteLength(told) === how.cut && b.startsWith(told)); };
   const linked = (p: string) => { try { return named(realpathSync(p)); } catch { return false; } };
   if (leads(0) && (named(first) || linked(first))) return true;
-  return (RUNNER.test(sys) && RUNNER.test(base(first)) && leads(1)) || (RUNS.test(sys) && RUNS.test(base(first)) && a[1]?.text === 'run' && leads(2));
+  const one = runner(told);
+  if (one && one === runner(base(first)) && leads(1)) return true;
+  if (RUNS.test(told) && told.toLowerCase() === base(first).toLowerCase() && a[1]?.text === 'run' && leads(2)) return true;
+  // (a script started by its own first line, on a line ps joined: the system's name is the script's, and the
+  // words before its path are the ones that line puts there)
+  if (!how.quotes) for (let k = 1; k < a.length; k++) {
+    if (!leads(k) || !named(a[k]!.text)) continue;
+    const before = shebang(a[k]!.text);
+    if (before !== undefined && before === a.slice(0, k).map((w) => w.text).join(' ')) return true;
+  }
+  return false;
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */

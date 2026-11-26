@@ -105,7 +105,10 @@ try {
   // (the system's own name for the process: unless a check gives one, the name the line starts with, as for a
   // process whose line says what it runs)
   const says = (cmd: string) => (words(cmd, true)[0]?.text ?? '').split(/[\\/]/).pop()!;
-  const runs = (cmd: string, dir: string, windows: boolean, name = says(cmd)) => runsFrom(cmd, dir, name, windows);
+  // (how each system tells of its processes: Windows keeps a line's quotes and a program's whole name; elsewhere
+  // ps joins the line, and the kernel cuts the name, at 15 bytes on Linux and 16 on macOS)
+  const WINDOWS = { quotes: true, cut: 0 }, LINUX = { quotes: false, cut: 15 }, MAC = { quotes: false, cut: 16 };
+  const runs = (cmd: string, dir: string, windows: boolean, name = says(cmd)) => runsFrom(cmd, dir, name, windows ? WINDOWS : LINUX);
   const both = (cmd: string, dir: string, name?: string) => [runs(cmd, dir, true, name), runs(cmd, dir, false, name)].join();
   await check('a command line\'s arguments, as far as it says where each ends: by Windows\' quotes, or nowhere', () => {
     const line = String.raw`"C:\a b\node.exe" "C:\run dir\x.js" a\\b "c \"d\" e" "f\\" g "h ""i"" j" k"l m"n`;
@@ -192,9 +195,43 @@ try {
     assert.equal(both(`python ${at(plain, 'a.py')}`, plain, 'python3.12'), 'true,true', 'a runner called by another of its names, a link to it');
     assert(runs(`"C:\\Program Files\\nodejs\\node.exe" "${at(spaced, 'idle.js')}"`, spaced, true, 'node.exe'), 'Windows names a program with its .exe');
     assert(runs(at(plain, 'node_modules', '.bin', 'esbuild'), plain, true, 'esbuild.exe'), 'the same for an executable of the folder, written without it');
-    assert.equal(both(`${at(plain, 'bin', 'a-long-named-tool-of-the-run')} x`, plain, 'a-long-named-to'), 'true,true', 'a name the system cut at 15 characters is the start of the file\'s');
+    // (the same runner by both names, whichever of its names each uses; never two runners)
+    assert.equal(both(`python3 ${at(plain, 'log.txt')}`, plain, 'node'), 'false,false', 'python3 <folder>/log.txt, the process node: a script called python3 reading the log');
+    assert.equal(both(`node ${at(plain, 'log.txt')}`, plain, 'bun'), 'false,false', 'the same with node and bun');
+    assert.equal(both(`bun run ${at(plain, 'log.txt')}`, plain, 'uv'), 'false,false', 'and through run: bun by the line, uv by the system');
+    assert.equal(both(`py ${at(plain, 'a.py')}`, plain, 'python3.12'), 'true,true', 'python goes by py, python, python3.12, pythonw');
+    assert.equal(both(`nodejs ${at(plain, 'idle.js')}`, plain, 'node'), 'true,true', 'node by nodejs');
+    assert(runs(`uv run "${at(spaced, 'a.py')}"`, spaced, true, 'UV.EXE'), 'the same name in another case, as Windows may give it');
+    // (a name counts as cut short only at the length the system cuts names at: nowhere on Windows)
+    const long = `${at(plain, 'bin', 'a-long-named-tool-of-the-run')} x`;
+    assert(runsFrom(long, plain, 'a-long-named-to', LINUX), 'Linux cuts a name at 15: one that long is the start of the file\'s');
+    assert(runsFrom(long, plain, 'a-long-named-too', MAC) && !runsFrom(long, plain, 'a-long-named-to', MAC), 'macOS at 16: 15 characters are a whole name there, another program\'s');
+    assert(!runsFrom(long, plain, 'a-long-named-to', WINDOWS) && !runsFrom(long, plain, 'a-long-named-too.exe', WINDOWS), 'Windows gives the whole name: a start of the file\'s is another program');
+    assert(runsFrom(long, plain, 'a-long-named-tool-of-the-run.exe', WINDOWS) && !runsFrom(long, plain, 'a-long-named-tool-of', LINUX), 'the whole name on Windows; on Linux a start longer than it keeps is no name of its');
     assert.equal(both(`${at(plain, 'bin', 'tool')} x`, plain, 'too'), 'false,false', 'a shorter name that only starts alike is another program');
     assert.equal(both(`${at(plain, 'bin', 'tool')} x`, plain, 'python'), 'false,false', 'an executable of the folder by the line, a runner by the system: they disagree');
+  });
+  await check('a script started by its own first line: named after the script on Linux, the interpreter first on its line', () => {
+    // (real files, read for their first line; in a folder with no space in its path, as a line ps joined needs)
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'audara-first-line-'));
+    try {
+      if (/\s/.test(dir)) { console.log('  (the temp folder\'s path has a space: not checked here)'); return; }
+      const put = (name: string, text: string) => { writeFileSync(path.join(dir, name), text); return path.join(dir, name); };
+      const render = put('render.py', '#!/usr/bin/python3\nprint(1)\n'), awk = put('sum.awk', '#! /usr/bin/awk  -f \n{ s += $1 }\n');
+      const env = put('tool', '#!/usr/bin/env -S node --no-warnings\n'), log = put('log.txt', 'not a script\n'), crlf = put('crlf.py', '#!/usr/bin/python3\r\nprint(1)\r\n');
+      assert(runsFrom(`/usr/bin/python3 ${render} --out x`, dir, 'render.py', LINUX), '/usr/bin/python3 <folder>/render.py, the process named render.py, the script starting #!/usr/bin/python3');
+      assert(runsFrom(`/usr/bin/awk -f ${awk} data.txt`, dir, 'sum.awk', LINUX), 'with the one argument its first line gives the interpreter, the spaces around it dropped');
+      assert(runsFrom(`/usr/bin/env -S node --no-warnings ${env}`, dir, 'tool', LINUX), 'all that follows the interpreter is one argument, spaces and all');
+      assert(runsFrom(`/usr/bin/python3 ${crlf}`, dir, 'crlf.py', LINUX), 'a first line that ends as Windows ends a line');
+      assert(!runsFrom(`/usr/bin/python2 ${render}`, dir, 'render.py', LINUX), 'another interpreter than its first line names');
+      assert(!runsFrom(`/usr/bin/python3 -u ${render}`, dir, 'render.py', LINUX), 'an argument its first line doesn\'t give');
+      assert(!runsFrom(`/usr/bin/awk ${awk}`, dir, 'sum.awk', LINUX), 'or one it gives, missing');
+      assert(!runsFrom(`/usr/bin/python3 ${log}`, dir, 'log.txt', LINUX), 'a file with no such line is read, not run');
+      assert(!runsFrom(`/usr/bin/python3 ${render}`, dir, 'grade.py', LINUX), 'the system names another script');
+      assert(!runsFrom(`/usr/bin/python3 ${path.join(dir, 'gone.py')}`, dir, 'gone.py', LINUX), 'a script that isn\'t there has no first line to say so');
+      assert(!runsFrom(`/usr/bin/python3 ${render}`, dir, 'render.py', WINDOWS), 'Windows starts nothing by a first line');
+      assert(runsFrom(`/usr/bin/python3 ${render}`, dir, 'python3', LINUX), 'the same script run by a python the system names as python: a runner and its script');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   await check('a path counts by where it leads: one that leaves the folder again through .. is another folder\'s program', () => {
     const out = at(plain, '..', 'dl-1-01', 'grade.js');
