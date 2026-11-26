@@ -71,8 +71,12 @@ const PROJECT = path.resolve(import.meta.dir, '..');
 const SHOTS = path.join(PROJECT, 'shots');
 const FOOTAGE = path.join(PROJECT, 'footage');
 const CACHE = path.join(PROJECT, '.audara-cache', 'shots');
-/** The protocol between this script, the program and the engine: a change of it makes every shot stale. */
-const PROTOCOL = 1;
+/**
+ * The protocol between this script, the program and the engine: a change of it makes every shot stale. 2: the
+ * files a program writes in folders beside its frames are published (1 dropped them, so a version made by it can
+ * lack files its program wrote).
+ */
+const PROTOCOL = 2;
 /** What a manifest this script published says it is ("made"); the engine reads "dir" only from such a manifest. */
 const MADE_BY = 'scripts/shot.ts';
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -199,13 +203,20 @@ function inputFiles(r: Recipe): string[] {
       if (p === recipeFile) found++;
       else if (!p.startsWith('..') && !NEVER.test(p)) { out.add(p); found++; }
     };
-    if (!/[*?[{]/.test(pat) || pat === '**') {
-      const f = pat === '**' ? base : path.resolve(base, pat);
+    if (!/[*?[{]/.test(pat)) {
+      const f = path.resolve(base, pat);
       const st = statSync(f, { throwIfNoEntry: false });
       if (st?.isFile()) take(rel(f));
       else if (st?.isDirectory()) filesUnder(f, take);
     } else {
-      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: true })) take(rel(path.resolve(base, g)));
+      // (a pattern is matched over the same walk, from the folder its fixed start names: a scan by the pattern
+      // itself reads a whole .venv or node_modules to turn it down file by file, twice a make)
+      const parts = pat.split('/');
+      let fixed = 0;
+      while (fixed < parts.length - 1 && !/[*?[{]/.test(parts[fixed]!)) fixed++;
+      const from = path.resolve(base, parts.slice(0, fixed).join('/')), glob = new Bun.Glob(parts.slice(fixed).join('/'));
+      if (statSync(from, { throwIfNoEntry: false })?.isDirectory())
+        filesUnder(from, (p) => { if (glob.match(path.relative(from, path.join(PROJECT, p)).split(path.sep).join('/'))) take(p); });
     }
     if (!found) fail(`shots/${r.shot}/shot.json: the input ${pattern} names no file${fromRoot ? '' : ` in shots/${r.shot}/ (a path from the project root starts with /)`}`);
   }
@@ -336,6 +347,14 @@ function madeHere(shot: string, folder: string) {
   } catch { return false; }
 }
 /**
+ * Removes a folder this script made, its record last: a removal stopped halfway by a file held open (Windows)
+ * leaves a folder still known as this script's, so the next make or clean finishes it. Throws what stopped it.
+ */
+function removeOwned(dir: string) {
+  for (const f of readdirSync(dir)) if (f !== 'made.json') rmSync(path.join(dir, f), { recursive: true, force: true, maxRetries: 3 });
+  rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
+}
+/**
  * Removes the versions this script made for the shot but those in `keep`, and its copies cut short (run under the
  * shot's lock, so no make is still writing one). One it can't remove (a file open in another program, on Windows)
  * stays, named, for the next make or clean: what's published is published already.
@@ -350,16 +369,13 @@ function prune(shot: string, keep: (string | null | undefined)[]) {
       if (v.endsWith(PARTIAL)) try { rmdirSync(dir); removed.push(v); } catch { /* it holds something: not this script's to remove */ }
       continue;
     }
-    // (its record goes last: a removal stopped halfway by a file held open leaves a version still known as this
-    // script's, so the next make or clean finishes it)
-    try {
-      for (const f of readdirSync(dir)) if (f !== 'made.json') rmSync(path.join(dir, f), { recursive: true, force: true, maxRetries: 3 });
-      rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
-      removed.push(v);
-    } catch (e) { left.push(`${v} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); }
+    try { removeOwned(dir); removed.push(v); }
+    catch (e) { left.push(`${v} (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`); }
   }
   return { removed, left };
 }
+/** Removes the shot's copies cut short and nothing else: every version stays. */
+const reclaim = (shot: string) => prune(shot, versions(shot));
 
 // ------------------------------------------------------------------ tools
 async function run(cmd: string[], o: { cwd?: string; env?: Record<string, string>; quiet?: boolean } = {}) {
@@ -620,6 +636,11 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
     const r = recipe(shot);
     const man = manifestOf(shot);
     if (man && !ours(man)) fail(`footage/${shot}/ holds footage this script didn't make (a capture, or cut footage): name the recipe's folder otherwise, or move that footage away`);
+    // (copies a run before left cut short go first, whatever this make turns out to do: one can hold the space the
+    // new version needs, and a shot that is current would otherwise keep it)
+    const dead = reclaim(shot);
+    if (dead.removed.length || dead.left.length)
+      log(`  ${shot}: ${dead.removed.length ? `removed ${dead.removed.join(', ')}, the copy a run before left cut short` : ''}${dead.removed.length && dead.left.length ? '; ' : ''}${dead.left.length ? `${dead.left.join(', ')} couldn't be removed yet (open in another program?)` : ''}`);
     const before = made(shot);
     // (the version on screen is the one the manifest names, its record there or not)
     const current: string | null = ours(man) ? man!.dir : null;
@@ -681,16 +702,20 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       catch {
         // (another volume, or a folder that won't move: copied in under a name nothing reads, then renamed. Its
         // record goes in first, so a copy cut short is known as this script's; one that fails here, a full disk
-        // or a rename refused, is removed here, or it would keep the space its own retry needs)
+        // or a rename refused, is removed here, or it would keep the space its own retry needs. Only a folder
+        // this run made is removed: one that appeared under the name while the program ran is somebody else's.
+        // Its record goes last, as in any removal, so one stopped halfway is finished by the next make or clean)
         const part = path.join(folder, `${dir}${PARTIAL}`);
+        let created = false;
         try {
           mkdirSync(part);
+          created = true;
           cpSync(path.join(pub, 'made.json'), path.join(part, 'made.json'));
           cpSync(pub, part, { recursive: true });
           renameRetry(part, dest);
         } catch (e) {
           let kept = '';
-          try { rmSync(part, { recursive: true, force: true, maxRetries: 3 }); } catch { kept = `; footage/${shot}/${dir}${PARTIAL}/ couldn't be removed: the next make or clean removes it`; }
+          if (created) try { removeOwned(part); } catch { kept = `; footage/${shot}/${dir}${PARTIAL}/ couldn't be removed: the next make or clean removes it`; }
           fail(`${shot}: its new version couldn't be put in footage/${shot}/ (${(e as Error).message}); the shot is as it was${kept}`);
         }
       }

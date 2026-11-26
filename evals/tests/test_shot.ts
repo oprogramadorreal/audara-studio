@@ -22,6 +22,7 @@ const e = process.env;
 const [out, first, last, w, h, fps] = process.argv.slice(2);
 if (e.SIDE_DIR) { mkdirSync(out + '/meta/deep', { recursive: true }); mkdirSync(out + '/empty'); writeFileSync(out + '/meta/camera.json', '{"fov": 40}'); writeFileSync(out + '/meta/deep/notes.txt', 'x'); }
 if (e.OTHER) for (const f of e.OTHER.split(',')) { if (f.endsWith('/')) mkdirSync(out + '/' + f, { recursive: true }); else writeFileSync(out + '/' + f, 'x'); }
+if (e.SQUAT) { const part = out + '/../../../../../footage/bars/' + out.split(/[\\/]/).at(-2) + '.partial'; mkdirSync(part, { recursive: true }); writeFileSync(part + '/keep.txt', 'x'); }
 const W = +(e.FORCE_W ?? w), H = +h, F = +fps;
 if (e.LOG) appendFileSync(e.LOG, JSON.stringify({ first: +first, last: +last, env: { out: e.AUDARA_SHOT_OUT, first: e.AUDARA_SHOT_FIRST, last: e.AUDARA_SHOT_LAST, frames: e.AUDARA_SHOT_FRAMES, fps: e.AUDARA_SHOT_FPS, width: e.AUDARA_SHOT_WIDTH, height: e.AUDARA_SHOT_HEIGHT, scale: e.AUDARA_SHOT_SCALE, tmp: e.AUDARA_SHOT_TMP, name: e.AUDARA_SHOT_NAME } }) + '\n');
 if (e.FAIL) process.exit(3);
@@ -470,19 +471,62 @@ test('a copy of a version cut short (<version>.partial) is removed by clean and 
     const left = () => readdirSync(folder).filter((d) => d.endsWith('.partial')).sort().join();
     check(left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `after clean: ${left()} (one without a record, one with another shot's: kept; an empty one and this script's: removed)`);
     check(existsSync(path.join(folder, g, 'full', '000001.jpg')) && /bars: current/.test(p.shot(['status']).out), 'clean touched the version on screen');
+    // a make with nothing to make removes it too, and so does one whose program fails: before anything is rendered
+    partial('g7-deadbeef', mine('g7-deadbeef'));
+    const idle = p.shot(['make']);
+    check(idle.code === 0 && /nothing to make/.test(idle.out) && /removed g7-deadbeef\.partial/.test(idle.out) && left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `a make of a current shot: ${idle.out} (${left()})`);
     partial('g7-deadbeef', mine('g7-deadbeef'));
     writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// changed\n');
+    const failed = p.shot(['make'], { FAIL: '1' });
+    check(failed.code === 1 && left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `a make whose program fails still frees the space first: ${failed.out} (${left()})`);
+    partial('g7-deadbeef', mine('g7-deadbeef'));
     check(p.shot(['make']).code === 0, 'make 2 failed');
     check(left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `after the next make: ${left()}`);
     check(/^g2-/.test(p.json('footage/bars/manifest.json').dir) && /bars: current/.test(p.shot(['status']).out), `the next version: ${p.json('footage/bars/manifest.json').dir}`);
   } finally { p.done(); }
 });
 
-test('a version that won\'t move into footage/ is copied in and renamed, its scratch left and said; a copy that fails is removed and the shot is as it was', async () => {
+test('a pattern finds hidden files and files below the folder it starts in, and never enters a tool\'s folders', () => {
+  const p = project({ ...RECIPE, inputs: ['**/*.ts', '/data/**/*.txt', '../shared/*.json', 'lib/{a,b}/*.py'] });
+  try {
+    const put = (f: string) => { mkdirSync(path.dirname(path.join(p.root, f)), { recursive: true }); writeFileSync(path.join(p.root, f), 'x'); };
+    for (const f of ['shots/bars/sub/.hidden/z.ts', 'shots/bars/.venv/lib/site.ts', 'shots/bars/node_modules/a/index.ts', 'shots/bars/__pycache__/c.ts', 'shots/bars/notes.md',
+      'data/a.txt', 'data/deep/.b.txt', 'data/node_modules/c.txt', 'data/skip.md', 'shots/shared/palette.json', 'shots/shared/deep/no.json',
+      'shots/bars/lib/a/one.py', 'shots/bars/lib/b/two.py', 'shots/bars/lib/c/three.py']) put(f);
+    const m = p.shot(['make']);
+    check(m.code === 0, `make: ${m.out}`);
+    const inputs = p.json(`footage/bars/${p.json('footage/bars/manifest.json').dir}/made.json`).inputs.map((i: [string, string]) => i[0]).join(' ');
+    check(inputs === 'data/a.txt data/deep/.b.txt shots/bars/draw.ts shots/bars/lib/a/one.py shots/bars/lib/b/two.py shots/bars/sub/.hidden/z.ts shots/shared/palette.json', `inputs: ${inputs}`);
+    put('shots/bars/.venv/lib/more.ts');
+    check(/bars: current/.test(p.shot(['status']).out), 'a file added to a tool\'s folder made the shot stale');
+    writeFileSync(path.join(p.root, 'shots/shared/palette.json'), 'y');
+    check(/stale: shots\/shared\/palette\.json changed/.test(p.shot(['status']).out), `an input beside the recipe folder changed: ${p.shot(['status']).out}`);
+    writeFileSync(path.join(p.root, 'shots/bars/shot.json'), JSON.stringify({ ...RECIPE, inputs: ['missing/**/*.ts'] }));
+    const none = p.shot(['make']);
+    check(none.code === 1 && /the input missing\/\*\*\/\*\.ts names no file/.test(none.out), `a pattern from a folder that isn't there: ${none.out}`);
+  } finally { p.done(); }
+});
+
+test('a version made under an earlier protocol is stale: it may lack files its program wrote', () => {
+  const p = project();
+  try {
+    check(p.shot(['make']).code === 0, 'make failed');
+    const dir = p.json('footage/bars/manifest.json').dir, record = path.join(p.root, 'footage/bars', dir, 'made.json');
+    const made = p.json(`footage/bars/${dir}/made.json`);
+    check(made['shot.ts'] === 2 && made.what.protocol === 2, `protocol ${made['shot.ts']}, ${made.what?.protocol}`);
+    writeFileSync(record, JSON.stringify({ ...made, 'shot.ts': 1, key: 'a'.repeat(64), what: { ...made.what, protocol: 1 } }));
+    check(/stale: its protocol changed/.test(p.shot(['status']).out), `status: ${p.shot(['status']).out}`);
+    check(p.shot(['make']).code === 0 && /^g2-/.test(p.json('footage/bars/manifest.json').dir), 'it wasn\'t made again');
+  } finally { p.done(); }
+});
+
+test('a version that won\'t move into footage/ is copied in and renamed, its scratch left and said; a copy that fails is removed and the shot is as it was; a folder that took the copy\'s name meanwhile is not', async () => {
   if (process.platform !== 'win32') return; // (an open file keeps its folder from moving only on Windows; elsewhere it takes a second volume)
   // (a PowerShell that opens the new version's last frame as soon as it is encoded, in the staging folder, and holds
-  // it: shared for reading, the folder can't be renamed but can be copied; shared with nobody, it can't be copied either)
-  for (const share of ['Read', 'None']) {
+  // it: shared for reading, the folder can't be renamed but can be copied; shared with nobody, it can't be copied either.
+  // "squat": shared for reading, and the program leaves a folder of its own under the name the copy would take)
+  for (const how of ['Read', 'None', 'squat']) {
+    const share = how === 'squat' ? 'Read' : how;
     const p = project();
     try {
       check(p.shot(['make']).code === 0, 'make 1 failed');
@@ -494,10 +538,16 @@ test('a version that won\'t move into footage/ is copied in and renamed, its scr
         `while (-not $f) { try { $f = [IO.File]::Open($p, 'Open', 'Read', '${share}') } catch { Start-Sleep -Milliseconds 20 } }; Start-Sleep -Seconds 40; $f.Close()`], { stdout: 'ignore', stderr: 'ignore' });
       Bun.sleepSync(1500);
       let r: ReturnType<typeof p.shot>;
-      try { r = p.shot(['make']); } finally { holder.kill(); await holder.exited; }
+      try { r = p.shot(['make'], how === 'squat' ? { SQUAT: '1' } : {}); } finally { holder.kill(); await holder.exited; }
       const partial = readdirSync(path.join(p.root, 'footage/bars')).filter((d) => d.endsWith('.partial'));
-      check(!partial.length, `held shared with ${share}: ${partial.join(', ')} left in footage/bars (${r.out})`);
       const dir = p.json('footage/bars/manifest.json').dir;
+      if (how === 'squat') {
+        check(r.code === 1 && /couldn't be put in footage\/bars\//.test(r.out) && dir === g1, `a name taken meanwhile: ${r.code} ${dir} ${r.out}`);
+        check(partial.length === 1 && existsSync(path.join(p.root, 'footage/bars', partial[0]!, 'keep.txt')), `the folder that took the name was removed, though this run didn't make it: ${partial.join(', ')}`);
+        check(p.shot(['clean']).code === 0 && existsSync(path.join(p.root, 'footage/bars', partial[0]!, 'keep.txt')), 'clean removed a folder without this script\'s record');
+        continue;
+      }
+      check(!partial.length, `held shared with ${share}: ${partial.join(', ')} left in footage/bars (${r.out})`);
       if (share === 'Read') {
         check(r.code === 0 && dir.startsWith('g2-') && p.json(`footage/bars/${dir}/made.json`).dir === dir, `copied in and renamed: ${r.code} ${dir} ${r.out}`);
         check(readdirSync(path.join(p.root, 'footage/bars', dir, 'full')).length === 12 && /bars: current/.test(p.shot(['status']).out), 'the version copied in isn\'t whole');

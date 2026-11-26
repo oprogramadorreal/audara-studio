@@ -3,15 +3,16 @@
 //   bun evals/tests/test_left_running.ts
 // Starts small node processes in a throwaway folder of the system's temp folder. The run's own: a dev server
 // started from the run's folder by a relative path (its command line names no folder; it answers /__audara with
-// the folder, as a preview does, on a port of its own), one whose answer names no process, and a process running
-// a script of the folder by its full path. Not the run's: the same server and script for a sibling folder whose
-// name starts alike, a process that only names a file of the run's folder (as an editor showing it does), a
-// bystander, and a server in the run's folder whose answer names the bystander. Only the run's own may be stopped.
+// the folder and its process, as a preview does, on a port of its own), and a process running a script of the
+// folder by its full path. Not the run's, or not known to be: the same server and script for a sibling folder
+// whose name starts alike, a process that only names a file of the run's folder (as an editor showing it does),
+// a bystander, a server in the run's folder whose answer names the bystander, and one whose answer names no
+// process. Only the run's own may be stopped.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runsFrom, stopLeftRunning, within } from '../harness/left-running';
+import { answerer, runsFrom, stopLeftRunning, within } from '../harness/left-running';
 
 let passed = 0, failed = 0;
 async function check(name: string, fn: () => unknown) {
@@ -80,9 +81,9 @@ try {
     const vite = path.join(run, 'node_modules', 'vite', 'bin', 'vite.js');
     assert(runsFrom(`node ${vite}`, run), 'a script inside');
     assert(runsFrom(`"C:\\Program Files\\nodejs\\node.exe" "${vite}" --port 5180`, run), 'both quoted, the runner by its path');
-    assert(runsFrom(`/usr/local/bin/node --max-old-space-size=4096 ${vite}`, run), 'options before the script');
+    assert(runsFrom(`/usr/local/bin/node --no-warnings --max-old-space-size=4096 ${vite}`, run), 'right after an option that carries its own value');
     assert(runsFrom(`bun run ${path.join(run, 'scripts', 'render.ts')} video`, run), 'bun run');
-    assert(runsFrom(`uv run --quiet "${path.join(run, 'shots', 'a', 'render.py')}"`, run), 'uv run');
+    assert(runsFrom(`uv --quiet run "${path.join(run, 'shots', 'a', 'render.py')}"`, run), 'uv run');
     assert(runsFrom(`"${path.join(run, '.venv', 'Scripts', 'python.exe')}" render.py`, run), 'an executable inside, quoted');
     assert(runsFrom(path.join(run, 'node_modules', '.bin', 'esbuild'), run), 'an executable inside');
     assert(runsFrom(`python3.12 ${path.join(run, 'a.py')} ${path.join(sibling, 'b')}`, run), 'python by its version');
@@ -99,34 +100,57 @@ try {
     assert(!runsFrom(`node --require=${path.join(run, 'hook.js')} elsewhere.js`, run), 'the folder inside an option');
     assert(!runsFrom(`codex exec -C ${run}`, run) && !runsFrom(`"node" "${run}"`, run), 'the folder itself: the session, which the runner stops with its own tree');
   });
+  await check('a path right after an option without a value of its own may be that option\'s value: left alone', () => {
+    assert(!runsFrom(`uv run --project ${path.join(run, 'project')} grade.py`, run), 'uv run --project <folder>/project grade.py: a grader from elsewhere');
+    assert(!runsFrom(`node --require ${path.join(run, 'hook.js')} elsewhere.js`, run), 'node --require <folder>/hook.js elsewhere.js');
+    assert(!runsFrom(`node -r "${path.join(run, 'hook.js')}" elsewhere.js`, run), 'the same, short and quoted');
+    assert(!runsFrom(`python -u ${path.join(run, 'render.py')}`, run) && !runsFrom(`uv run --quiet ${path.join(run, 'a.py')}`, run), 'an option that takes none is not told from one that does');
+    assert(!runsFrom(`node run ${path.join(run, 'a.js')}`, run) && !runsFrom(`python run ${path.join(run, 'a.py')}`, run), '"run" is a script\'s name to node and python');
+    assert(!runsFrom(`uv run --with numpy --quiet=1 ${path.join(run, 'a.py')}`, run), 'a word between that is neither an option nor run');
+  });
+  await check('a server is stopped as the process its answer names, when that one listens on the port at the address asked', () => {
+    const table = [
+      { port: 5180, pid: 11, address: '127.0.0.1' }, { port: 5181, pid: 12, address: '0.0.0.0' }, { port: 5182, pid: 13, address: '::' },
+      { port: 5183, pid: 21, address: '127.0.0.1' }, { port: 5183, pid: 22, address: '192.168.1.5' }, { port: 5184, pid: 23, address: '::1' },
+    ];
+    assert.equal(answerer(table, 5180, 11), 11, 'named, and listening on 127.0.0.1');
+    assert.equal(answerer(table, 5181, 12), 12, 'on every address');
+    assert.equal(answerer(table, 5182, 13), 13, 'on every address, as IPv6 says it');
+    assert.equal(answerer(table, 5180, undefined), undefined, 'an answer that names no process, one listener or not');
+    assert.equal(answerer(table, 5183, undefined), undefined, 'a proxy on 127.0.0.1 and a service on another address: nothing to tell them apart');
+    assert.equal(answerer(table, 5183, 22), undefined, 'named, but listening on an address the request couldn\'t reach');
+    assert.equal(answerer(table, 5184, 23), undefined, 'the same, on IPv6\'s loopback');
+    assert.equal(answerer(table, 5180, 21), undefined, 'named, but listening on another port');
+    assert.equal(answerer(table, 5180, 99), undefined, 'named, and listening nowhere');
+  });
 
-  const mine = await server(run), mineQuiet = await server(run, 'none'), mineScript = script(run);
+  const mine = await server(run), mineScript = script(run);
   const theirs = await server(sibling), theirsScript = script(sibling);
   const editor = other(path.join(run, 'AGENTS.md')), bystander = other();
-  const liar = await server(run, String(bystander));
+  const liar = await server(run, String(bystander)), quiet = await server(run, 'none');
   await Bun.sleep(300);
-  const all = [mine.pid, mineQuiet.pid, mineScript, theirs.pid, theirsScript, editor, bystander, liar.pid];
+  const all = [mine.pid, mineScript, theirs.pid, theirsScript, editor, bystander, liar.pid, quiet.pid];
   let stopped: Awaited<ReturnType<typeof stopLeftRunning>> = [];
-  await check('what the run left is stopped: servers found by the folder they serve, and a process running a script of it', async () => {
+  await check('what the run left is stopped: a server found by the folder it serves, and a process running a script of it', async () => {
     assert(all.every(alive), 'all eight started');
     stopped = await stopLeftRunning(run);
     await Bun.sleep(500);
     assert(!alive(mine.pid), `the server started from the run's folder by a relative path (port ${mine.port}) still runs`);
-    assert(!alive(mineQuiet.pid), `the server whose answer names no process (port ${mineQuiet.port}), the only listener there, still runs`);
     assert(!alive(mineScript), 'the process running a script of the run\'s folder still runs');
     assert(stopped.some((s) => s.pid === mine.pid && s.why.includes(String(mine.port))), `the server isn't in what it reports: ${JSON.stringify(stopped)}`);
   });
   await check('a process that names a file of the run\'s folder and runs nothing from it goes on (an editor showing it)', () => {
     assert(alive(editor), 'the process naming a file of the run\'s folder was stopped');
   });
-  await check('an answer naming a process that doesn\'t listen on the port stops neither it nor the listener', () => {
+  await check('an answer naming a process that doesn\'t listen on the port stops neither it nor the listener; one naming none stops nothing', () => {
     assert(alive(bystander), 'the process the answer named, which listens nowhere, was stopped');
     assert(alive(liar.pid), 'the server whose answer named another process was stopped on its word');
+    assert(alive(quiet.pid), 'the server whose answer named no process was stopped as its port\'s listener, a guess');
   });
   await check('nothing else is: a sibling folder\'s server and process go on, and so does this process', () => {
     assert(alive(theirs.pid), 'the sibling folder\'s server was stopped');
     assert(alive(theirsScript), 'the process running the sibling folder\'s script was stopped');
-    assert.deepEqual(stopped.map((s) => s.pid).sort(), [mine.pid, mineQuiet.pid, mineScript].sort(), 'it stopped something else');
+    assert.deepEqual(stopped.map((s) => s.pid).sort(), [mine.pid, mineScript].sort(), 'it stopped something else');
   });
   await check('a folder nothing runs from stops nothing', async () => {
     assert.deepEqual(await stopLeftRunning(path.join(tmp, 'nobody')), []);

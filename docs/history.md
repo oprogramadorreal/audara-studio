@@ -6118,5 +6118,40 @@ fails, no `.partial` is left and the shot is as it was). `test_footage.ts` 35/35
 `test_render_failures.ts` 14/14, and `bun run check` in a scratch project. Not checked: a publish across two
 real volumes.
 
+**Codex's fifth review, of those fixes (2026-11-26).** Seven findings, all taken: three where a fix still
+reached past what it knew, four smaller.
+
+- **A path after an option was taken for the script.** `uv run --project <folder>/project grade.py` and `node
+  --require <folder>/hook.js elsewhere.js` read as programs of the run, though the program is a grader's from
+  elsewhere. Which options take a value differs by runner and version, so the rule is what stands right before
+  the path: the runner, its `run` (bun, uv, deno), or an option that carries its own value
+  (`--max-old-space-size=4096`). After any other option the process is left running (`python -u
+  <folder>/render.py` too: a miss on the safe side).
+- **The port's only listener was guessed at.** When an answer named no process, the port's one node or bun
+  listener was stopped; a proxy on 127.0.0.1 and an unrelated service on another address of the same port
+  would make that the wrong one. Nothing is guessed now: the process stopped is the one the answer names, when
+  it listens on that port at an address a request to 127.0.0.1 reaches, among listeners of every kind. Every
+  preview this template serves names its process, so nothing a run leaves is missed by it.
+- **A failed copy removed a folder it might not have made.** The name was checked free before the program ran;
+  a folder appearing under it meanwhile made the copy fail at its first step, and the cleanup removed that
+  folder. It removes only what this run created, and its record last, as any removal does, so a cleanup
+  stopped halfway by a held file is finished later.
+- **A dead copy was removed only after the next publish,** so one holding the space the new version needed kept
+  every make from reaching the cleanup, and a shot that was current kept it for good. Make removes them first,
+  under the lock, whatever it then does.
+- **A version made before folders were published could read current** while lacking the files its program
+  wrote. The protocol is 2: every shot made by this branch's earlier script is stale once. No release carried
+  protocol 1.
+- **A pattern with a wildcard still scanned a tool's folders** (`**/*.py` read a whole `.venv` to turn it down
+  file by file). Patterns are matched over the same walk as the default, from the folder their fixed start
+  names. With 20,000 files in a `.venv`, five makes each way took 0.15 to 0.8 s before and after: no difference
+  to measure here, and one rule instead of two.
+
+Checked: `test_left_running.ts` 10/10 (two new: command lines, and a table of listeners written out; the server
+whose answer names no process now goes on). `test_shot.ts` 28/28, two new and two extended; on the script of the
+fourth review three fail (a dead copy kept by a make with nothing to make; a version of protocol 1 read as
+current; a folder that took the copy's name removed). The five previews running on this machine still matched
+both rules. `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20, `test_render_failures.ts` 14/14.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
