@@ -267,20 +267,18 @@ computer use and browser automation off; the final file list, git status, the as
 `previews` lists every port in 5173-5199 whose `/__audara` named a folder during the run, with that folder
 and whether it is this run's `work/`: a preview started in a background shell dies with its turn, one
 started by `render.ts preview` runs until the harness stops it at the end, and runs going at once can
-reach each other's. At the end the harness stops every process that runs a program from `work/` (its
-executable there, or the script of a node, bun, python or uv) and every dev server that serves it, on whatever
-port: a session whose preview couldn't start has run Vite by hand outside those ports, where `previews`
-doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its draft, a
-grader's script) is left alone, and so is a runner with any option before its path of `work/`, which may be
-that option's value or an inline program's argument (`uv run --project <work>/project grade.py`, `node
---eval=... <work>/turn-1.jsonl`), and a path that starts in `work/` and leaves it again through `..`. The path
-is one argument of the command line, never a stretch of its text: Windows' quotes say where an argument ends,
-and elsewhere `ps` joins the arguments with spaces and marks nothing, so there a run whose folder has a space
-in its path keeps these processes (its servers are still found). And the line's first word is the program only
-when the system's own name for what the process runs agrees (Windows' image name, the kernel's elsewhere): a
-command line is what a process was given to show, and macOS's `ps` starts it at the second argument when the
-first is empty. A script started by its own first line (`#!`), which Linux names after the script, is known by
-that line. A process
+reach each other's. At the end the harness stops every process that runs a program from `work/` (the file it
+runs is there, or it is a node, bun, deno, python or uv with a script of it) and every dev server that serves
+it, on whatever port: a session whose preview couldn't start has run Vite by hand outside those ports, where
+`previews` doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its
+draft, a grader's script) is left alone, and so is a runner with any option before its path of `work/`, which
+may be that option's value or an inline program's argument (`uv run --project <work>/project grade.py`, `node
+--eval=... <work>/turn-1.jsonl`), and a path that starts in `work/` and leaves it again through `..`. Which
+program a process runs is taken from what the system itself says of it, its arguments one by one and the file
+it runs, never from its command line read as text: Windows gives both (the line as it was given, read by its
+own quoting rules, and the executable's path) and so does Linux (`/proc`). macOS's `ps` gives neither (it
+joins the arguments with spaces, and starts the line at the second when the first is empty), so there only
+the servers are stopped. A process
 is stopped with everything that descends from it, read from the process table first. A server is stopped as the process its answer names, when the system says
 that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
 port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
@@ -402,17 +400,18 @@ video cut close after its narration left open. It needs ffmpeg and uv, and takes
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits, and what `preview` says when every one of its ports is taken.
 `test_left_running.ts` checks what the runners stop when a run ends, with eight small node processes in a
-temp folder: a dev server started from the run's folder by a relative path (found by the folder it answers
-`/__audara` with, on a port of its own) and a process running a script of the folder by its full path are
-stopped; the same two for a sibling folder whose name starts alike go on, and so do a process that only names
+temp folder whose path has a space: a dev server started from the run's folder by a relative path (found by
+the folder it answers `/__audara` with, on a port of its own) and a process running a script of the folder by
+its full path are stopped (the script's only where the system says a process's arguments and the file it
+runs); the same two for a sibling folder whose name starts alike go on, and so do a process that only names
 a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
-doesn't listen on its port, with the process it names. It also checks, on command lines and a table of
-listeners written out, how a command line comes apart into arguments (by Windows' quoting rules, and as `ps`
-joins one, an empty argument kept), which command lines run a program from a folder, each read both ways (none with an option before
-the path, none whose path leaves the folder again through `..`, and none whose path has a space where the line
-doesn't say where an argument ends: a grader's script and its argument are never read as one path; and none
-the system names otherwise than its line does, or doesn't name: the same runner by both, a name cut short only
-where the system cuts names, and a script started by its own first line known by that line) and which
+doesn't listen on its port, with the process it names. It also checks, on arguments, files and a table of
+listeners written out, how a Windows command line comes apart into arguments (its quoting rules, an empty
+argument kept), which processes run a program from a folder (none with an option before the path, none whose
+path leaves the folder again through `..`, none whose path is two arguments, as a grader's script and its
+argument are, and none whose first argument and running file disagree: a file of the folder first with a
+program from elsewhere running, two different runners, or no file the system will name), that a first argument
+which is the running file under another name counts (a link in the folder, on real files), and which
 process an answer stops (none that listens
 on another address or port, and none where two processes could have answered); on a table of processes, that
 a tree is a process and all that descends from it, the deepest first; with three node processes each

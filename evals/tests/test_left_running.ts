@@ -9,10 +9,10 @@
 // a bystander, a server in the run's folder whose answer names the bystander, and one whose answer names no
 // process. Only the run's own may be stopped.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { answerer, runsFrom, stopLeftRunning, stopTree, tree, within, words } from '../harness/left-running';
+import { TELLS, answerer, runsFrom, stopLeftRunning, stopTree, tree, within, words } from '../harness/left-running';
 
 let passed = 0, failed = 0;
 async function check(name: string, fn: () => unknown) {
@@ -23,10 +23,9 @@ async function check(name: string, fn: () => unknown) {
 const node = Bun.which('node');
 if (!node) { console.log('SKIP node is not on the PATH (the previews a run leaves are node processes)'); process.exit(0); }
 
-// (a space in the path where a command line says where an argument ends, as Windows' does with its quotes.
-// Elsewhere ps joins the arguments with spaces, and a process running a script from a path with one is left
-// running, not guessed at: the command-line checks below cover that)
-const tmp = mkdtempSync(path.join(os.tmpdir(), process.platform === 'win32' ? 'audara left running ' : 'audara-left-running-'));
+// (a space in the path, as a run's folder may have: an argument is whole, spaces and all, where a system says
+// a process's arguments one by one)
+const tmp = mkdtempSync(path.join(os.tmpdir(), 'audara left running '));
 const run = path.join(tmp, 'dl-1-0'), sibling = path.join(tmp, 'dl-1-01');
 // (PID_SAYS: the process its answer names, "none" for an answer without one; its own when unset)
 const SERVER = `
@@ -97,152 +96,109 @@ try {
     assert(!within(run, sibling) && !within(run, tmp), 'a sibling, and the folder above');
     if (process.platform === 'win32') assert(within(run.toUpperCase(), run.toLowerCase()), 'whatever the case, where the file system ignores it');
   });
-  // (command lines as text, for folders that needn't exist: one with no space in its path, a sibling whose name
-  // starts alike, and one with a space. `at` spells a path as this system does, a .. kept as written. Each form
-  // is read both as Windows keeps a line, its quotes saying where an argument ends, and as ps joins one)
+  // (what a system says of a process, written out: its arguments one by one and the file it runs, for folders that
+  // needn't exist: one with no space in its path, a sibling whose name starts alike, and one with a space. `at`
+  // spells a path as this system does, a .. kept as written)
   const plain = path.resolve('/evals/results/dl-1-0'), near = `${plain}1`, spaced = path.resolve('/my evals/results/dl-1-0');
   const at = (...parts: string[]) => parts.join(path.sep);
-  // (the system's own name for the process: unless a check gives one, the name the line starts with, as for a
-  // process whose line says what it runs)
-  const says = (cmd: string) => (words(cmd, true)[0]?.text ?? '').split(/[\\/]/).pop()!;
-  // (how each system tells of its processes: Windows keeps a line's quotes and a program's whole name; elsewhere
-  // ps joins the line, and the kernel cuts the name, at 15 bytes on Linux and 16 on macOS)
-  const WINDOWS = { quotes: true, cut: 0 }, LINUX = { quotes: false, cut: 15 }, MAC = { quotes: false, cut: 16 };
-  const runs = (cmd: string, dir: string, windows: boolean, name = says(cmd)) => runsFrom(cmd, dir, name, windows ? WINDOWS : LINUX);
-  const both = (cmd: string, dir: string, name?: string) => [runs(cmd, dir, true, name), runs(cmd, dir, false, name)].join();
-  await check('a command line\'s arguments, as far as it says where each ends: by Windows\' quotes, or nowhere', () => {
+  const NODE = path.resolve('/tools/nodejs/node.exe'), PYTHON = path.resolve('/tools/python/python3.12.exe'), BUN = path.resolve('/tools/bun'), UV = path.resolve('/tools/uv.exe');
+  const DENO = path.resolve('/tools/deno'), EDITOR = path.resolve('/tools/editor.exe'), GRADER = path.resolve('/review/bin/grader');
+  await check('a Windows command line comes apart into its arguments by Windows\' own rules', () => {
     const line = String.raw`"C:\a b\node.exe" "C:\run dir\x.js" a\\b "c \"d\" e" "f\\" g "h ""i"" j" k"l m"n`;
-    assert.deepEqual(words(line, true).map((w) => w.text), [String.raw`C:\a b\node.exe`, String.raw`C:\run dir\x.js`, String.raw`a\\b`, 'c "d" e', 'f\\', 'g', 'h "i" j', 'kl mn'],
+    assert.deepEqual(words(line), [String.raw`C:\a b\node.exe`, String.raw`C:\run dir\x.js`, String.raw`a\\b`, 'c "d" e', 'f\\', 'g', 'h "i" j', 'kl mn'],
       'quotes, a backslash before one, two backslashes before one, two quotes inside, and quotes in the middle of an argument');
-    assert(words(line, true).every((w) => w.whole), 'every argument is whole, the program\'s name too when quoted');
-    assert.deepEqual(words(String.raw`C:\tools\node.exe  x.js`, true), [{ text: String.raw`C:\tools\node.exe`, whole: false }, { text: 'x.js', whole: true }], 'an unquoted program\'s name ends at the first space, as far as the line says');
-    assert.deepEqual(words('node "/a b/x.js" --port 1', false), [{ text: 'node', whole: false }, { text: '"/a', whole: false }, { text: 'b/x.js"', whole: false }, { text: '--port', whole: false }, { text: '1', whole: false }],
-      'as ps joins them: words, none known to be whole, a quote a character like any other');
-    assert.deepEqual(words('node  x.js a\tb ', false).map((w) => w.text), ['node', '', 'x.js', 'a\tb', ''], 'one space between two arguments: an empty one is the nothing between two spaces, and a tab is a character of its argument');
-    assert.deepEqual(words(' tool', false).map((w) => w.text), ['', 'tool'], 'an empty first argument');
-    assert.deepEqual(words('node "" x.js', true).map((w) => w.text), ['node', '', 'x.js'], 'on Windows an empty argument is a pair of quotes');
-    assert.deepEqual(words('node   x.js', true).map((w) => w.text), ['node', 'x.js'], 'and spaces, however many, are one gap');
-    assert.deepEqual(words('', true), []);
-    assert.deepEqual(words('', false), []);
+    assert.deepEqual(words(String.raw`C:\tools\node.exe  x.js`), [String.raw`C:\tools\node.exe`, 'x.js'], 'an unquoted program\'s name ends at the first space, and spaces, however many, are one gap');
+    assert.deepEqual(words('node "" x.js'), ['node', '', 'x.js'], 'an empty argument is a pair of quotes, and keeps its place');
+    assert.deepEqual(words('node\t"a b"\tc'), ['node', 'a b', 'c'], 'a tab parts arguments as a space does');
+    assert.deepEqual(words(''), []);
+    assert.deepEqual(words('   '), []);
   });
-  await check('a command line runs a program from a folder: its executable there, or a runner\'s script, quoted or not', () => {
+  await check('a process runs a program from a folder: the file it runs is there, or it is a runner with a script of it', () => {
     const vite = at(plain, 'node_modules', 'vite', 'bin', 'vite.js');
-    assert.equal(both(`node ${vite}`, plain), 'true,true', 'a script inside');
-    assert.equal(both(`/usr/local/bin/node ${vite} --host 127.0.0.1`, plain), 'true,true', 'the runner by its path, the script\'s own options after it');
-    assert.equal(both(`bun run ${at(plain, 'scripts', 'render.ts')} video`, plain), 'true,true', 'bun run');
-    assert.equal(both(`uv run ${at(plain, 'shots', 'a', 'render.py')}`, plain), 'true,true', 'uv run');
-    assert.equal(both(`${at(plain, '.venv', 'bin', 'python')} render.py`, plain), 'true,true', 'an executable inside, its script after it');
-    assert.equal(both(at(plain, 'node_modules', '.bin', 'esbuild'), plain), 'true,true', 'an executable inside, alone');
-    assert.equal(both(`python3.12 ${at(plain, 'a.py')} ${at(near, 'b')}`, plain), 'true,true', 'python by its version');
-    assert(runs(`"C:\\Program Files\\nodejs\\node.exe" "${vite}" --port 5180`, plain, true), 'both quoted, the runner by its path');
-    assert(runs(`node "${at(spaced, 'idle.js')}"`, spaced, true), 'a script of a folder whose path has a space, quoted');
-    assert(runs(`uv run "${at(spaced, 'shots', 'a', 'render.py')}"`, spaced, true), 'the same through uv');
-    assert(runs(`"${at(spaced, '.venv', 'Scripts', 'python.exe')}" render.py`, spaced, true), 'an executable inside it, quoted');
+    assert(runsFrom(['node', vite], plain, NODE), 'a script inside');
+    assert(runsFrom([NODE, vite, '--host', '127.0.0.1'], plain, NODE), 'the runner by its path, the script\'s own options after it');
+    assert(runsFrom(['bun', 'run', at(plain, 'scripts', 'render.ts'), 'video'], plain, BUN), 'bun run');
+    assert(runsFrom(['uv', 'run', at(plain, 'shots', 'a', 'render.py')], plain, UV), 'uv run');
+    assert(runsFrom(['deno', 'run', at(plain, 'a.ts')], plain, DENO) && runsFrom(['deno', at(plain, 'a.ts')], plain, DENO), 'deno, with run and without');
+    assert(runsFrom(['python3.12', at(plain, 'a.py'), at(near, 'b')], plain, PYTHON), 'python by its version');
+    assert(runsFrom(['py', at(plain, 'a.py')], plain, PYTHON) && runsFrom(['nodejs', vite], plain, NODE), 'a runner by another of its names: py for python, nodejs for node');
+    assert(runsFrom(['esbuild', '--service=0.25.0', '--ping'], plain, at(plain, 'node_modules', '@esbuild', 'win32-x64', 'esbuild.exe')), 'the file it runs is inside, whatever its arguments say');
+    assert(runsFrom([at(plain, '.venv', 'Scripts', 'python.exe'), 'render.py'], plain, at(plain, '.venv', 'Scripts', 'python.exe')), 'a venv\'s python, its script given from where it runs');
+    assert(runsFrom(['node', at(spaced, 'idle.js')], spaced, NODE), 'a folder with a space in its path: an argument is whole, spaces and all');
+    assert(runsFrom(words(`"C:\\Program Files\\nodejs\\node.exe" "${at(spaced, 'idle.js')}" --port 5180`), spaced, 'C:\\Program Files\\nodejs\\node.exe'), 'the same from a Windows command line, both quoted');
+    assert(runsFrom(words(`uv run "${at(spaced, 'shots', 'a', 'render.py')}"`), spaced, UV), 'and through uv');
   });
-  await check('a command line that only names the folder or a file of it runs nothing from it; nor does a sibling\'s', () => {
-    assert.equal(both(`node ${at(near, 'x.js')}`, plain), 'false,false', 'a sibling whose name starts alike');
-    assert.equal(both('node node_modules/vite/bin/vite.js --port 5240 --strictPort', plain), 'false,false', 'a relative path names no folder');
-    assert.equal(both(`notepad.exe ${at(plain, 'AGENTS.md')}`, plain), 'false,false', 'an editor on a file of it');
-    assert.equal(both(`vlc ${at(plain, 'out', 'a', 'a-draft.mp4')}`, plain), 'false,false', 'a player on its draft');
-    assert.equal(both(`python grade.py ${at(plain, 'turn-1.jsonl')}`, plain), 'false,false', 'a script from elsewhere reading its files');
-    assert.equal(both(`uv run grade.py --run ${at(plain, 'x')}`, plain), 'false,false', 'the same through uv');
-    assert.equal(both(`node --require=${at(plain, 'hook.js')} elsewhere.js`, plain), 'false,false', 'the folder inside an option');
-    assert.equal(both(`codex exec -C ${plain}`, plain), 'false,false', 'the folder itself, a session\'s: the runner stops that with its own tree');
-    assert.equal(both(`node ${plain}`, plain), 'false,false', 'the folder itself, given to a runner');
-    assert(!runs(`"C:\\Program Files\\Microsoft VS Code\\Code.exe" "${at(spaced, 'videos')}"`, spaced, true), 'an editor on a folder of it, quoted');
-    assert(!runs(`node -e "setInterval(() => {}, 1000)" "${at(spaced, 'marker')}"`, spaced, true), 'code given inline, the folder an argument');
+  await check('a process that only names the folder or a file of it runs nothing from it; nor does a sibling\'s', () => {
+    assert(!runsFrom(['node', at(near, 'x.js')], plain, NODE), 'a sibling whose name starts alike');
+    assert(!runsFrom(['node', 'node_modules/vite/bin/vite.js', '--port', '5240', '--strictPort'], plain, NODE), 'a relative path names no folder');
+    assert(!runsFrom(['notepad.exe', at(plain, 'AGENTS.md')], plain, EDITOR), 'an editor on a file of it');
+    assert(!runsFrom(words(`"C:\\Program Files\\Microsoft VS Code\\Code.exe" "${at(spaced, 'videos')}"`), spaced, 'C:\\Program Files\\Microsoft VS Code\\Code.exe'), 'an editor on a folder of it');
+    assert(!runsFrom(['vlc', at(plain, 'out', 'a', 'a-draft.mp4')], plain, path.resolve('/tools/vlc')), 'a player on its draft');
+    assert(!runsFrom(['python', 'grade.py', at(plain, 'turn-1.jsonl')], plain, PYTHON), 'a script from elsewhere reading its files');
+    assert(!runsFrom(['uv', 'run', 'grade.py', '--run', at(plain, 'x')], plain, UV), 'the same through uv');
+    assert(!runsFrom(['node', `--require=${at(plain, 'hook.js')}`, 'elsewhere.js'], plain, NODE), 'the folder inside an option');
+    assert(!runsFrom(['codex', 'exec', '-C', plain], plain, path.resolve('/tools/codex')), 'the folder itself, a session\'s: the runner stops that with its own tree');
+    assert(!runsFrom(['node', plain], plain, NODE), 'the folder itself, given to a runner');
+    assert(!runsFrom(['node', '-e', 'setInterval(() => {}, 1000)', at(plain, 'marker')], plain, NODE), 'code given inline, the folder an argument');
   });
   await check('a path after an option may be that option\'s value, or an argument of a program given inline: left alone', () => {
-    assert.equal(both(`uv run --project ${at(plain, 'project')} grade.py`, plain), 'false,false', 'uv run --project <folder>/project grade.py: a grader from elsewhere');
-    assert.equal(both(`node --require ${at(plain, 'hook.js')} elsewhere.js`, plain), 'false,false', 'node --require <folder>/hook.js elsewhere.js');
-    assert.equal(both(`node -r "${at(plain, 'hook.js')}" elsewhere.js`, plain), 'false,false', 'the same, short and quoted');
-    assert.equal(both(`node --eval=console.log(process.argv.slice(1)) ${at(plain, 'turn-1.jsonl')}`, plain), 'false,false', 'node --eval=... <folder>/turn-1.jsonl: the path is the inline program\'s argument');
-    assert.equal(both(`bun --print=1 ${at(plain, 'turn-1.jsonl')}`, plain), 'false,false', 'the same in bun');
-    assert.equal(both(`python -c pass ${at(plain, 'x')}`, plain), 'false,false', 'and in python');
-    assert.equal(both(`/usr/local/bin/node --no-warnings --max-old-space-size=4096 ${at(plain, 'a.js')}`, plain), 'false,false', 'an option that carries its own value proves nothing about what follows');
-    assert.equal(both(`python -u ${at(plain, 'render.py')}`, plain), 'false,false', 'an option that takes none is not told from one that does');
-    assert.equal(both(`uv run --quiet ${at(plain, 'a.py')}`, plain), 'false,false', 'the same after run');
-    assert.equal(both(`uv --quiet run ${at(plain, 'a.py')}`, plain), 'false,false', 'an option before run');
-    assert.equal(both(`uv ${at(plain, 'a.py')}`, plain), 'false,false', 'uv without run');
-    assert.equal(both(`node run ${at(plain, 'a.js')}`, plain), 'false,false', '"run" is a script\'s name to node');
-    assert.equal(both(`python run ${at(plain, 'a.py')}`, plain), 'false,false', 'and to python');
+    assert(!runsFrom(['uv', 'run', '--project', at(plain, 'project'), 'grade.py'], plain, UV), 'uv run --project <folder>/project grade.py: a grader from elsewhere');
+    assert(!runsFrom(['node', '--require', at(plain, 'hook.js'), 'elsewhere.js'], plain, NODE), 'node --require <folder>/hook.js elsewhere.js');
+    assert(!runsFrom(['node', '-r', at(plain, 'hook.js'), 'elsewhere.js'], plain, NODE), 'the same, short');
+    assert(!runsFrom(['node', '--eval=console.log(process.argv.slice(1))', at(plain, 'turn-1.jsonl')], plain, NODE), 'node --eval=... <folder>/turn-1.jsonl: the path is the inline program\'s argument');
+    assert(!runsFrom(['bun', '--print=1', at(plain, 'turn-1.jsonl')], plain, BUN) && !runsFrom(['python', '-c', 'pass', at(plain, 'x')], plain, PYTHON), 'the same in bun and python');
+    assert(!runsFrom([NODE, '--no-warnings', '--max-old-space-size=4096', at(plain, 'a.js')], plain, NODE), 'an option that carries its own value proves nothing about what follows');
+    assert(!runsFrom(['python', '-u', at(plain, 'render.py')], plain, PYTHON) && !runsFrom(['uv', 'run', '--quiet', at(plain, 'a.py')], plain, UV), 'an option that takes none is not told from one that does');
+    assert(!runsFrom(['uv', '--quiet', 'run', at(plain, 'a.py')], plain, UV) && !runsFrom(['uv', at(plain, 'a.py')], plain, UV), 'an option before run, and uv without run');
+    assert(!runsFrom(['node', 'run', at(plain, 'a.js')], plain, NODE) && !runsFrom(['python', 'run', at(plain, 'a.py')], plain, PYTHON), '"run" is a script\'s name to node and python');
   });
-  await check('a path is one argument, never a stretch of the line: a space ends it unless the line says otherwise', () => {
-    // (a grader elsewhere and its argument, read while cleaning a folder whose own path starts with the grader's)
+  await check('an argument is what the system says it is, never a stretch of a line', () => {
+    // (a grader elsewhere and its argument, while cleaning a folder whose own path starts with the grader's)
     const grader = path.resolve('/review/grade.js'), under = `${grader} suite${path.sep}run`;
-    assert.equal(both(`node ${grader} suite${path.sep}run${path.sep}log.txt`, under), 'false,false', 'node <grade.js> suite/run/log.txt, cleaning the folder "<grade.js> suite/run"');
-    assert.equal(both(`${grader} suite${path.sep}run${path.sep}tool`, under), 'false,false', 'the same with the grader as the program');
-    assert.equal(both(`node ${at(spaced, 'idle.js')}`, spaced), 'false,false', 'unquoted, a path of a folder with a space is no one argument: on Windows by its rules, elsewhere unknown');
-    assert.equal(both(`${at(spaced, 'node_modules', '.bin', 'esbuild')} --watch`, spaced), 'false,false', 'the same as the program');
-    assert(!runs(`node "${at(plain, 'idle.js')}"`, plain, false) && !runs(`"${at(plain, 'tool')}" x`, plain, false), 'as ps joins a line, a quote is part of the argument: not a path of the folder');
-    assert(!runs(`node "${at(spaced, 'idle.js')}"`, spaced, false), 'so a folder with a space matches nothing there, quoted or not');
+    assert(!runsFrom(['node', grader, at('suite', 'run', 'log.txt')], under, NODE), 'node <grade.js> suite/run/log.txt, cleaning the folder "<grade.js> suite/run": two arguments');
+    assert(!runsFrom(words(`node ${grader} suite${path.sep}run${path.sep}log.txt`), under, NODE), 'the same from a Windows command line, where a space ends an unquoted argument');
+    assert(!runsFrom(words(`node ${at(spaced, 'idle.js')}`), spaced, NODE), 'so a path with a space, unquoted there, is two arguments and no path of the folder');
     // (node '' <folder>/log.txt runs the program it is given on its input; the path is that program's argument)
-    assert(!runs(`node  ${at(plain, 'log.txt')}`, plain, false), 'as ps joins a line, two spaces hold an empty argument: the path is the second, not the script');
-    assert(!runs(`node "" ${at(plain, 'log.txt')}`, plain, true), 'the same as Windows writes it, a pair of quotes');
-    assert(!runs(`uv run  ${at(plain, 'a.py')}`, plain, false) && !runs(`bun  run ${at(plain, 'a.ts')}`, plain, false), 'an empty argument after run, and before it');
-    assert(!runs(` ${at(plain, 'tool')} x`, plain, false), 'an empty first argument: the path is no program\'s name');
-    assert(runs(`node  ${at(plain, 'idle.js')}`, plain, true), 'on Windows two spaces are one gap: the path is the script');
+    assert(!runsFrom(['node', '', at(plain, 'log.txt')], plain, NODE) && !runsFrom(words(`node "" ${at(plain, 'log.txt')}`), plain, NODE), 'an empty argument keeps its place: the path is the second, not the script');
+    assert(!runsFrom(['uv', 'run', '', at(plain, 'a.py')], plain, UV) && !runsFrom(['bun', '', 'run', at(plain, 'a.ts')], plain, BUN), 'after run, and before it');
+    assert(!runsFrom(['', at(plain, 'tool'), 'x'], plain, GRADER) && !runsFrom([], plain, GRADER), 'an empty first argument, and none at all');
   });
-  await check('the line\'s first word is the program only when the system names it so too', () => {
-    // (macOS's ps drops an empty first argument: the line then starts at the second, a file of the folder that
-    // another program is reading, with the first of its environment after its arguments)
-    assert.equal(both(`${at(plain, 'log.txt')} TERM=xterm`, plain, 'grader'), 'false,false', 'a file of the folder first on the line, the process a grader');
-    assert.equal(both(`node ${at(plain, 'log.txt')}`, plain, 'grader'), 'false,false', 'a runner\'s name first on the line, the process something else');
-    assert.equal(both(`uv run ${at(plain, 'a.py')}`, plain, 'grader'), 'false,false', 'the same through run');
-    assert.equal(both(`node ${at(plain, 'idle.js')}`, plain, ''), 'false,false', 'a process the system gives no name for is left running');
-    assert.equal(both(at(plain, 'tool'), plain, ''), 'false,false', 'the same for an executable of the folder');
-    assert.equal(both(`node ${at(plain, 'idle.js')}`, plain, 'node'), 'true,true', 'named as the line says');
-    assert.equal(both(`python ${at(plain, 'a.py')}`, plain, 'python3.12'), 'true,true', 'a runner called by another of its names, a link to it');
-    assert(runs(`"C:\\Program Files\\nodejs\\node.exe" "${at(spaced, 'idle.js')}"`, spaced, true, 'node.exe'), 'Windows names a program with its .exe');
-    assert(runs(at(plain, 'node_modules', '.bin', 'esbuild'), plain, true, 'esbuild.exe'), 'the same for an executable of the folder, written without it');
-    // (the same runner by both names, whichever of its names each uses; never two runners)
-    assert.equal(both(`python3 ${at(plain, 'log.txt')}`, plain, 'node'), 'false,false', 'python3 <folder>/log.txt, the process node: a script called python3 reading the log');
-    assert.equal(both(`node ${at(plain, 'log.txt')}`, plain, 'bun'), 'false,false', 'the same with node and bun');
-    assert.equal(both(`bun run ${at(plain, 'log.txt')}`, plain, 'uv'), 'false,false', 'and through run: bun by the line, uv by the system');
-    assert.equal(both(`py ${at(plain, 'a.py')}`, plain, 'python3.12'), 'true,true', 'python goes by py, python, python3.12, pythonw');
-    assert.equal(both(`nodejs ${at(plain, 'idle.js')}`, plain, 'node'), 'true,true', 'node by nodejs');
-    assert(runs(`uv run "${at(spaced, 'a.py')}"`, spaced, true, 'UV.EXE'), 'the same name in another case, as Windows may give it');
-    // (a name counts as cut short only at the length the system cuts names at: nowhere on Windows)
-    const long = `${at(plain, 'bin', 'a-long-named-tool-of-the-run')} x`;
-    assert(runsFrom(long, plain, 'a-long-named-to', LINUX), 'Linux cuts a name at 15: one that long is the start of the file\'s');
-    assert(runsFrom(long, plain, 'a-long-named-too', MAC) && !runsFrom(long, plain, 'a-long-named-to', MAC), 'macOS at 16: 15 characters are a whole name there, another program\'s');
-    assert(!runsFrom(long, plain, 'a-long-named-to', WINDOWS) && !runsFrom(long, plain, 'a-long-named-too.exe', WINDOWS), 'Windows gives the whole name: a start of the file\'s is another program');
-    assert(runsFrom(long, plain, 'a-long-named-tool-of-the-run.exe', WINDOWS) && !runsFrom(long, plain, 'a-long-named-tool-of', LINUX), 'the whole name on Windows; on Linux a start longer than it keeps is no name of its');
-    assert.equal(both(`${at(plain, 'bin', 'tool')} x`, plain, 'too'), 'false,false', 'a shorter name that only starts alike is another program');
-    assert.equal(both(`${at(plain, 'bin', 'tool')} x`, plain, 'python'), 'false,false', 'an executable of the folder by the line, a runner by the system: they disagree');
+  await check('the program is the file the system says the process runs, whatever its first argument says', () => {
+    assert(!runsFrom([at(plain, 'log.txt'), 'TERM=xterm'], plain, GRADER), 'a file of the folder as first argument, the process a grader from elsewhere');
+    assert(!runsFrom([at(plain, 'grader'), 'x'], plain, GRADER), 'even one named as the program is: another file');
+    assert(!runsFrom(['node', at(plain, 'log.txt')], plain, GRADER), 'a runner by its first argument, something else by the file it runs');
+    assert(!runsFrom(['grader', at(plain, 'log.txt')], plain, NODE), 'and the other way round');
+    assert(!runsFrom(['python3', at(plain, 'log.txt')], plain, NODE), 'python3 <folder>/log.txt, the process node: a script called python3 reading the log');
+    assert(!runsFrom(['node', at(plain, 'log.txt')], plain, BUN) && !runsFrom(['bun', 'run', at(plain, 'log.txt')], plain, UV), 'two runners are not one, with run or without');
+    assert(!runsFrom(['node', at(plain, 'idle.js')], plain, '') && !runsFrom([at(plain, 'tool')], plain, ''), 'a process the system won\'t say the file of is left running');
+    assert(runsFrom(words(`uv run "${at(spaced, 'a.py')}"`), spaced, 'C:\\Tools\\UV.EXE'), 'a name in another case, as Windows may give it');
+    assert(!runsFrom(['tool'], plain, `${plain}1${path.sep}tool`) && !runsFrom(['tool'], plain, plain), 'a file of a sibling whose name starts alike, and the folder itself, are not files inside it');
   });
-  await check('a script started by its own first line: named after the script on Linux, the interpreter first on its line', () => {
-    // (real files, read for their first line; in a folder with no space in its path, as a line ps joined needs)
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'audara-first-line-'));
+  await check('a first argument that is the running file under another name counts: a link in the folder to a program elsewhere', () => {
+    // (real files: a venv in the folder whose python is the python elsewhere. A link to a file takes a right few
+    // Windows accounts have, so there the venv's folder is the link, a junction, which anyone can make)
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'audara link ')), folder = path.join(dir, 'run'), real = path.join(dir, 'pythons');
     try {
-      if (/\s/.test(dir)) { console.log('  (the temp folder\'s path has a space: not checked here)'); return; }
-      const put = (name: string, text: string) => { writeFileSync(path.join(dir, name), text); return path.join(dir, name); };
-      const render = put('render.py', '#!/usr/bin/python3\nprint(1)\n'), awk = put('sum.awk', '#! /usr/bin/awk  -f \n{ s += $1 }\n');
-      const env = put('tool', '#!/usr/bin/env -S node --no-warnings\n'), log = put('log.txt', 'not a script\n'), crlf = put('crlf.py', '#!/usr/bin/python3\r\nprint(1)\r\n');
-      assert(runsFrom(`/usr/bin/python3 ${render} --out x`, dir, 'render.py', LINUX), '/usr/bin/python3 <folder>/render.py, the process named render.py, the script starting #!/usr/bin/python3');
-      assert(runsFrom(`/usr/bin/awk -f ${awk} data.txt`, dir, 'sum.awk', LINUX), 'with the one argument its first line gives the interpreter, the spaces around it dropped');
-      assert(runsFrom(`/usr/bin/env -S node --no-warnings ${env}`, dir, 'tool', LINUX), 'all that follows the interpreter is one argument, spaces and all');
-      assert(runsFrom(`/usr/bin/python3 ${crlf}`, dir, 'crlf.py', LINUX), 'a first line that ends as Windows ends a line');
-      assert(!runsFrom(`/usr/bin/python2 ${render}`, dir, 'render.py', LINUX), 'another interpreter than its first line names');
-      assert(!runsFrom(`/usr/bin/python3 -u ${render}`, dir, 'render.py', LINUX), 'an argument its first line doesn\'t give');
-      assert(!runsFrom(`/usr/bin/awk ${awk}`, dir, 'sum.awk', LINUX), 'or one it gives, missing');
-      assert(!runsFrom(`/usr/bin/python3 ${log}`, dir, 'log.txt', LINUX), 'a file with no such line is read, not run');
-      assert(!runsFrom(`/usr/bin/python3 ${render}`, dir, 'grade.py', LINUX), 'the system names another script');
-      assert(!runsFrom(`/usr/bin/python3 ${path.join(dir, 'gone.py')}`, dir, 'gone.py', LINUX), 'a script that isn\'t there has no first line to say so');
-      assert(!runsFrom(`/usr/bin/python3 ${render}`, dir, 'render.py', WINDOWS), 'Windows starts nothing by a first line');
-      assert(runsFrom(`/usr/bin/python3 ${render}`, dir, 'python3', LINUX), 'the same script run by a python the system names as python: a runner and its script');
+      mkdirSync(path.join(real, 'bin'), { recursive: true });
+      mkdirSync(folder);
+      writeFileSync(path.join(real, 'bin', 'python3.12'), 'x');
+      writeFileSync(path.join(folder, 'other'), 'x');
+      let called: string;
+      if (process.platform === 'win32') { symlinkSync(real, path.join(folder, '.venv'), 'junction'); called = path.join(folder, '.venv', 'bin', 'python3.12'); }
+      else { mkdirSync(path.join(folder, '.venv', 'bin'), { recursive: true }); called = path.join(folder, '.venv', 'bin', 'python'); symlinkSync(path.join(real, 'bin', 'python3.12'), called); }
+      const exe = path.join(real, 'bin', 'python3.12');
+      assert(runsFrom([called, 'render.py'], folder, exe), 'called by its name in the folder, the file it runs elsewhere: one file');
+      assert(!runsFrom([path.join(folder, 'other'), 'render.py'], folder, exe), 'another file of the folder is not the one running');
+      assert(!runsFrom([path.join(folder, 'gone'), 'render.py'], folder, exe), 'nor one that isn\'t there');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
   await check('a path counts by where it leads: one that leaves the folder again through .. is another folder\'s program', () => {
     const out = at(plain, '..', 'dl-1-01', 'grade.js');
-    assert.equal(both(`node ${out}`, plain), 'false,false', 'node <folder>/../sibling/grade.js: a sibling\'s grader');
-    assert.equal(both(`uv run ${at(plain, 'shots', '..', '..', 'grade.py')}`, plain), 'false,false', 'down a folder first, then out');
-    assert.equal(both(at(plain, '..', 'dl-1-01', 'tool'), plain), 'false,false', 'the same as the program');
-    assert.equal(both(`node ${at(plain, 'scripts', '..', 'idle.js')}`, plain), 'true,true', 'a .. that stays inside is still the folder\'s program');
-    assert(!runs(`node "${out}" --run 3`, plain, true) && !runs(`"${at(plain, '..', 'dl-1-01', 'tool.exe')}" x`, plain, true), 'quoted, as a script and as the program');
-    assert(runs(`node "${at(spaced, 'a b', '..', 'idle.js')}" ${at('..', 'notes')}`, spaced, true), 'quoted, the path ends at its quote: what follows is the script\'s own argument');
-    assert.equal(both(`node ${at(plain, 'idle.js')} ${at('..', 'notes')}`, plain), 'true,false', 'unquoted: whole on Windows, an argument after the program\'s name; as ps joins it, the path may go on past the space, so with a .. further on it is left running');
-    assert.equal(both(`${at(plain, 'my')} ${at('tools', '..', '..', 'dl-1-01', 'tool')} x`, plain), 'false,false', 'an unquoted program\'s path may go on past a space on Windows too');
+    assert(!runsFrom(['node', out], plain, NODE), 'node <folder>/../sibling/grade.js: a sibling\'s grader');
+    assert(!runsFrom(['uv', 'run', at(plain, 'shots', '..', '..', 'grade.py')], plain, UV), 'down a folder first, then out');
+    assert(!runsFrom([at(plain, '..', 'dl-1-01', 'tool')], plain, at(plain, '..', 'dl-1-01', 'tool')), 'the same as the file it runs');
+    assert(runsFrom(['node', at(plain, 'scripts', '..', 'idle.js')], plain, NODE), 'a .. that stays inside is still the folder\'s program');
+    assert(runsFrom(words(`node "${at(spaced, 'a b', '..', 'idle.js')}" ${at('..', 'notes')}`), spaced, NODE), 'and what follows the script is the script\'s own argument, a .. in it or not');
   });
   await check('a process\'s tree is itself and all that descends from it, the deepest first', () => {
     const table = [{ pid: 1, ppid: 0 }, { pid: 10, ppid: 1 }, { pid: 11, ppid: 10 }, { pid: 12, ppid: 11 }, { pid: 13, ppid: 10 }, { pid: 20, ppid: 1 }, { pid: 21, ppid: 20 }];
@@ -308,7 +264,9 @@ setInterval(() => {}, 1000);
     stopped = await stopLeftRunning(run);
     await Bun.sleep(500);
     assert(!alive(mine.pid), `the server started from the run's folder by a relative path (port ${mine.port}) still runs`);
-    assert(!alive(mineScript), 'the process running a script of the run\'s folder still runs');
+    // (where the system says neither a process's arguments nor the file it runs, macOS, only servers are stopped)
+    if (TELLS) assert(!alive(mineScript), 'the process running a script of the run\'s folder still runs');
+    else assert(alive(mineScript), 'a process was stopped by its command line, on a system that says no process\'s arguments');
     assert(stopped.some((s) => s.pid === mine.pid && s.why.includes(String(mine.port))), `the server isn't in what it reports: ${JSON.stringify(stopped)}`);
   });
   await check('a process that names a file of the run\'s folder and runs nothing from it goes on (an editor showing it)', () => {
@@ -322,7 +280,7 @@ setInterval(() => {}, 1000);
   await check('nothing else is: a sibling folder\'s server and process go on, and so does this process', () => {
     assert(alive(theirs.pid), 'the sibling folder\'s server was stopped');
     assert(alive(theirsScript), 'the process running the sibling folder\'s script was stopped');
-    assert.deepEqual(stopped.map((s) => s.pid).sort(), [mine.pid, mineScript].sort(), 'it stopped something else');
+    assert.deepEqual(stopped.map((s) => s.pid).sort(), (TELLS ? [mine.pid, mineScript] : [mine.pid]).sort(), 'it stopped something else');
   });
   await check('a folder nothing runs from stops nothing', async () => {
     assert.deepEqual(await stopLeftRunning(path.join(tmp, 'nobody')), []);

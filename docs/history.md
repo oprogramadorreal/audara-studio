@@ -6269,5 +6269,26 @@ counts again when the script carries the system's name and its first line puts e
 path. `test_left_running.ts` 18/18, the first-line form on real files read as Linux tells them; not run on
 Linux.
 
+**Then the reading of command lines was dropped (2026-11-26).** Codex's next pass found three more in what the
+last rounds had added: a file of the folder named as the program is, first on a line macOS started late,
+still passed by its name (and Claude had told Codex that case was left running when the code stopped it); the
+first-line check opened its file before knowing what it was, and a pipe opened for reading waits for a writer
+for good; and that check read a first line more kindly than Linux does. Six rounds had each mended the
+reading of a line somewhere new, and each mend was more reading. The rule now takes only what a system says
+outright: a process's arguments one by one, and the file it runs. Windows says both (the command line as
+given, read by its own quoting rules, and the executable's path) and so does Linux (`/proc/<pid>/cmdline` and
+`exe`). macOS's `ps` says neither, so the sweep by program stops nothing there, and a run's servers, the
+reason the cleanup exists, are still found by what they answer. A process runs a program of the folder when
+the file it runs is inside it, or its first argument leads there and is that same file (a venv's python), or
+the file is a runner, its first argument the same runner, and the next argument a path into the folder. Gone
+with the reading: the two readings of a line, the guess at where an unquoted path ends, the system's name and
+where it is cut, and the first-line check.
+
+Checked: `test_left_running.ts` 18/18 on arguments and files written out (each of Codex's lines from these
+rounds among them, as arguments), a link followed on real files (a junction here), and the live part, in a
+folder with a space again. The five previews on this machine match: `node.exe` by the file they run, Vite's
+script the argument after. Windows gave both a command line and a path for 475 of the 687 processes here; the
+rest are left alone. Not run: the `/proc` reading, on Linux.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

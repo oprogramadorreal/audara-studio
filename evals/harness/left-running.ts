@@ -9,24 +9,23 @@
 // video project had widened the range in its own render.ts (docs/history.md, 0.17.0).
 //
 // So two sweeps, by the run's folder alone:
-// - every process that runs a program from the folder: its executable is inside it, or it is a runner (node, bun,
-//   python, uv run ...) with the script right after it (`render.ts preview` runs the project's own
-//   node_modules/vite that way, by its full path), by its command line and by the name the system itself has
-//   for the program, which have to agree;
+// - every process that runs a program from the folder: the file it runs is inside it, or it is a runner (node,
+//   bun, python, uv run ...) with the script right after it (`render.ts preview` runs the project's own
+//   node_modules/vite that way, by its full path). By what the system itself says of the process, its arguments
+//   one by one and the file it runs, where a system says them: Windows and Linux (`TELLS`). macOS's `ps` says
+//   neither, so there this sweep stops nothing;
 // - every dev server that answers /__audara with a folder inside it, on whatever port: one started by hand from
 //   the folder (`node node_modules/vite/bin/vite.js --port 5240`) names it nowhere in its command line, and sits
 //   outside the ports a preview is looked for on. Only ports a node or bun process listens on are asked, and the
 //   process stopped is the one the answer names, when the system says it alone could have answered there.
 // Neither touches this process or the ones it descends from, whatever their command lines name. And neither
-// stops a process for naming the folder further on in its command line: that is something else looking at the
+// stops a process for naming the folder further on among its arguments: that is something else looking at the
 // run's files (an editor on one of them, a player on its draft, a grader's script reading its transcript), which
 // a sweep by any mention would close with everything its tree holds. Where the evidence is short of that (an
-// option before the path, a path that leaves the folder again through `..` or may, a path with a space in it
-// where the command line doesn't say where an argument ends, an answer that names no process, or one that
-// doesn't listen there, or two processes that could have answered), the process is left running and, for a
-// server, the port is printed. So outside Windows a run in a folder whose path has a space keeps the first
-// sweep's processes: `ps` joins a command's arguments with spaces and marks nothing. Its servers are still found.
-import { closeSync, openSync, readSync, realpathSync } from 'node:fs';
+// option before the path, a path that leaves the folder again through `..`, a process the system won't say the
+// arguments or the file of, an answer that names no process, or one that doesn't listen there, or two processes
+// that could have answered), the process is left running and, for a server, the port is printed.
+import { readFileSync, readlinkSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -64,34 +63,41 @@ export function stopTree(pid: number) {
 
 const text = (cmd: string[]) => { try { return Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'ignore' }).stdout.toString(); } catch { return ''; } };
 
-interface Proc { pid: number; ppid: number; name: string; cmd: string }
 /**
- * Every process there is: its id, its parent's, its command line, and the name the system itself has for the
- * program it runs (Windows' image name; elsewhere the kernel's, `comm`, which macOS's ps calls `ucomm`, cut at
- * 15 or 16 characters): the one thing here a process's own arguments don't write. Empty when the system
- * doesn't say.
+ * Whether this system says of a process what the first sweep needs: its arguments one by one, and the file it
+ * runs. Windows does (the command line as given, read by its own rules, and the executable's path), and so does
+ * Linux (/proc). Elsewhere there is only `ps`, which joins a command's arguments with spaces and, on macOS,
+ * starts the line at the second one when the first is empty: no way to tell where an argument ends or which
+ * word is the program. There the first sweep stops nothing, and a run's servers are still found by the second.
+ */
+export const TELLS = WIN || process.platform === 'linux';
+
+interface Proc { pid: number; ppid: number; cmd: string; args?: string[]; exe?: string }
+/**
+ * Every process there is: its id, its parent's and its command line as text (looked at, never taken apart), and,
+ * where the system says them (`TELLS`) of a process that is ours to read, its arguments and the file it runs.
  */
 function processes(): Proc[] {
   const rows: Proc[] = [];
   if (WIN) {
-    const out = text(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.Name)`t$($_.CommandLine)" }']);
+    const out = text(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.ExecutablePath)`t$($_.CommandLine)" }']);
     for (const line of out.split(/\r?\n/)) {
       const m = /^(\d+)\t(\d+)\t([^\t]*)\t(.*)$/.exec(line);
-      if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: m[3]!, cmd: m[4]! });
+      if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[4]!, ...(m[3] && m[4] ? { args: words(m[4]), exe: m[3] } : {}) });
     }
     return rows;
   }
-  // (asked apart: a name may hold spaces, and only a line's last column can be told from the ones before it)
-  const names = new Map<number, string>();
-  for (const line of text(['ps', '-eo', `pid=,${process.platform === 'darwin' ? 'ucomm' : 'comm'}=`]).split('\n')) {
-    const m = /^\s*(\d+) (.*)$/.exec(line);
-    if (m) names.set(Number(m[1]), m[2]!.trimEnd());
-  }
   for (const line of text(['ps', '-eo', 'pid=,ppid=,args=']).split('\n')) {
-    // (ps puts one space between two columns: any more after the parent's number is the command's own, an empty
-    // first argument, kept for `words`)
-    const m = /^\s*(\d+)\s+(\d+) (.*)$/.exec(line);
-    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: names.get(Number(m[1])) ?? '', cmd: m[3]! });
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (!m) continue;
+    const row: Proc = { pid: Number(m[1]), ppid: Number(m[2]), cmd: m[3]! };
+    if (process.platform === 'linux') try {
+      // (the arguments, each ended by an empty byte, and the file the process runs, a link the kernel keeps)
+      const raw = readFileSync(`/proc/${row.pid}/cmdline`, 'utf8'), exe = readlinkSync(`/proc/${row.pid}/exe`);
+      // (a file replaced since the process started, a tool updated, is marked so after its path)
+      if (raw) { row.args = (raw.endsWith('\0') ? raw.slice(0, -1) : raw).split('\0'); row.exe = exe.replace(/ \(deleted\)$/, ''); }
+    } catch { /* gone meanwhile, or not ours to read: left without them, so never stopped by them */ }
+    rows.push(row);
   }
   return rows;
 }
@@ -136,34 +142,27 @@ export function within(dir: string, p: string) {
   const d = norm(dir), x = norm(p);
   return x === d || x.startsWith(`${d}/`);
 }
-/** One argument of a command line, and whether the line says where it ends. */
-export interface Word { text: string; whole: boolean }
 const blank = (ch: string | undefined) => ch === ' ' || ch === '\t';
 /**
- * A command line's arguments, as far as its text says where each one ends.
- * - Windows keeps the line as it was given, quotes and all, and they are read here by the rules its programs read
- *   them by (CommandLineToArgvW): every argument after the program's name is whole. The name is whole when it is
- *   quoted; unquoted it is taken to the first space, though Windows may have run a path that goes on past it.
- * - Elsewhere ps joins the arguments with one space each and marks nothing: one with a space in it comes apart,
- *   so no word is known to be whole, and a quote is a character like any other. An empty argument stays, as the
- *   nothing between two spaces: `node '' <folder>/log.txt` runs what it is given on its input, the path its
- *   argument, and dropping the empty one would read the path as the script.
+ * A Windows command line's arguments. Windows keeps the line as it was given, quotes and all, and they are read
+ * here by the rules its programs read them by (CommandLineToArgvW): the program's name to its closing quote or to
+ * the first space, then each argument, where a quote opens and closes a stretch that spaces don't end, a
+ * backslash before a quote makes it a character, and two backslashes there are one.
  */
-export function words(cmd: string, windows = WIN): Word[] {
-  if (!windows) return cmd ? cmd.split(' ').map((text) => ({ text, whole: false })) : [];
-  const out: Word[] = [];
+export function words(cmd: string): string[] {
+  const out: string[] = [];
   let i = 0;
   while (blank(cmd[i])) i++;
   if (i >= cmd.length) return out;
-  // (the program's name: to its closing quote or to the first space, and no backslash is special in it)
+  // (the program's name: no backslash is special in it)
   if (cmd[i] === '"') {
     const j = cmd.indexOf('"', i + 1), end = j < 0 ? cmd.length : j;
-    out.push({ text: cmd.slice(i + 1, end), whole: true });
+    out.push(cmd.slice(i + 1, end));
     i = end + 1;
   } else {
     let j = i;
     while (j < cmd.length && !blank(cmd[j])) j++;
-    out.push({ text: cmd.slice(i, j), whole: false });
+    out.push(cmd.slice(i, j));
     i = j;
   }
   for (;;) {
@@ -191,101 +190,53 @@ export function words(cmd: string, windows = WIN): Word[] {
       if (!quoted && blank(ch)) break;
       text += ch;
     }
-    out.push({ text, whole: true });
+    out.push(text);
   }
 }
-
-/**
- * How a system tells of its processes: whether a command line keeps its quotes (Windows), and the length at which
- * the kernel cuts the name it keeps for a program (in bytes: 15 on Linux, 16 on macOS; 0 where it keeps the whole
- * name, Windows, or where the length isn't known, so that only a whole name counts there).
- */
-export interface Telling { quotes: boolean; cut: number }
-export const TELLING: Telling = { quotes: WIN, cut: process.platform === 'linux' ? 15 : process.platform === 'darwin' ? 16 : 0 };
 
 /** The programs that run the script given first: node, bun, deno, python (python3.12, pythonw, py). */
-const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py)(\.exe)?$/i;
+const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py)$/;
 /** The ones whose `run` takes the script next: `bun run`, `uv run`, `deno run`. */
-const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
+const RUNS = /^(bun|uv|deno)$/;
 /** Which runner a name is, the same for each name it goes by (python, python3.12, pythonw and py; node and nodejs), or none. */
-const runner = (n: string) => { const m = RUNNER.exec(n)?.[1]?.toLowerCase(); return !m ? '' : m.startsWith('py') ? 'python' : m === 'nodejs' ? 'node' : m; };
-/**
- * What a script's first line, `#!`, puts before the script's own path on the line of the process running it:
- * the interpreter, then all that follows it as one argument (Linux's rule). Nothing for a file without one.
- */
-function shebang(file: string): string | undefined {
-  try {
-    const fd = openSync(file, 'r'), buf = Buffer.alloc(256);
-    let n = 0;
-    try { n = readSync(fd, buf, 0, buf.length, 0); } finally { closeSync(fd); }
-    const m = /^#![ \t]*(\S+)(?:[ \t]+(.*?))?[ \t\r]*$/.exec(buf.subarray(0, n).toString('utf8').split('\n')[0]!);
-    return m ? (m[2] ? `${m[1]} ${m[2]}` : m[1]) : undefined;
-  } catch { return undefined; }
+const runner = (n: string) => { const m = RUNNER.exec(n)?.[1]; return !m ? '' : m.startsWith('py') ? 'python' : m === 'nodejs' ? 'node' : m; };
+/** A program's name as its file gives it: the last part of the path, without Windows' .exe, in small letters. */
+const nameOf = (p: string) => p.split(/[\\/]/).pop()!.replace(/\.exe$/i, '').toLowerCase();
+/** Whether two paths are one file, links followed (a venv's python is a link to the python it was made from). */
+function sameFile(a: string, b: string) {
+  try { return norm(realpathSync(a)) === norm(realpathSync(b)); } catch { return false; }
 }
-/** A `..` among a path's parts. */
-const UP = /(^|[\\/])\.\.([\\/]|$)/;
 /**
- * Whether a command line runs a program from the folder `dir`: its executable is inside the folder (a venv's
- * python, a tool of node_modules), or it is a runner with the script right after it (`node <script>`, `python
- * <script>`), or right after its `run` (`bun run`, `uv run`, `deno run`). These are the forms known to execute the
- * path. With an option before it, the path may be that option's value (`uv run --project <folder>/project
- * grade.py`, `node --require <folder>/hook.js elsewhere.js`) or an argument of a program given inline (`node
- * --eval=... <folder>/turn-1.jsonl`): programs from elsewhere, a grader's. Which options do which differs by
- * runner and version, so a command line with any is left alone. A path of the folder anywhere later, or in any
- * other program's command line, is a file being looked at, not a program of the run; so is a sibling folder
- * whose name starts alike.
+ * Whether a process runs a program from the folder `dir`, by what the system itself says of it: `args`, its
+ * arguments one by one, and `exe`, the file it runs. Never by its command line read as text, which a path with a
+ * space in it, an empty argument or a first argument that isn't the program's name each make say something else
+ * (`node /review/grade.js suite/run/log.txt` holds the text of a folder named "/review/grade.js suite/run").
  *
- * The path is one argument of the line (`words`), never a stretch of its text, and it counts by where it leads:
- * - one that starts in the folder and leaves it again through `..` is another folder's program;
- * - where the line doesn't say where its arguments end, a path with a space in it is no one word, so a folder
- *   whose own path has a space matches nothing there (`node /review/grade.js suite/run/log.txt` is a grader and
- *   its argument, whatever a folder named "/review/grade.js suite/run" holds), and a word that may go on past a
- *   space, with a `..` further on, leads nobody knows where.
- *
- * And the line's first word is the program only when the system says so too. A command line is what a process
- * was given to show: its first argument can be empty, and macOS's ps then starts the line at the second, a file
- * of the folder that some other program is reading. So `name`, the system's own name for the program the process
- * runs (`processes`), has to agree: with the file the first word names (itself, or what it links to: a venv's
- * python) for an executable of the folder, and with the same runner for a runner, by any of the names it goes by
- * (a node process whose line starts `python3 <folder>/log.txt` runs a script called python3). A name counts as
- * cut short only at the length the system cuts names at. A process the system gives no name for is left running.
- *
- * One more form, where ps joined the line: a script started by its own first line (`#!/usr/bin/python3`, a tool
- * pip put in a venv). Linux names such a process after the script, and its line is the interpreter, then the
- * script's path. It counts when the script leads into the folder, carries the system's name, and its first line
- * puts exactly the words that come before its path.
- *
- * `how`: how the system that gave the line and the name tells of its processes (`Telling`); this system's own
- * unless a test says.
+ * It does when:
+ * - the file it runs is inside the folder (a tool of node_modules), or its first argument leads into the folder
+ *   and is that same file under another name (a venv's python, a link to the python elsewhere);
+ * - it is a runner, by the file it runs and by its first argument alike, with a path into the folder as the
+ *   argument right after (`node <script>`, `python <script>`), or right after its `run` (`bun run`, `uv run`,
+ *   `deno run`). The two names have to be the same runner, by any name it goes by: a node process whose first
+ *   argument is python3 runs a script called python3.
+ * These are the forms known to execute the path. With an option before it, the path may be that option's value
+ * (`uv run --project <folder>/project grade.py`, `node --require <folder>/hook.js elsewhere.js`) or an argument
+ * of a program given inline (`node --eval=... <folder>/turn-1.jsonl`): programs from elsewhere, a grader's. Which
+ * options do which differs by runner and version, so a process with any is left alone. A path of the folder
+ * anywhere later, or among any other program's arguments, is a file being looked at; so is a sibling folder
+ * whose name starts alike, and a path that starts in the folder and leaves it again through `..`.
  */
-export function runsFrom(cmd: string, dir: string, name: string, how: Telling = TELLING) {
+export function runsFrom(args: string[], dir: string, exe: string) {
+  if (!exe) return false;
   // (spelled as the system compares paths: its separators, and its case where it ignores it)
   const spell = (s: string) => { const t = WIN ? s.replaceAll('\\', '/') : s; return caseless ? t.toLowerCase() : t; };
-  const a = words(cmd, how.quotes), d = spell(path.resolve(dir)).replace(/\/+$/, '');
-  const leads = (k: number) => {
-    const w = a[k];
-    if (!w || !spell(w.text).startsWith(`${d}/`) || !within(dir, w.text)) return false;
-    return w.whole || !a.slice(k + 1).some((x) => UP.test(x.text));
-  };
-  // (a file's name as a system has it for a process: the last part of its path, without Windows' .exe)
-  const base = (p: string) => { const b = p.split(/[\\/]/).pop()!.replace(/\.exe$/i, ''); return caseless ? b.toLowerCase() : b; };
-  const told = base(name), first = a[0]?.text ?? '';
-  if (!told) return false;
-  // (a name as long as the kernel keeps is the start of the file's, cut there; any other is the whole name)
-  const named = (p: string) => { const b = base(p); return b === told || (how.cut > 0 && Buffer.byteLength(told) === how.cut && b.startsWith(told)); };
-  const linked = (p: string) => { try { return named(realpathSync(p)); } catch { return false; } };
-  if (leads(0) && (named(first) || linked(first))) return true;
-  const one = runner(told);
-  if (one && one === runner(base(first)) && leads(1)) return true;
-  if (RUNS.test(told) && told.toLowerCase() === base(first).toLowerCase() && a[1]?.text === 'run' && leads(2)) return true;
-  // (a script started by its own first line, on a line ps joined: the system's name is the script's, and the
-  // words before its path are the ones that line puts there)
-  if (!how.quotes) for (let k = 1; k < a.length; k++) {
-    if (!leads(k) || !named(a[k]!.text)) continue;
-    const before = shebang(a[k]!.text);
-    if (before !== undefined && before === a.slice(0, k).map((w) => w.text).join(' ')) return true;
-  }
-  return false;
+  const d = spell(path.resolve(dir)).replace(/\/+$/, '');
+  const leads = (k: number) => { const t = args[k]; return t !== undefined && spell(t).startsWith(`${d}/`) && within(dir, t); };
+  if (within(dir, exe) && norm(exe) !== norm(dir)) return true;
+  if (leads(0) && sameFile(args[0]!, exe)) return true;
+  const runs = nameOf(exe), first = nameOf(args[0] ?? '');
+  if (runner(runs) && runner(runs) === runner(first) && leads(1)) return true;
+  return RUNS.test(runs) && runs === first && args[1] === 'run' && leads(2);
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */
@@ -315,7 +266,7 @@ export async function stopLeftRunning(dir: string): Promise<{ pid: number; why: 
     stopTree(pid);
     stopped.push({ pid, why });
   };
-  for (const p of procs) if (runsFrom(p.cmd, dir, p.name)) stop(p.pid, 'it runs a program from the folder');
+  for (const p of procs) if (p.args && p.exe && runsFrom(p.args, dir, p.exe)) stop(p.pid, 'it runs a program from the folder');
   // (asked: the ports a node or bun process listens on, which a preview is; a port can have more listeners, of
   // any kind and on other addresses, and all of them count when the answer is matched to one)
   const listeners = listening();
