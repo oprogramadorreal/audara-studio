@@ -2,8 +2,11 @@
 
 Two kinds, both run headless in fresh folders, in Claude Code and in Codex. Results go to
 `evals/results/` (git-ignored). The runners clean up after themselves: Codex's per-folder trust entries
-are removed from `~/.codex/config.toml`, and Claude Code sessions are not kept (trigger) or are moved
-next to their results (tasks).
+are removed from `~/.codex/config.toml`, Claude Code sessions are not kept (trigger) or are moved
+next to their results (tasks), and what a run left running from its folder is stopped when it ends
+(`evals/harness/left-running.ts`): a session's preview outlives it on purpose, and each one left holds one of
+the preview's 27 ports. One trigger eval left 22, and with five projects' own previews no new project's
+preview could start (history.md, 0.17.0).
 
 No session can reach the user's desktop or their own browser: with the user's own Codex config, one task
 run read the titles of their open Chrome tabs through Codex's computer-use plugin, pressed play in a
@@ -264,7 +267,9 @@ computer use and browser automation off; the final file list, git status, the as
 `previews` lists every port in 5173-5199 whose `/__audara` named a folder during the run, with that folder
 and whether it is this run's `work/`: a preview started in a background shell dies with its turn, one
 started by `render.ts preview` runs until the harness stops it at the end, and runs going at once can
-reach each other's. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
+reach each other's. At the end the harness stops every process whose command line names `work/` and every
+dev server that serves it, on whatever port: a session whose preview couldn't start has run Vite by hand
+outside those ports, where `previews` doesn't look. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
 (the main thread's and its sub-agents'), since `codex exec --json` leaves out calls such as spawn_agent
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
@@ -381,10 +386,15 @@ older and individual forms; `--language` kept in the command eleven.py suggests;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
-with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
+with in-memory peers and bounded waits, and what `preview` says when every one of its ports is taken.
+`test_left_running.ts` checks what the runners stop when a run ends, with four small node processes in a
+temp folder: a dev server started from the run's folder by a relative path (found by the folder it answers
+`/__audara` with, on a port of its own) and a process whose command line names the folder are stopped; the
+same two for a sibling folder whose name starts alike go on. It needs node. `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
 `shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
-(changed by a manifest rewritten, not by a version folder written before it); neither needs Chrome or ffmpeg.
+(changed by a manifest rewritten, not by a version folder written before it); none of the three needs Chrome
+or ffmpeg.
 `test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
 started (a stand-in for the judge's CLI comes first on PATH, so no failure reaches a model): which video
 `judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to touch, two runs told
@@ -476,6 +486,7 @@ bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
+bun evals/tests/test_left_running.ts
 bun evals/tests/test_render_inputs.ts
 bun evals/tests/test_judge_pick.ts
 bun evals/tests/test_footage.ts

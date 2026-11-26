@@ -27,6 +27,7 @@ import os from 'node:os';
 import { ensureFixtures } from './fixtures';
 import { cleanCodexTrust } from './codex-trust-cleanup';
 import { cleanClaudeProjects } from './claude-projects-cleanup';
+import { stopLeftRunning, stopTree } from './left-running';
 
 const argv = process.argv.slice(2);
 const opt = (k: string, d?: string) => { const i = argv.findIndex((a) => a === `--${k}` || a === `-${k}`); return i >= 0 ? argv[i + 1] : d; };
@@ -86,12 +87,8 @@ function prepare(dir: string, files: string[]) {
   for (const s of SKILLS) symlinkSync(path.join(SRC, s), path.join(link, s), 'junction');
 }
 
-/** Stop a run with its whole process tree: codex is a .cmd shim on Windows, and stopping the shim alone leaves
- *  the session running in the folder, holding the output open (so a timeout never ends the run). */
-function stopTree(pid: number) {
-  if (process.platform === 'win32') Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' });
-  else { Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]); try { process.kill(pid); } catch { /* it ended meanwhile */ } }
-}
+// (stopTree stops a run with its whole process tree: codex is a .cmd shim on Windows, and stopping the shim
+// alone leaves the session running in the folder, holding the output open, so a timeout never ends the run)
 
 // ---------------------------------------------------------------- no computer use, no browser automation
 // A run must not reach the user's desktop or their own browser. With the user's own Codex config, one run did:
@@ -255,11 +252,15 @@ async function runOnce(q: (typeof SET.queries)[number], k: number) {
   }
   clearTimeout(timer);
   await p.exited;
+  // (a near-miss run acts for a few turns, and a session that starts its project's preview leaves it running
+  // outside the tree stopped above, on one of the preview's 27 ports: one eval of devlog's set left 22, and
+  // every later project's preview failed to start. Stopped here, run by run, so the next run finds the ports)
+  const left = await stopLeftRunning(dir).catch(() => []);
   writeFileSync(path.join(dir, '_transcript.jsonl'), log);
   if (blocked) halt ??= `${q.id}#${k}: ${blocked}`;
   if (thread) model = codexModel(thread, since);
   return { k, triggered: seen.has(SET.skill), used: SCRIPTED ? used.has(SET.skill) : null, skills: [...seen], usedSkills: [...used], tools: tools.slice(0, 8), ms: Math.round(performance.now() - t0),
-    model, ...(blocked ? { blocked } : {}) };
+    model, ...(blocked ? { blocked } : {}), ...(left.length ? { stopped: left.map((s) => s.why) } : {}) };
 }
 
 const queries = SET.queries.filter((q) => !ONLY || ONLY.includes(q.id));

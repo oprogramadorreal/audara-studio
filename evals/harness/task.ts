@@ -52,6 +52,7 @@ import { ensureFixtures } from './fixtures';
 import { plants } from './plant';
 import { cleanCodexTrust } from './codex-trust-cleanup';
 import { cleanClaudeProjects, moveDir } from './claude-projects-cleanup';
+import { stopLeftRunning, stopTree } from './left-running';
 
 const argv = process.argv.slice(2);
 const opt = (k: string, d?: string) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
@@ -530,38 +531,15 @@ writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
 // ---------------------------------------------------------------- stop what the run left running
 // The skill keeps the preview running after the session (`render.ts preview` starts the project's own
 // node_modules/vite, so its command line names the run's folder); and killing `uv` alone leaves the mock's
-// Python running (on Windows a child outlives its parent), holding this process open. Stop every process
-// started from the run's folder, the mock with its whole tree, and the decoy.
-function stopTree(pid: number) {
-  if (process.platform === 'win32') Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' });
-  else Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]), process.kill(pid);
-}
-function stopUnder(dir: string) {
-  const needle = dir.toLowerCase().replaceAll("'", "''");
-  const pids = process.platform === 'win32'
-    ? Bun.spawnSync(['powershell', '-NoProfile', '-Command',
-        `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.ToLower().Contains('${needle}') } | ForEach-Object { $_.ProcessId }`]).stdout.toString()
-    : Bun.spawnSync(['pgrep', '-f', dir]).stdout.toString();
-  for (const p of pids.split(/\s+/).filter(Boolean).map(Number)) if (p !== process.pid) stopTree(p);
-}
+// Python running (on Windows a child outlives its parent), holding this process open. Stop the mock with its
+// whole tree, the decoy, and what the run left running from its folder (left-running.ts): every process whose
+// command line names it, and every dev server that serves it, on whatever port. A session whose preview
+// couldn't start has run Vite by hand on a port outside 5173-5199, from a command line that names no folder:
+// one such stayed up after its run, where the ports looked at during the turns (above) never saw it.
 for (const m of mocks) if (m.pid) stopTree(m.pid);
 clearInterval(decoyRetry);
 decoyServer?.stop(true);
-stopUnder(WORK);
-// (a preview of this run that still answers, started by a command line that doesn't name the folder: stopped
-// through its port, so previews left over from earlier runs don't fill 5173-5199)
-const still: number[] = [];
-for (const p of previews.values()) {
-  const root = p.thisRun ? await previewRoot(p.port) : null;
-  if (root && isWork(root)) still.push(p.port);
-}
-if (still.length) {
-  const pids = process.platform === 'win32'
-    ? Bun.spawnSync(['powershell', '-NoProfile', '-Command',
-        `Get-NetTCPConnection -State Listen -LocalPort ${still.join(',')} -ErrorAction SilentlyContinue | ForEach-Object { $_.OwningProcess }`]).stdout.toString()
-    : Bun.spawnSync(['lsof', '-t', '-sTCP:LISTEN', ...still.flatMap((p) => ['-i', `TCP:${p}`])]).stdout.toString();
-  for (const p of new Set(pids.split(/\s+/).filter(Boolean).map(Number))) if (p !== process.pid) stopTree(p);
-}
+for (const s of await stopLeftRunning(WORK)) console.log(`stopped process ${s.pid}, left running by the run: ${s.why}`);
 
 // ---------------------------------------------------------------- Codex's own record of the session
 // (the session files found above, copied now that nothing of the run writes to them any more)
