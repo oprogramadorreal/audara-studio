@@ -1,15 +1,17 @@
 #!/usr/bin/env bun
 // What an eval run leaves running is stopped by its folder, and nothing else is (evals/harness/left-running.ts):
 //   bun evals/tests/test_left_running.ts
-// Starts four small node processes in a throwaway folder of the system's temp folder: a dev server started from
-// the run's folder by a relative path (its command line names no folder; it answers /__audara with the folder,
-// as a preview does, on a port of its own), a process whose command line names the run's folder, and the same two
-// for a sibling folder whose name starts alike. Only the first two may be stopped.
+// Starts small node processes in a throwaway folder of the system's temp folder. The run's own: a dev server
+// started from the run's folder by a relative path (its command line names no folder; it answers /__audara with
+// the folder, as a preview does, on a port of its own), one whose answer names no process, and a process running
+// a script of the folder by its full path. Not the run's: the same server and script for a sibling folder whose
+// name starts alike, a process that only names a file of the run's folder (as an editor showing it does), a
+// bystander, and a server in the run's folder whose answer names the bystander. Only the run's own may be stopped.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { names, stopLeftRunning, within } from '../harness/left-running';
+import { runsFrom, stopLeftRunning, within } from '../harness/left-running';
 
 let passed = 0, failed = 0;
 async function check(name: string, fn: () => unknown) {
@@ -22,22 +24,29 @@ if (!node) { console.log('SKIP node is not on the PATH (the previews a run leave
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), 'audara left running '));
 const run = path.join(tmp, 'dl-1-0'), sibling = path.join(tmp, 'dl-1-01');
+// (PID_SAYS: the process its answer names, "none" for an answer without one; its own when unset)
 const SERVER = `
 const http = require('node:http');
 const root = process.cwd().split(require('node:path').sep).join('/');
+const says = process.env.PID_SAYS;
 const s = http.createServer((q, r) => {
-  if (q.url === '/__audara') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ root, pid: process.pid })); }
+  if (q.url === '/__audara') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify(says === 'none' ? { root } : { root, pid: says ? Number(says) : process.pid })); }
   else { r.statusCode = 404; r.end(); }
 });
 s.listen(0, '127.0.0.1', () => console.log(s.address().port));
 `;
-for (const d of [run, sibling]) { mkdirSync(d, { recursive: true }); writeFileSync(path.join(d, 'server.js'), SERVER); }
+const IDLE = 'setInterval(() => {}, 1000);\n';
+for (const d of [run, sibling]) {
+  mkdirSync(d, { recursive: true });
+  writeFileSync(path.join(d, 'server.js'), SERVER);
+  writeFileSync(path.join(d, 'idle.js'), IDLE);
+}
 
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 const started: number[] = [];
 /** A dev server started from `dir` by a relative path: once it listens, its process and port. */
-async function server(dir: string) {
-  const p = Bun.spawn([node!, 'server.js'], { cwd: dir, stdout: 'pipe', stderr: 'ignore', stdin: 'ignore' });
+async function server(dir: string, pidSays?: string) {
+  const p = Bun.spawn([node!, 'server.js'], { cwd: dir, env: { ...process.env, ...(pidSays ? { PID_SAYS: pidSays } : {}) }, stdout: 'pipe', stderr: 'ignore', stdin: 'ignore' });
   started.push(p.pid);
   const reader = (p.stdout as ReadableStream<Uint8Array>).getReader();
   const { value } = await reader.read();
@@ -46,9 +55,16 @@ async function server(dir: string) {
   assert(port > 0, `the test's server in ${dir} did not say its port`);
   return { pid: p.pid, port };
 }
-/** A process that serves nothing, whose command line names a file in `dir`. */
-function named(dir: string) {
-  const p = Bun.spawn([node!, '-e', 'setInterval(() => {}, 1000)', path.join(dir, 'marker')], { stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' });
+/** A process that serves nothing, running a script of `dir` by its full path (as `render.ts preview` runs the project's Vite). */
+function script(dir: string) {
+  const p = Bun.spawn([node!, path.join(dir, 'idle.js')], { cwd: tmp, stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' });
+  started.push(p.pid);
+  return p.pid;
+}
+/** A process that runs nothing of the run's folder: one naming a file of it (an editor showing the file), or naming nothing (a bystander). */
+function other(file?: string) {
+  // (code on one line: a command line is read up to its first line break)
+  const p = Bun.spawn([node!, '-e', IDLE.trim(), ...(file ? [file] : [])], { cwd: tmp, stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' });
   started.push(p.pid);
   return p.pid;
 }
@@ -60,33 +76,61 @@ try {
     assert(!within(run, sibling) && !within(run, tmp), 'a sibling, and the folder above');
     if (process.platform === 'win32') assert(within(run.toUpperCase(), run.toLowerCase()), 'whatever the case, where the file system ignores it');
   });
-  await check('a command line names a folder by a path in it, quoted or not, never by a longer name', () => {
-    assert(names(`node ${path.join(run, 'node_modules', 'vite', 'bin', 'vite.js')}`, run), 'a file inside');
-    assert(names(`"node" "${run}"`, run) && names(`codex exec -C ${run}`, run), 'the folder itself, quoted and last');
-    assert(!names(`node ${path.join(sibling, 'x.js')}`, run), 'a sibling whose name starts alike');
-    assert(!names('node node_modules/vite/bin/vite.js --port 5240 --strictPort', run), 'a relative path names no folder');
+  await check('a command line runs a program from a folder: its executable there, or a runner\'s script, quoted or not', () => {
+    const vite = path.join(run, 'node_modules', 'vite', 'bin', 'vite.js');
+    assert(runsFrom(`node ${vite}`, run), 'a script inside');
+    assert(runsFrom(`"C:\\Program Files\\nodejs\\node.exe" "${vite}" --port 5180`, run), 'both quoted, the runner by its path');
+    assert(runsFrom(`/usr/local/bin/node --max-old-space-size=4096 ${vite}`, run), 'options before the script');
+    assert(runsFrom(`bun run ${path.join(run, 'scripts', 'render.ts')} video`, run), 'bun run');
+    assert(runsFrom(`uv run --quiet "${path.join(run, 'shots', 'a', 'render.py')}"`, run), 'uv run');
+    assert(runsFrom(`"${path.join(run, '.venv', 'Scripts', 'python.exe')}" render.py`, run), 'an executable inside, quoted');
+    assert(runsFrom(path.join(run, 'node_modules', '.bin', 'esbuild'), run), 'an executable inside');
+    assert(runsFrom(`python3.12 ${path.join(run, 'a.py')} ${path.join(sibling, 'b')}`, run), 'python by its version');
+  });
+  await check('a command line that only names the folder or a file of it runs nothing from it; nor does a sibling\'s', () => {
+    assert(!runsFrom(`node ${path.join(sibling, 'x.js')}`, run), 'a sibling whose name starts alike');
+    assert(!runsFrom('node node_modules/vite/bin/vite.js --port 5240 --strictPort', run), 'a relative path names no folder');
+    assert(!runsFrom(`notepad.exe ${path.join(run, 'AGENTS.md')}`, run), 'an editor on a file of it');
+    assert(!runsFrom(`"C:\\Program Files\\Microsoft VS Code\\Code.exe" "${path.join(run, 'videos')}"`, run), 'an editor on a folder of it, quoted');
+    assert(!runsFrom(`vlc "${path.join(run, 'out', 'a', 'a-draft.mp4')}"`, run), 'a player on its draft');
+    assert(!runsFrom(`python grade.py ${path.join(run, 'turn-1.jsonl')}`, run), 'a script from elsewhere reading its files');
+    assert(!runsFrom(`uv run grade.py --run "${path.join(run, 'x')}"`, run), 'the same through uv');
+    assert(!runsFrom(`node -e "setInterval(() => {}, 1000)" ${path.join(run, 'marker')}`, run), 'code given inline, the folder an argument');
+    assert(!runsFrom(`node --require=${path.join(run, 'hook.js')} elsewhere.js`, run), 'the folder inside an option');
+    assert(!runsFrom(`codex exec -C ${run}`, run) && !runsFrom(`"node" "${run}"`, run), 'the folder itself: the session, which the runner stops with its own tree');
   });
 
-  const mine = await server(run), mineNamed = named(run);
-  const theirs = await server(sibling), theirsNamed = named(sibling);
+  const mine = await server(run), mineQuiet = await server(run, 'none'), mineScript = script(run);
+  const theirs = await server(sibling), theirsScript = script(sibling);
+  const editor = other(path.join(run, 'AGENTS.md')), bystander = other();
+  const liar = await server(run, String(bystander));
   await Bun.sleep(300);
+  const all = [mine.pid, mineQuiet.pid, mineScript, theirs.pid, theirsScript, editor, bystander, liar.pid];
   let stopped: Awaited<ReturnType<typeof stopLeftRunning>> = [];
-  await check('what the run left is stopped: a server found by the folder it serves, and a process by its command line', async () => {
-    assert(alive(mine.pid) && alive(mineNamed) && alive(theirs.pid) && alive(theirsNamed), 'all four started');
+  await check('what the run left is stopped: servers found by the folder they serve, and a process running a script of it', async () => {
+    assert(all.every(alive), 'all eight started');
     stopped = await stopLeftRunning(run);
     await Bun.sleep(500);
     assert(!alive(mine.pid), `the server started from the run's folder by a relative path (port ${mine.port}) still runs`);
-    assert(!alive(mineNamed), 'the process whose command line names the run\'s folder still runs');
+    assert(!alive(mineQuiet.pid), `the server whose answer names no process (port ${mineQuiet.port}), the only listener there, still runs`);
+    assert(!alive(mineScript), 'the process running a script of the run\'s folder still runs');
     assert(stopped.some((s) => s.pid === mine.pid && s.why.includes(String(mine.port))), `the server isn't in what it reports: ${JSON.stringify(stopped)}`);
+  });
+  await check('a process that names a file of the run\'s folder and runs nothing from it goes on (an editor showing it)', () => {
+    assert(alive(editor), 'the process naming a file of the run\'s folder was stopped');
+  });
+  await check('an answer naming a process that doesn\'t listen on the port stops neither it nor the listener', () => {
+    assert(alive(bystander), 'the process the answer named, which listens nowhere, was stopped');
+    assert(alive(liar.pid), 'the server whose answer named another process was stopped on its word');
   });
   await check('nothing else is: a sibling folder\'s server and process go on, and so does this process', () => {
     assert(alive(theirs.pid), 'the sibling folder\'s server was stopped');
-    assert(alive(theirsNamed), 'the process naming the sibling folder was stopped');
-    assert.deepEqual(stopped.map((s) => s.pid).sort(), [mine.pid, mineNamed].sort(), 'it stopped something else');
+    assert(alive(theirsScript), 'the process running the sibling folder\'s script was stopped');
+    assert.deepEqual(stopped.map((s) => s.pid).sort(), [mine.pid, mineQuiet.pid, mineScript].sort(), 'it stopped something else');
   });
   await check('a folder nothing runs from stops nothing', async () => {
     assert.deepEqual(await stopLeftRunning(path.join(tmp, 'nobody')), []);
-    assert(alive(theirs.pid) && alive(theirsNamed));
+    assert(alive(theirs.pid) && alive(theirsScript));
   });
 } finally {
   for (const pid of started) try { process.kill(pid); } catch { /* stopped already */ }

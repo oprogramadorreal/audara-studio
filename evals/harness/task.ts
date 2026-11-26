@@ -530,10 +530,10 @@ writeFileSync(path.join(RUN, 'result.json'), JSON.stringify({
 
 // ---------------------------------------------------------------- stop what the run left running
 // The skill keeps the preview running after the session (`render.ts preview` starts the project's own
-// node_modules/vite, so its command line names the run's folder); and killing `uv` alone leaves the mock's
+// node_modules/vite by its full path); and killing `uv` alone leaves the mock's
 // Python running (on Windows a child outlives its parent), holding this process open. Stop the mock with its
-// whole tree, the decoy, and what the run left running from its folder (left-running.ts): every process whose
-// command line names it, and every dev server that serves it, on whatever port. A session whose preview
+// whole tree, the decoy, and what the run left running from its folder (left-running.ts): every process that
+// runs a program from it, and every dev server that serves it, on whatever port. A session whose preview
 // couldn't start has run Vite by hand on a port outside 5173-5199, from a command line that names no folder:
 // one such stayed up after its run, where the ports looked at during the turns (above) never saw it.
 for (const m of mocks) if (m.pid) stopTree(m.pid);

@@ -9,12 +9,17 @@
 // video project had widened the range in its own render.ts (docs/history.md, 0.17.0).
 //
 // So two sweeps, by the run's folder alone:
-// - every process whose command line names the folder (`render.ts preview` runs the project's own
-//   node_modules/vite by its full path);
+// - every process that runs a program from the folder: its executable is inside it, or it is a runner (node, bun,
+//   python, uv ...) whose script is (`render.ts preview` runs the project's own node_modules/vite by its full
+//   path);
 // - every dev server that answers /__audara with a folder inside it, on whatever port: one started by hand from
 //   the folder (`node node_modules/vite/bin/vite.js --port 5240`) names it nowhere in its command line, and sits
-//   outside the ports a preview is looked for on. Only ports a node or bun process listens on are asked.
-// Neither touches this process or the ones it descends from, whatever their command lines name.
+//   outside the ports a preview is looked for on. Only ports a node or bun process listens on are asked, and the
+//   process stopped is one the system says listens there.
+// Neither touches this process or the ones it descends from, whatever their command lines name. And neither
+// stops a process for naming the folder further on in its command line: that is something else looking at the
+// run's files (an editor on one of them, a player on its draft, a grader's script reading its transcript), which
+// a sweep by any mention would close with everything its tree holds.
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -65,15 +70,24 @@ export function within(dir: string, p: string) {
   const d = norm(dir), x = norm(p);
   return x === d || x.startsWith(`${d}/`);
 }
-/** Whether a command line names the folder `dir` or a path inside it (and not a sibling whose name starts alike). */
-export function names(cmd: string, dir: string) {
+/** The programs that run a script: node, bun, deno, python (python3.12, pythonw, py), uv. */
+const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py|uv|uvx)(\.exe)?$/i;
+/**
+ * Whether a command line runs a program from the folder `dir`: its executable is inside the folder (a venv's
+ * python, a tool of node_modules), or it is a runner whose script is, with nothing before the script but options
+ * (and `run`, as in `bun run` and `uv run`). A path of the folder anywhere later, or in any other program's
+ * command line, is a file being looked at, not a program of the run; so is a sibling folder whose name starts alike.
+ */
+export function runsFrom(cmd: string, dir: string) {
   const fold = (s: string) => (caseless ? s.toLowerCase() : s);
   const c = fold(cmd).replaceAll('\\', '/'), d = fold(path.resolve(dir)).split(path.sep).join('/').replace(/\/+$/, '');
-  for (let i = c.indexOf(d); i >= 0; i = c.indexOf(d, i + 1)) {
-    const after = c[i + d.length];
-    if (after === undefined || /[\/"'\s]/.test(after)) return true;
-  }
-  return false;
+  // (the first path inside the folder is the one that counts: a script comes before its own arguments)
+  const i = c.indexOf(`${d}/`);
+  if (i < 0) return false;
+  const before = c.slice(0, i);
+  if (/^\s*["']?$/.test(before)) return true;
+  const m = /^\s*(?:"([^"]+)"|'([^']+)'|(\S+))(?:\s+(?:run|-\S*))*\s+["']?$/.exec(before);
+  return !!m && RUNNER.test((m[1] ?? m[2] ?? m[3])!.split('/').pop()!);
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */
@@ -89,7 +103,7 @@ async function served(port: number): Promise<{ root: string; pid?: number } | nu
 }
 
 /**
- * Stops what a run left running from its folder `dir`: the processes whose command line names it, and the dev
+ * Stops what a run left running from its folder `dir`: the processes that run a program from it, and the dev
  * servers that serve it or a folder inside it. Returns what it stopped, for the run's record.
  */
 export async function stopLeftRunning(dir: string): Promise<{ pid: number; why: string }[]> {
@@ -103,12 +117,22 @@ export async function stopLeftRunning(dir: string): Promise<{ pid: number; why: 
     stopTree(pid);
     stopped.push({ pid, why });
   };
-  for (const p of procs) if (names(p.cmd, dir)) stop(p.pid, 'its command line names the folder');
-  const servers = listening().filter((l) => /\b(node|bun)(\.exe)?\b/i.test(byPid.get(l.pid)?.cmd ?? '') && !mine.has(l.pid));
-  const ports = [...new Map(servers.map((s) => [s.port, s.pid])).entries()];
-  await Promise.all(ports.map(async ([port, owner]) => {
+  for (const p of procs) if (runsFrom(p.cmd, dir)) stop(p.pid, 'it runs a program from the folder');
+  // (a port can have more than one listener, on different addresses)
+  const owners = new Map<number, Set<number>>();
+  for (const l of listening()) {
+    if (mine.has(l.pid) || !/\b(node|bun)(\.exe)?\b/i.test(byPid.get(l.pid)?.cmd ?? '')) continue;
+    owners.set(l.port, (owners.get(l.port) ?? new Set<number>()).add(l.pid));
+  }
+  await Promise.all([...owners].map(async ([port, pids]) => {
     const s = await served(port);
-    if (s && within(dir, s.root)) stop(s.pid ?? owner, `it serves ${s.root} on port ${port}`);
+    if (!s || !within(dir, s.root)) return;
+    // (the process stopped is one the system says listens on the port: the one the answer names when it is among
+    // them, the only one when the answer names none. An answer that names another process is stale, wrong, or
+    // passed on by somebody else's proxy: stopping either end of it would end a process nothing here vouches for)
+    const pid = s.pid === undefined ? (pids.size === 1 ? [...pids][0] : undefined) : pids.has(s.pid) ? s.pid : undefined;
+    if (pid !== undefined) stop(pid, `it serves ${s.root} on port ${port}`);
+    else console.error(`left running: port ${port} answers for ${s.root}, but ${s.pid === undefined ? `${pids.size} processes listen there and its answer names none` : `the process its answer names (${s.pid}) isn't one that listens there (${[...pids].join(', ')})`}`);
   }));
   return stopped;
 }
