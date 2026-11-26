@@ -5995,8 +5995,9 @@ widened to 64 ports, with a comment saying the 27 were held by other projects' p
   `preview` nor `link` looks, so the start read as "Vite didn't answer ... within 20 s" with the cause in a log
   tail; the run above piped it through `tail -3` and saw none of it. `preview` now asks the ports first and, when
   none is free, says so at once, with each port and the folder its preview serves, and that which of them can
-  stop is the director's to say (`preview --stop` in that folder). The range is as it was, so what the app reads
-  of it is too.
+  stop is the director's to say (`preview --stop` in that folder). Its last line says all of it by itself: the
+  output is read through `| tail`, and the app shows the end of what the command printed. The range is as it
+  was, so what the app reads of it is too.
 - **What was checked.** `test_left_running.ts`, new, 5/5: a server started from the run's folder by a relative
   path, on a port of its own, and a process whose command line names the folder are stopped; the same two for a
   sibling folder go on. With the port sweep switched off the first fails, and with the name's boundary switched

@@ -385,17 +385,19 @@ async function link(video: string) {
  * free. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports. With all
  * of them held, Vite started on the next port up, where neither `preview` nor `link` looks: the start read as a
  * 20-second timeout, and sessions went around it (Vite by hand on a port of their own, a wider range in the
- * project's copy of this file). Which previews can go is the director's to say.
+ * project's copy of this file). Which previews can go is the director's to say. The last line says it all by
+ * itself, after the list: this command's output is read through `| tail`, and the app shows its end.
  */
 function portsTaken(said: Answer[]): string | null {
   if (!said.length || said.some((a) => a === null)) return null;
   const previews = said.flatMap((a, i) => (a && typeof a === 'object' ? [`  ${PREVIEW_PORTS[i]}  ${a.root}`] : []));
   const apps = said.length - previews.length;
   const by = [...(previews.length ? [`${previews.length} by other projects' previews`] : []), ...(apps ? [`${apps} by other apps`] : [])].join(' and ');
-  return `the preview can't start: all ${said.length} of its ports (${PREVIEW_RANGE}) are taken, ${by}. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports. `
-    + (previews.length
-      ? `Tell the director which projects hold them and ask which can stop; \`bun scripts/render.ts preview --stop\`, run in such a project's folder, frees its port. Then run this command again.\n${previews.join('\n')}`
-      : 'Ask the director which of those apps can close, then run this command again.');
+  const taken = `all ${said.length} of the preview's ports (${PREVIEW_RANGE}) are taken, ${by}`;
+  return previews.length
+    ? `the preview can't start: ${taken}. The previews, by port and the folder each serves:\n${previews.join('\n')}\n`
+      + `No preview was started: ${taken}. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports: tell the director which projects hold them (listed above) and ask which can stop; \`bun scripts/render.ts preview --stop\`, run in such a project's folder, frees its port. Then run this command again.`
+    : `the preview can't start: ${taken}. Ask the director which of those apps can close, then run this command again.`;
 }
 
 /** The last lines of a log, indented, for a message; stack frames left out (the error above them says more). */

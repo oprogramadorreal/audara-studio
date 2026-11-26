@@ -176,9 +176,11 @@ const cases: [string, () => void | Promise<void>][] = [
     assert.equal(taken([{ root: 'C:/a' }, null, 'another app']), null, 'a free port: nothing to say');
     assert.equal(taken([]), null);
     const full = taken([{ root: 'C:/videos/one', pid: 7 }, 'another app', { root: 'C:/videos/two' }])!;
-    assert.match(full, /all 3 of its ports \(127\.0\.0\.1, ports 5173-5175\) are taken, 2 by other projects' previews and 1 by other apps/);
-    assert.match(full, /\n  5173  C:\/videos\/one\n  5175  C:\/videos\/two$/, 'each preview by its port and folder');
-    assert.match(full, /preview --stop/);
+    assert.match(full, /\n  5173  C:\/videos\/one\n  5175  C:\/videos\/two\n/, 'each preview by its port and folder');
+    // (read through `| tail -1`, and by the app, which shows the end of the output: the last line alone says it)
+    const last = full.split('\n').at(-1)!;
+    assert.match(last, /^No preview was started: all 3 of the preview's ports \(127\.0\.0\.1, ports 5173-5175\) are taken, 2 by other projects' previews and 1 by other apps\./);
+    assert.match(last, /preview --stop/);
     const apps = taken(['another app', 'no answer', 'another app'])!;
     assert.match(apps, /taken, 3 by other apps\./);
     assert.doesNotMatch(apps, /preview --stop/, 'no preview to stop where other apps hold them all');
