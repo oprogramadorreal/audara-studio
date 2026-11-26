@@ -81,9 +81,9 @@ try {
     const vite = path.join(run, 'node_modules', 'vite', 'bin', 'vite.js');
     assert(runsFrom(`node ${vite}`, run), 'a script inside');
     assert(runsFrom(`"C:\\Program Files\\nodejs\\node.exe" "${vite}" --port 5180`, run), 'both quoted, the runner by its path');
-    assert(runsFrom(`/usr/local/bin/node --no-warnings --max-old-space-size=4096 ${vite}`, run), 'right after an option that carries its own value');
+    assert(runsFrom(`/usr/local/bin/node ${vite} --host 127.0.0.1`, run), 'the runner by its path, the script\'s own options after it');
     assert(runsFrom(`bun run ${path.join(run, 'scripts', 'render.ts')} video`, run), 'bun run');
-    assert(runsFrom(`uv --quiet run "${path.join(run, 'shots', 'a', 'render.py')}"`, run), 'uv run');
+    assert(runsFrom(`uv run "${path.join(run, 'shots', 'a', 'render.py')}"`, run), 'uv run');
     assert(runsFrom(`"${path.join(run, '.venv', 'Scripts', 'python.exe')}" render.py`, run), 'an executable inside, quoted');
     assert(runsFrom(path.join(run, 'node_modules', '.bin', 'esbuild'), run), 'an executable inside');
     assert(runsFrom(`python3.12 ${path.join(run, 'a.py')} ${path.join(sibling, 'b')}`, run), 'python by its version');
@@ -100,22 +100,29 @@ try {
     assert(!runsFrom(`node --require=${path.join(run, 'hook.js')} elsewhere.js`, run), 'the folder inside an option');
     assert(!runsFrom(`codex exec -C ${run}`, run) && !runsFrom(`"node" "${run}"`, run), 'the folder itself: the session, which the runner stops with its own tree');
   });
-  await check('a path right after an option without a value of its own may be that option\'s value: left alone', () => {
+  await check('a path after an option may be that option\'s value, or an argument of a program given inline: left alone', () => {
     assert(!runsFrom(`uv run --project ${path.join(run, 'project')} grade.py`, run), 'uv run --project <folder>/project grade.py: a grader from elsewhere');
     assert(!runsFrom(`node --require ${path.join(run, 'hook.js')} elsewhere.js`, run), 'node --require <folder>/hook.js elsewhere.js');
     assert(!runsFrom(`node -r "${path.join(run, 'hook.js')}" elsewhere.js`, run), 'the same, short and quoted');
+    assert(!runsFrom(`node --eval=console.log(process.argv.slice(1)) ${path.join(run, 'turn-1.jsonl')}`, run), 'node --eval=... <folder>/turn-1.jsonl: the path is the inline program\'s argument');
+    assert(!runsFrom(`bun --print=1 ${path.join(run, 'turn-1.jsonl')}`, run) && !runsFrom(`python -c pass ${path.join(run, 'x')}`, run), 'the same in bun and python');
+    assert(!runsFrom(`/usr/local/bin/node --no-warnings --max-old-space-size=4096 ${path.join(run, 'a.js')}`, run), 'an option that carries its own value proves nothing about what follows');
     assert(!runsFrom(`python -u ${path.join(run, 'render.py')}`, run) && !runsFrom(`uv run --quiet ${path.join(run, 'a.py')}`, run), 'an option that takes none is not told from one that does');
+    assert(!runsFrom(`uv --quiet run ${path.join(run, 'a.py')}`, run) && !runsFrom(`uv ${path.join(run, 'a.py')}`, run), 'an option before run, and uv without run');
     assert(!runsFrom(`node run ${path.join(run, 'a.js')}`, run) && !runsFrom(`python run ${path.join(run, 'a.py')}`, run), '"run" is a script\'s name to node and python');
-    assert(!runsFrom(`uv run --with numpy --quiet=1 ${path.join(run, 'a.py')}`, run), 'a word between that is neither an option nor run');
   });
-  await check('a server is stopped as the process its answer names, when that one listens on the port at the address asked', () => {
+  await check('a server is stopped as the process its answer names, when that one alone could have answered on the port', () => {
     const table = [
-      { port: 5180, pid: 11, address: '127.0.0.1' }, { port: 5181, pid: 12, address: '0.0.0.0' }, { port: 5182, pid: 13, address: '::' },
+      { port: 5180, pid: 11, address: '127.0.0.1' }, { port: 5181, pid: 12, address: '0.0.0.0' }, { port: 5181, pid: 12, address: '::' }, { port: 5182, pid: 13, address: '::' },
       { port: 5183, pid: 21, address: '127.0.0.1' }, { port: 5183, pid: 22, address: '192.168.1.5' }, { port: 5184, pid: 23, address: '::1' },
+      { port: 5185, pid: 31, address: '127.0.0.1' }, { port: 5185, pid: 32, address: '::' },
     ];
     assert.equal(answerer(table, 5180, 11), 11, 'named, and listening on 127.0.0.1');
-    assert.equal(answerer(table, 5181, 12), 12, 'on every address');
-    assert.equal(answerer(table, 5182, 13), 13, 'on every address, as IPv6 says it');
+    assert.equal(answerer(table, 5181, 12), 12, 'on every address, IPv4 and IPv6: one process');
+    assert.equal(answerer(table, 5182, 13), 13, 'on every address, as IPv6 says it, alone there');
+    assert.equal(answerer(table, 5183, 21), 21, 'another process on an address the request can\'t reach doesn\'t count');
+    assert.equal(answerer(table, 5185, 32), undefined, 'one on 127.0.0.1 and another on ::, which takes IPv4 or not: the one on :: named, though only the other may have answered');
+    assert.equal(answerer(table, 5185, 31), undefined, 'the same with the other named: the table can\'t say which answered');
     assert.equal(answerer(table, 5180, undefined), undefined, 'an answer that names no process, one listener or not');
     assert.equal(answerer(table, 5183, undefined), undefined, 'a proxy on 127.0.0.1 and a service on another address: nothing to tell them apart');
     assert.equal(answerer(table, 5183, 22), undefined, 'named, but listening on an address the request couldn\'t reach');

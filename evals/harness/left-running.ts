@@ -10,18 +10,18 @@
 //
 // So two sweeps, by the run's folder alone:
 // - every process that runs a program from the folder: its executable is inside it, or it is a runner (node, bun,
-//   python, uv ...) whose script is (`render.ts preview` runs the project's own node_modules/vite by its full
-//   path);
+//   python, uv run ...) with the script right after it (`render.ts preview` runs the project's own
+//   node_modules/vite that way, by its full path);
 // - every dev server that answers /__audara with a folder inside it, on whatever port: one started by hand from
 //   the folder (`node node_modules/vite/bin/vite.js --port 5240`) names it nowhere in its command line, and sits
 //   outside the ports a preview is looked for on. Only ports a node or bun process listens on are asked, and the
-//   process stopped is the one the answer names, when the system says it listens there on the address asked.
+//   process stopped is the one the answer names, when the system says it alone could have answered there.
 // Neither touches this process or the ones it descends from, whatever their command lines name. And neither
 // stops a process for naming the folder further on in its command line: that is something else looking at the
 // run's files (an editor on one of them, a player on its draft, a grader's script reading its transcript), which
 // a sweep by any mention would close with everything its tree holds. Where the evidence is short of that (an
-// option before the path that may take it as its value, an answer that names no process or one that doesn't
-// listen there), the process is left running and, for a server, the port is printed.
+// option before the path, an answer that names no process, or one that doesn't listen there, or two processes
+// that could have answered), the process is left running and, for a server, the port is printed.
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -66,17 +66,21 @@ function listening(): Listener[] {
   }
   return rows;
 }
-/** The addresses whose listener gets what is sent to 127.0.0.1: that one, and each way of saying "every address". */
+/** The addresses whose listener may get what is sent to 127.0.0.1: that one, and each way of saying "every address". */
 const LOOPBACK = new Set(['127.0.0.1', '0.0.0.0', '::', '*']);
 /**
  * The process to stop for a server that answered on 127.0.0.1:<port> for the run's folder, naming `named` as its
- * process: `named`, when the system says it listens on that port at an address the request could reach. Any other
- * answer stops nothing. One that names no process leaves the choice to a guess at the port's listeners, where a
- * proxy on that address and an unrelated service on another are told apart by nothing. One that names a process
- * that doesn't listen there is stale, wrong, or passed on by somebody else's proxy.
+ * process: `named`, when the system says it is the one process that could have answered, the only one listening
+ * on that port at an address the request may reach. Any other answer stops nothing:
+ * - one that names no process leaves a guess at the port's listeners, where a proxy on that address and an
+ *   unrelated service on another are told apart by nothing;
+ * - one that names a process that doesn't listen there is stale, wrong, or passed on by somebody else's proxy;
+ * - with two processes there (one on 127.0.0.1 and one on `::`, which takes IPv4 or not by a setting the table
+ *   doesn't show), the table can't say which of them answered, so the name is the answer's word alone.
  */
 export function answerer(listeners: Listener[], port: number, named: number | undefined): number | undefined {
-  return named !== undefined && listeners.some((l) => l.port === port && l.pid === named && LOOPBACK.has(l.address)) ? named : undefined;
+  const could = new Set(listeners.filter((l) => l.port === port && LOOPBACK.has(l.address)).map((l) => l.pid));
+  return named !== undefined && could.size === 1 && could.has(named) ? named : undefined;
 }
 
 const norm = (p: string) => { const r = path.resolve(p).split(path.sep).join('/').replace(/\/+$/, ''); return caseless ? r.toLowerCase() : r; };
@@ -85,19 +89,20 @@ export function within(dir: string, p: string) {
   const d = norm(dir), x = norm(p);
   return x === d || x.startsWith(`${d}/`);
 }
-/** The programs that run a script: node, bun, deno, python (python3.12, pythonw, py), uv. */
-const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py|uv|uvx)(\.exe)?$/i;
-/** The runners whose `run` takes the script next: `bun run`, `uv run`, `deno run`. */
+/** The programs that run the script given first: node, bun, deno, python (python3.12, pythonw, py). */
+const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py)(\.exe)?$/i;
+/** The ones whose `run` takes the script next: `bun run`, `uv run`, `deno run`. */
 const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
 /**
  * Whether a command line runs a program from the folder `dir`: its executable is inside the folder (a venv's
- * python, a tool of node_modules), or it is a runner whose script is. The script is told from an option's value
- * by what stands right before it: the runner itself, its `run` (`bun run`, `uv run`), or an option that carries
- * its own value (`--max-old-space-size=4096`). After any other option the path may be that option's value
- * (`uv run --project <folder>/project grade.py`, `node --require <folder>/hook.js elsewhere.js`: programs from
- * elsewhere), and which options take one differs by runner and version, so such a command line is left alone. A
- * path of the folder anywhere later, or in any other program's command line, is a file being looked at, not a
- * program of the run; so is a sibling folder whose name starts alike.
+ * python, a tool of node_modules), or it is a runner with the script right after it (`node <script>`, `python
+ * <script>`), or right after its `run` (`bun run`, `uv run`, `deno run`). These are the forms known to execute the
+ * path. With an option before it, the path may be that option's value (`uv run --project <folder>/project
+ * grade.py`, `node --require <folder>/hook.js elsewhere.js`) or an argument of a program given inline (`node
+ * --eval=... <folder>/turn-1.jsonl`): programs from elsewhere, a grader's. Which options do which differs by
+ * runner and version, so a command line with any is left alone. A path of the folder anywhere later, or in any
+ * other program's command line, is a file being looked at, not a program of the run; so is a sibling folder
+ * whose name starts alike.
  */
 export function runsFrom(cmd: string, dir: string) {
   const fold = (s: string) => (caseless ? s.toLowerCase() : s);
@@ -107,13 +112,10 @@ export function runsFrom(cmd: string, dir: string) {
   if (i < 0) return false;
   const before = c.slice(0, i);
   if (/^\s*["']?$/.test(before)) return true;
-  const m = /^\s*(?:"([^"]+)"|'([^']+)'|(\S+))((?:\s+\S+)*)\s+["']?$/.exec(before);
+  const m = /^\s*(?:"([^"]+)"|'([^']+)'|(\S+))(\s+run)?\s+["']?$/.exec(before);
   if (!m) return false;
   const runner = (m[1] ?? m[2] ?? m[3])!.split('/').pop()!;
-  if (!RUNNER.test(runner)) return false;
-  const between = m[4]!.trim().split(/\s+/).filter(Boolean), last = between.at(-1);
-  if (!between.every((t) => t.startsWith('-') || t === 'run')) return false;
-  return last === undefined || /^--?[^=]+=./.test(last) || (last === 'run' && RUNS.test(runner) && between.indexOf('run') === between.length - 1);
+  return m[4] ? RUNS.test(runner) : RUNNER.test(runner);
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */

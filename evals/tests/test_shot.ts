@@ -486,22 +486,31 @@ test('a copy of a version cut short (<version>.partial) is removed by clean and 
   } finally { p.done(); }
 });
 
-test('a pattern finds hidden files and files below the folder it starts in, and never enters a tool\'s folders', () => {
-  const p = project({ ...RECIPE, inputs: ['**/*.ts', '/data/**/*.txt', '../shared/*.json', 'lib/{a,b}/*.py'] });
+test('a pattern selects what it names: hidden files too, its own levels, a leading !, ../, and never a tool\'s files', () => {
+  const p = project({ ...RECIPE, inputs: ['**/*.ts', '/data/**/*.txt', '../shared/*.json', 'lib/{a,b}/*.py', '*.md'] });
   try {
+    const recipe = (inputs: string[]) => writeFileSync(path.join(p.root, 'shots/bars/shot.json'), JSON.stringify({ ...RECIPE, inputs }));
     const put = (f: string) => { mkdirSync(path.dirname(path.join(p.root, f)), { recursive: true }); writeFileSync(path.join(p.root, f), 'x'); };
+    const made = () => p.json(`footage/bars/${p.json('footage/bars/manifest.json').dir}/made.json`).inputs.map((i: [string, string]) => i[0]).join(' ');
     for (const f of ['shots/bars/sub/.hidden/z.ts', 'shots/bars/.venv/lib/site.ts', 'shots/bars/node_modules/a/index.ts', 'shots/bars/__pycache__/c.ts', 'shots/bars/notes.md',
-      'data/a.txt', 'data/deep/.b.txt', 'data/node_modules/c.txt', 'data/skip.md', 'shots/shared/palette.json', 'shots/shared/deep/no.json',
+      'shots/bars/sub/deep.md', 'data/a.txt', 'data/deep/.b.txt', 'data/node_modules/c.txt', 'data/skip.md', 'shots/shared/palette.json', 'shots/shared/deep/no.json',
       'shots/bars/lib/a/one.py', 'shots/bars/lib/b/two.py', 'shots/bars/lib/c/three.py']) put(f);
     const m = p.shot(['make']);
     check(m.code === 0, `make: ${m.out}`);
-    const inputs = p.json(`footage/bars/${p.json('footage/bars/manifest.json').dir}/made.json`).inputs.map((i: [string, string]) => i[0]).join(' ');
-    check(inputs === 'data/a.txt data/deep/.b.txt shots/bars/draw.ts shots/bars/lib/a/one.py shots/bars/lib/b/two.py shots/bars/sub/.hidden/z.ts shots/shared/palette.json', `inputs: ${inputs}`);
+    check(made() === 'data/a.txt data/deep/.b.txt shots/bars/draw.ts shots/bars/lib/a/one.py shots/bars/lib/b/two.py shots/bars/notes.md shots/bars/sub/.hidden/z.ts shots/shared/palette.json', `inputs: ${made()}`);
     put('shots/bars/.venv/lib/more.ts');
-    check(/bars: current/.test(p.shot(['status']).out), 'a file added to a tool\'s folder made the shot stale');
+    put('shots/bars/sub/more.md');
+    check(/bars: current/.test(p.shot(['status']).out), 'a file added to a tool\'s folder, or below the level a pattern names, made the shot stale');
     writeFileSync(path.join(p.root, 'shots/shared/palette.json'), 'y');
     check(/stale: shots\/shared\/palette\.json changed/.test(p.shot(['status']).out), `an input beside the recipe folder changed: ${p.shot(['status']).out}`);
-    writeFileSync(path.join(p.root, 'shots/bars/shot.json'), JSON.stringify({ ...RECIPE, inputs: ['missing/**/*.ts'] }));
+    // a leading ! takes what the rest doesn't match, at the pattern's own level: nothing below it
+    recipe(['!*.md']);
+    check(p.shot(['make']).code === 0 && made() === 'shots/bars/draw.ts', `!*.md: ${made()}`);
+    if (process.platform === 'win32') {
+      recipe(['sub\\.hidden\\*.ts', '..\\shared\\*.json']);
+      check(p.shot(['make']).code === 0 && made() === 'shots/bars/sub/.hidden/z.ts shots/shared/palette.json', `Windows' separators in a pattern: ${made()}`);
+    }
+    recipe(['missing/**/*.ts']);
     const none = p.shot(['make']);
     check(none.code === 1 && /the input missing\/\*\*\/\*\.ts names no file/.test(none.out), `a pattern from a folder that isn't there: ${none.out}`);
   } finally { p.done(); }

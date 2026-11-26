@@ -203,20 +203,17 @@ function inputFiles(r: Recipe): string[] {
       if (p === recipeFile) found++;
       else if (!p.startsWith('..') && !NEVER.test(p)) { out.add(p); found++; }
     };
-    if (!/[*?[{]/.test(pat)) {
-      const f = path.resolve(base, pat);
+    if (!/[*?[{]/.test(pat) || pat === '**') {
+      // (a folder, the default included, is walked without entering a tool's folders)
+      const f = pat === '**' ? base : path.resolve(base, pat);
       const st = statSync(f, { throwIfNoEntry: false });
       if (st?.isFile()) take(rel(f));
       else if (st?.isDirectory()) filesUnder(f, take);
     } else {
-      // (a pattern is matched over the same walk, from the folder its fixed start names: a scan by the pattern
-      // itself reads a whole .venv or node_modules to turn it down file by file, twice a make)
-      const parts = pat.split('/');
-      let fixed = 0;
-      while (fixed < parts.length - 1 && !/[*?[{]/.test(parts[fixed]!)) fixed++;
-      const from = path.resolve(base, parts.slice(0, fixed).join('/')), glob = new Bun.Glob(parts.slice(fixed).join('/'));
-      if (statSync(from, { throwIfNoEntry: false })?.isDirectory())
-        filesUnder(from, (p) => { if (glob.match(path.relative(from, path.join(PROJECT, p)).split(path.sep).join('/'))) take(p); });
+      // (any other pattern is Bun's to scan, so it selects what it always did: its levels, a leading !, ../ and
+      // Windows' separators. The scan enters a tool's folders, whose files are turned down one by one: 100,000
+      // of them took it 90 ms here, where a matcher of our own over the walk chose other files for `!*.ts`)
+      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: true })) take(rel(path.resolve(base, g)));
     }
     if (!found) fail(`shots/${r.shot}/shot.json: the input ${pattern} names no file${fromRoot ? '' : ` in shots/${r.shot}/ (a path from the project root starts with /)`}`);
   }
@@ -355,15 +352,13 @@ function removeOwned(dir: string) {
   rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
 }
 /**
- * Removes the versions this script made for the shot but those in `keep`, and its copies cut short (run under the
- * shot's lock, so no make is still writing one). One it can't remove (a file open in another program, on Windows)
- * stays, named, for the next make or clean: what's published is published already.
+ * Removes the folders named, of the shot's, that this script made (by their record). One it can't remove (a file
+ * open in another program, on Windows) stays, named, for the next make or clean.
  */
-function prune(shot: string, keep: (string | null | undefined)[]) {
+function drop(shot: string, folders: string[]) {
   const removed: string[] = [], left: string[] = [];
-  for (const v of [...versions(shot), ...partials(shot)]) {
+  for (const v of folders) {
     const dir = path.join(shotDir(shot), v);
-    if (keep.includes(v)) continue;
     if (!madeHere(shot, v)) {
       // (a copy that died before its record was written is an empty folder: removed as one, which removes nothing else)
       if (v.endsWith(PARTIAL)) try { rmdirSync(dir); removed.push(v); } catch { /* it holds something: not this script's to remove */ }
@@ -374,8 +369,20 @@ function prune(shot: string, keep: (string | null | undefined)[]) {
   }
   return { removed, left };
 }
-/** Removes the shot's copies cut short and nothing else: every version stays. */
-const reclaim = (shot: string) => prune(shot, versions(shot));
+/**
+ * Removes the shot's copies cut short and nothing else (run under the shot's lock, so no make is still writing
+ * one). It lists only those: it never reads which versions there are, so no failed read of the folder can put a
+ * published version among what it removes.
+ */
+const reclaim = (shot: string) => drop(shot, partials(shot));
+/**
+ * Removes the versions this script made for the shot but those in `keep`, and its copies cut short: what's
+ * published is published already. `keep` comes from the manifest, never from a listing of the folder.
+ */
+function prune(shot: string, keep: (string | null | undefined)[]) {
+  const a = drop(shot, versions(shot).filter((v) => !keep.includes(v))), b = reclaim(shot);
+  return { removed: [...a.removed, ...b.removed], left: [...a.left, ...b.left] };
+}
 
 // ------------------------------------------------------------------ tools
 async function run(cmd: string[], o: { cwd?: string; env?: Record<string, string>; quiet?: boolean } = {}) {
@@ -791,7 +798,7 @@ function clean(shot: string) {
     // (footage with a manifest that isn't this script's is left as it is. With no manifest yet, nothing says
     // which version is current: every version stays, and only copies cut short go, a first make's that died)
     if (man && !ours(man)) { log(`  ${shot}: no versions made by this script`); return; }
-    const { removed, left } = prune(shot, man ? [man.dir] : versions(shot));
+    const { removed, left } = man ? prune(shot, [man.dir]) : reclaim(shot);
     if (!man && !removed.length && !left.length) { log(`  ${shot}: no versions made by this script`); return; }
     log(`  ${shot}: ${removed.length ? `removed ${removed.join(', ')}` : 'no other version of its own to remove'}${left.length ? `; couldn't remove ${left.join(', ')} (open in another program?)` : ''}`);
     if (left.length) process.exitCode = 1;

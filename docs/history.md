@@ -6153,5 +6153,31 @@ fourth review three fail (a dead copy kept by a make with nothing to make; a ver
 current; a folder that took the copy's name removed). The five previews running on this machine still matched
 both rules. `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20, `test_render_failures.ts` 14/14.
 
+**Codex's sixth review (2026-11-26).** Five findings, all taken; the last two undo one of the fifth's fixes.
+
+- **The cleanup before a render could remove a published version.** It listed the versions to keep, then
+  listed them again to choose what to remove, and a listing that fails reads as none: one failed read and one
+  good one put the version on screen among the folders to remove (Codex injected the failure). It lists only
+  the copies cut short now, and never reads which versions there are.
+- **An option that carries its own value proves nothing about what follows.** `node --eval=... <folder>/turn-1.jsonl`
+  passes the path to a program given inline, a grader's. The forms taken as running a script of the folder are
+  the ones known to: the runner with the path right after it (`node`, `bun`, `deno`, `python`, `py`), or after
+  its `run` (`bun`, `uv`, `deno`). Any option before the path leaves the process running.
+- **Two processes on one port, one of them named.** With a listener on 127.0.0.1 and another on `::` (which
+  takes IPv4 or not by a setting the system's table doesn't show), only one can have answered, and the table
+  can't say which. A process is stopped only when it is the one process that could have answered.
+- **The matcher written for the fifth review chose other files than Bun's scan.** `!*.ts` at the template's root
+  went from 7 files to 95, `scripts\*.ts` from 2 to none on Windows, and a pattern with `./` or `../` inside it
+  to none. Patterns are Bun's to scan again, hidden files on; the walk that skips a tool's folders stays for a
+  folder and for the default. What the scan costs for entering them, measured this time: 100,000 files in a
+  `.venv` took it 90 ms (five runs, 81 to 102), twice a make.
+
+Checked: `test_left_running.ts` 10/10, with the command lines above and a table holding two listeners on one
+port. `test_shot.ts` 28/28; its pattern check now covers one level, a leading `!`, `../` and Windows'
+separators, and fails on the fifth review's matcher (`!*.md` took seven files for one). The five previews on
+this machine still match both rules. `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20,
+`test_render_failures.ts` 14/14, `bun run check`. Not checked by a test: the listing that fails (the code no
+longer makes one).
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

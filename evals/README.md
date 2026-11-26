@@ -271,10 +271,11 @@ reach each other's. At the end the harness stops every process that runs a progr
 executable there, or the script of a node, bun, python or uv) and every dev server that serves it, on whatever
 port: a session whose preview couldn't start has run Vite by hand outside those ports, where `previews`
 doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its draft, a
-grader's script) is left alone, and so is one whose path of `work/` follows an option that may take it as its
-value (`uv run --project <work>/project grade.py`). A server is stopped as the process its answer names, when
-the system says that one listens on the port at the address asked; any other answer stops nothing, and the port
-is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
+grader's script) is left alone, and so is a runner with any option before its path of `work/`, which may be
+that option's value or an inline program's argument (`uv run --project <work>/project grade.py`, `node
+--eval=... <work>/turn-1.jsonl`). A server is stopped as the process its answer names, when the system says
+that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
+port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
 (the main thread's and its sub-agents'), since `codex exec --json` leaves out calls such as spawn_agent
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
@@ -398,9 +399,9 @@ temp folder: a dev server started from the run's folder by a relative path (foun
 stopped; the same two for a sibling folder whose name starts alike go on, and so do a process that only names
 a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
 doesn't listen on its port, with the process it names. It also checks, on command lines and a table of
-listeners written out, which command lines run a program from a folder (none where the path follows an option
-that may take it as its value) and which process an answer stops (none that listens on another address or
-port). It needs node. `test_render_inputs.ts` checks resume fingerprints (streamed footage
+listeners written out, which command lines run a program from a folder (none with an option before the path)
+and which process an answer stops (none that listens on another address or port, and none where two processes
+could have answered). It needs node. `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
 `shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
 (changed by a manifest rewritten, not by a version folder written before it); none of the three needs Chrome
@@ -452,8 +453,9 @@ tells them apart; a copy of a version cut short removed by clean and by the next
 anything and when it has nothing to make, when its record says it is the script's, kept otherwise; on Windows,
 with a staged frame held open, a version whose folder won't move copied in and renamed, the make succeeding
 with its scratch folder left and said, a copy that fails removed with the shot as it was, and a folder that took
-the copy's name while the program ran left alone; a pattern finding hidden files and files below the folder it
-starts in, never a tool's; a version made under an earlier protocol read as stale; and what make says of a
+the copy's name while the program ran left alone; a pattern selecting what it names (hidden files too, its own
+levels and no deeper, a leading `!`, `../`, Windows' separators), never a tool's files; a version made under
+an earlier protocol read as stale; and what make says of a
 `render.ts` older than the check a `--jobs` render makes.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
