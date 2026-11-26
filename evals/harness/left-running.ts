@@ -20,17 +20,40 @@
 // stops a process for naming the folder further on in its command line: that is something else looking at the
 // run's files (an editor on one of them, a player on its draft, a grader's script reading its transcript), which
 // a sweep by any mention would close with everything its tree holds. Where the evidence is short of that (an
-// option before the path, an answer that names no process, or one that doesn't listen there, or two processes
-// that could have answered), the process is left running and, for a server, the port is printed.
+// option before the path, a path that leaves the folder again through `..` or may, an answer that names no
+// process, or one that doesn't listen there, or two processes that could have answered), the process is left
+// running and, for a server, the port is printed.
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
 const caseless = WIN || process.platform === 'darwin';
 
-/** Stops a process with its whole tree (on Windows a child outlives its parent). */
+/**
+ * A process and every one that descends from it in a table of processes, the deepest first and itself last: a
+ * child is listed before the parent that could notice it gone.
+ */
+export function tree(procs: { pid: number; ppid: number }[], pid: number): number[] {
+  const kids = new Map<number, number[]>();
+  for (const p of procs) kids.set(p.ppid, [...(kids.get(p.ppid) ?? []), p.pid]);
+  const out: number[] = [], seen = new Set<number>();
+  const walk = (p: number) => {
+    if (seen.has(p)) return;
+    seen.add(p);
+    for (const k of kids.get(p) ?? []) walk(k);
+    out.push(p);
+  };
+  walk(pid);
+  return out;
+}
+
+/**
+ * Stops a process with its whole tree (a child outlives its parent). Elsewhere than Windows the tree is read
+ * from the process table first: `pkill -P` reaches a process's own children only, so a worker started by a shell
+ * the process started would outlive both, with no parent left to find it by.
+ */
 export function stopTree(pid: number) {
-  if (WIN) Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' });
-  else { Bun.spawnSync(['pkill', '-TERM', '-P', String(pid)]); try { process.kill(pid); } catch { /* it ended meanwhile */ } }
+  if (WIN) { Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' }); return; }
+  for (const p of tree(processes(), pid)) try { process.kill(p); } catch { /* it ended meanwhile */ }
 }
 
 const text = (cmd: string[]) => { try { return Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'ignore' }).stdout.toString(); } catch { return ''; } };
@@ -102,7 +125,8 @@ const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
  * --eval=... <folder>/turn-1.jsonl`): programs from elsewhere, a grader's. Which options do which differs by
  * runner and version, so a command line with any is left alone. A path of the folder anywhere later, or in any
  * other program's command line, is a file being looked at, not a program of the run; so is a sibling folder
- * whose name starts alike.
+ * whose name starts alike. The path counts by where it leads, not by how it starts: one that leaves the folder
+ * again through `..` is another folder's program.
  */
 export function runsFrom(cmd: string, dir: string) {
   const fold = (s: string) => (caseless ? s.toLowerCase() : s);
@@ -111,6 +135,14 @@ export function runsFrom(cmd: string, dir: string) {
   const i = c.indexOf(`${d}/`);
   if (i < 0) return false;
   const before = c.slice(0, i);
+  // (the path as written, to its closing quote or the next space, and where it leads: <folder>/../sibling/grade.js
+  // starts in the folder and is a sibling's program)
+  const quote = /["']$/.exec(before)?.[0], rest = c.slice(i + d.length);
+  const end = quote ? rest.indexOf(quote) : rest.search(/\s/);
+  if (!within(d, d + (end < 0 ? rest : rest.slice(0, end)))) return false;
+  // (unquoted, a path may go on past a space: ps joins a command's arguments with spaces, and Windows reads a
+  // program's path that way. With a .. further on, where it leads isn't known)
+  if (!quote && end >= 0 && /(^|[/\s])\.\.([/\s]|$)/.test(rest.slice(end))) return false;
   if (/^\s*["']?$/.test(before)) return true;
   const m = /^\s*(?:"([^"]+)"|'([^']+)'|(\S+))(\s+run)?\s+["']?$/.exec(before);
   if (!m) return false;

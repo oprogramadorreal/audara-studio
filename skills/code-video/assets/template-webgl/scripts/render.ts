@@ -1226,12 +1226,16 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   if (seams.length)
     console.log(`WARNING: where ${seams.length} of the ${checked} pieces meet, the first frame of a piece, rendered after a jump, differs from the same frame rendered straight on from the one before it: a scene there remembers what it drew before (docs/ENGINE.md: every frame a function of t), so the video may jump at ${seams.map((n) => `${(n / fps).toFixed(3)} s`).join(', ')}. Make that scene a function of t and render again.`);
 }
-/** Every shot's footage/<shot>/manifest.json as written, which scripts/shot.ts writes last when it makes a shot again. */
+/**
+ * Every shot's footage/<shot>/manifest.json as written, which scripts/shot.ts writes last when it makes a shot
+ * again. Only what holds a manifest counts: anything else that appears in footage/ during a render (Finder's
+ * .DS_Store, a shot's folder before its first manifest) says nothing about a shot the render shows.
+ */
 function shotManifests() {
   const dir = path.join(PROJECT, 'footage');
   let shots: string[] = [];
   try { shots = readdirSync(dir).sort(); } catch { return ''; }
-  return shots.map((s) => { try { return `${s}\n${readFileSync(path.join(dir, s, 'manifest.json'), 'utf8')}`; } catch { return ''; } }).join('\n');
+  return shots.flatMap((s) => { try { return [`${s}\n${readFileSync(path.join(dir, s, 'manifest.json'), 'utf8')}`]; } catch { return []; } }).join('\n');
 }
 /** The shots' manifests when this run started, before any page opened (videoInPieces compares them before the join). */
 let SHOTS_AT_START = '';

@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { answerer, runsFrom, stopLeftRunning, within } from '../harness/left-running';
+import { answerer, runsFrom, stopLeftRunning, stopTree, tree, within } from '../harness/left-running';
 
 let passed = 0, failed = 0;
 async function check(name: string, fn: () => unknown) {
@@ -110,6 +110,49 @@ try {
     assert(!runsFrom(`python -u ${path.join(run, 'render.py')}`, run) && !runsFrom(`uv run --quiet ${path.join(run, 'a.py')}`, run), 'an option that takes none is not told from one that does');
     assert(!runsFrom(`uv --quiet run ${path.join(run, 'a.py')}`, run) && !runsFrom(`uv ${path.join(run, 'a.py')}`, run), 'an option before run, and uv without run');
     assert(!runsFrom(`node run ${path.join(run, 'a.js')}`, run) && !runsFrom(`python run ${path.join(run, 'a.py')}`, run), '"run" is a script\'s name to node and python');
+  });
+  await check('a path counts by where it leads: one that leaves the folder again through .. is another folder\'s program', () => {
+    // (written out: path.join would resolve the .. away)
+    const s = path.sep, out = `${run}${s}..${s}dl-1-01${s}grade.js`;
+    assert(!runsFrom(`node ${out}`, run), 'node <folder>/../sibling/grade.js: a sibling\'s grader');
+    assert(!runsFrom(`node "${out}" --run 3`, run) && !runsFrom(`"${run}${s}..${s}dl-1-01${s}tool.exe" x`, run), 'the same quoted, and as the executable');
+    assert(!runsFrom(`uv run ${run}${s}shots${s}..${s}..${s}grade.py`, run), 'down a folder first, then out');
+    assert(runsFrom(`node ${run}${s}scripts${s}..${s}idle.js`, run), 'a .. that stays inside is still the folder\'s program');
+    assert(runsFrom(`node "${run}${s}a b${s}..${s}idle.js" ..${s}notes`, run), 'quoted, the path ends at its quote: what follows is the script\'s own argument');
+    assert(!runsFrom(`${run}${s}my tools${s}..${s}..${s}dl-1-01${s}tool x`, run), 'unquoted, a path may go on past a space: with a .. further on, where it leads isn\'t known');
+    assert(!runsFrom(`node ${run}${s}idle.js ..${s}notes`, run), 'the same for a script: left running rather than guessed');
+  });
+  await check('a process\'s tree is itself and all that descends from it, the deepest first', () => {
+    const table = [{ pid: 1, ppid: 0 }, { pid: 10, ppid: 1 }, { pid: 11, ppid: 10 }, { pid: 12, ppid: 11 }, { pid: 13, ppid: 10 }, { pid: 20, ppid: 1 }, { pid: 21, ppid: 20 }];
+    assert.deepEqual(tree(table, 10), [12, 11, 13, 10], 'a runner, the shell it started, that shell\'s worker, and a second child: the worker first');
+    assert.deepEqual(tree(table, 21), [21], 'a process with no children');
+    assert.deepEqual(tree(table, 99), [99], 'one the table doesn\'t list is still stopped itself');
+    assert.deepEqual(tree([{ pid: 5, ppid: 6 }, { pid: 6, ppid: 5 }], 5), [6, 5], 'a table that loops ends');
+  });
+  await check('stopping a process stops what its children started too, not only its own children', async () => {
+    // (three node processes, each started by the one before: the last has no parent left once the second is stopped)
+    writeFileSync(path.join(tmp, 'chain.js'), `
+const depth = Number(process.argv[2]);
+console.log(process.pid);
+if (depth > 0) require('node:child_process').spawn(process.execPath, [__filename, String(depth - 1)], { stdio: ['ignore', 'inherit', 'ignore'] });
+setInterval(() => {}, 1000);
+`);
+    const p = Bun.spawn([node!, path.join(tmp, 'chain.js'), '2'], { cwd: tmp, stdout: 'pipe', stderr: 'ignore', stdin: 'ignore' });
+    started.push(p.pid);
+    const reader = (p.stdout as ReadableStream<Uint8Array>).getReader(), decoder = new TextDecoder();
+    let said = '';
+    for (const until = Date.now() + 15_000; said.split('\n').length < 4 && Date.now() < until;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      said += decoder.decode(value, { stream: true });
+    }
+    reader.releaseLock();
+    const pids = said.trim().split(/\s+/).map(Number);
+    started.push(...pids);
+    assert(pids.length === 3 && pids[0] === p.pid && pids.every(alive), `the chain did not start: ${JSON.stringify(said)}`);
+    stopTree(p.pid);
+    for (const until = Date.now() + 5000; pids.some(alive) && Date.now() < until;) await Bun.sleep(100);
+    assert.deepEqual(pids.filter(alive), [], 'still running after its tree was stopped (the first is the process stopped, the last the child of its child)');
   });
   await check('a server is stopped as the process its answer names, when that one alone could have answered on the port', () => {
     const table = [

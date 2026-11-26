@@ -93,6 +93,16 @@ test('a shot made again shows in the shots\' manifests (what a --jobs render com
   check(before.includes('g1-00000000'), `manifests read: ${before}`);
   write('footage/made/g2-11111111/full/000001.jpg', 'b');
   check(helpers.shotManifests() === before, 'a version folder written before its manifest counted');
+  // (what a system or another make leaves in footage/ while a render runs: none of it is a shot's manifest)
+  write('footage/.DS_Store', 'x');
+  write('footage/Thumbs.db', 'x');
+  write('footage/another/g1-22222222/full/000001.jpg', 'c');
+  check(helpers.shotManifests() === before, 'a file in footage/, or a shot\'s folder before its first manifest, counted as a shot made again');
+  write('footage/another/manifest.json', '{"frames":1,"fps":30,"dir":"g1-22222222","made":"scripts/shot.ts"}');
+  const both = helpers.shotManifests();
+  check(both !== before, 'a shot\'s first manifest was not seen');
+  rmSync(path.join(scratch, 'footage/another/manifest.json'));
+  check(helpers.shotManifests() === before, 'a manifest removed was not seen');
   write('footage/made/manifest.json', '{"frames":1,"fps":30,"dir":"g2-11111111","made":"scripts/shot.ts"}');
   check(helpers.shotManifests() !== before, 'a manifest rewritten was not seen');
 });

@@ -6183,5 +6183,40 @@ Codex's next pass, on that commit, found nothing and called the branch ready to 
 listing again (the published version stayed), ran the inline-program and two-listener cases, and agreed with
 keeping Bun's scan for patterns: which files a recipe selects is worth more than 81 to 102 ms.
 
+**Codex's seventh review, a new one of the whole branch (2026-11-26).** Five findings, all taken.
+
+- **A path that starts in the run's folder and leaves it.** `node <folder>/../sibling/grade.js` read as a
+  program of the folder, so the cleanup could stop a sibling run's grader and its tree. The path is taken as
+  written, to its closing quote or the next space, and counts by where it leads. Unquoted, with a `..` further
+  on, where it leads isn't known (`ps` joins a command's arguments with spaces, and Windows reads a program's
+  path past one): left running.
+- **Stopping a tree reached only a process's own children,** elsewhere than Windows: `pkill -P` signals those,
+  so a worker started by a shell the runner started outlived both, with no parent left to find it by. The tree
+  is read from the process table first and stopped the deepest first.
+- **A file in `footage/` read as a shot made again.** A `--jobs` render compares the shots' manifests before
+  its join; an entry with no manifest added an empty line to what it compares, so a `.DS_Store` that Finder
+  writes on opening the folder stopped the join and told the director to delete finished pieces. Only what
+  holds a manifest counts.
+- **Two makes, one scratch folder.** It was named by the version alone, and a make that dies publishes no
+  version, so the next make with the same inputs took the same name: with the first's program still running,
+  two programs wrote one `raw/`. Each make's folder is its own now (`<version>.<process>-<random>`), and what
+  ended runs left is removed by the next make under the shot's lock, a check's kept frames not. Measured here:
+  on Windows bun ends its children with itself (a direct child was gone after `kill` and after `taskkill /F`
+  on its parent), so there the case takes a program that detaches; elsewhere a child outlives its parent.
+- **A link published as a link.** `cpSync` copies a link as one, so a program that linked `{out}/camera.json`
+  to a file of `{tmp}` published a link to nothing, and one linked to an input published a file that changes
+  after the version is published. A link to a file is published as a copy of what it leads to; a link to a
+  folder or to nothing stops the make.
+
+Checked: `test_left_running.ts` 13/13, with the command lines above (the one Codex gave read true on the code
+before), a table of processes, and three node processes in a chain stopped by stopping the first.
+`test_render_inputs.ts` 20/20, failing on the render.ts before at the file in `footage/`. `test_shot.ts` 30/30;
+on the shot.ts before, both makes were given `.audara-cache/shots/bars/g1-f234ece0/raw` and a junction among
+the program's files ended the make with a stack trace. `test_footage.ts` 35/35, `test_render_failures.ts`
+14/14, `bun run check`. Not checked: a link to a file, which this Windows account can't make (the test says
+so, and checks a junction, one nested and one to nothing); the tree stopped on a system other than Windows,
+where the chain test runs the new code and here ran `taskkill` (no Linux or macOS, WSL or container on this
+machine).
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

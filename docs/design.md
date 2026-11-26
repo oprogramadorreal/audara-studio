@@ -1117,10 +1117,15 @@ come into the template as a streamed shot, and everything around a scene works o
   the inputs are every file of the recipe folder unless the recipe names them, hidden ones included, since a
   program reads its `.env` as it reads any file, and never a tool's folders or what a system or an editor
   leaves beside a file; a recipe whose command is the whole program has none),
-  renders into `.audara-cache/shots/`, checks the frames (count, numbering, one file per frame, size, decoding;
+  renders into a folder of that run's own under `.audara-cache/shots/` (a make that was ended can leave its
+  program running, still writing where that make told it to: no other run is given the folder, and the next
+  make removes what ended runs left, under the shot's lock), checks the frames (count, numbering, one file per
+  frame, size, decoding;
   an alpha channel is named and dropped), hashes each frame's decoded pixels, encodes `full/` and `proxy/`, and
   publishes: a version folder holding the frames, its record (`made.json`), a contact sheet and the program's
-  other files (those in folders too; a name of the script's own, in any case of letters, stops the make),
+  other files (those in folders too; a name of the script's own, in any case of letters, stops the make; a
+  link to a file is published as a copy of that file, and a link to a folder or to nothing stops the make,
+  since a version holds its own files and what a link leads to can change or go),
   moved in whole under a name never used before and never written again, then the manifest naming
   it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
   version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
@@ -1141,7 +1146,8 @@ come into the template as a streamed shot, and everything around a scene works o
   `footage.ts` reads `"dir"` only from a manifest scripts/shot.ts wrote (a capture's, a project's own field or
   any older shot reads `full/` and `proxy/` as before) and reads the manifest past the browser's cache. A
   `--jobs` render opens the shot in each of its browsers, so render.ts compares the shots' manifests before the
-  join and stops if one was made again meanwhile, and keeps them, as they were before any page opened, in its
+  join and stops if one was made again meanwhile (only what holds a manifest counts: a `.DS_Store` appearing
+  in `footage/` is no shot made again), and keeps them, as they were before any page opened, in its
   `run.json`, so `--resume` refuses pieces of two versions; render.ts's page reads each shot's manifest once
   (`footageInfo`, by the manifest's absolute URL), so two entries that open one shot, and a scene that reads its
   manifest or a file kept beside its frames (through the Footage's `base`), see the same version.

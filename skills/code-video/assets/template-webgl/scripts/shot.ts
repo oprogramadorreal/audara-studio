@@ -51,7 +51,8 @@
 // events.json, the camera per frame), in a folder of its own or not, is kept with the frames, in their version's
 // folder, where a scene reads it from the Footage that plays them (`${clip.base}/camera.json`); manifest.json,
 // made.json, contact.jpg, full and proxy are this script's names there, in any case of letters, and two names
-// that differ only by case are refused (one file on Windows and macOS). A frame must not depend on the frames
+// that differ only by case are refused (one file on Windows and macOS). A link to a file is kept as a copy of
+// that file, and a link to a folder is refused: a version holds its own files. A frame must not depend on the frames
 // written before it in the same run: check renders frames alone and compares. A program that must step from the
 // start (a simulation) steps there by itself, in every run, to the same pixels. Its command must be free and
 // offline: make runs it whenever the shot is stale, and check runs it again (a generated clip is cut from its
@@ -62,9 +63,10 @@
 // hashes, each frame's pixel hash, the scale), contact.jpg and the program's other files; then manifest.json,
 // written last, naming that folder ("dir"): the engine reads it, and it alone says which version is current. The
 // version before stays (a render that opened it before keeps reading it), older ones are removed. The frames are
-// made under .audara-cache/shots/ first, so a failed run leaves the shot as it was. Everything that reads or writes
-// a shot's state runs under one lock per shot (.audara-cache/shots/<shot>.lock).
-import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
+// made under .audara-cache/shots/ first, in a folder of that run's own, so a failed run leaves the shot as it was
+// and a run that was ended shares nothing with the next. Everything that reads or writes a shot's state runs under
+// one lock per shot (.audara-cache/shots/<shot>.lock).
+import { copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync, openSync, closeSync, unlinkSync, type Dirent } from 'node:fs';
 import path from 'node:path';
 
 const PROJECT = path.resolve(import.meta.dir, '..');
@@ -82,6 +84,8 @@ const MADE_BY = 'scripts/shot.ts';
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FRAME = /^(\d{6})\.(png|jpe?g|bmp|tiff?|ppm|webp)$/i;
 const VERSION = /^g(\d+)-[0-9a-f]{8}$/;
+/** A make's scratch folder under .audara-cache/shots/<shot>/: the version's name, then a part that is one run's own. */
+const STAGE = /^g\d+-[0-9a-f]{8}(\.[0-9a-z-]+)?$/;
 /** A copy of a version on its way into footage/<shot>/ (publishing across volumes): <version>.partial, which nothing reads. */
 const PARTIAL = '.partial';
 /**
@@ -488,9 +492,27 @@ function lock(shot: string) {
   return fail(`can't take ${rel(f)}`);
 }
 
-/** Every file under a folder, as paths from it with / (a folder holding none gives none). */
-function filesIn(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? filesIn(path.join(dir, d.name)).map((g) => `${d.name}/${g}`) : [d.name]));
+/**
+ * What an entry a program wrote is: a file or a folder. A link to a file counts as that file, and is published
+ * as a file of the version's own (make copies what it leads to). A link to a folder, or to nothing, is refused:
+ * a version holds its own files, and none of them may change or go once it is published, as a link's would with
+ * what it leads to ({tmp}, gone with the run; an input, edited later).
+ */
+function entryKind(dir: string, d: Dirent, name: string): 'file' | 'folder' {
+  if (d.isDirectory()) return 'folder';
+  if (d.isFile()) return 'file';
+  let s;
+  try { s = statSync(path.join(dir, d.name)); }
+  catch { return fail(`the program wrote ${name}, a link that leads nowhere: write the file itself`); }
+  if (s.isFile()) return 'file';
+  return fail(s.isDirectory()
+    ? `the program wrote ${name}, a link to a folder: a version holds its own files, so write them there (a link to a file is published as that file)`
+    : `the program wrote ${name}, which is neither a file nor a folder`);
+}
+/** Every file under the folder `dir`, as paths from it with / (a folder holding none gives none); `name` is the folder's own path, for what is said of an entry. */
+function filesIn(dir: string, name: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    (entryKind(dir, d, `${name}/${d.name}`) === 'folder' ? filesIn(path.join(dir, d.name), `${name}/${d.name}`).map((g) => `${d.name}/${g}`) : [d.name]));
 }
 
 /**
@@ -502,7 +524,7 @@ function framesWritten(out: string, first: number, last: number) {
   const frames = new Map<number, string>(), other: string[] = [];
   const pad = (k: number) => String(k).padStart(6, '0');
   for (const d of files) {
-    const f = d.name, folder = d.isDirectory();
+    const f = d.name, folder = entryKind(out, d, f) === 'folder';
     const m = folder ? null : FRAME.exec(f);
     if (m) {
       const k = Number(m[1]);
@@ -511,7 +533,7 @@ function framesWritten(out: string, first: number, last: number) {
       continue;
     }
     if (RESERVED.has(f.toLowerCase())) fail(`the program wrote ${f}, a name this script keeps for itself (${[...RESERVED].join(', ')}, in any case of letters): name it otherwise`);
-    other.push(...(folder ? filesIn(path.join(out, f)).map((g) => `${f}/${g}`) : [f]));
+    other.push(...(folder ? filesIn(path.join(out, f), f).map((g) => `${f}/${g}`) : [f]));
   }
   // (two names that differ only by case are one file on Windows and macOS: a version has to read the same on every machine)
   const names = new Map<string, string>();
@@ -635,6 +657,18 @@ function discard(dir: string) {
   try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); }
   catch (e) { log(`  ${rel(dir)}/ couldn't be removed (${(e as NodeJS.ErrnoException).code ?? (e as Error).message}: open in another program?): scratch, free to delete`); }
 }
+/**
+ * Removes the scratch folders that makes of this shot left behind: run under the shot's lock, so each one there
+ * is a run's that ended before it could (ended by hand, a machine that went down). One still held, by that run's
+ * program if it runs on, is said and left for the next make. A check's folder, kept for its frames to be compared,
+ * is not a make's and stays.
+ */
+function sweep(shot: string) {
+  let left: string[] = [];
+  try { left = readdirSync(path.join(CACHE, shot)).filter((d) => STAGE.test(d)); } catch { return; }
+  for (const d of left) discard(path.join(CACHE, shot, d));
+  tidy(shot);
+}
 
 // ------------------------------------------------------------------ the modes
 async function make(shot: string, force: boolean, scaleOpt?: number) {
@@ -648,6 +682,7 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
     const dead = reclaim(shot);
     if (dead.removed.length || dead.left.length)
       log(`  ${shot}: ${dead.removed.length ? `removed ${dead.removed.join(', ')}, the copy a run before left cut short` : ''}${dead.removed.length && dead.left.length ? '; ' : ''}${dead.left.length ? `${dead.left.join(', ')} couldn't be removed yet (open in another program?)` : ''}`);
+    sweep(shot);
     const before = made(shot);
     // (the version on screen is the one the manifest names, its record there or not)
     const current: string | null = ours(man) ? man!.dir : null;
@@ -666,10 +701,9 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
     const taken = versions(shot).map((v) => Number(VERSION.exec(v)![1]));
     let n = Math.max(0, ...taken) + 1, dir = `g${n}-${k.key.slice(0, 8)}`;
     while (existsSync(path.join(shotDir(shot), dir)) || existsSync(path.join(shotDir(shot), `${dir}${PARTIAL}`))) dir = `g${++n}-${k.key.slice(0, 8)}`;
-    const stage = path.join(CACHE, shot, dir);
-    // (what a run that died before publishing left under this name)
-    try { rmSync(stage, { recursive: true, force: true, maxRetries: 3 }); }
-    catch (e) { fail(`${shot}: ${rel(stage)}/, the scratch folder a run before left, can't be cleared (${(e as NodeJS.ErrnoException).code ?? (e as Error).message}: open in another program?); the shot is as it was`); }
+    // (a scratch folder no other run was ever given: the program of a make that was ended may still be running,
+    // and writing its frames into the folder that make gave it)
+    const stage = path.join(CACHE, shot, `${dir}.${process.pid}-${Math.random().toString(36).slice(2, 8)}`);
     const raw = path.join(stage, 'raw'), pub = path.join(stage, 'pub');
     try {
       const out = await render(r, scale, 1, r.frames, raw, path.join(stage, 'tmp'));
@@ -691,8 +725,10 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       const c = await run(['ffmpeg', '-v', 'error', '-y', '-i', path.join(pub, 'full', '%06d.jpg'), '-vf', `select='not(mod(n,${step}))',scale=320:-2,tile=${cols}x${rows}`, '-frames:v', '1', '-q:v', '4', path.join(pub, 'contact.jpg')], { quiet: true });
       if (c.code !== 0) { rmSync(path.join(pub, 'contact.jpg'), { force: true }); log(`  ${shot}: no contact sheet (ffmpeg: ${tail(c.err)})`); }
       for (const f of out.other) {
+        const from = path.join(raw, f);
         mkdirSync(path.dirname(path.join(pub, f)), { recursive: true });
-        cpSync(path.join(raw, f), path.join(pub, f));
+        // (a link is published as the file it leads to, found first: a copy of the link itself would be a link)
+        copyFileSync(lstatSync(from).isSymbolicLink() ? realpathSync(from) : from, path.join(pub, f));
       }
       // (the recipe and the inputs again, read afresh: a change while the program ran would publish frames of another one)
       const now = recipe(shot), again = await keyOf(now, scale);

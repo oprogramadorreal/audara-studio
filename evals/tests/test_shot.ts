@@ -3,7 +3,7 @@
 // Each check makes a throwaway project (in a folder whose path has a space) holding the template's shot.ts,
 // footage.ts and vite.config.ts, and a recipe whose program is a small bun script writing BMP frames; needs
 // ffmpeg and ffprobe on the PATH, as shot.ts does. No browser, no network, nothing spent.
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -17,14 +17,25 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
 
 /** A test program: frames of a bar moving with time, as BMP. Its environment varies it (see `env` below). */
 const PROGRAM = String.raw`
-import { writeFileSync, appendFileSync, readFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, appendFileSync, readFileSync, mkdirSync, symlinkSync } from 'node:fs';
 const e = process.env;
 const [out, first, last, w, h, fps] = process.argv.slice(2);
 if (e.SIDE_DIR) { mkdirSync(out + '/meta/deep', { recursive: true }); mkdirSync(out + '/empty'); writeFileSync(out + '/meta/camera.json', '{"fov": 40}'); writeFileSync(out + '/meta/deep/notes.txt', 'x'); }
 if (e.OTHER) for (const f of e.OTHER.split(',')) { if (f.endsWith('/')) mkdirSync(out + '/' + f, { recursive: true }); else writeFileSync(out + '/' + f, 'x'); }
-if (e.SQUAT) { const part = out + '/../../../../../footage/bars/' + out.split(/[\\/]/).at(-2) + '.partial'; mkdirSync(part, { recursive: true }); writeFileSync(part + '/keep.txt', 'x'); }
+if (e.SQUAT) { const part = out + '/../../../../../footage/bars/' + out.split(/[\\/]/).at(-2).split('.')[0] + '.partial'; mkdirSync(part, { recursive: true }); writeFileSync(part + '/keep.txt', 'x'); }
+if (e.LINK) {
+  // (links among what the program writes: to a file of {tmp}, which goes with the run, to a folder, and to nothing; "junction" is what Windows lets anyone make, to a folder only)
+  const tmp = e.AUDARA_SHOT_TMP, link = (to, at) => { mkdirSync(require('node:path').dirname(at), { recursive: true }); symlinkSync(to, at, 'junction'); };
+  mkdirSync(tmp + '/dir', { recursive: true }); writeFileSync(tmp + '/dir/a.txt', 'a'); writeFileSync(tmp + '/cam.json', '{"fov": 40}');
+  for (const k of e.LINK.split(',')) {
+    if (k === 'file') { symlinkSync(tmp + '/cam.json', out + '/camera.json'); mkdirSync(out + '/meta'); symlinkSync(tmp + '/cam.json', out + '/meta/cam.json'); }
+    if (k === 'folder') link(tmp + '/dir', out + '/linked');
+    if (k === 'deep') link(tmp + '/dir', out + '/meta/linked');
+    if (k === 'nowhere') link(tmp + '/none', out + '/gone');
+  }
+}
 const W = +(e.FORCE_W ?? w), H = +h, F = +fps;
-if (e.LOG) appendFileSync(e.LOG, JSON.stringify({ first: +first, last: +last, env: { out: e.AUDARA_SHOT_OUT, first: e.AUDARA_SHOT_FIRST, last: e.AUDARA_SHOT_LAST, frames: e.AUDARA_SHOT_FRAMES, fps: e.AUDARA_SHOT_FPS, width: e.AUDARA_SHOT_WIDTH, height: e.AUDARA_SHOT_HEIGHT, scale: e.AUDARA_SHOT_SCALE, tmp: e.AUDARA_SHOT_TMP, name: e.AUDARA_SHOT_NAME } }) + '\n');
+if (e.LOG) appendFileSync(e.LOG, JSON.stringify({ pid: process.pid, first: +first, last: +last, env: { out: e.AUDARA_SHOT_OUT, first: e.AUDARA_SHOT_FIRST, last: e.AUDARA_SHOT_LAST, frames: e.AUDARA_SHOT_FRAMES, fps: e.AUDARA_SHOT_FPS, width: e.AUDARA_SHOT_WIDTH, height: e.AUDARA_SHOT_HEIGHT, scale: e.AUDARA_SHOT_SCALE, tmp: e.AUDARA_SHOT_TMP, name: e.AUDARA_SHOT_NAME } }) + '\n');
 if (e.FAIL) process.exit(3);
 if (e.SIDE) writeFileSync(out + '/events.json', '{"jump": [3]}');
 if (e.RESERVED) writeFileSync(out + '/manifest.json', '{}');
@@ -560,13 +571,80 @@ test('a version that won\'t move into footage/ is copied in and renamed, its scr
       if (share === 'Read') {
         check(r.code === 0 && dir.startsWith('g2-') && p.json(`footage/bars/${dir}/made.json`).dir === dir, `copied in and renamed: ${r.code} ${dir} ${r.out}`);
         check(readdirSync(path.join(p.root, 'footage/bars', dir, 'full')).length === 12 && /bars: current/.test(p.shot(['status']).out), 'the version copied in isn\'t whole');
-        check(/\.audara-cache\/shots\/bars\/g2-[0-9a-f]{8}\/ couldn't be removed/.test(r.out), `a scratch folder held open is said, and the make still succeeds: ${r.out}`);
+        check(/\.audara-cache\/shots\/bars\/g2-[0-9a-f]{8}\.[0-9a-z-]+\/ couldn't be removed/.test(r.out), `a scratch folder held open is said, and the make still succeeds: ${r.out}`);
+        // (the next make finds that folder under the shot's lock: a run's that is over, so it goes, now that nothing holds it)
+        const left = () => readdirSync(path.join(p.root, '.audara-cache', 'shots', 'bars')).filter((d) => /^g\d+-/.test(d));
+        check(left().length === 1, `the scratch folder held open: ${left().join(', ')}`);
+        check(p.shot(['make']).code === 0 && !existsSync(path.join(p.root, '.audara-cache', 'shots', 'bars')), 'a make with nothing to make left the scratch folder of the run before');
       } else {
         check(r.code === 1 && /couldn't be put in footage\/bars\//.test(r.out) && /the shot is as it was/.test(r.out), `a copy that fails: ${r.code} ${r.out}`);
         check(dir === g1 && p.versions().join() === g1 && existsSync(path.join(p.root, 'footage/bars', g1, 'full', '000012.jpg')), `the shot isn't as it was: ${dir}, ${p.versions().join(', ')}`);
       }
     } finally { p.done(); }
   }
+});
+
+test('a make that was ended shares no scratch folder with the next: a program of it that runs on writes where no other run reads; what it left is removed, a check\'s frames kept', async () => {
+  const p = project();
+  const calls = () => { try { return readFileSync(path.join(p.root, 'calls.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+  let program = 0;
+  try {
+    // a make whose program sleeps before it draws, ended there. Whether its program runs on depends on the system
+    // (bun ends its children with itself on Windows, not elsewhere): either way the next make is given a folder of its own
+    const first = Bun.spawn(['bun', path.join(p.root, 'scripts', 'shot.ts'), 'make'], { cwd: p.root, env: { ...process.env, LOG: path.join(p.root, 'calls.jsonl'), SLEEP: '120000' }, stdout: 'ignore', stderr: 'ignore', stdin: 'ignore' });
+    for (const until = Date.now() + 60_000; !calls().length && Date.now() < until;) await Bun.sleep(100);
+    check(calls().length === 1, 'the first make\'s program did not start');
+    program = calls()[0].pid;
+    first.kill();
+    await first.exited;
+    const cache = path.join(p.root, '.audara-cache', 'shots', 'bars');
+    // (and what other runs left: a make's folder under a version's bare name, and the frames a check kept to be compared)
+    mkdirSync(path.join(cache, 'g7-0123abcd', 'raw'), { recursive: true });
+    writeFileSync(path.join(cache, 'g7-0123abcd', 'raw', '000001.bmp'), 'x');
+    mkdirSync(path.join(cache, 'check-123', '1-1'), { recursive: true });
+    writeFileSync(path.join(cache, 'check-123', '1-1', '000001.bmp'), 'x');
+    const again = p.shot(['make'], { LOG: path.join(p.root, 'calls.jsonl') });
+    check(again.code === 0 && /^g1-/.test(p.json('footage/bars/manifest.json').dir), `the make after it: ${again.code} ${again.out}`);
+    const [a, b] = calls().map((c) => c.env);
+    check(calls().length === 2 && a.out !== b.out && a.tmp !== b.tmp, `both runs were given one folder: ${a.out} and ${b?.out}`);
+    check(path.dirname(path.dirname(a.out)) === cache && path.dirname(path.dirname(b.out)) === cache, `the scratch folders aren't the shot's: ${a.out}, ${b.out}`);
+    check(readdirSync(cache).join() === 'check-123', `left in the shot's scratch: ${readdirSync(cache).join(', ')}`);
+    check(/bars: current/.test(p.shot(['status']).out), 'status after it');
+  } finally {
+    if (program) try { process.kill(program); } catch { /* it ended */ }
+    await Bun.sleep(200);
+    p.done();
+  }
+});
+
+test('a link among the files a program wrote: to a file, published as a file of the version\'s own; to a folder or to nothing, refused', () => {
+  // (a link to a file takes a right Windows gives few accounts; one to a folder, a junction, anyone can make there)
+  const probe = mkdtempSync(path.join(os.tmpdir(), 'audara link probe-'));
+  let fileLinks = true;
+  try { writeFileSync(path.join(probe, 'a'), 'a'); symlinkSync(path.join(probe, 'a'), path.join(probe, 'b')); } catch { fileLinks = false; }
+  rmSync(probe, { recursive: true, force: true });
+  if (!fileLinks) console.log('  (this account can\'t make a link to a file: only links to a folder and to nothing are checked here)');
+  for (const [kind, said] of [['folder', /wrote linked, a link to a folder/], ['deep', /wrote meta\/linked, a link to a folder/], ['nowhere', /wrote gone, a link that leads nowhere/]] as [string, RegExp][]) {
+    const p = project();
+    try {
+      const r = p.shot(['make'], { LINK: kind });
+      check(r.code === 1 && said.test(r.out), `a link to ${kind}: ${r.code} ${r.out}`);
+      check(!existsSync(path.join(p.root, 'footage/bars')), `a link to ${kind}: something was published`);
+    } finally { p.done(); }
+  }
+  if (!fileLinks) return;
+  const p = project();
+  try {
+    const r = p.shot(['make'], { LINK: 'file' });
+    check(r.code === 0, `a link to a file: ${r.code} ${r.out}`);
+    const dir = p.json('footage/bars/manifest.json').dir;
+    for (const f of ['camera.json', 'meta/cam.json']) {
+      const at = path.join(p.root, 'footage/bars', dir, f);
+      check(lstatSync(at).isFile() && readFileSync(at, 'utf8') === '{"fov": 40}', `${f} wasn't published as a file of its own, with what the link led to`);
+    }
+    check(p.json(`footage/bars/${dir}/made.json`).other.join() === 'camera.json,meta/cam.json', `other: ${p.json(`footage/bars/${dir}/made.json`).other}`);
+    check(!existsSync(path.join(p.root, '.audara-cache', 'shots', 'bars')), 'the scratch folder, where the links led, is still there: the check proves nothing');
+  } finally { p.done(); }
 });
 
 test('make says so when the project\'s render.ts is older than the check a --jobs render makes; not when it has it or there is none', () => {

@@ -305,7 +305,8 @@ any scene. The recipe, `shots/<shot>/shot.json` beside the program, gives its co
 length and size; `make` runs the program only when what the frames are made from changed (by default every
 file of the recipe folder, hidden ones too, and the recipe's own fields), checks the frames (their count,
 numbering, size, decoding), encodes `full/` and `proxy/` into a version folder of their own (with its record,
-`made.json`, a contact sheet and any other file the program wrote, in a folder or not) and writes the manifest naming it
+`made.json`, a contact sheet and any other file the program wrote, in a folder or not; a link to a file is kept
+as a copy of that file, a link to a folder refused) and writes the manifest naming it
 (`"dir"`, beside `"made": "scripts/shot.ts"`) last, so a failed run leaves the shot as it was and the preview
 reloads on the new version. A render that opened the version before keeps reading it (the previous version stays
 until the next make); a `--jobs` render, whose browsers each open the shot, stops before its join when a shot was
