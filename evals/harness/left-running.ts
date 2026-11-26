@@ -11,7 +11,8 @@
 // So two sweeps, by the run's folder alone:
 // - every process that runs a program from the folder: its executable is inside it, or it is a runner (node, bun,
 //   python, uv run ...) with the script right after it (`render.ts preview` runs the project's own
-//   node_modules/vite that way, by its full path);
+//   node_modules/vite that way, by its full path), by its command line and by the name the system itself has
+//   for the program, which have to agree;
 // - every dev server that answers /__audara with a folder inside it, on whatever port: one started by hand from
 //   the folder (`node node_modules/vite/bin/vite.js --port 5240`) names it nowhere in its command line, and sits
 //   outside the ports a preview is looked for on. Only ports a node or bun process listens on are asked, and the
@@ -25,6 +26,7 @@
 // doesn't listen there, or two processes that could have answered), the process is left running and, for a
 // server, the port is printed. So outside Windows a run in a folder whose path has a space keeps the first
 // sweep's processes: `ps` joins a command's arguments with spaces and marks nothing. Its servers are still found.
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -62,18 +64,34 @@ export function stopTree(pid: number) {
 
 const text = (cmd: string[]) => { try { return Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'ignore' }).stdout.toString(); } catch { return ''; } };
 
-interface Proc { pid: number; ppid: number; cmd: string }
-/** Every process there is: its id, its parent's and its command line. */
+interface Proc { pid: number; ppid: number; name: string; cmd: string }
+/**
+ * Every process there is: its id, its parent's, its command line, and the name the system itself has for the
+ * program it runs (Windows' image name; elsewhere the kernel's, `comm`, which macOS's ps calls `ucomm`, cut at
+ * 15 or 16 characters): the one thing here a process's own arguments don't write. Empty when the system
+ * doesn't say.
+ */
 function processes(): Proc[] {
-  const out = WIN
-    ? text(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.CommandLine)" }'])
-    : text(['ps', '-eo', 'pid=,ppid=,args=']);
   const rows: Proc[] = [];
-  for (const line of out.split(/\r?\n/)) {
+  if (WIN) {
+    const out = text(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.Name)`t$($_.CommandLine)" }']);
+    for (const line of out.split(/\r?\n/)) {
+      const m = /^(\d+)\t(\d+)\t([^\t]*)\t(.*)$/.exec(line);
+      if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: m[3]!, cmd: m[4]! });
+    }
+    return rows;
+  }
+  // (asked apart: a name may hold spaces, and only a line's last column can be told from the ones before it)
+  const names = new Map<number, string>();
+  for (const line of text(['ps', '-eo', `pid=,${process.platform === 'darwin' ? 'ucomm' : 'comm'}=`]).split('\n')) {
+    const m = /^\s*(\d+) (.*)$/.exec(line);
+    if (m) names.set(Number(m[1]), m[2]!.trimEnd());
+  }
+  for (const line of text(['ps', '-eo', 'pid=,ppid=,args=']).split('\n')) {
     // (ps puts one space between two columns: any more after the parent's number is the command's own, an empty
     // first argument, kept for `words`)
-    const m = WIN ? /^(\d+)\t(\d+)\t(.*)$/.exec(line) : /^\s*(\d+)\s+(\d+) (.*)$/.exec(line);
-    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[3]! });
+    const m = /^\s*(\d+)\s+(\d+) (.*)$/.exec(line);
+    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: names.get(Number(m[1])) ?? '', cmd: m[3]! });
   }
   return rows;
 }
@@ -200,10 +218,18 @@ const UP = /(^|[\\/])\.\.([\\/]|$)/;
  *   whose own path has a space matches nothing there (`node /review/grade.js suite/run/log.txt` is a grader and
  *   its argument, whatever a folder named "/review/grade.js suite/run" holds), and a word that may go on past a
  *   space, with a `..` further on, leads nobody knows where.
+ *
+ * And the line's first word is the program only when the system says so too. A command line is what a process
+ * was given to show: its first argument can be empty, and macOS's ps then starts the line at the second, a file
+ * of the folder that some other program is reading. So `name`, the system's own name for the program the process
+ * runs (`processes`), has to agree: with the file the first word names (itself, or what it links to: a venv's
+ * python) for an executable of the folder, and with a runner's name for a runner. A process the system gives no
+ * name for is left running.
+ *
  * `windows`: whether the line is one Windows kept as given (its quotes say where an argument ends) or one ps
  * joined; the system's own unless a test says.
  */
-export function runsFrom(cmd: string, dir: string, windows = WIN) {
+export function runsFrom(cmd: string, dir: string, name: string, windows = WIN) {
   // (spelled as the system compares paths: its separators, and its case where it ignores it)
   const spell = (s: string) => { const t = WIN ? s.replaceAll('\\', '/') : s; return caseless ? t.toLowerCase() : t; };
   const a = words(cmd, windows), d = spell(path.resolve(dir)).replace(/\/+$/, '');
@@ -212,9 +238,15 @@ export function runsFrom(cmd: string, dir: string, windows = WIN) {
     if (!w || !spell(w.text).startsWith(`${d}/`) || !within(dir, w.text)) return false;
     return w.whole || !a.slice(k + 1).some((x) => UP.test(x.text));
   };
-  if (leads(0)) return true;
-  const runner = (a[0]?.text ?? '').split(/[\\/]/).pop()!;
-  return (RUNNER.test(runner) && leads(1)) || (RUNS.test(runner) && a[1]?.text === 'run' && leads(2));
+  // (a file's name as a system has it for a process: the last part of its path, without Windows' .exe)
+  const base = (p: string) => { const b = p.split(/[\\/]/).pop()!.replace(/\.exe$/i, ''); return caseless ? b.toLowerCase() : b; };
+  const sys = base(name), first = a[0]?.text ?? '';
+  if (!sys) return false;
+  // (the kernel's name is cut at 15 characters, or 16: a name that long is the start of the file's)
+  const named = (p: string) => { const b = base(p); return b === sys || (sys.length >= 15 && b.startsWith(sys)); };
+  const linked = (p: string) => { try { return named(realpathSync(p)); } catch { return false; } };
+  if (leads(0) && (named(first) || linked(first))) return true;
+  return (RUNNER.test(sys) && RUNNER.test(base(first)) && leads(1)) || (RUNS.test(sys) && RUNS.test(base(first)) && a[1]?.text === 'run' && leads(2));
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */
@@ -244,7 +276,7 @@ export async function stopLeftRunning(dir: string): Promise<{ pid: number; why: 
     stopTree(pid);
     stopped.push({ pid, why });
   };
-  for (const p of procs) if (runsFrom(p.cmd, dir)) stop(p.pid, 'it runs a program from the folder');
+  for (const p of procs) if (runsFrom(p.cmd, dir, p.name)) stop(p.pid, 'it runs a program from the folder');
   // (asked: the ports a node or bun process listens on, which a preview is; a port can have more listeners, of
   // any kind and on other addresses, and all of them count when the answer is matched to one)
   const listeners = listening();

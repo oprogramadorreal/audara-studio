@@ -6247,5 +6247,15 @@ after the one space it puts between columns, so an empty first argument is kept 
 `test_left_running.ts` (16/16) on written lines; which `ps` prints exactly this was read from its sources, not
 run.
 
+And the pass after that, one: **macOS's `ps` drops an empty first argument** (Codex read Apple's source: it
+skips every empty byte after the saved path, the empty argument's with them), so the line starts at the second
+argument, and a file of the run's folder there read as the run's executable. No reading of the line can tell.
+The first word is the program now only when the system's own name for what the process runs agrees: Windows'
+image name, the kernel's elsewhere (`comm`, `ucomm` on macOS), the one thing a process's arguments don't write.
+An executable of the folder has to carry that name, itself or through what it links to, and a runner has to be
+named a runner; a process the system gives no name for is left running. `test_left_running.ts` 17/17, with a
+grader's name against each form and a name cut at 15 characters; the five previews here are `node.exe` by both.
+Not run: the second `ps` call on a system that has one, and a link (a venv's python) followed to its name.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
