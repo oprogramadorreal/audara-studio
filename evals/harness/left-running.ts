@@ -70,7 +70,9 @@ function processes(): Proc[] {
     : text(['ps', '-eo', 'pid=,ppid=,args=']);
   const rows: Proc[] = [];
   for (const line of out.split(/\r?\n/)) {
-    const m = WIN ? /^(\d+)\t(\d+)\t(.*)$/.exec(line) : /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    // (ps puts one space between two columns: any more after the parent's number is the command's own, an empty
+    // first argument, kept for `words`)
+    const m = WIN ? /^(\d+)\t(\d+)\t(.*)$/.exec(line) : /^\s*(\d+)\s+(\d+) (.*)$/.exec(line);
     if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[3]! });
   }
   return rows;
@@ -124,11 +126,13 @@ const blank = (ch: string | undefined) => ch === ' ' || ch === '\t';
  * - Windows keeps the line as it was given, quotes and all, and they are read here by the rules its programs read
  *   them by (CommandLineToArgvW): every argument after the program's name is whole. The name is whole when it is
  *   quoted; unquoted it is taken to the first space, though Windows may have run a path that goes on past it.
- * - Elsewhere ps joins the arguments with spaces and marks nothing: one with a space in it comes apart, so no
- *   word is known to be whole, and a quote is a character like any other.
+ * - Elsewhere ps joins the arguments with one space each and marks nothing: one with a space in it comes apart,
+ *   so no word is known to be whole, and a quote is a character like any other. An empty argument stays, as the
+ *   nothing between two spaces: `node '' <folder>/log.txt` runs what it is given on its input, the path its
+ *   argument, and dropping the empty one would read the path as the script.
  */
 export function words(cmd: string, windows = WIN): Word[] {
-  if (!windows) return cmd.split(/\s+/).filter(Boolean).map((text) => ({ text, whole: false }));
+  if (!windows) return cmd ? cmd.split(' ').map((text) => ({ text, whole: false })) : [];
   const out: Word[] = [];
   let i = 0;
   while (blank(cmd[i])) i++;

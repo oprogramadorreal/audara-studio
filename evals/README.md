@@ -404,7 +404,7 @@ stopped; the same two for a sibling folder whose name starts alike go on, and so
 a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
 doesn't listen on its port, with the process it names. It also checks, on command lines and a table of
 listeners written out, how a command line comes apart into arguments (by Windows' quoting rules, and as `ps`
-joins one), which command lines run a program from a folder, each read both ways (none with an option before
+joins one, an empty argument kept), which command lines run a program from a folder, each read both ways (none with an option before
 the path, none whose path leaves the folder again through `..`, and none whose path has a space where the line
 doesn't say where an argument ends: a grader's script and its argument are never read as one path) and which
 process an answer stops (none that listens

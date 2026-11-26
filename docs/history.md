@@ -6239,5 +6239,13 @@ Checked: `test_left_running.ts` 16/16, each command line read both ways; Codex's
 `test_shot.ts` 30/30, failing on the shot.ts before at a junction put in a version's recorded file (`current`).
 The five previews on this machine still match. `bun run check`.
 
+Its next pass found one more, in that reading: **an empty argument dropped.** `node '' <folder>/log.txt` runs
+the program it is given on its input, with the path as that program's argument (Codex ran it); `ps` prints it
+with two spaces, and a split on any run of spaces read the path as the script. A line `ps` joined is split at
+each single space now, an empty argument kept as the nothing between two, and the line is taken from `ps`
+after the one space it puts between columns, so an empty first argument is kept too. Checked by
+`test_left_running.ts` (16/16) on written lines; which `ps` prints exactly this was read from its sources, not
+run.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

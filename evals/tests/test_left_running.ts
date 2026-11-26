@@ -109,10 +109,14 @@ try {
       'quotes, a backslash before one, two backslashes before one, two quotes inside, and quotes in the middle of an argument');
     assert(words(line, true).every((w) => w.whole), 'every argument is whole, the program\'s name too when quoted');
     assert.deepEqual(words(String.raw`C:\tools\node.exe  x.js`, true), [{ text: String.raw`C:\tools\node.exe`, whole: false }, { text: 'x.js', whole: true }], 'an unquoted program\'s name ends at the first space, as far as the line says');
-    assert.deepEqual(words('  node "/a b/x.js"\t--port 1 ', false), [{ text: 'node', whole: false }, { text: '"/a', whole: false }, { text: 'b/x.js"', whole: false }, { text: '--port', whole: false }, { text: '1', whole: false }],
+    assert.deepEqual(words('node "/a b/x.js" --port 1', false), [{ text: 'node', whole: false }, { text: '"/a', whole: false }, { text: 'b/x.js"', whole: false }, { text: '--port', whole: false }, { text: '1', whole: false }],
       'as ps joins them: words, none known to be whole, a quote a character like any other');
+    assert.deepEqual(words('node  x.js a\tb ', false).map((w) => w.text), ['node', '', 'x.js', 'a\tb', ''], 'one space between two arguments: an empty one is the nothing between two spaces, and a tab is a character of its argument');
+    assert.deepEqual(words(' tool', false).map((w) => w.text), ['', 'tool'], 'an empty first argument');
+    assert.deepEqual(words('node "" x.js', true).map((w) => w.text), ['node', '', 'x.js'], 'on Windows an empty argument is a pair of quotes');
+    assert.deepEqual(words('node   x.js', true).map((w) => w.text), ['node', 'x.js'], 'and spaces, however many, are one gap');
     assert.deepEqual(words('', true), []);
-    assert.deepEqual(words('   ', false), []);
+    assert.deepEqual(words('', false), []);
   });
   await check('a command line runs a program from a folder: its executable there, or a runner\'s script, quoted or not', () => {
     const vite = at(plain, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -165,6 +169,12 @@ try {
     assert.equal(both(`${at(spaced, 'node_modules', '.bin', 'esbuild')} --watch`, spaced), 'false,false', 'the same as the program');
     assert(!runsFrom(`node "${at(plain, 'idle.js')}"`, plain, false) && !runsFrom(`"${at(plain, 'tool')}" x`, plain, false), 'as ps joins a line, a quote is part of the argument: not a path of the folder');
     assert(!runsFrom(`node "${at(spaced, 'idle.js')}"`, spaced, false), 'so a folder with a space matches nothing there, quoted or not');
+    // (node '' <folder>/log.txt runs the program it is given on its input; the path is that program's argument)
+    assert(!runsFrom(`node  ${at(plain, 'log.txt')}`, plain, false), 'as ps joins a line, two spaces hold an empty argument: the path is the second, not the script');
+    assert(!runsFrom(`node "" ${at(plain, 'log.txt')}`, plain, true), 'the same as Windows writes it, a pair of quotes');
+    assert(!runsFrom(`uv run  ${at(plain, 'a.py')}`, plain, false) && !runsFrom(`bun  run ${at(plain, 'a.ts')}`, plain, false), 'an empty argument after run, and before it');
+    assert(!runsFrom(` ${at(plain, 'tool')} x`, plain, false), 'an empty first argument: the path is no program\'s name');
+    assert(runsFrom(`node  ${at(plain, 'idle.js')}`, plain, true), 'on Windows two spaces are one gap: the path is the script');
   });
   await check('a path counts by where it leads: one that leaves the folder again through .. is another folder\'s program', () => {
     const out = at(plain, '..', 'dl-1-01', 'grade.js');
