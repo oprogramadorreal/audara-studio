@@ -6179,5 +6179,9 @@ this machine still match both rules. `test_footage.ts` 35/35, `test_render_input
 `test_render_failures.ts` 14/14, `bun run check`. Not checked by a test: the listing that fails (the code no
 longer makes one).
 
+Codex's next pass, on that commit, found nothing and called the branch ready to merge. It injected the failed
+listing again (the published version stayed), ran the inline-program and two-listener cases, and agreed with
+keeping Bun's scan for patterns: which files a recipe selects is worth more than 81 to 102 ms.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
