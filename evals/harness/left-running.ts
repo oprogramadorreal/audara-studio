@@ -72,21 +72,32 @@ const text = (cmd: string[]) => { try { return Bun.spawnSync(cmd, { stdout: 'pip
  */
 export const TELLS = WIN || process.platform === 'linux';
 
-interface Proc { pid: number; ppid: number; cmd: string; args?: string[]; exe?: string }
+export interface Proc { pid: number; ppid: number; cmd: string; args?: string[]; exe?: string }
+/**
+ * Windows' processes, from what it wrote of them as JSON: each one a record of its own, whatever its command
+ * line holds. Written a line a process, a command line with a line break in it (code given inline) would read
+ * as more processes, with ids and files that are that command's own text.
+ */
+export function fromWindows(json: string): Proc[] {
+  let list: unknown;
+  try { list = JSON.parse(json); } catch { return []; }
+  const rows: Proc[] = [];
+  for (const p of (Array.isArray(list) ? list : [list]) as Record<string, unknown>[]) {
+    if (!p || !Number.isInteger(p.ProcessId) || !Number.isInteger(p.ParentProcessId)) continue;
+    const cmd = typeof p.CommandLine === 'string' ? p.CommandLine : '', exe = typeof p.ExecutablePath === 'string' ? p.ExecutablePath : '';
+    rows.push({ pid: p.ProcessId as number, ppid: p.ParentProcessId as number, cmd, ...(cmd && exe ? { args: words(cmd), exe } : {}) });
+  }
+  return rows;
+}
 /**
  * Every process there is: its id, its parent's and its command line as text (looked at, never taken apart), and,
  * where the system says them (`TELLS`) of a process that is ours to read, its arguments and the file it runs.
  */
 function processes(): Proc[] {
   const rows: Proc[] = [];
-  if (WIN) {
-    const out = text(['powershell', '-NoProfile', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.ExecutablePath)`t$($_.CommandLine)" }']);
-    for (const line of out.split(/\r?\n/)) {
-      const m = /^(\d+)\t(\d+)\t([^\t]*)\t(.*)$/.exec(line);
-      if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), cmd: m[4]!, ...(m[3] && m[4] ? { args: words(m[4]), exe: m[3] } : {}) });
-    }
-    return rows;
-  }
+  if (WIN) return fromWindows(text(['powershell', '-NoProfile', '-Command',
+    'try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}; Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine | ConvertTo-Json -Compress']));
+  // (one line a process: ps writes a line break inside an argument as other characters, never as one)
   for (const line of text(['ps', '-eo', 'pid=,ppid=,args=']).split('\n')) {
     const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
     if (!m) continue;
@@ -152,10 +163,11 @@ const blank = (ch: string | undefined) => ch === ' ' || ch === '\t';
 export function words(cmd: string): string[] {
   const out: string[] = [];
   let i = 0;
-  while (blank(cmd[i])) i++;
-  if (i >= cmd.length) return out;
-  // (the program's name: no backslash is special in it)
-  if (cmd[i] === '"') {
+  if (!cmd.length) return out;
+  // (the program's name: no backslash is special in it. A line that starts with a space has an empty one, and
+  // its first word is then the first argument: ` node <file>` runs a script called node)
+  if (blank(cmd[i])) out.push('');
+  else if (cmd[i] === '"') {
     const j = cmd.indexOf('"', i + 1), end = j < 0 ? cmd.length : j;
     out.push(cmd.slice(i + 1, end));
     i = end + 1;
@@ -225,6 +237,11 @@ function sameFile(a: string, b: string) {
  * options do which differs by runner and version, so a process with any is left alone. A path of the folder
  * anywhere later, or among any other program's arguments, is a file being looked at; so is a sibling folder
  * whose name starts alike, and a path that starts in the folder and leaves it again through `..`.
+ *
+ * Left running knowingly, of the run's own: a script a shell runs (`sh <folder>/tool.sh`, or one whose first line
+ * is `#!/bin/sh`: a shell is no runner here, since what a shell runs is as often a line of commands as a file),
+ * and a script whose first line gives its interpreter an option (`#!/usr/bin/python3 -u`), which is an option
+ * before the path like any other. If one of them serves the folder, the second sweep finds it.
  */
 export function runsFrom(args: string[], dir: string, exe: string) {
   if (!exe) return false;

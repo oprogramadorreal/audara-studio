@@ -6290,5 +6290,16 @@ folder with a space again. The five previews on this machine match: `node.exe` b
 script the argument after. Windows gave both a command line and a path for 475 of the 687 processes here; the
 rest are left alone. Not run: the `/proc` reading, on Linux.
 
+Codex's pass on that found three, all taken. **Windows' processes were read a line each,** so a command line
+with a line break in it (code given inline) read as more processes, their ids and files that command's own
+text: they are asked for as JSON now, a record each. Run live: a node process whose inline code holds a line
+break, tabs, a word with an accent and a second line spelled as a record came back as one process, its four
+arguments exact, and no process by the id spelled. **A line that starts with a space** has an empty program's
+name by Windows' rule, so ` node <folder>/input.txt` runs a script called node with the file as its input;
+the parser skipped the space. Run here: started with ` first second` as its command line, node looked for a
+script called `first`; with `first second`, for `second`. **And what the narrower rule no longer stops** is
+written down and tested as left running: a script a shell runs, and one whose first line gives its
+interpreter an option. `test_left_running.ts` 20/20.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

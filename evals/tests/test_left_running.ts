@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { TELLS, answerer, runsFrom, stopLeftRunning, stopTree, tree, within, words } from '../harness/left-running';
+import { TELLS, answerer, fromWindows, runsFrom, stopLeftRunning, stopTree, tree, within, words } from '../harness/left-running';
 
 let passed = 0, failed = 0;
 async function check(name: string, fn: () => unknown) {
@@ -111,7 +111,25 @@ try {
     assert.deepEqual(words('node "" x.js'), ['node', '', 'x.js'], 'an empty argument is a pair of quotes, and keeps its place');
     assert.deepEqual(words('node\t"a b"\tc'), ['node', 'a b', 'c'], 'a tab parts arguments as a space does');
     assert.deepEqual(words(''), []);
-    assert.deepEqual(words('   '), []);
+    assert.deepEqual(words(' node x.js'), ['', 'node', 'x.js'], 'a line that starts with a space has an empty program\'s name: node there is the first argument, a script');
+    assert.deepEqual(words('\t"a b" c  '), ['', 'a b', 'c'], 'the same with a tab, and spaces at the end are nothing');
+    assert.deepEqual(words('   '), ['']);
+  });
+  await check('Windows\' processes are read as records, whatever a command line holds', () => {
+    // (code given inline with a line break and tabs in it, its second line spelled as a process's record would be)
+    const inline = 'node -e "setInterval(() => {}, 1000)\n4242\t1\tC:\\tools\\node.exe\tnode x.js"';
+    const rows = fromWindows(JSON.stringify([
+      { ProcessId: 0, ParentProcessId: 0, ExecutablePath: null, CommandLine: null },
+      { ProcessId: 812, ParentProcessId: 4, ExecutablePath: 'C:\\tools\\node.exe', CommandLine: inline },
+      { ProcessId: 900, ParentProcessId: 812, ExecutablePath: null, CommandLine: 'node x.js' },
+      { ProcessId: '77', ParentProcessId: 1, ExecutablePath: 'C:\\x.exe', CommandLine: 'x' }, null,
+    ]));
+    assert.deepEqual(rows.map((r) => r.pid), [0, 812, 900], 'one process a record: no line of a command is another process, and a record without a whole number for its id is none');
+    assert.deepEqual(rows[1], { pid: 812, ppid: 4, cmd: inline, args: ['node', '-e', 'setInterval(() => {}, 1000)\n4242\t1\tC:\\tools\\node.exe\tnode x.js'], exe: 'C:\\tools\\node.exe' }, 'its arguments, the line break and the tabs inside one');
+    assert(rows[0]!.args === undefined && rows[2]!.args === undefined && rows[2]!.exe === undefined, 'a process Windows gives no file or no command line for has neither: never stopped by them');
+    assert.deepEqual(fromWindows(JSON.stringify({ ProcessId: 5, ParentProcessId: 1, ExecutablePath: 'C:\\a.exe', CommandLine: 'a' })).map((r) => r.pid), [5], 'a single process, which PowerShell writes without the list around it');
+    assert.deepEqual(fromWindows(''), []);
+    assert.deepEqual(fromWindows('not json'), []);
   });
   await check('a process runs a program from a folder: the file it runs is there, or it is a runner with a script of it', () => {
     const vite = at(plain, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -162,6 +180,16 @@ try {
     assert(!runsFrom(['node', '', at(plain, 'log.txt')], plain, NODE) && !runsFrom(words(`node "" ${at(plain, 'log.txt')}`), plain, NODE), 'an empty argument keeps its place: the path is the second, not the script');
     assert(!runsFrom(['uv', 'run', '', at(plain, 'a.py')], plain, UV) && !runsFrom(['bun', '', 'run', at(plain, 'a.ts')], plain, BUN), 'after run, and before it');
     assert(!runsFrom(['', at(plain, 'tool'), 'x'], plain, GRADER) && !runsFrom([], plain, GRADER), 'an empty first argument, and none at all');
+    // (a Windows line that starts with a space: its program's name is empty, so node there is a script's name)
+    assert(!runsFrom(words(` node ${at(plain, 'input.txt')}`), plain, NODE), ' node <folder>/input.txt, the process node: a script called node, the file its input');
+    assert(!runsFrom(words(` uv run ${at(plain, 'a.py')}`), plain, UV) && runsFrom(words(`node ${at(plain, 'idle.js')}`), plain, NODE), 'the same through run; and without the space, the script');
+  });
+  await check('left running knowingly: a script a shell runs, and one whose first line gives its interpreter an option', () => {
+    // (as Linux gives them: the interpreter the script's first line names, what that line passes it, the script)
+    assert(runsFrom(['/usr/bin/python3', at(plain, 'render.py'), '--out', 'x'], plain, PYTHON), 'a script started by #!/usr/bin/python3 is a runner and its script');
+    assert(!runsFrom(['/usr/bin/python3', '-u', at(plain, 'render.py')], plain, PYTHON), '#!/usr/bin/python3 -u: an option before the path, as with any');
+    assert(!runsFrom(['/bin/sh', at(plain, 'tool.sh')], plain, path.resolve('/usr/bin/dash')), '#!/bin/sh: a shell is no runner here');
+    assert(!runsFrom(['bash', at(plain, 'tool.sh')], plain, path.resolve('/usr/bin/bash')), 'nor is bash, given the script by hand');
   });
   await check('the program is the file the system says the process runs, whatever its first argument says', () => {
     assert(!runsFrom([at(plain, 'log.txt'), 'TERM=xterm'], plain, GRADER), 'a file of the folder as first argument, the process a grader from elsewhere');

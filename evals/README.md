@@ -278,7 +278,9 @@ program a process runs is taken from what the system itself says of it, its argu
 it runs, never from its command line read as text: Windows gives both (the line as it was given, read by its
 own quoting rules, and the executable's path) and so does Linux (`/proc`). macOS's `ps` gives neither (it
 joins the arguments with spaces, and starts the line at the second when the first is empty), so there only
-the servers are stopped. A process
+the servers are stopped. Left running knowingly, of a run's own: a script a shell runs (`sh tool.sh`, or one
+that starts `#!/bin/sh`), and one whose first line gives its interpreter an option (`#!/usr/bin/python3 -u`).
+A process
 is stopped with everything that descends from it, read from the process table first. A server is stopped as the process its answer names, when the system says
 that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
 port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
@@ -407,11 +409,14 @@ runs); the same two for a sibling folder whose name starts alike go on, and so d
 a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
 doesn't listen on its port, with the process it names. It also checks, on arguments, files and a table of
 listeners written out, how a Windows command line comes apart into arguments (its quoting rules, an empty
-argument kept), which processes run a program from a folder (none with an option before the path, none whose
+argument kept, and an empty program's name for a line that starts with a space), that Windows' processes are
+read as records, a command line with line breaks and tabs in it still one process's, which processes run a
+program from a folder (none with an option before the path, none whose
 path leaves the folder again through `..`, none whose path is two arguments, as a grader's script and its
 argument are, and none whose first argument and running file disagree: a file of the folder first with a
 program from elsewhere running, two different runners, or no file the system will name), that a first argument
-which is the running file under another name counts (a link in the folder, on real files), and which
+which is the running file under another name counts (a link in the folder, on real files), what is left
+running knowingly (a script a shell runs, and one whose first line gives its interpreter an option), and which
 process an answer stops (none that listens
 on another address or port, and none where two processes could have answered); on a table of processes, that
 a tree is a process and all that descends from it, the deepest first; with three node processes each
