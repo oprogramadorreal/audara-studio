@@ -6301,5 +6301,9 @@ script called `first`; with `first second`, for `second`. **And what the narrowe
 written down and tested as left running: a script a shell runs, and one whose first line gives its
 interpreter an option. `test_left_running.ts` 20/20.
 
+Codex's next pass, on that commit, found nothing, and asked about everything since the sixth review together
+it would merge. What neither of us could run on this machine stays open: the cleanup on Linux and macOS, and a
+link to a file among a program's files.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
