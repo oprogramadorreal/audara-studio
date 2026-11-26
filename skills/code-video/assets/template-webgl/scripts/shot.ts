@@ -278,7 +278,11 @@ function made(shot: string): Made | null {
   const m = readJson(f);
   return m && m['shot.ts'] && m.dir === man!.dir ? (m as Made) : null;
 }
-/** Whether a version's folder holds every frame, full and proxy, numbered 1..frames, and the program's other files it recorded. */
+/**
+ * Whether a version's folder holds every frame, full and proxy, numbered 1..frames, and the program's other files
+ * it recorded, each a file of the version's own: one that is a link (a version published before links were
+ * copied as files, or a file swapped for one since) changes with what it leads to, so the version isn't whole.
+ */
 function complete(shot: string, m: Made) {
   for (const kind of ['full', 'proxy']) {
     const dir = path.join(shotDir(shot), m.dir, kind);
@@ -286,7 +290,7 @@ function complete(shot: string, m: Made) {
     try { have = new Set(readdirSync(dir)); } catch { return false; }
     for (let k = 1; k <= m.frames; k++) if (!have.has(`${String(k).padStart(6, '0')}.jpg`)) return false;
   }
-  return (m.other ?? []).every((f) => existsSync(path.join(shotDir(shot), m.dir, f)));
+  return (m.other ?? []).every((f) => { try { return lstatSync(path.join(shotDir(shot), m.dir, f)).isFile(); } catch { return false; } });
 }
 
 type State =

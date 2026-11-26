@@ -6218,5 +6218,26 @@ so, and checks a junction, one nested and one to nothing); the tree stopped on a
 where the chain test runs the new code and here ran `taskkill` (no Linux or macOS, WSL or container on this
 machine).
 
+**Codex's pass on those fixes (2026-11-26).** Four findings, all taken; two are in the tests written for the
+seventh review.
+
+- **A path read as a stretch of the line, not as an argument.** `node /review/grade.js suite/run/log.txt` holds
+  the text of a folder named `/review/grade.js suite/run`, so cleaning that folder stopped the grader. The
+  command line is taken apart into arguments first: on Windows by the rules its programs read their quotes by,
+  every argument after the program's name whole; elsewhere as `ps` joins them, by spaces, none known to be
+  whole. A path counts only as one argument, so where nothing marks an argument's end a folder with a space in
+  its path matches nothing, and a run there keeps its processes (its servers are still found).
+- **The chain test could signal a group.** With nothing printed, the list of process numbers read as `[0]`,
+  and stopping 0 signals every process of the test's group. Only a process's own number is kept, in the tests
+  and in `stopTree`.
+- **And could wait for good,** on a read that never comes when a process stays up without printing. The read
+  has a deadline, and the chain is stopped however the check ends.
+- **A version published with a link stayed current.** Its inputs and protocol match, and the link reads as a
+  file that is there. A version with a link among the files it recorded is stale.
+
+Checked: `test_left_running.ts` 16/16, each command line read both ways; Codex's line reads false in both.
+`test_shot.ts` 30/30, failing on the shot.ts before at a junction put in a version's recorded file (`current`).
+The five previews on this machine still match. `bun run check`.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

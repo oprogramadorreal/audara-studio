@@ -20,9 +20,11 @@
 // stops a process for naming the folder further on in its command line: that is something else looking at the
 // run's files (an editor on one of them, a player on its draft, a grader's script reading its transcript), which
 // a sweep by any mention would close with everything its tree holds. Where the evidence is short of that (an
-// option before the path, a path that leaves the folder again through `..` or may, an answer that names no
-// process, or one that doesn't listen there, or two processes that could have answered), the process is left
-// running and, for a server, the port is printed.
+// option before the path, a path that leaves the folder again through `..` or may, a path with a space in it
+// where the command line doesn't say where an argument ends, an answer that names no process, or one that
+// doesn't listen there, or two processes that could have answered), the process is left running and, for a
+// server, the port is printed. So outside Windows a run in a folder whose path has a space keeps the first
+// sweep's processes: `ps` joins a command's arguments with spaces and marks nothing. Its servers are still found.
 import path from 'node:path';
 
 const WIN = process.platform === 'win32';
@@ -52,8 +54,10 @@ export function tree(procs: { pid: number; ppid: number }[], pid: number): numbe
  * the process started would outlive both, with no parent left to find it by.
  */
 export function stopTree(pid: number) {
+  // (a process's own number only: 0 and the negative ones name whole groups of processes, this one's among them)
+  if (!(Number.isInteger(pid) && pid > 0)) return;
   if (WIN) { Bun.spawnSync(['taskkill', '/T', '/F', '/PID', String(pid)], { stdout: 'ignore', stderr: 'ignore' }); return; }
-  for (const p of tree(processes(), pid)) try { process.kill(p); } catch { /* it ended meanwhile */ }
+  for (const p of tree(processes(), pid)) if (p > 0) try { process.kill(p); } catch { /* it ended meanwhile */ }
 }
 
 const text = (cmd: string[]) => { try { return Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'ignore' }).stdout.toString(); } catch { return ''; } };
@@ -112,10 +116,69 @@ export function within(dir: string, p: string) {
   const d = norm(dir), x = norm(p);
   return x === d || x.startsWith(`${d}/`);
 }
+/** One argument of a command line, and whether the line says where it ends. */
+export interface Word { text: string; whole: boolean }
+const blank = (ch: string | undefined) => ch === ' ' || ch === '\t';
+/**
+ * A command line's arguments, as far as its text says where each one ends.
+ * - Windows keeps the line as it was given, quotes and all, and they are read here by the rules its programs read
+ *   them by (CommandLineToArgvW): every argument after the program's name is whole. The name is whole when it is
+ *   quoted; unquoted it is taken to the first space, though Windows may have run a path that goes on past it.
+ * - Elsewhere ps joins the arguments with spaces and marks nothing: one with a space in it comes apart, so no
+ *   word is known to be whole, and a quote is a character like any other.
+ */
+export function words(cmd: string, windows = WIN): Word[] {
+  if (!windows) return cmd.split(/\s+/).filter(Boolean).map((text) => ({ text, whole: false }));
+  const out: Word[] = [];
+  let i = 0;
+  while (blank(cmd[i])) i++;
+  if (i >= cmd.length) return out;
+  // (the program's name: to its closing quote or to the first space, and no backslash is special in it)
+  if (cmd[i] === '"') {
+    const j = cmd.indexOf('"', i + 1), end = j < 0 ? cmd.length : j;
+    out.push({ text: cmd.slice(i + 1, end), whole: true });
+    i = end + 1;
+  } else {
+    let j = i;
+    while (j < cmd.length && !blank(cmd[j])) j++;
+    out.push({ text: cmd.slice(i, j), whole: false });
+    i = j;
+  }
+  for (;;) {
+    while (blank(cmd[i])) i++;
+    if (i >= cmd.length) return out;
+    let text = '', quoted = false;
+    for (; i < cmd.length; i++) {
+      let ch = cmd[i]!;
+      if (ch === '\\') {
+        let n = 1;
+        while (cmd[i + n] === '\\') n++;
+        if (cmd[i + n] !== '"') { text += '\\'.repeat(n); i += n - 1; continue; }
+        // (backslashes before a quote: each pair is one backslash, and one left over makes the quote a character)
+        text += '\\'.repeat(n >> 1);
+        i += n;
+        if (n & 1) { text += '"'; continue; }
+        ch = '"';
+      }
+      if (ch === '"') {
+        // (two quotes inside a quoted stretch are one quote character)
+        if (quoted && cmd[i + 1] === '"') { text += '"'; i++; continue; }
+        quoted = !quoted;
+        continue;
+      }
+      if (!quoted && blank(ch)) break;
+      text += ch;
+    }
+    out.push({ text, whole: true });
+  }
+}
+
 /** The programs that run the script given first: node, bun, deno, python (python3.12, pythonw, py). */
 const RUNNER = /^(node|nodejs|bun|deno|python[\d.]*w?|py)(\.exe)?$/i;
 /** The ones whose `run` takes the script next: `bun run`, `uv run`, `deno run`. */
 const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
+/** A `..` among a path's parts. */
+const UP = /(^|[\\/])\.\.([\\/]|$)/;
 /**
  * Whether a command line runs a program from the folder `dir`: its executable is inside the folder (a venv's
  * python, a tool of node_modules), or it is a runner with the script right after it (`node <script>`, `python
@@ -125,29 +188,29 @@ const RUNS = /^(bun|uv|deno)(\.exe)?$/i;
  * --eval=... <folder>/turn-1.jsonl`): programs from elsewhere, a grader's. Which options do which differs by
  * runner and version, so a command line with any is left alone. A path of the folder anywhere later, or in any
  * other program's command line, is a file being looked at, not a program of the run; so is a sibling folder
- * whose name starts alike. The path counts by where it leads, not by how it starts: one that leaves the folder
- * again through `..` is another folder's program.
+ * whose name starts alike.
+ *
+ * The path is one argument of the line (`words`), never a stretch of its text, and it counts by where it leads:
+ * - one that starts in the folder and leaves it again through `..` is another folder's program;
+ * - where the line doesn't say where its arguments end, a path with a space in it is no one word, so a folder
+ *   whose own path has a space matches nothing there (`node /review/grade.js suite/run/log.txt` is a grader and
+ *   its argument, whatever a folder named "/review/grade.js suite/run" holds), and a word that may go on past a
+ *   space, with a `..` further on, leads nobody knows where.
+ * `windows`: whether the line is one Windows kept as given (its quotes say where an argument ends) or one ps
+ * joined; the system's own unless a test says.
  */
-export function runsFrom(cmd: string, dir: string) {
-  const fold = (s: string) => (caseless ? s.toLowerCase() : s);
-  const c = fold(cmd).replaceAll('\\', '/'), d = fold(path.resolve(dir)).split(path.sep).join('/').replace(/\/+$/, '');
-  // (the first path inside the folder is the one that counts: a script comes before its own arguments)
-  const i = c.indexOf(`${d}/`);
-  if (i < 0) return false;
-  const before = c.slice(0, i);
-  // (the path as written, to its closing quote or the next space, and where it leads: <folder>/../sibling/grade.js
-  // starts in the folder and is a sibling's program)
-  const quote = /["']$/.exec(before)?.[0], rest = c.slice(i + d.length);
-  const end = quote ? rest.indexOf(quote) : rest.search(/\s/);
-  if (!within(d, d + (end < 0 ? rest : rest.slice(0, end)))) return false;
-  // (unquoted, a path may go on past a space: ps joins a command's arguments with spaces, and Windows reads a
-  // program's path that way. With a .. further on, where it leads isn't known)
-  if (!quote && end >= 0 && /(^|[/\s])\.\.([/\s]|$)/.test(rest.slice(end))) return false;
-  if (/^\s*["']?$/.test(before)) return true;
-  const m = /^\s*(?:"([^"]+)"|'([^']+)'|(\S+))(\s+run)?\s+["']?$/.exec(before);
-  if (!m) return false;
-  const runner = (m[1] ?? m[2] ?? m[3])!.split('/').pop()!;
-  return m[4] ? RUNS.test(runner) : RUNNER.test(runner);
+export function runsFrom(cmd: string, dir: string, windows = WIN) {
+  // (spelled as the system compares paths: its separators, and its case where it ignores it)
+  const spell = (s: string) => { const t = WIN ? s.replaceAll('\\', '/') : s; return caseless ? t.toLowerCase() : t; };
+  const a = words(cmd, windows), d = spell(path.resolve(dir)).replace(/\/+$/, '');
+  const leads = (k: number) => {
+    const w = a[k];
+    if (!w || !spell(w.text).startsWith(`${d}/`) || !within(dir, w.text)) return false;
+    return w.whole || !a.slice(k + 1).some((x) => UP.test(x.text));
+  };
+  if (leads(0)) return true;
+  const runner = (a[0]?.text ?? '').split(/[\\/]/).pop()!;
+  return (RUNNER.test(runner) && leads(1)) || (RUNS.test(runner) && a[1]?.text === 'run' && leads(2));
 }
 
 /** The folder the dev server on 127.0.0.1:<port> says it serves (an audara preview's /__audara), and its process when it names one. */

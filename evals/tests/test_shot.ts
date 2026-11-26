@@ -611,13 +611,14 @@ test('a make that was ended shares no scratch folder with the next: a program of
     check(readdirSync(cache).join() === 'check-123', `left in the shot's scratch: ${readdirSync(cache).join(', ')}`);
     check(/bars: current/.test(p.shot(['status']).out), 'status after it');
   } finally {
-    if (program) try { process.kill(program); } catch { /* it ended */ }
+    // (only a process's own number: 0, which a line without one would give, names this test's whole group)
+    if (Number.isInteger(program) && program > 0) try { process.kill(program); } catch { /* it ended */ }
     await Bun.sleep(200);
     p.done();
   }
 });
 
-test('a link among the files a program wrote: to a file, published as a file of the version\'s own; to a folder or to nothing, refused', () => {
+test('a link among the files a program wrote: to a file, published as a file of the version\'s own; to a folder or to nothing, refused; a version with a link among its recorded files is stale', () => {
   // (a link to a file takes a right Windows gives few accounts; one to a folder, a junction, anyone can make there)
   const probe = mkdtempSync(path.join(os.tmpdir(), 'audara link probe-'));
   let fileLinks = true;
@@ -630,6 +631,23 @@ test('a link among the files a program wrote: to a file, published as a file of 
       const r = p.shot(['make'], { LINK: kind });
       check(r.code === 1 && said.test(r.out), `a link to ${kind}: ${r.code} ${r.out}`);
       check(!existsSync(path.join(p.root, 'footage/bars')), `a link to ${kind}: something was published`);
+    } finally { p.done(); }
+  }
+  // (a version whose recorded file is a link, one published before links were copied as files, or a file swapped
+  // for a link since: it reads as there, and changes with what it leads to. Stale, and made again as a file)
+  {
+    const p = project();
+    try {
+      check(p.shot(['make'], { SIDE: '1' }).code === 0, 'make failed');
+      const g1 = p.json('footage/bars/manifest.json').dir, side = path.join(p.root, 'footage/bars', g1, 'events.json');
+      rmSync(side);
+      symlinkSync(process.platform === 'win32' ? path.join(p.root, 'shots') : path.join(p.root, 'shots/bars/shot.json'), side, 'junction');
+      check(existsSync(side), 'the link doesn\'t read as there: the check proves nothing');
+      const status = p.shot(['status']).out;
+      check(/stale: its frames aren't all there/.test(status), `a recorded file that is a link: ${status}`);
+      const r = p.shot(['make'], { SIDE: '1' }), g2 = p.json('footage/bars/manifest.json').dir;
+      check(r.code === 0 && g2 !== g1 && lstatSync(path.join(p.root, 'footage/bars', g2, 'events.json')).isFile(), `made again with a file of its own: ${r.code} ${g2} ${r.out}`);
+      check(/bars: current/.test(p.shot(['status']).out), 'status after it');
     } finally { p.done(); }
   }
   if (!fileLinks) return;

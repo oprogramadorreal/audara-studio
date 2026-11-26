@@ -273,7 +273,10 @@ port: a session whose preview couldn't start has run Vite by hand outside those 
 doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its draft, a
 grader's script) is left alone, and so is a runner with any option before its path of `work/`, which may be
 that option's value or an inline program's argument (`uv run --project <work>/project grade.py`, `node
---eval=... <work>/turn-1.jsonl`), and a path that starts in `work/` and leaves it again through `..`. A process
+--eval=... <work>/turn-1.jsonl`), and a path that starts in `work/` and leaves it again through `..`. The path
+is one argument of the command line, never a stretch of its text: Windows' quotes say where an argument ends,
+and elsewhere `ps` joins the arguments with spaces and marks nothing, so there a run whose folder has a space
+in its path keeps these processes (its servers are still found). A process
 is stopped with everything that descends from it, read from the process table first. A server is stopped as the process its answer names, when the system says
 that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
 port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
@@ -400,11 +403,15 @@ temp folder: a dev server started from the run's folder by a relative path (foun
 stopped; the same two for a sibling folder whose name starts alike go on, and so do a process that only names
 a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
 doesn't listen on its port, with the process it names. It also checks, on command lines and a table of
-listeners written out, which command lines run a program from a folder (none with an option before the path,
-and none whose path leaves the folder again through `..`) and which process an answer stops (none that listens
+listeners written out, how a command line comes apart into arguments (by Windows' quoting rules, and as `ps`
+joins one), which command lines run a program from a folder, each read both ways (none with an option before
+the path, none whose path leaves the folder again through `..`, and none whose path has a space where the line
+doesn't say where an argument ends: a grader's script and its argument are never read as one path) and which
+process an answer stops (none that listens
 on another address or port, and none where two processes could have answered); on a table of processes, that
-a tree is a process and all that descends from it, the deepest first; and, with three node processes each
-started by the one before, that stopping the first stops the child of its child. It needs node.
+a tree is a process and all that descends from it, the deepest first; with three node processes each
+started by the one before, that stopping the first stops the child of its child; and that 0 and negative
+numbers, which name groups of processes, stop nothing. It needs node.
 `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
 `shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
@@ -462,7 +469,8 @@ the copy's name while the program ran left alone; a pattern selecting what it na
 levels and no deeper, a leading `!`, `../`, Windows' separators), never a tool's files; a version made under
 an earlier protocol read as stale; a make ended while its program sleeps and the make after it given scratch
 folders of their own, what ended runs left removed and a check's kept frames not; a link to a folder (a
-junction on Windows) or to nothing among the program's files refused, and, where the account can make one, a
+junction on Windows) or to nothing among the program's files refused, a version with a link among its recorded
+files read as stale and made again, and, where the account can make one, a
 link to a file published as a file of the version's own; and what make says of a
 `render.ts` older than the check a `--jobs` render makes.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`

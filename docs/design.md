@@ -1125,7 +1125,8 @@ come into the template as a streamed shot, and everything around a scene works o
   publishes: a version folder holding the frames, its record (`made.json`), a contact sheet and the program's
   other files (those in folders too; a name of the script's own, in any case of letters, stops the make; a
   link to a file is published as a copy of that file, and a link to a folder or to nothing stops the make,
-  since a version holds its own files and what a link leads to can change or go),
+  since a version holds its own files and what a link leads to can change or go; a version with a link among
+  the files it recorded is stale, like one with a file missing),
   moved in whole under a name never used before and never written again, then the manifest naming
   it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
   version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
