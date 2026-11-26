@@ -302,9 +302,10 @@ manifests, the checks, or its own drawing in a scene instead) is in `references/
 Manim, a native GPU program, another framework's composition rendered to frames) go in as a shot through
 `scripts/shot.ts`, so the preview, its links, stills, verify, the render and the QC report work on them as on
 any scene. The recipe, `shots/<shot>/shot.json` beside the program, gives its command and the shot's rate,
-length and size; `make` runs the program only when what the frames are made from changed, checks the frames
-(their count, numbering, size, decoding), encodes `full/` and `proxy/` into a version folder of their own (with
-its record, `made.json`, a contact sheet and any other file the program wrote) and writes the manifest naming it
+length and size; `make` runs the program only when what the frames are made from changed (by default every
+file of the recipe folder, hidden ones too, and the recipe's own fields), checks the frames (their count,
+numbering, size, decoding), encodes `full/` and `proxy/` into a version folder of their own (with its record,
+`made.json`, a contact sheet and any other file the program wrote, in a folder or not) and writes the manifest naming it
 (`"dir"`, beside `"made": "scripts/shot.ts"`) last, so a failed run leaves the shot as it was and the preview
 reloads on the new version. A render that opened the version before keeps reading it (the previous version stays
 until the next make); a `--jobs` render, whose browsers each open the shot, stops before its join when a shot was
@@ -321,7 +322,12 @@ in `scripts/shot.ts --help`.
 
 A project made before 0.17.0 has a `footage.ts` that reads no `"dir"`, which `shot.ts make` says before it
 renders anything: copying the template's `src/engine/footage.ts` over it is the port (keep what the project
-changed in it on purpose), and running init again adds `scripts/shot.ts`, replacing nothing.
+changed in it on purpose), and running init again adds `scripts/shot.ts`, replacing nothing. That plays a
+shot; two things around it are in files init keeps as they are, and `make` names each one that is missing. The
+preview reloads on a new version from the template's `vite.config.ts` (until then, reload it by hand). And a
+`--jobs` render stops before its join, when a shot was made again while it ran, from the template's
+`scripts/render.ts`: with an older one such a render joins pieces showing two versions, so make no shot while
+one runs. Init `--force` updates both, keeping each old one as `<file>.orig`.
 A project made before 0.12.0 has an engine without it: init never replaces `src/engine/`, not even with
 `--force`, whose report names `footage.ts` among the engine files that differ. Taking it is one port: `footage.ts`
 and the `prepare` hooks of `scene.ts` and `engine.ts`, beside the `main.ts`, `render.ts` and `vite.config.ts` that

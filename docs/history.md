@@ -6067,5 +6067,56 @@ Opus 5.5.
   change to the critic's bar, so it takes more than one run a side on each model, which this review did not
   start: about 100 minutes a run with the skills on Fable.
 
+**Codex's fourth review, of the whole branch (2026-11-26).** Eight findings, all taken, and one more found
+while testing them.
+
+- **The harness stopped a process on a server's word.** `left-running.ts` asked each port's server for
+  `/__audara` and stopped the process its answer named, though it had the port's listener from the system: a
+  stale or wrong answer would end an unrelated process and everything under it. The process stopped is now one
+  the system says listens on that port: the one the answer names when it is among them, the only one when the
+  answer names none. Otherwise nothing is stopped, and the port is named.
+- **It stopped any process whose command line named the run's folder** (the sweep described above; `task.ts`
+  did the same before this branch, which brought it to `trigger.ts`, run by run). An editor opened on a file of
+  a run, a player on its draft or a grader's script reading its transcript would be closed with its tree when
+  the run ended. Now only a process that runs a program from the folder is stopped: its executable is inside
+  it, or it is a runner (node, bun, deno, python, uv) whose script is, with nothing before the script but
+  options. `render.ts preview`'s Vite has that shape: the five previews running on this machine matched both
+  rules, read without stopping any (`node <root>\node_modules\vite\bin\vite.js`, the answer's process the
+  listener of its port).
+- **Hidden files weren't inputs.** The default scan skipped dot-files, so a renderer's `.env` could change and
+  the shot read current. They count now, by a walk that doesn't enter a tool's folders. What a system or an
+  editor leaves is never an input (`.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, vim's swap file, Emacs's
+  lock, `.cache`, `.*_cache`, `.ipynb_checkpoints`): with hidden files counted, a swap file appearing during an
+  hour's make would otherwise stop it as an input changed.
+- **A recipe alone in its folder was refused** ("names no file"), and so was `"inputs": []`: a command that is
+  the whole program (an FFmpeg filter graph) has no file to name. Both work now. A pattern that finds no file
+  is still refused, as a path mistyped.
+- **Files a program wrote in a folder beside its frames were dropped without a word,** and the scene that read
+  one got a 404. They are published by their paths (`meta/camera.json`) and recorded, so one gone makes the
+  shot stale.
+- **A failed copy left `<version>.partial` behind** (the publish across volumes), where neither make nor clean
+  looked, holding the space its own retry needed. The copy's record goes in first; a copy that fails is removed
+  there; one a dead run left is removed by the next make or clean when its record says it is this script's (an
+  empty one too; one without that record stays). The name, the version pattern and a published version never
+  written again, which the app reads, are as they were.
+- **The upgrade note left out `render.ts`.** contract.md gave `footage.ts` and `shot.ts` as the port of a
+  project made before 0.17.0; the check a `--jobs` render makes before its join is in `render.ts`, and the
+  reload in `vite.config.ts`. It says so now, and `make` names an older `render.ts` as it named the reload.
+- **`CONTACT.JPG` passed as a program's own file,** and would replace the contact sheet where the file system
+  ignores case. The script's names are refused in any case of letters, and so are two names one case apart, so
+  a version reads the same on every machine.
+- **Found while testing the copy: a make that had published exited 1.** With a file of its scratch folder held
+  open (Windows), removing the folder threw after the publish: a stack trace for a shot that was made. The
+  scratch folder is removed with retries now, and one that can't be is said and left.
+
+Checked: `test_left_running.ts` 8/8, three new (with the answer's process trusted two fail, the process it
+named stopped; with any mention of the folder counted three fail). `test_shot.ts` 26/26, seven new, all seven
+failing on the script as it was. One of them forces the copy on Windows, where this machine has one volume: a
+PowerShell opens the staged version's last frame, shared for reading (the folder won't rename, the copy goes
+through, the make exits 0 and names the scratch folder it couldn't remove) and shared with nobody (the copy
+fails, no `.partial` is left and the shot is as it was). `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20,
+`test_render_failures.ts` 14/14, and `bun run check` in a scratch project. Not checked: a publish across two
+real volumes.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

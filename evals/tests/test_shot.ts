@@ -17,9 +17,11 @@ const test = (name: string, run: () => void | Promise<void>) => cases.push([name
 
 /** A test program: frames of a bar moving with time, as BMP. Its environment varies it (see `env` below). */
 const PROGRAM = String.raw`
-import { writeFileSync, appendFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync, readFileSync, mkdirSync } from 'node:fs';
 const e = process.env;
 const [out, first, last, w, h, fps] = process.argv.slice(2);
+if (e.SIDE_DIR) { mkdirSync(out + '/meta/deep', { recursive: true }); mkdirSync(out + '/empty'); writeFileSync(out + '/meta/camera.json', '{"fov": 40}'); writeFileSync(out + '/meta/deep/notes.txt', 'x'); }
+if (e.OTHER) for (const f of e.OTHER.split(',')) { if (f.endsWith('/')) mkdirSync(out + '/' + f, { recursive: true }); else writeFileSync(out + '/' + f, 'x'); }
 const W = +(e.FORCE_W ?? w), H = +h, F = +fps;
 if (e.LOG) appendFileSync(e.LOG, JSON.stringify({ first: +first, last: +last, env: { out: e.AUDARA_SHOT_OUT, first: e.AUDARA_SHOT_FIRST, last: e.AUDARA_SHOT_LAST, frames: e.AUDARA_SHOT_FRAMES, fps: e.AUDARA_SHOT_FPS, width: e.AUDARA_SHOT_WIDTH, height: e.AUDARA_SHOT_HEIGHT, scale: e.AUDARA_SHOT_SCALE, tmp: e.AUDARA_SHOT_TMP, name: e.AUDARA_SHOT_NAME } }) + '\n');
 if (e.FAIL) process.exit(3);
@@ -65,7 +67,7 @@ function project(recipe: Record<string, unknown> = RECIPE) {
   };
   const json = (f: string) => JSON.parse(readFileSync(path.join(root, f), 'utf8'));
   const versions = () => readdirSync(path.join(root, 'footage', 'bars')).filter((d) => /^g\d+-/.test(d)).sort();
-  const done = () => rmSync(root, { recursive: true, force: true });
+  const done = () => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
   return { root, shot, json, versions, done };
 }
 
@@ -362,6 +364,164 @@ test('a version whose record is gone is made again at the scale its manifest say
     check(man.size.join('x') === '128x72' && p.versions().includes(g1), `scale kept and the version on screen kept: ${JSON.stringify(man.size)}, ${p.versions().join(', ')}`);
     rmSync(path.join(p.root, 'footage/bars', man.dir, 'events.json'));
     check(/stale: its frames aren't all there/.test(p.shot(['status']).out), 'a missing sidecar should read as stale');
+  } finally { p.done(); }
+});
+
+test('a hidden file of the recipe folder is an input; what a tool, a system or an editor leaves there is not', () => {
+  const p = project();
+  try {
+    const dir = path.join(p.root, 'shots/bars');
+    writeFileSync(path.join(dir, '.env'), 'SEED=1');
+    mkdirSync(path.join(dir, '.settings'));
+    writeFileSync(path.join(dir, '.settings/quality.json'), '{"spp": 64}');
+    check(p.shot(['make']).code === 0, 'make failed');
+    const inputs = p.json(`footage/bars/${p.json('footage/bars/manifest.json').dir}/made.json`).inputs.map((i: [string, string]) => i[0]);
+    check(inputs.join() === 'shots/bars/.env,shots/bars/.settings/quality.json,shots/bars/draw.ts', `inputs ${inputs.join(', ')}`);
+    writeFileSync(path.join(dir, '.env'), 'SEED=2');
+    check(/stale: shots\/bars\/\.env changed/.test(p.shot(['status']).out), `a hidden input changed: ${p.shot(['status']).out}`);
+    check(p.shot(['make']).code === 0, 'make 2 failed');
+    for (const f of ['.DS_Store', '._draw.ts', 'Thumbs.db', 'desktop.ini', '.draw.ts.swp', '.#draw.ts']) writeFileSync(path.join(dir, f), 'x');
+    for (const d of ['.venv/lib', '__pycache__', '.pytest_cache/v', '.ipynb_checkpoints', 'node_modules/a']) { mkdirSync(path.join(dir, d), { recursive: true }); writeFileSync(path.join(dir, d, 'x.py'), 'x'); }
+    const st = p.shot(['status']).out;
+    check(/bars: current/.test(st), `a tool's folders and a system's or an editor's files aren't inputs: ${st}`);
+  } finally { p.done(); }
+});
+
+test('a recipe whose command is all there is needs no input file, by default or with "inputs": []; a pattern that names none is still refused', () => {
+  const p = project({ ...RECIPE, command: ['bun', '../../tools/draw.ts', ...RECIPE.command.slice(2)] });
+  try {
+    const recipe = path.join(p.root, 'shots/bars/shot.json');
+    mkdirSync(path.join(p.root, 'tools'));
+    cpSync(path.join(p.root, 'shots/bars/draw.ts'), path.join(p.root, 'tools/draw.ts'));
+    rmSync(path.join(p.root, 'shots/bars/draw.ts'));
+    const m = p.shot(['make']);
+    check(m.code === 0, `make with the recipe alone in its folder: ${m.out}`);
+    const dir = p.json('footage/bars/manifest.json').dir;
+    check(p.json(`footage/bars/${dir}/made.json`).inputs.length === 0 && /bars: current/.test(p.shot(['status']).out), 'no input files, and current');
+    check(p.shot(['check', 'bars']).code === 0, 'check failed');
+    writeFileSync(recipe, JSON.stringify({ ...RECIPE, command: ['bun', '../../tools/draw.ts', ...RECIPE.command.slice(2)], inputs: [] }));
+    const none = p.shot(['make']);
+    check(none.code === 0 && /bars: current/.test(p.shot(['status']).out), `"inputs": []: ${none.out}`);
+    writeFileSync(recipe, JSON.stringify({ ...RECIPE, command: ['bun', '../../tools/draw.ts', ...RECIPE.command.slice(2)], fps: 25, inputs: [] }));
+    check(/stale: its fps changed/.test(p.shot(['status']).out), 'the recipe\'s own fields still make it stale');
+    writeFileSync(recipe, JSON.stringify({ ...RECIPE, command: ['bun', '../../tools/draw.ts', ...RECIPE.command.slice(2)], inputs: ['*.py'] }));
+    const typo = p.shot(['make']);
+    check(typo.code === 1 && /the input \*\.py names no file/.test(typo.out), `a pattern that names no file: ${typo.out}`);
+  } finally { p.done(); }
+});
+
+test('files the program writes in folders beside its frames are published by their paths; one gone makes the shot stale', () => {
+  const p = project();
+  try {
+    const m = p.shot(['make'], { SIDE_DIR: '1', SIDE: '1' });
+    check(m.code === 0 && /with events\.json, meta\/camera\.json, meta\/deep\/notes\.txt/.test(m.out), `make: ${m.out}`);
+    const dir = p.json('footage/bars/manifest.json').dir, at = (f: string) => path.join(p.root, 'footage/bars', dir, f);
+    check(readFileSync(at('meta/camera.json'), 'utf8') === '{"fov": 40}' && existsSync(at('meta/deep/notes.txt')) && existsSync(at('events.json')), 'the files in folders aren\'t in the version');
+    check(!existsSync(at('empty')), 'a folder holding nothing was published');
+    check(p.json(`footage/bars/${dir}/made.json`).other.join() === 'events.json,meta/camera.json,meta/deep/notes.txt', `other ${p.json(`footage/bars/${dir}/made.json`).other}`);
+    check(/bars: current/.test(p.shot(['status']).out), 'not current after the make');
+    rmSync(at('meta/deep/notes.txt'));
+    check(/stale: its frames aren't all there/.test(p.shot(['status']).out), 'a file gone from a folder of the version should read as stale');
+  } finally { p.done(); }
+});
+
+test('a name of the script\'s own in another case, a folder named like one, or two names that differ only by case stop the make', () => {
+  const p = project();
+  try {
+    for (const [other, says] of [['CONTACT.JPG', /wrote CONTACT\.JPG, a name this script keeps/], ['Made.json', /wrote Made\.json, a name this script keeps/], ['Full/', /wrote Full, a name this script keeps/]] as [string, RegExp][]) {
+      const r = p.shot(['make'], { OTHER: other });
+      check(r.code === 1 && says.test(r.out), `${other}: ${r.out}`);
+      check(!existsSync(path.join(p.root, 'footage/bars')), `${other}: something was published`);
+    }
+    // (two files whose names differ only by case exist only where the file system tells them apart)
+    writeFileSync(path.join(p.root, 'case'), 'x');
+    if (!existsSync(path.join(p.root, 'CASE'))) {
+      const r = p.shot(['make'], { OTHER: 'Camera.json,camera.json' });
+      check(r.code === 1 && /names that differ only by the case/.test(r.out), `two names one case apart: ${r.out}`);
+      const d = p.shot(['make'], { OTHER: 'Meta/,Meta/a.json,meta/,meta/b.json' });
+      check(d.code === 1 && /wrote Meta and meta, names that differ only by the case/.test(d.out), `two folders one case apart: ${d.out}`);
+    }
+    check(p.shot(['make'], { OTHER: 'meta/,meta/a.json,meta/b.json,Camera.json' }).code === 0, 'names that don\'t collide were refused');
+  } finally { p.done(); }
+});
+
+test('a copy of a version cut short (<version>.partial) is removed by clean and by the next make when its record says it is this script\'s', () => {
+  const p = project();
+  try {
+    const folder = path.join(p.root, 'footage/bars');
+    const partial = (name: string, record: object | null, file = true) => {
+      mkdirSync(path.join(folder, `${name}.partial`, 'full'), { recursive: true });
+      if (record) writeFileSync(path.join(folder, `${name}.partial`, 'made.json'), JSON.stringify(record));
+      if (file) writeFileSync(path.join(folder, `${name}.partial`, 'full', '000001.jpg'), 'x'); else rmSync(path.join(folder, `${name}.partial`, 'full'), { recursive: true });
+    };
+    const mine = (name: string) => ({ 'shot.ts': 1, shot: 'bars', dir: name });
+    // before any make, with no manifest: only the copies go
+    partial('g1-0000aaaa', mine('g1-0000aaaa'));
+    const first = p.shot(['clean']);
+    check(first.code === 0 && /removed g1-0000aaaa\.partial/.test(first.out) && !existsSync(path.join(folder, 'g1-0000aaaa.partial')), `clean with no manifest: ${first.out}`);
+    check(p.shot(['make']).code === 0, 'make failed');
+    const g = p.json('footage/bars/manifest.json').dir;
+    partial('g7-deadbeef', mine('g7-deadbeef'));
+    partial('g8-deadbeef', null);
+    partial('g9-deadbeef', null, false);
+    partial('g10-deadbeef', { 'shot.ts': 1, shot: 'another', dir: 'g10-deadbeef' });
+    const c = p.shot(['clean']);
+    check(c.code === 0 && /g7-deadbeef\.partial/.test(c.out), `clean: ${c.out}`);
+    const left = () => readdirSync(folder).filter((d) => d.endsWith('.partial')).sort().join();
+    check(left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `after clean: ${left()} (one without a record, one with another shot's: kept; an empty one and this script's: removed)`);
+    check(existsSync(path.join(folder, g, 'full', '000001.jpg')) && /bars: current/.test(p.shot(['status']).out), 'clean touched the version on screen');
+    partial('g7-deadbeef', mine('g7-deadbeef'));
+    writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// changed\n');
+    check(p.shot(['make']).code === 0, 'make 2 failed');
+    check(left() === 'g10-deadbeef.partial,g8-deadbeef.partial', `after the next make: ${left()}`);
+    check(/^g2-/.test(p.json('footage/bars/manifest.json').dir) && /bars: current/.test(p.shot(['status']).out), `the next version: ${p.json('footage/bars/manifest.json').dir}`);
+  } finally { p.done(); }
+});
+
+test('a version that won\'t move into footage/ is copied in and renamed, its scratch left and said; a copy that fails is removed and the shot is as it was', async () => {
+  if (process.platform !== 'win32') return; // (an open file keeps its folder from moving only on Windows; elsewhere it takes a second volume)
+  // (a PowerShell that opens the new version's last frame as soon as it is encoded, in the staging folder, and holds
+  // it: shared for reading, the folder can't be renamed but can be copied; shared with nobody, it can't be copied either)
+  for (const share of ['Read', 'None']) {
+    const p = project();
+    try {
+      check(p.shot(['make']).code === 0, 'make 1 failed');
+      const g1 = p.json('footage/bars/manifest.json').dir;
+      writeFileSync(path.join(p.root, 'shots/bars/draw.ts'), PROGRAM + '\n// 2\n');
+      const staged = path.join(p.root, '.audara-cache', 'shots', 'bars', '*', 'pub', 'full', '000012.jpg').replace(/'/g, "''");
+      const holder = Bun.spawn(['powershell', '-NoProfile', '-Command',
+        `while (-not (Test-Path '${staged}')) { Start-Sleep -Milliseconds 20 }; $p = (Resolve-Path '${staged}' | Select-Object -First 1).Path; $f = $null; ` +
+        `while (-not $f) { try { $f = [IO.File]::Open($p, 'Open', 'Read', '${share}') } catch { Start-Sleep -Milliseconds 20 } }; Start-Sleep -Seconds 40; $f.Close()`], { stdout: 'ignore', stderr: 'ignore' });
+      Bun.sleepSync(1500);
+      let r: ReturnType<typeof p.shot>;
+      try { r = p.shot(['make']); } finally { holder.kill(); await holder.exited; }
+      const partial = readdirSync(path.join(p.root, 'footage/bars')).filter((d) => d.endsWith('.partial'));
+      check(!partial.length, `held shared with ${share}: ${partial.join(', ')} left in footage/bars (${r.out})`);
+      const dir = p.json('footage/bars/manifest.json').dir;
+      if (share === 'Read') {
+        check(r.code === 0 && dir.startsWith('g2-') && p.json(`footage/bars/${dir}/made.json`).dir === dir, `copied in and renamed: ${r.code} ${dir} ${r.out}`);
+        check(readdirSync(path.join(p.root, 'footage/bars', dir, 'full')).length === 12 && /bars: current/.test(p.shot(['status']).out), 'the version copied in isn\'t whole');
+        check(/\.audara-cache\/shots\/bars\/g2-[0-9a-f]{8}\/ couldn't be removed/.test(r.out), `a scratch folder held open is said, and the make still succeeds: ${r.out}`);
+      } else {
+        check(r.code === 1 && /couldn't be put in footage\/bars\//.test(r.out) && /the shot is as it was/.test(r.out), `a copy that fails: ${r.code} ${r.out}`);
+        check(dir === g1 && p.versions().join() === g1 && existsSync(path.join(p.root, 'footage/bars', g1, 'full', '000012.jpg')), `the shot isn't as it was: ${dir}, ${p.versions().join(', ')}`);
+      }
+    } finally { p.done(); }
+  }
+});
+
+test('make says so when the project\'s render.ts is older than the check a --jobs render makes; not when it has it or there is none', () => {
+  const p = project();
+  try {
+    const note = /scripts\/render\.ts is older than this script/;
+    const none = p.shot(['make']);
+    check(none.code === 0 && !note.test(none.out), `no render.ts: ${none.out}`);
+    writeFileSync(path.join(p.root, 'scripts/render.ts'), '// a render.ts from before 0.17.0\n');
+    const old = p.shot(['make', '--force']);
+    check(old.code === 0 && note.test(old.out) && /--jobs/.test(old.out), `an older render.ts: ${old.out}`);
+    cpSync(path.join(TEMPLATE, 'scripts/render.ts'), path.join(p.root, 'scripts/render.ts'));
+    const now = p.shot(['make', '--force']);
+    check(now.code === 0 && !note.test(now.out), `the template's render.ts: ${now.out}`);
   } finally { p.done(); }
 });
 

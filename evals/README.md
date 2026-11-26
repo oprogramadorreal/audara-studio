@@ -267,9 +267,11 @@ computer use and browser automation off; the final file list, git status, the as
 `previews` lists every port in 5173-5199 whose `/__audara` named a folder during the run, with that folder
 and whether it is this run's `work/`: a preview started in a background shell dies with its turn, one
 started by `render.ts preview` runs until the harness stops it at the end, and runs going at once can
-reach each other's. At the end the harness stops every process whose command line names `work/` and every
-dev server that serves it, on whatever port: a session whose preview couldn't start has run Vite by hand
-outside those ports, where `previews` doesn't look. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
+reach each other's. At the end the harness stops every process that runs a program from `work/` (its
+executable there, or the script of a node, bun, python or uv) and every dev server that serves it, on whatever
+port: a session whose preview couldn't start has run Vite by hand outside those ports, where `previews`
+doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its draft, a
+grader's script) is left alone, and a server is stopped only as a process the system says listens on its port. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
 (the main thread's and its sub-agents'), since `codex exec --json` leaves out calls such as spawn_agent
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
@@ -387,10 +389,12 @@ a sentence too long for its place left open, its track "incomplete"; and speech 
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
 with in-memory peers and bounded waits, and what `preview` says when every one of its ports is taken.
-`test_left_running.ts` checks what the runners stop when a run ends, with four small node processes in a
+`test_left_running.ts` checks what the runners stop when a run ends, with eight small node processes in a
 temp folder: a dev server started from the run's folder by a relative path (found by the folder it answers
-`/__audara` with, on a port of its own) and a process whose command line names the folder are stopped; the
-same two for a sibling folder whose name starts alike go on. It needs node. `test_render_inputs.ts` checks resume fingerprints (streamed footage
+`/__audara` with, on a port of its own), one whose answer names no process, and a process running a script of
+the folder by its full path are stopped; the same for a sibling folder whose name starts alike go on, and so
+do a process that only names a file of the run's folder, and a server whose answer names a process that doesn't
+listen on its port, with the process it names. It needs node. `test_render_inputs.ts` checks resume fingerprints (streamed footage
 included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
 `shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
 (changed by a manifest rewritten, not by a version folder written before it); none of the three needs Chrome
@@ -434,7 +438,15 @@ replaced publishing nothing, with clean keeping the version on screen; a missing
 for one frame and a reserved name refused, an upper-case extension taken; a folder named like a version that the
 script didn't make never removed; on Windows, an old version held open left for later while the make succeeds;
 two runs against one abandoned lock, one refused; a lost record made again at the manifest's scale, and a missing
-sidecar read as stale.
+sidecar read as stale; a hidden file of the recipe folder counted as an input, a tool's folders and a system's
+or an editor's files not; a recipe alone in its folder made with no input file, by default and with
+`"inputs": []`, a pattern naming none still refused; files the program writes in folders published by their
+paths; a name of the script's own in another case refused, and two names one case apart where the file system
+tells them apart; a copy of a version cut short removed by clean and by the next make when its record says it
+is the script's, kept otherwise; on Windows, with a staged frame held open, a version whose folder won't move
+copied in and renamed, the make succeeding with its scratch folder left and said, and a copy that fails removed
+with the shot as it was; and what make says of a `render.ts` older than the check a `--jobs` render
+makes.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;

@@ -1113,17 +1113,24 @@ come into the template as a streamed shot, and everything around a scene works o
   same as environment variables, and the shot's rate, length and size at 1×. It lives outside `footage/`, so
   editing a program changes nothing on screen until a make publishes.
 - **`scripts/shot.ts make`** runs the program only when what the frames are made from changed (a hash of the
-  command, the fields that change the frames and the inputs' bytes, the recipe read again before publishing),
+  command, the fields that change the frames and the inputs' bytes, the recipe read again before publishing;
+  the inputs are every file of the recipe folder unless the recipe names them, hidden ones included, since a
+  program reads its `.env` as it reads any file, and never a tool's folders or what a system or an editor
+  leaves beside a file; a recipe whose command is the whole program has none),
   renders into `.audara-cache/shots/`, checks the frames (count, numbering, one file per frame, size, decoding;
   an alpha channel is named and dropped), hashes each frame's decoded pixels, encodes `full/` and `proxy/`, and
   publishes: a version folder holding the frames, its record (`made.json`), a contact sheet and the program's
-  other files, moved in whole under a name never used before and never written again, then the manifest naming
+  other files (those in folders too; a name of the script's own, in any case of letters, stops the make),
+  moved in whole under a name never used before and never written again, then the manifest naming
   it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
   version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
   every version the manifest names. The version before stays for a render that opened it; older ones go, but
   only folders holding this script's record for the shot (a folder named like a version that it didn't make
   stays), and one that can't be removed yet (a file open on Windows) is left, said, for the next make or clean,
-  its record removed last so it is still known as the script's.
+  its record removed last so it is still known as the script's. Where the folder can't be moved in (footage on
+  another volume) it is copied in as `<version>.partial`, its record first, then renamed: a copy that fails is
+  removed there, and one a dead run left is removed by the next make or clean, by that record. A scratch
+  folder that can't be removed when a run ends is said and left, never an error: the publish before it stands.
   A version whose record is gone is made again at the scale its manifest gives, never smaller. Everything that
   reads or writes a shot's state holds one lock per shot, made whole before it appears; a lock whose process
   has ended is taken back under a second, short lock that re-reads it first, and a run releases its lock only

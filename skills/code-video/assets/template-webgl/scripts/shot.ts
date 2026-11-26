@@ -17,15 +17,19 @@
 //                                     their pixels with the shot's (exit code 1 when one differs). It samples:
 //                                     a frame it didn't render again can still be wrong
 //   clean [<shot>...]                 removes every version this script made of a shot but the one its manifest
-//                                     names (a folder without this script's record in it is never removed)
+//                                     names, and a copy of one cut short (a folder without this script's record
+//                                     in it is never removed)
 //
 // A shot's recipe is shots/<shot>/shot.json at the project root, beside the program's own files. Its paths are
 // the recipe folder's; one that starts with / is the project root's:
 //   { "command": ["uv", "run", "render.py", "--out", "{out}", "--first", "{first}", "--last", "{last}"],
 //     "fps": 30, "frames": 240,       (or "duration": 8, in seconds)
 //     "size": [1920, 1080],           the frames' size at the 1x scale: the size the shot fills at its largest
-//     "inputs": ["**"],               what the frames are made from (default: every file of the recipe folder);
-//                                     a change to one, or to any field above, makes the shot stale
+//     "inputs": ["**"],               what the frames are made from (default: every file of the recipe folder,
+//                                     hidden ones too, a .env the program reads; never a tool's own folders,
+//                                     node_modules, .venv, __pycache__, .git, nor what a system or an editor
+//                                     leaves, .DS_Store, a swap file); a change to one, or to any field above,
+//                                     makes the shot stale. [] when the command is all there is
 //     "cwd": ".",                     where the command runs (default: the recipe folder)
 //     "quality": 2,                   the full frames' JPEG quality, 2 (best) to 31 (default 2)
 //     "manifest": { ... } }           fields of your own for the published manifest (a title, settings)
@@ -44,12 +48,14 @@
 // (frames {first}..{last}: 000001.png and on for a whole shot, 000120.png for a run that starts at 120; png, jpg,
 // bmp, tif, ppm or webp, one kind per shot), each at exactly width x height, opaque (an alpha channel is dropped:
 // a transparent layer goes in as images, references/contract.md). Any other file the program writes there (an
-// events.json, the camera per frame) is kept with the frames, in their version's folder, where a scene reads it
-// from the Footage that plays them (`${clip.base}/camera.json`); manifest.json, made.json and contact.jpg are this
-// script's names. A frame must not depend on the frames written before it in the same
-// run: check renders frames alone and compares. A program that must step from the start (a simulation) steps there
-// by itself, in every run, to the same pixels. Its command must be free and offline: make runs it whenever the
-// shot is stale, and check runs it again (a generated clip is cut from its file, which is the input).
+// events.json, the camera per frame), in a folder of its own or not, is kept with the frames, in their version's
+// folder, where a scene reads it from the Footage that plays them (`${clip.base}/camera.json`); manifest.json,
+// made.json, contact.jpg, full and proxy are this script's names there, in any case of letters, and two names
+// that differ only by case are refused (one file on Windows and macOS). A frame must not depend on the frames
+// written before it in the same run: check renders frames alone and compares. A program that must step from the
+// start (a simulation) steps there by itself, in every run, to the same pixels. Its command must be free and
+// offline: make runs it whenever the shot is stale, and check runs it again (a generated clip is cut from its
+// file, which is the input).
 //
 // Published, under footage/<shot>/: a version folder, never written again once it is there, holding full/ (the
 // frames, JPEG), proxy/ (half the 1x size, for the preview), made.json (what they were made from: the inputs'
@@ -58,7 +64,7 @@
 // version before stays (a render that opened it before keeps reading it), older ones are removed. The frames are
 // made under .audara-cache/shots/ first, so a failed run leaves the shot as it was. Everything that reads or writes
 // a shot's state runs under one lock per shot (.audara-cache/shots/<shot>.lock).
-import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
+import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 
 const PROJECT = path.resolve(import.meta.dir, '..');
@@ -72,10 +78,19 @@ const MADE_BY = 'scripts/shot.ts';
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FRAME = /^(\d{6})\.(png|jpe?g|bmp|tiff?|ppm|webp)$/i;
 const VERSION = /^g(\d+)-[0-9a-f]{8}$/;
-/** Names in a version folder that are this script's: a program that writes one of them is stopped. */
+/** A copy of a version on its way into footage/<shot>/ (publishing across volumes): <version>.partial, which nothing reads. */
+const PARTIAL = '.partial';
+/**
+ * Names in a version folder that are this script's: a program that writes one of them is stopped. Compared without
+ * their case: CONTACT.JPG is contact.jpg where the file system ignores it (Windows, macOS).
+ */
 const RESERVED = new Set(['manifest.json', 'made.json', 'contact.jpg', 'full', 'proxy']);
-/** Never inputs, wherever a pattern reaches: folders a program, a tool or this script write into. */
-const NEVER = /(^|\/)(node_modules|__pycache__|\.git|\.venv|\.audara-cache|out|footage)(\/|$)|\.pyc$/;
+/**
+ * Never inputs, wherever a pattern reaches: folders a program, a tool or this script write into, and what a system
+ * or an editor leaves beside the files it shows (Finder's .DS_Store, vim's swap file: one appearing during an hour's
+ * make would stop it as an input changed). Any other hidden file is an input like the rest: a .env the program reads.
+ */
+const NEVER = /(^|\/)(node_modules|__pycache__|\.git|\.venv|\.audara-cache|\.cache|\.[a-z]+_cache|\.ipynb_checkpoints|out|footage)(\/|$)|(^|\/)(\.DS_Store|\._[^/]*|Thumbs\.db|desktop\.ini|\.[^/]*\.sw[a-p]|\.#[^/]*)$|\.pyc$/;
 
 class Fail extends Error {}
 const fail = (msg: string): never => { throw new Fail(msg); };
@@ -141,8 +156,8 @@ function recipe(shot: string): Recipe {
   if (!Array.isArray(size) || size.length !== 2 || !size.every((x: unknown) => Number.isInteger(x) && (x as number) >= 2))
     fail(`${where}: "size" must be [width, height] in whole pixels: the shot's size at the 1x scale, at its largest on screen`);
   const inputs = r.inputs === undefined ? ['**'] : r.inputs;
-  if (!Array.isArray(inputs) || !inputs.length || !inputs.every((x: unknown) => typeof x === 'string' && x.trim()))
-    fail(`${where}: "inputs" must be a list of paths or patterns (default: ["**"], the recipe folder)`);
+  if (!Array.isArray(inputs) || !inputs.every((x: unknown) => typeof x === 'string' && x.trim()))
+    fail(`${where}: "inputs" must be a list of paths or patterns (default: ["**"], the recipe folder; [] when the command is all there is)`);
   const quality = r.quality === undefined ? 2 : Number(r.quality);
   if (!(Number.isInteger(quality) && quality >= 2 && quality <= 31)) fail(`${where}: "quality" must be a whole number from 2 (best) to 31`);
   const cwd = resolveIn(dir, typeof r.cwd === 'string' ? r.cwd : '.');
@@ -155,9 +170,23 @@ function recipe(shot: string): Recipe {
 /** A recipe path: the recipe folder's, or the project root's when it starts with /. */
 const resolveIn = (dir: string, p: string) => (p.startsWith('/') ? path.join(PROJECT, p.slice(1)) : path.resolve(dir, p));
 
+/** Every file under a folder, hidden ones too, as project paths; a folder that is never an input isn't entered. */
+function filesUnder(dir: string, take: (p: string) => void) {
+  for (const d of readdirSync(dir, { withFileTypes: true })) {
+    const f = path.join(dir, d.name), p = rel(f);
+    if (NEVER.test(p)) continue;
+    // (a link to a file counts as the file; a link to a folder isn't followed, as a pattern doesn't follow one)
+    if (d.isDirectory()) filesUnder(f, take);
+    else if ((d.isSymbolicLink() ? statSync(f, { throwIfNoEntry: false }) : d)?.isFile()) take(p);
+  }
+}
+
 /**
  * The files a recipe's inputs name: sorted project paths. The recipe itself counts by what it asks for (keyOf),
- * not by its bytes, so a field of its own for the manifest changes the manifest alone.
+ * not by its bytes, so a field of its own for the manifest changes the manifest alone. Hidden files count: a
+ * program reads its .env or its dot-named settings as it reads any file. A pattern has to name a file (one that
+ * names none is a path mistyped, and a shot that never goes stale), where the recipe is one: a folder holding
+ * the recipe alone, its program all in the command, has no input files and needs none.
  */
 function inputFiles(r: Recipe): string[] {
   const out = new Set<string>(), recipeFile = rel(r.file);
@@ -166,14 +195,17 @@ function inputFiles(r: Recipe): string[] {
     const base = fromRoot ? PROJECT : r.dir;
     const pat = fromRoot ? pattern.slice(1) : pattern;
     let found = 0;
-    const take = (p: string) => { if (p !== recipeFile && !p.startsWith('..') && !NEVER.test(p)) { out.add(p); found++; } };
-    if (!/[*?[{]/.test(pat)) {
-      const f = path.resolve(base, pat);
-      if (existsSync(f) && statSync(f).isFile()) take(rel(f));
-      else if (existsSync(f) && statSync(f).isDirectory())
-        for (const g of new Bun.Glob('**').scanSync({ cwd: f, onlyFiles: true, dot: false })) take(rel(path.join(f, g)));
+    const take = (p: string) => {
+      if (p === recipeFile) found++;
+      else if (!p.startsWith('..') && !NEVER.test(p)) { out.add(p); found++; }
+    };
+    if (!/[*?[{]/.test(pat) || pat === '**') {
+      const f = pat === '**' ? base : path.resolve(base, pat);
+      const st = statSync(f, { throwIfNoEntry: false });
+      if (st?.isFile()) take(rel(f));
+      else if (st?.isDirectory()) filesUnder(f, take);
     } else {
-      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: false })) take(rel(path.resolve(base, g)));
+      for (const g of new Bun.Glob(pat).scanSync({ cwd: base, onlyFiles: true, dot: true })) take(rel(path.resolve(base, g)));
     }
     if (!found) fail(`shots/${r.shot}/shot.json: the input ${pattern} names no file${fromRoot ? '' : ` in shots/${r.shot}/ (a path from the project root starts with /)`}`);
   }
@@ -287,24 +319,39 @@ function versions(shot: string) {
       .sort((a, b) => Number(VERSION.exec(a)![1]) - Number(VERSION.exec(b)![1]));
   } catch { return []; }
 }
-/** Whether a folder is a version this script made for this shot: its own record says so. Only those are ever removed. */
-function madeHere(shot: string, v: string) {
+/** The copies of a version cut short on their way in (a make that died while publishing across volumes): <version>.partial. */
+function partials(shot: string) {
   try {
-    const m = JSON.parse(readFileSync(path.join(shotDir(shot), v, 'made.json'), 'utf8'));
-    return !!m && m['shot.ts'] && m.shot === shot && m.dir === v;
+    return readdirSync(shotDir(shot), { withFileTypes: true }).filter((d) => d.isDirectory() && d.name.endsWith(PARTIAL) && VERSION.test(d.name.slice(0, -PARTIAL.length))).map((d) => d.name);
+  } catch { return []; }
+}
+/**
+ * Whether a folder is a version this script made for this shot, or a copy of one cut short: its own record says
+ * so (a copy's record is copied first). Only those are ever removed.
+ */
+function madeHere(shot: string, folder: string) {
+  try {
+    const m = JSON.parse(readFileSync(path.join(shotDir(shot), folder, 'made.json'), 'utf8'));
+    return !!m && m['shot.ts'] && m.shot === shot && m.dir === (folder.endsWith(PARTIAL) ? folder.slice(0, -PARTIAL.length) : folder);
   } catch { return false; }
 }
 /**
- * Removes the versions this script made for the shot but those in `keep`. One it can't remove (a file open in
- * another program, on Windows) stays, named, for the next make or clean: what's published is published already.
+ * Removes the versions this script made for the shot but those in `keep`, and its copies cut short (run under the
+ * shot's lock, so no make is still writing one). One it can't remove (a file open in another program, on Windows)
+ * stays, named, for the next make or clean: what's published is published already.
  */
 function prune(shot: string, keep: (string | null | undefined)[]) {
   const removed: string[] = [], left: string[] = [];
-  for (const v of versions(shot)) {
-    if (keep.includes(v) || !madeHere(shot, v)) continue;
+  for (const v of [...versions(shot), ...partials(shot)]) {
+    const dir = path.join(shotDir(shot), v);
+    if (keep.includes(v)) continue;
+    if (!madeHere(shot, v)) {
+      // (a copy that died before its record was written is an empty folder: removed as one, which removes nothing else)
+      if (v.endsWith(PARTIAL)) try { rmdirSync(dir); removed.push(v); } catch { /* it holds something: not this script's to remove */ }
+      continue;
+    }
     // (its record goes last: a removal stopped halfway by a file held open leaves a version still known as this
     // script's, so the next make or clean finishes it)
-    const dir = path.join(shotDir(shot), v);
     try {
       for (const f of readdirSync(dir)) if (f !== 'made.json') rmSync(path.join(dir, f), { recursive: true, force: true, maxRetries: 3 });
       rmSync(dir, { recursive: true, force: true, maxRetries: 3 });
@@ -418,22 +465,42 @@ function lock(shot: string) {
   return fail(`can't take ${rel(f)}`);
 }
 
-/** The frames a program wrote into `out`, for frames first..last: their extension as written, and the other files there. */
+/** Every file under a folder, as paths from it with / (a folder holding none gives none). */
+function filesIn(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? filesIn(path.join(dir, d.name)).map((g) => `${d.name}/${g}`) : [d.name]));
+}
+
+/**
+ * The frames a program wrote into `out`, for frames first..last: their extension as written, and the other files
+ * there, those in folders by their path from `out` (meta/camera.json).
+ */
 function framesWritten(out: string, first: number, last: number) {
-  const files = existsSync(out) ? readdirSync(out) : [];
+  const files = existsSync(out) ? readdirSync(out, { withFileTypes: true }) : [];
   const frames = new Map<number, string>(), other: string[] = [];
   const pad = (k: number) => String(k).padStart(6, '0');
-  for (const f of files) {
-    const m = FRAME.exec(f);
+  for (const d of files) {
+    const f = d.name, folder = d.isDirectory();
+    const m = folder ? null : FRAME.exec(f);
     if (m) {
       const k = Number(m[1]);
       if (frames.has(k)) fail(`the program wrote frame ${pad(k)} twice (${pad(k)}.${frames.get(k)} and ${f}): one file per frame`);
       frames.set(k, m[2]!);
-    } else if (statSync(path.join(out, f)).isFile() || RESERVED.has(f)) {
-      if (RESERVED.has(f)) fail(`the program wrote ${f}, a name this script keeps for itself (${[...RESERVED].join(', ')}): name it otherwise`);
-      other.push(f);
+      continue;
+    }
+    if (RESERVED.has(f.toLowerCase())) fail(`the program wrote ${f}, a name this script keeps for itself (${[...RESERVED].join(', ')}, in any case of letters): name it otherwise`);
+    other.push(...(folder ? filesIn(path.join(out, f)).map((g) => `${f}/${g}`) : [f]));
+  }
+  // (two names that differ only by case are one file on Windows and macOS: a version has to read the same on every machine)
+  const names = new Map<string, string>();
+  for (const f of other) {
+    for (let at = f.indexOf('/'); ; at = f.indexOf('/', at + 1)) {
+      const part = at < 0 ? f : f.slice(0, at), was = names.get(part.toLowerCase());
+      if (was !== undefined && was !== part) fail(`the program wrote ${was} and ${part}, names that differ only by the case of their letters: one file where the file system ignores it (Windows, macOS); name one otherwise`);
+      names.set(part.toLowerCase(), part);
+      if (at < 0) break;
     }
   }
+  other.sort();
   const exts = new Set(frames.values());
   if (exts.size > 1) fail(`the program wrote frames of more than one kind (${[...exts].join(', ')}): one kind per shot`);
   const missing: number[] = [], extra: number[] = [];
@@ -507,6 +574,14 @@ function engineCheck() {
     fail('this project\'s src/engine/footage.ts reads no "dir" from a manifest, which a shot made by a program needs: copy the code-video skill\'s template src/engine/footage.ts over it (keep what the project changed in it on purpose), then make the shot');
 }
 /** Whether this project's preview reloads when a shot's manifest is written (its vite.config.ts, from 0.17.0). */
+/**
+ * Whether this project's render.ts compares the shots' manifests before a --jobs render joins its pieces (from
+ * 0.17.0): an older one, kept by a project that took this script and footage.ts alone, joins pieces that show two
+ * versions of a shot made again meanwhile. A project without a render.ts renders nothing to warn about.
+ */
+const guards = () => {
+  try { return readFileSync(path.join(PROJECT, 'scripts', 'render.ts'), 'utf8').includes('shotManifests'); } catch { return true; }
+};
 const reloads = () => {
   try { return readFileSync(path.join(PROJECT, 'vite.config.ts'), 'utf8').includes('SHOT_MANIFEST'); } catch { return false; }
 };
@@ -528,6 +603,15 @@ function scaleOf(shot: string, man: Record<string, any> | null, r: Recipe) {
   return fail(`${shot}: its version's record is gone and its manifest's size (${man!.size}) isn't a whole multiple of the recipe's ${r.size.join('x')}: give --scale to make it again`);
 }
 const tidy = (shot: string) => { try { if (!readdirSync(path.join(CACHE, shot)).length) rmSync(path.join(CACHE, shot), { recursive: true, force: true }); } catch {} };
+/**
+ * Removes a scratch folder under .audara-cache/shots/ once its run is over. One that can't be removed (a file of
+ * it open in another program, on Windows) is said and left: what the run did, a publish included, stands, and an
+ * error here would report a make that published as one that failed.
+ */
+function discard(dir: string) {
+  try { rmSync(dir, { recursive: true, force: true, maxRetries: 3 }); }
+  catch (e) { log(`  ${rel(dir)}/ couldn't be removed (${(e as NodeJS.ErrnoException).code ?? (e as Error).message}: open in another program?): scratch, free to delete`); }
+}
 
 // ------------------------------------------------------------------ the modes
 async function make(shot: string, force: boolean, scaleOpt?: number) {
@@ -553,9 +637,11 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
     // (a version's number is never used twice: past the highest folder there, or a run that died midway)
     const taken = versions(shot).map((v) => Number(VERSION.exec(v)![1]));
     let n = Math.max(0, ...taken) + 1, dir = `g${n}-${k.key.slice(0, 8)}`;
-    while (existsSync(path.join(shotDir(shot), dir)) || existsSync(path.join(shotDir(shot), `${dir}.partial`))) dir = `g${++n}-${k.key.slice(0, 8)}`;
+    while (existsSync(path.join(shotDir(shot), dir)) || existsSync(path.join(shotDir(shot), `${dir}${PARTIAL}`))) dir = `g${++n}-${k.key.slice(0, 8)}`;
     const stage = path.join(CACHE, shot, dir);
-    rmSync(stage, { recursive: true, force: true });
+    // (what a run that died before publishing left under this name)
+    try { rmSync(stage, { recursive: true, force: true, maxRetries: 3 }); }
+    catch (e) { fail(`${shot}: ${rel(stage)}/, the scratch folder a run before left, can't be cleared (${(e as NodeJS.ErrnoException).code ?? (e as Error).message}: open in another program?); the shot is as it was`); }
     const raw = path.join(stage, 'raw'), pub = path.join(stage, 'pub');
     try {
       const out = await render(r, scale, 1, r.frames, raw, path.join(stage, 'tmp'));
@@ -576,7 +662,10 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       const step = Math.max(1, Math.floor(r.frames / 12)), shown = Math.min(12, Math.ceil(r.frames / step)), cols = Math.min(4, shown), rows = Math.ceil(shown / cols);
       const c = await run(['ffmpeg', '-v', 'error', '-y', '-i', path.join(pub, 'full', '%06d.jpg'), '-vf', `select='not(mod(n,${step}))',scale=320:-2,tile=${cols}x${rows}`, '-frames:v', '1', '-q:v', '4', path.join(pub, 'contact.jpg')], { quiet: true });
       if (c.code !== 0) { rmSync(path.join(pub, 'contact.jpg'), { force: true }); log(`  ${shot}: no contact sheet (ffmpeg: ${tail(c.err)})`); }
-      for (const f of out.other) cpSync(path.join(raw, f), path.join(pub, f));
+      for (const f of out.other) {
+        mkdirSync(path.dirname(path.join(pub, f)), { recursive: true });
+        cpSync(path.join(raw, f), path.join(pub, f));
+      }
       // (the recipe and the inputs again, read afresh: a change while the program ran would publish frames of another one)
       const now = recipe(shot), again = await keyOf(now, scale);
       if (again.key !== k.key) fail(`${shot}: its recipe or inputs changed while it was being made (${whyStale({ inputs: k.files, what: k.what }, again, true).join('; ')}): nothing was published; make it again (a program writes its scratch files to {tmp}, never to its recipe folder)`);
@@ -590,9 +679,20 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       mkdirSync(folder, { recursive: true });
       try { renameRetry(pub, dest); }
       catch {
-        const part = path.join(folder, `${dir}.partial`);
-        cpSync(pub, part, { recursive: true });
-        renameRetry(part, dest);
+        // (another volume, or a folder that won't move: copied in under a name nothing reads, then renamed. Its
+        // record goes in first, so a copy cut short is known as this script's; one that fails here, a full disk
+        // or a rename refused, is removed here, or it would keep the space its own retry needs)
+        const part = path.join(folder, `${dir}${PARTIAL}`);
+        try {
+          mkdirSync(part);
+          cpSync(path.join(pub, 'made.json'), path.join(part, 'made.json'));
+          cpSync(pub, part, { recursive: true });
+          renameRetry(part, dest);
+        } catch (e) {
+          let kept = '';
+          try { rmSync(part, { recursive: true, force: true, maxRetries: 3 }); } catch { kept = `; footage/${shot}/${dir}${PARTIAL}/ couldn't be removed: the next make or clean removes it`; }
+          fail(`${shot}: its new version couldn't be put in footage/${shot}/ (${(e as Error).message}); the shot is as it was${kept}`);
+        }
       }
       try { writeAtomic(path.join(folder, 'manifest.json'), JSON.stringify(manifestFor(now, record), null, 1) + '\n'); }
       catch (e) {
@@ -605,7 +705,7 @@ async function make(shot: string, force: boolean, scaleOpt?: number) {
       if (pruned.left.length) log(`  ${shot}: published; ${pruned.left.join(', ')} couldn't be removed yet (open in another program?): the next make or clean removes it`);
       log(reloads() ? '  a running preview reloads at its moment' : '  reload the preview to see it (this project\'s vite.config.ts doesn\'t reload it on a new shot)');
     } finally {
-      rmSync(stage, { recursive: true, force: true });
+      discard(stage);
       tidy(shot);
     }
   } finally { unlock(); }
@@ -640,7 +740,7 @@ async function check(shot: string, n: number) {
     log(`  The frames rendered again are in ${rel(dir)}/ to compare.`);
     process.exitCode = 1;
   } else {
-    rmSync(dir, { recursive: true, force: true });
+    discard(dir);
     tidy(shot);
     log(`check ${shot}: the ${count} frames rendered again, alone and from the middle, agree with the shot pixel for pixel (a sample: a frame not rendered again isn't checked)`);
   }
@@ -663,8 +763,11 @@ function clean(shot: string) {
   const unlock = lock(shot);
   try {
     const man = manifestOf(shot);
-    if (!ours(man)) { log(`  ${shot}: no versions made by this script`); return; }
-    const { removed, left } = prune(shot, [man!.dir]);
+    // (footage with a manifest that isn't this script's is left as it is. With no manifest yet, nothing says
+    // which version is current: every version stays, and only copies cut short go, a first make's that died)
+    if (man && !ours(man)) { log(`  ${shot}: no versions made by this script`); return; }
+    const { removed, left } = prune(shot, man ? [man.dir] : versions(shot));
+    if (!man && !removed.length && !left.length) { log(`  ${shot}: no versions made by this script`); return; }
     log(`  ${shot}: ${removed.length ? `removed ${removed.join(', ')}` : 'no other version of its own to remove'}${left.length ? `; couldn't remove ${left.join(', ')} (open in another program?)` : ''}`);
     if (left.length) process.exitCode = 1;
   } finally { unlock(); }
@@ -682,6 +785,7 @@ try {
     if (!todo.length) fail('no recipes: a shot made by a program has its recipe in shots/<shot>/shot.json (bun scripts/shot.ts --help)');
     engineCheck();
     for (const s of todo) await make(s, opts.has('force'), scale);
+    if (!guards()) log("this project's scripts/render.ts is older than this script: a `video --jobs` render doesn't stop when a shot is made again while it runs, so make no shot during one (the code-video skill's scripts/init.ts --force updates render.ts, keeping the old one as render.ts.orig)");
   } else if (mode === 'check') {
     needTools();
     if (names.length !== 1) fail('check one shot: bun scripts/shot.ts check <shot>');
