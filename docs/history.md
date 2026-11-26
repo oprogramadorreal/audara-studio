@@ -5973,5 +5973,64 @@ approval, and a black frame caught by the shot's own checks. None of these failu
 A warning in `shot.ts make` for a near-black frame is a candidate; holding a found fix until after the render
 on approval is a candidate for the gate.
 
+**The preview's ports, all taken: eval runs had left their previews running (2026-11-26).** A second review of
+the branch (Claude Fable 5.2, with the app's pull request beside it) asked each of 5173-5199 what it served
+(`/__audara`). All 27 answered: 22 with run folders of devlog's trigger evals of 2026-11-19, their processes
+started that afternoon, and five with video projects. So for a week no new project on this machine could start
+its preview, which is why the run above ran Vite by hand, and its turn 1 failed its hand-off for more than its
+own reasons. A video project made in those days carries the cost in its own files: its `render.ts` has the range
+widened to 64 ports, with a comment saying the 27 were held by other projects' previews.
+
+- **Why they stayed.** `render.ts preview` starts Vite in a process of its own so that it outlives the turn;
+  `trigger.ts` stopped the session's process tree and nothing else, and a near-miss run acts for several turns.
+  `task.ts` did stop its run's previews, but looked for them on 5173-5199 and by command lines that name the
+  run's folder: the Vite the run above started by hand (`node node_modules/vite/bin/vite.js --port 5240
+  --strictPort`, from the folder) names no folder and sat outside those ports, and was still serving the next day.
+- **What changed in the harness.** `evals/harness/left-running.ts`, used by both runners: when a run ends, every
+  process whose command line names its folder is stopped, and every dev server that answers `/__audara` with a
+  folder inside it, on whatever port (only ports a node or bun process listens on are asked); never this process
+  or the ones it descends from, and never a sibling folder whose name starts alike. `trigger.ts` does it run by
+  run, so later runs of the same eval find the ports.
+- **What changed in the template.** With every port held, Vite started on the next one up (5200), where neither
+  `preview` nor `link` looks, so the start read as "Vite didn't answer ... within 20 s" with the cause in a log
+  tail; the run above piped it through `tail -3` and saw none of it. `preview` now asks the ports first and, when
+  none is free, says so at once, with each port and the folder its preview serves, and that which of them can
+  stop is the director's to say (`preview --stop` in that folder). The range is as it was, so what the app reads
+  of it is too.
+- **What was checked.** `test_left_running.ts`, new, 5/5: a server started from the run's folder by a relative
+  path, on a port of its own, and a process whose command line names the folder are stopped; the same two for a
+  sibling folder go on. With the port sweep switched off the first fails, and with the name's boundary switched
+  off the second does. `test_render_failures.ts` 14/14, one new: what `preview` says with every port taken, and
+  nothing with one free. Against this machine as it was, all 27 held, `render.ts preview` in a scratch copy of
+  the template printed the message and its 27 lines and exited 1 without starting anything; a fetch of a port
+  nothing listens on is refused in 1 ms here, never a timeout, so a free port can't read as taken.
+- **Left for the user.** The 22 previews were still running when this was written: the session wasn't allowed to
+  stop processes it hadn't started. Whether a preview should end by itself after a long time unwatched, or the
+  range be wider, is undecided: both change what "it keeps running" promises the director and the app.
+
+**The same review, on what is left for the gate.** It ran this branch's tests again (the six files above, same
+counts) and the app's (560 passed, 0 failed), read the vendors' current guidance, and found nothing in it against
+this change: it adds a way to draw and a check on it, and no line about which way to lean. On the candidates
+above the guidance bears this way, as an order to try them in, not as a result:
+
+1. **The ablation arm first.** "Skills developed for prior models are often too prescriptive for Claude Fable 5
+   and can degrade output quality. Review and consider removing older instructions if default performance is
+   better" (Anthropic, "Prompting Claude Fable 5"); "removing one component at a time and reviewing what impact it
+   had on the final result" (Anthropic, "Harness design for long-running application development", 2026-03-24).
+   This history's own numbers say where to look: with the skills a video takes 1.5 to 4 times as long, and its
+   picture comes out about the same, slightly preferred on the newest model and once worse (0.8.2's music video),
+   so what the reading and the rounds cost is the open question, more than what they forbid.
+2. **backends.md's "Leave it only for ... is not a reason".** "The model treats an instruction that contains
+   'never' as absolute", and the advice is to "rewrite absolute rules with their scope and reason" ("Prompting
+   Claude Fable 5.2"). A default with its reason and its way out is what the skill-authoring guide asks for
+   ("Provide a default (with escape hatch)"); a ranking a reader obeys to the letter is not. Since this release
+   the reason the line gave (leaving costs the director's loop) no longer holds for a shot.
+3. **Look defaults as opt-in.** The same guidance on instructions that "raised cost, caused side effects, or no
+   longer had an effect", and 0.13.0's own run, where naming post as a look left one model's picture sparser:
+   one change, one run a side at least.
+4. **The critic's cadence** stays as it is: "Separate, fresh-context verifier subagents tend to outperform
+   self-critique" ("Prompting Claude Fable 5"). What the run above adds is narrower: a fix found after the
+   director's "Approved." was applied before the render, which then wasn't made.
+
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).

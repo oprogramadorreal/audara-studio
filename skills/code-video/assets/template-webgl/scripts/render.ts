@@ -380,6 +380,24 @@ async function link(video: string) {
     + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_RANGE}.`}`);
 }
 
+/**
+ * Why no preview can start here, when every one of the preview's ports is taken, and by what; null while one is
+ * free. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports. With all
+ * of them held, Vite started on the next port up, where neither `preview` nor `link` looks: the start read as a
+ * 20-second timeout, and sessions went around it (Vite by hand on a port of their own, a wider range in the
+ * project's copy of this file). Which previews can go is the director's to say.
+ */
+function portsTaken(said: Answer[]): string | null {
+  if (!said.length || said.some((a) => a === null)) return null;
+  const previews = said.flatMap((a, i) => (a && typeof a === 'object' ? [`  ${PREVIEW_PORTS[i]}  ${a.root}`] : []));
+  const apps = said.length - previews.length;
+  const by = [...(previews.length ? [`${previews.length} by other projects' previews`] : []), ...(apps ? [`${apps} by other apps`] : [])].join(' and ');
+  return `the preview can't start: all ${said.length} of its ports (${PREVIEW_RANGE}) are taken, ${by}. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports. `
+    + (previews.length
+      ? `Tell the director which projects hold them and ask which can stop; \`bun scripts/render.ts preview --stop\`, run in such a project's folder, frees its port. Then run this command again.\n${previews.join('\n')}`
+      : 'Ask the director which of those apps can close, then run this command again.');
+}
+
 /** The last lines of a log, indented, for a message; stack frames left out (the error above them says more). */
 function logTail(file: string, n = 15) {
   let lines: string[] = [];
@@ -437,8 +455,12 @@ async function preview(video: string) {
     console.log('(For the agent at work here: post this link to the director in a message now; they watch the build grow there.)');
     console.log(linkTo(port, video, t));
   };
-  const found = await thisPreview();
+  const asked = askPorts();
+  const found = await thisPreview(asked);
   if (found) return share(found.port);
+  // (no port left for it: said now, with what holds them, instead of a Vite that starts where nothing looks)
+  const taken = portsTaken(await Promise.all(asked));
+  if (taken) fail(taken);
   const vite = path.join(PROJECT, 'node_modules', 'vite');
   let bin: unknown;
   try { bin = (JSON.parse(readFileSync(path.join(vite, 'package.json'), 'utf8')) as { bin?: unknown }).bin; }
