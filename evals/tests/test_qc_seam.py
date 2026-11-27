@@ -165,7 +165,7 @@ class Timing(unittest.TestCase):
 
     def test_a_speed_change_whose_gaps_each_pass(self):
         # a 1/45 s clock: 30 frames of one tick, then 30 of two. Each gap is within a tick of the mean (1.5), but
-        # the speed doubles halfway, and the decoder makes up frames to even it out
+        # playback slows to half speed halfway, and the decoder makes up frames to even it out
         tick = 1 / 45
         ticks = [i if i < 30 else 30 + 2 * (i - 30) for i in range(60)]
         rows = [f"{t * tick:.6f},{(1 if i < 30 else 2) * tick:.6f}" for i, t in enumerate(ticks)]
