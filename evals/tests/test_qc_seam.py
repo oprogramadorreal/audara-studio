@@ -255,19 +255,6 @@ class Encoded(unittest.TestCase):
         self.assertEqual(self.kind(self.encode("mkv60", [orbit(i, n=n) for i in range(n)], fps=60, ext="mkv")),
                          "smooth")
 
-    def test_sound_past_the_picture_is_noted(self):
-        # a loop with a sound that runs 100 ms past it: a player loops at the end of the longer stream
-        n = 60
-        picture = self.encode("pic", [orbit(i, n=n) for i in range(n)])
-        path = self.dir / "sound.mp4"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(picture), "-f", "lavfi", "-i",
-                        "sine=frequency=440:duration=2.1", "-c:v", "copy", "-c:a", "aac", str(path)], check=True)
-        with contextlib.redirect_stderr(io.StringIO()):
-            r = qc.run(path, [], loop=True)
-        self.assertTrue(any("ms past the picture" in x for x in r["notes"]), r["notes"])
-        with contextlib.redirect_stderr(io.StringIO()):
-            self.assertFalse(any("ms past the picture" in x for x in qc.run(path, [])["notes"]))
-
     def test_without_loop_no_seam(self):
         path = self.encode("plain", [orbit(i, n=60) for i in range(60)])
         with contextlib.redirect_stderr(io.StringIO()):

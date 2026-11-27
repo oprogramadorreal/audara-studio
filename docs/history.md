@@ -6393,12 +6393,17 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   the picture changes: two packets a second apart, from ffmpeg's `mpdecimate`) that skipped the count check,
   decoded to 31 frames and read smooth across a white-to-black wrap: the decoder's count is checked first now.
   It also found that both real 1080p loop drafts decode to the same pictures with and without passthrough, all
-  360 frames. Fable found that a loop with sound stalls at the wrap when the sound runs past the picture, since a
-  player loops at the end of the longer stream: under `--loop` a note says so past half a frame (render.ts cuts
-  the sound to the picture's length: 0 ms over on ten of its renders, one 17 ms short).
-  `evals/tests/test_qc_seam.py` has 32 cases: the rules on frames drawn at the analysis size, the timing on
-  packet times as ffprobe prints them, and six tests on encoded files (drafts at 960×540, one a 60 fps Matroska
-  file, one with sound).
+  360 frames. `evals/tests/test_qc_seam.py` has 31 cases: the rules on frames drawn at the analysis size, the
+  timing on packet times as ffprobe prints them, and five tests on encoded files (drafts at 960×540, one a 60 fps
+  Matroska file).
+- **A note on a loop's sound, tried and left out.** Fable found that a loop with sound can stall at the wrap when
+  the sound runs past the picture, since a player may loop at the end of the longer stream. A note under
+  `--loop` for sound longer than the picture by half a frame was added and taken out in the next round: Codex
+  showed it would tell a director to cut sound that ends with the picture when the picture starts later (a
+  video starting at 0.1 s), since it compared lengths, not end times, and Matroska streams often carry only the
+  container's length. render.ts cuts the sound to the picture's length (0 ms over on ten of its renders, one
+  17 ms short), and qc.py's older note already flags a gap past 50 ms. A note would compare the streams' end
+  times, where the file gives them.
 - **`cv-range-loop`** now has the grader run `qc.py --loop` and look at the last frames and the first, in order
   and at the piece's pace, whatever it reports: a flag is a reason to look closely, not a fail, and a treatment
   that says how the loop closes (a cut, an accent on frame 0, held drawings) says what to look for.

@@ -864,11 +864,6 @@ def run(path: Path, cuts: list[float], loop: bool = False) -> dict:
             report["seam"] = seam_report(pic["seam"], pic["frames"],
                                          uneven_frames(path, v["index"], pic["frames"], tick or 0.0),
                                          pic["decoder_errors"], notes)
-            over = (facts["audio"] or {}).get("duration", 0.0) - v["duration"]
-            if facts["audio"] and over > 0.5 / fps:  # (render.ts cuts the sound to the picture: 0 ms over, measured)
-                notes.append(f"--loop: the sound runs {1000 * over:.0f} ms past the picture, and a player loops at the end "
-                             "of the longer one: the last frame holds that long at every wrap. Cut the sound to the "
-                             "picture's length")
         facts["video"]["display"] = [w, h]
     else:
         notes.append("no video stream: only the sound was measured")
