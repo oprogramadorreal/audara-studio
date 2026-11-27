@@ -48,6 +48,7 @@ Contents
 - The opening hands over like any other moment (0.15.1, 2026-11-22)
 - Nutlight in 16-bit: a version of the style, not another skill (0.16.0, 2026-11-23)
 - Any program inside the loop: shots made outside the browser (0.17.0, 2026-11-25)
+- Loops that close, measured: lessons from a motion playbook (0.17.1, 2026-11-27)
 
 ## Definition of done
 
@@ -6307,3 +6308,124 @@ link to a file among a program's files.
 
 **Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
 gate (what a default session reads gained facts and no lean).
+
+## Loops that close, measured: lessons from a motion playbook (0.17.1, 2026-11-27)
+
+The user came across a post listing 14 repositories for animating with agents, and its author's article, "The
+Fable 5.2 Motion Playbook: One Prompt, One Film" (X, 2026-11-10): nine lessons from about forty short films a
+model drew as three.js in one HTML file and rendered frame by frame. They asked what audara-studio could learn
+from both, without risking what already works, without anything that narrows a strong model, and keeping it
+simple. The article was read whole; four research agents read the repositories (taste-skill, impeccable,
+video-explainer, huashu-motion, mg-styles-15, kubai-icons, HyperFrames' and Remotion's agent skills,
+gsap-skills, motion2code, claude-video, three.quarks, idol-sdk, mcp-for-blender, blender-skills, Mediabunny,
+ai-portals, Manim). Codex (GPT-6.2 Astra) and a Fable 5.2 session were consulted in two rounds, the first
+without this session's list or each other's.
+
+**Most of it was here already.** The film as a pure function of time with a seek check (the article's
+`renderAt` contract is this engine's rule, and verify's); a score as the clock and no time typed (time from the
+data); "stills lie, measure motion", whose case was 100 of 160 seconds frozen past five checking sessions
+(qc.py's holds and glance, which find holds under grain where the article's `freezedetect` doesn't, and the
+stills loop's "stills can't show motion"); a reviewer that built nothing (the fresh critic, who looks before it
+reads, as impeccable's finish reviewer and huashu-motion's cold reviewer do); fixing on stills before the render
+(style frames, sheets); frame 0 finished, text inside the frame, no labels nobody asked for, glow orbs and
+purple gradients named (motion.md, the safe areas, the Avoid list's "chrome nobody asked for" and "filler
+light"); closed-form springs, sub-frame motion blur, frames 0 to N−1, loudness and true peak measured on the
+encoded file, Blender run by a script; and fewer rules, no MUSTs, numbers as anchors ("Text that serves any
+reader").
+
+**What was taken: loops.** Three things pointed at one gap. The article's checks for a loop ("render frames 0
+to N−1"; the last frame against frame 0 within a normal step) and motion2code's two-sided seam check say how a
+loop fails: a pose or a light that doesn't come back jumps at every wrap, and a last frame drawn to equal the
+first shows one picture twice. code-video's description names loops and three cases make them, but nothing
+measured a seam, and `cv-range-loop` graded the wrong thing: "the first and the last frame within about one
+level" passes the doubled frame and can fail a closed loop in motion. And the one session asked for a seamless
+loop (a 6-second title card, 2026-11-06) built loop support into its own project's engine (below).
+
+- **`qc.py --loop`** holds the step from the last frame into frame 0 against the three steps either side, or,
+  where those are still (drawings held for several frames, a pause), against the loop's own moving steps, by
+  two measures on the analysis frame (8×8-px cells at 1080p): the share of cells whose mean moved more than 6
+  levels, and the strongest change (the 99.9th-percentile cell). It reports smooth, a jump or a repeat with the
+  measure that triggered it and asks for a look; it doesn't judge frames that aren't evenly spaced or a stream
+  with decoder errors. Without `--loop` the report is the same but for a `"seam": null` key and the video's
+  `even_rate` and `index`, and the decoder now reads the stream the probe chose (a file whose first video stream
+  is cover art was analysed as the cover). On synthetic loops, as render.ts encodes a final (60 fps, CRF 16)
+  and a draft (30 fps, CRF 23):
+
+  | Loop | The seam against the steps around it | Reads |
+  |---|---|---|
+  | closed: a disc orbiting, a small dot, a whole-frame pan, a slow drift, a grainy still | 0.9–1.1× | smooth |
+  | the last frame equal to frame 0 (the same kinds) | 0.000% of the frame against 0.1–86% | repeat |
+  | a move, a pan or a small dot that doesn't come back | 1.9–200×, by area or by strength | jump |
+  | a hard cut at the seam | 91% against under 1% | jump |
+  | one frame missing before the wrap | 1.6–1.7× | jump |
+  | a move that turns back at the seam | 1.0× | smooth: it reads how much changes, not which way |
+  | a flash on frame 0 among flashes on every beat | like its neighbours | smooth |
+
+  The two loops that session made (drafts at 1080p60) read smooth: the second at 4.52% against 4.04–4.51%, the
+  first's slow flow never moving a cell past the line.
+- **Two reviews changed it before it merged.** Fable found that drawings held four frames left the steps around
+  the seam still, so any change there read as a jump, and a period that divides the length puts a change
+  exactly there: hence the loop's moving steps as the reference. Codex found that a seam step smaller than its
+  neighbours but past no cell's line read as a repeat (whole-frame steps of 7 levels around a seam of 5), that
+  ffmpeg's raw output repeats frames to even out a variable rate (10 source frames came out 15), and that the
+  decoder could read cover art; a repeat now needs both measures under 0.35× the steps next to it and every step
+  around it moving (a hold between moves, on twos, is none), and uneven frames go unjudged. The 0.35: a draft's
+  frame 0, re-encoded as a keyframe, kept 0.29× its neighbours' share at 480×270, 0.11× at 720×405 and 0 at
+  1080p. `evals/tests/test_qc_seam.py` has 18 cases, the rules on frames drawn at the analysis size and three
+  encoded as a 960×540 draft.
+- **`cv-range-loop`** now asks for `qc.py --loop`'s seam, run by the grader, and a look at the last frames and
+  the first in order, unless the treatment or the reply says why the seam reads otherwise (a cut, an accent on
+  frame 0, held drawings).
+- **Text:** contract.md ("Cuts and transitions") says how a loop wraps and closes, that `l` plays one entry
+  round, and that frame 0's blur stops at `t = 0`; critique.md gains the check's row, `--loop` in the critic's
+  tools and in Delivery, and the seam in the hand-off; the treatment template's loop line points to it.
+  SKILL.md is unchanged, and the critic's prompts gain no finding: the seam is a measured check, like the
+  holds.
+
+**A loop mode for the engine, left out.** That session's `"loop": true` in video.json did three things, each
+taken out of the template on both consultants' advice:
+
+- **Blur across the seam** (sub-frames before 0 taken from the end when one entry spans the whole loop). Without
+  it frame 0's blur stops at `t = 0`, half the others' at the default 0.2 shutter, and no director has seen it on
+  a frame 0. Reopen when a loop's frame 0 shows it (a fast move at a wide shutter): `qc.py --loop` on finals
+  with and without it decides.
+- **One GOP for a whole-loop encode** (keyframe only at frame 0, no extra keyframe quality, no macroblock tree).
+  Its gain, "from 1.5× its neighbours' to within their range", was on a frame-wide mean, which a re-encoded
+  keyframe moves; the cell measure above reads a doubled frame's keyframe as 0 at 1080p. It doesn't carry to
+  `--jobs` pieces or clips, and costs seeking on long loops. Left out for good unless a player shows the step.
+- **The preview playing round from the start.** `l` already plays the current entry round, enough for a loop in
+  one entry; a loop on by default would invert what the first press of `l` does for anything that drives the
+  preview by its keys, and the session's wrap predates 0.13.2's player. Reopen when a director with a loop of
+  several entries can't watch it go round.
+
+That session made its loop without the template's help, as "engine changes included" allows.
+
+**Left out, and why.**
+
+- **Effort settings, the "finishing work" and "ownership" blocks:** the harness's and the director's settings;
+  no skill names a model, and SKILL.md already says what's theirs and not to end a turn mid-render.
+- **The ten-field numeric brief, a damping ratio per kind of subject, lens lists, a hero at least 170 px wide,
+  a Banned line:** each is a steer, a precise default for every video, and 0.13.0's six such changes failed the
+  gate. Small subjects have two hints here (a sunset that was "a small orange smudge", 0.3.0; "gameplay windows
+  too small", 0.12.0), not a pattern: a baseline run on a prompt of the article's kind, with and without the
+  skills, would come before any text, through the gate.
+- **Sound one frame after its picture** (the article and HyperFrames): a sync default with no failure recorded
+  here; 0.3.0 left out checking sound against picture. **−2 dBTP:** qc.py's −1 is measured on the encoded file.
+- **Departments of agents and twelve approval stills:** round 4 measured what stops before the build cost.
+- **Style packs and taste skills** (mg-styles-15, taste-skill's dealt palettes and fonts, impeccable's
+  corrections per provider, kubai-icons' spec, whose licence forbids adapting its text): anchoring on examples,
+  and a skill names no model. Their own records argue the same way: taste-skill's last blind round scored 7.7
+  with it and 7.8 without; impeccable moved reminders given at design time to its audit because they made
+  "safe, underdesigned" work; huashu-motion's agents converged on near-black, a warm accent and bone type in six
+  of nine frames when told to avoid its house look, the Avoid list's twin.
+- **A one-frame pop detector** (huashu-motion's qa has one): still deferred until tested on the eight recorded
+  flickers and pops and on deliberate flashes (0.12.0).
+- **HyperFrames' reading-time rule:** no note here records text shown too briefly.
+- **three.quarks** integrates its particles frame by frame with unseeded randomness, so it fits only as a
+  `stateful` scene; **idol-sdk** makes Gaussian splats behind gated encoders; **mcp-for-blender** drives a live
+  Blender with usage data sent by default, where a script already runs it headless; **Mediabunny** would
+  duplicate the render's ffmpeg path.
+- **ai-portals' lesson stands as a caution:** a rulebook that only grew (204 sections, 87,500 words) took a
+  team of agents from hundreds of worlds a day to about a dozen, until it was streamlined.
+
+**Not run:** `cv-range-loop` and the other task cases (an hour or more each per tool).

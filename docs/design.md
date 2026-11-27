@@ -138,8 +138,8 @@ What the agent owes the director:
 - a one-line status during long work, with the time left;
 - a link for every change, with what moved;
 - for a note that reads two ways, the reading taken and the other on offer;
-- the work shown: contact sheets, numbers (`qc.py`'s holds and blank frames, with a link to each),
-  critic verdicts;
+- the work shown: contact sheets, numbers (`qc.py`'s holds and blank frames, a loop's seam, with a link to
+  each), critic verdicts;
 - a question before anything that costs money, or spending within a budget they set;
 - their decisions and rejections written down in the project, so later sessions keep them;
 - their product as it is in a factual demo: its real screens (given, or captured from its live site with
@@ -1196,6 +1196,18 @@ fix by copying the template's `src/engine/soundtrack.ts` and `footage.ts` as the
 `engine.ts` too for the bloom skip below). In the preview alone, a frame whose bloom and halation are both 0
 skips the bloom pyramid, the same pixels for any frame without a NaN; render.ts always runs it.
 
+### A loop: closed by its motion, measured at its seam
+
+A loop plays its last frame and then frame 0. render.ts renders frames 0 to N−1, so a loop whose motion has a
+period dividing its length closes by itself; a last frame drawn to equal the first shows one picture twice, a
+stall at every wrap, and a pose or a light that doesn't come back jumps. Neither shows on a still, so
+`qc.py --loop` measures the step from the last frame into frame 0 against the steps either side (contract.md,
+"Cuts and transitions"; critique.md, "Measured checks"). It reports, as the rest of qc.py does: a loop that
+closes on a cut, or an accent on frame 0, is the treatment's to say. The engine has no loop mode: the one
+session asked for a seamless loop added one to its own project (blur across the seam, the preview playing
+round, the MP4 as one GOP), and each part was left out of the template, with what would bring it back
+(history.md, 0.17.1).
+
 ### Photographic 3D: an optional kit, not a default
 
 [golden-temple](https://github.com/Leonxlnx/golden-temple) (MIT, Leon Lin, 2026-10-15) showed that the
@@ -1588,7 +1600,7 @@ audara-studio/
     │   ├── scripts/init.ts           # (bun) makes a folder a project or adds a video: copies the template,
     │   │                             # writes ENGINE.md, AGENTS.md, CLAUDE.md and .gitignore entries
     │   ├── scripts/demo-track.ts     # the example video's synthesized demo track
-    │   ├── scripts/qc.py             # holds, still at a glance, blank frames, loudness, stream tags on any MP4
+    │   ├── scripts/qc.py             # holds, still at a glance, blank frames, a loop's seam, loudness, stream tags on any MP4
     │   ├── scripts/imagegen.py       # optional: generated images, each with its request record
     │   ├── assets/template-webgl/    # engine, preview player, render.ts, font-instances.py, fonts, an
     │   │                             # example video with one scene per way of drawing; pdoom specifics
