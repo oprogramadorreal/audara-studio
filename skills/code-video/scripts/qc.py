@@ -600,6 +600,8 @@ def uneven_frames(path: Path, stream: int | None, decoded: int, tick: float = 0.
     pts = [num(x[0]) for x in rows if x]
     if r.returncode != 0 or not pts or any(t is None for t in pts):
         return "the frames' times couldn't be read"
+    if len(pts) != decoded:  # (first: a sparse file of two pictures a second apart decodes to 31 frames)
+        return f"the decoder gave {decoded} frames for the file's {len(pts)}, repeating or dropping some to keep a constant rate"
     order = sorted(range(len(pts)), key=lambda i: pts[i])
     last = num(rows[order[-1]][1]) if len(rows[order[-1]]) > 1 else None  # how long the last frame shows
     if not last or last <= 0:
@@ -622,8 +624,6 @@ def uneven_frames(path: Path, stream: int | None, decoded: int, tick: float = 0.
     if abs(off[k]) > tol:
         return (f"the frames don't keep a steady rate (frame {k} shows {1000 * abs(off[k]):.1f} ms "
                 f"{'late' if off[k] > 0 else 'early'} for it): the speed changes in the file")
-    if len(pts) != decoded:
-        return f"the decoder gave {decoded} frames for the file's {len(pts)}, repeating or dropping some to keep a constant rate"
     return None
 
 
@@ -864,6 +864,11 @@ def run(path: Path, cuts: list[float], loop: bool = False) -> dict:
             report["seam"] = seam_report(pic["seam"], pic["frames"],
                                          uneven_frames(path, v["index"], pic["frames"], tick or 0.0),
                                          pic["decoder_errors"], notes)
+            over = (facts["audio"] or {}).get("duration", 0.0) - v["duration"]
+            if facts["audio"] and over > 0.5 / fps:  # (render.ts cuts the sound to the picture: 0 ms over, measured)
+                notes.append(f"--loop: the sound runs {1000 * over:.0f} ms past the picture, and a player loops at the end "
+                             "of the longer one: the last frame holds that long at every wrap. Cut the sound to the "
+                             "picture's length")
         facts["video"]["display"] = [w, h]
     else:
         notes.append("no video stream: only the sound was measured")

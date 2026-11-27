@@ -183,6 +183,12 @@ class Timing(unittest.TestCase):
         rows = [f"{round(i * 90000 * 1001 / 60000) * tick:.6f},{1501.5 * tick:.6f}" for i in range(300)]
         self.assertIsNone(self.uneven(rows, 300, tick))
 
+    def test_two_pictures_a_second_apart(self):
+        # a sparse file (frames kept only when the picture changes): two packets, which the decoder turns into 31
+        # frames. Checked before anything that needs more than two frames' times
+        rows = ["0.000000,1.000000", "1.000000,0.033333"]
+        self.assertIn("decoder gave 31 frames for the file's 2", self.uneven(rows, 31, 1 / 15360))
+
     def test_a_count_the_decoder_changed(self):
         rows = [f"{i / 30:.6f},{1 / 30:.6f}" for i in range(20)]
         self.assertIn("decoder gave 21 frames", self.uneven(rows, 21, 1 / 15360))
@@ -231,8 +237,9 @@ class Encoded(unittest.TestCase):
         self.assertEqual(self.kind(path), "unjudged")
 
     def test_two_frames_moved_keeping_the_count_and_length_are_not_judged(self):
-        # frame 1 half a frame early (in a time base fine enough to hold it): the length and the count still read
-        # 30 fps, but two frames show for half a frame and one and a half
+        # frame 1 half a frame early (in a time base fine enough to hold it): the file's count and length still
+        # read 60 frames in 2 s, but two frames show for half a frame and one and a half. (The gaps' own rule, for
+        # a decoder that keeps the count, is tested in Timing.)
         n = 60
         path = self.encode("moved", [orbit(i, n=n) for i in range(n)],
                            ["-vf", "settb=1/15360,setpts='PTS-eq(N,1)*256'", "-fps_mode", "passthrough",
@@ -241,14 +248,25 @@ class Encoded(unittest.TestCase):
             r = qc.run(path, [], loop=True)
         self.assertEqual(r["stream"]["video"]["frames"], n)
         self.assertEqual(r["seam"]["kind"], "unjudged")
-        self.assertIn("aren't evenly spaced", r["seam"]["why"])
-        self.assertIn("16.7-50.0 ms instead of 33.", r["seam"]["why"])
 
     def test_a_60_fps_matroska_file_is_judged(self):
         # its times round to whole milliseconds (17 and 16 ms apart): even, within a tick of its time base
         n = 120
         self.assertEqual(self.kind(self.encode("mkv60", [orbit(i, n=n) for i in range(n)], fps=60, ext="mkv")),
                          "smooth")
+
+    def test_sound_past_the_picture_is_noted(self):
+        # a loop with a sound that runs 100 ms past it: a player loops at the end of the longer stream
+        n = 60
+        picture = self.encode("pic", [orbit(i, n=n) for i in range(n)])
+        path = self.dir / "sound.mp4"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(picture), "-f", "lavfi", "-i",
+                        "sine=frequency=440:duration=2.1", "-c:v", "copy", "-c:a", "aac", str(path)], check=True)
+        with contextlib.redirect_stderr(io.StringIO()):
+            r = qc.run(path, [], loop=True)
+        self.assertTrue(any("ms past the picture" in x for x in r["notes"]), r["notes"])
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertFalse(any("ms past the picture" in x for x in qc.run(path, [])["notes"]))
 
     def test_without_loop_no_seam(self):
         path = self.encode("plain", [orbit(i, n=60) for i in range(60)])
