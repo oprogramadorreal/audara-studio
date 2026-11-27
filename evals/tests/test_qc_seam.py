@@ -163,6 +163,14 @@ class Timing(unittest.TestCase):
         rows = [f"{(2 * i - (i == 1)) * tick:.6f},{2 * tick:.6f}" for i in range(60)]
         self.assertIn("aren't evenly spaced", self.uneven(rows, 60, tick))
 
+    def test_a_speed_change_whose_gaps_each_pass(self):
+        # a 1/45 s clock: 30 frames of one tick, then 30 of two. Each gap is within a tick of the mean (1.5), but
+        # the speed doubles halfway, and the decoder makes up frames to even it out
+        tick = 1 / 45
+        ticks = [i if i < 30 else 30 + 2 * (i - 30) for i in range(60)]
+        rows = [f"{t * tick:.6f},{(1 if i < 30 else 2) * tick:.6f}" for i, t in enumerate(ticks)]
+        self.assertIn("don't keep a steady rate", self.uneven(rows, 60, tick))
+
     def test_a_last_frame_held_twice_as_long_on_a_frame_clock(self):
         # a time base of one frame (as some AVI and MOV files have): the last frame showing two frames
         tick = 1 / 30
@@ -234,7 +242,7 @@ class Encoded(unittest.TestCase):
         self.assertEqual(r["stream"]["video"]["frames"], n)
         self.assertEqual(r["seam"]["kind"], "unjudged")
         self.assertIn("aren't evenly spaced", r["seam"]["why"])
-        self.assertIn("16.7-50.0 ms instead of 33.3", r["seam"]["why"])
+        self.assertIn("16.7-50.0 ms instead of 33.", r["seam"]["why"])
 
     def test_a_60_fps_matroska_file_is_judged(self):
         # its times round to whole milliseconds (17 and 16 ms apart): even, within a tick of its time base

@@ -6318,7 +6318,7 @@ from both, without risking what already works, without anything that narrows a s
 simple. The article was read whole; four research agents read the repositories (taste-skill, impeccable,
 video-explainer, huashu-motion, mg-styles-15, kubai-icons, HyperFrames' and Remotion's agent skills,
 gsap-skills, motion2code, claude-video, three.quarks, idol-sdk, mcp-for-blender, blender-skills, Mediabunny,
-ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in five rounds, the first
+ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted over several rounds, the first
 without this session's list or each other's.
 
 **Most of it was here already.** The film as a pure function of time with a seek check (the article's
@@ -6383,11 +6383,14 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   frames 17 and 16 ms apart in a 1/1000 time base). A tick of slack on top of 5% fixed that, and in the fifth
   round Codex found it let a moved frame back in where a frame is only two ticks (30 fps on a 1/60 s clock: gaps
   of 1, 3 and 2 ticks), and Fable a last frame held twice as long where a frame is one tick. The rule now is the
-  one rounding gives: a steady rate rounded to the time base lands on the ticks either side of a frame's time
-  (the mean from the first frame to the last), never one further, so every gap and the last duration are within
-  a tick of it. `evals/tests/test_qc_seam.py` has 29 cases: the rules on frames drawn at the analysis size, the
-  timing on packet times as ffprobe prints them, and five tests on encoded files (seven drafts at 960×540, one of
-  them a 60 fps Matroska file).
+  one rounding gives: a steady rate rounded to the time base lands on the ticks either side of a frame's time,
+  never one further, so every gap and the last duration are within a tick of it. In the sixth, Codex found frames
+  that last one tick and then two (on a 1/45 s clock) passing gap by gap, each within a tick of the mean of 1.5,
+  while the speed doubles halfway and the decoder makes up frames, one of them beside the seam: every frame's time
+  is also held within a tick of one line through them all (least squares, whose slope is a frame's time). A steady
+  rate rounded stays within half a tick of it; that file strays 7 ticks. `evals/tests/test_qc_seam.py` has 30
+  cases: the rules on frames drawn at the analysis size, the timing on packet times as ffprobe prints them, and
+  five tests on encoded files (seven drafts at 960×540, one of them a 60 fps Matroska file).
 - **`cv-range-loop`** now has the grader run `qc.py --loop` and look at the last frames and the first, in order
   and at the piece's pace, whatever it reports: a flag is a reason to look closely, not a fail, and a treatment
   that says how the loop closes (a cut, an accent on frame 0, held drawings) says what to look for.
