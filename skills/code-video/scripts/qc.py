@@ -18,7 +18,7 @@ Usage (from the project folder; <skill> is the code-video skill's folder):
   --loop       VIDEO plays as a loop: also measure its seam, the step from the last frame into frame 0, against
                the steps either side: a jump there, or a last frame that repeats frame 0's picture, stutters every
                time round (run it on the whole loop, not a clip)
-  --json      print the report as JSON instead of text
+  --json       print the report as JSON instead of text
   --out FILE   also write the report to FILE (JSON when FILE ends in .json, text otherwise)
 
 Examples:
@@ -139,23 +139,33 @@ GLANCE_MIN = 1.5      # s: a stretch where nothing changes visibly counts from 1
 # A loop plays its last frame and then frame 0, so that step should look like the steps around it: a jump there
 # (a pose, a camera or a light that doesn't come back) stutters every time round, and so does a last frame drawn
 # to equal the first, which shows one picture twice. Each step compares two frames of the analysis frame (8x8-px
-# cells at 1080p, not averaged over time: the two sides of the seam are frames apart in the file) and counts the
-# share of cells whose mean moved by more than SEAM_LEVELS, and its strongest change (the 99.9th percentile
-# cell). The step into frame 0 is held against the SEAM_STEPS steps on either side. Measured on synthetic loops
-# (a disc orbiting, a small dot, a whole-frame pan, a slow drift, a grainy still; 60 fps at CRF 16 and 30 fps at
-# CRF 23): closed loops read 0.9-1.1x their neighbours' share, a last frame equal to the first 0.000 between
-# neighbours of 0.1-86%, a move that doesn't come back 1.9-200x, a frame missing 1.5-1.7x.
+# cells at 1080p, not averaged over time: the two sides of the seam are frames apart in the file) by two
+# measures: the share of cells whose mean moved by more than SEAM_LEVELS, and its strongest change (the 99.9th
+# percentile cell). The step into frame 0 is held against the SEAM_STEPS steps on either side, or, where those
+# are still (drawings held for several frames, a pause), against the loop's other steps that move. It is luma
+# only and measures how much changes, not which way: a hue change at one brightness, or a move that turns back at
+# the seam, shows on the frames either side, not here. Measured on synthetic loops (evals/tests/test_qc_seam.py:
+# a disc orbiting, a small dot, a whole-frame pan, a slow drift, a grainy still, drawings held four frames; 60
+# fps at CRF 16 and 30 fps at CRF 23): closed loops read 0.9-1.1x their neighbours' share, a last frame equal to
+# the first 0.000 between neighbours of 0.1-86%, a move that doesn't come back 1.9-200x, a frame missing 1.5-1.7x.
 SEAM_STEPS = 3        # steps compared on each side of the seam
 SEAM_LEVELS = 6.0     # levels: a cell changed when its mean moved by more than 6 of 255 (2.4%). Encoding leaves
                       # under 3 between frame 0, a keyframe, and the frame before it, even on a detailed picture
 SEAM_JUMP = 1.5       # a jump: more of the frame changes across the seam than 1.5x the most in any step around it...
 SEAM_JUMP_PEAK = 2.0  # ...or its strongest change is twice the strongest around it: a small thing jumping
-SEAM_REPEAT = 0.25    # a repeated picture: under a quarter of what changes in the steps just before and after it...
-SEAM_MOVING = 0.0002  # ...while each of those changes 0.02% of the frame or more (6 cells of 240 x 135): motion
-                      # under that hides a repeated frame anyway, and a jump has to change at least this much
+SEAM_STILL_REF = 90   # where the steps around are still: against the 90th percentile of the loop's moving steps
+SEAM_REPEAT = 0.35    # a repeated picture: under 0.35x the two steps next to it by both measures (a draft's frame 0,
+                      # re-encoded as a keyframe, measured 0.29x by share at 480 x 270, 0.11 at 720 x 405, 0 at
+                      # 1080p; closed loops 0.9-1.1x), while...
+SEAM_MOVING = 0.0002  # ...every step around changes 0.02% of the frame or more (6 cells of 240 x 135): motion
+                      # under that hides a repeated frame anyway, a pause between moves is no repeat, and a jump
+                      # has to change at least this much
+SEAM_RATE = 0.002     # the frames are evenly spaced when the average rate is within 0.2% of the nominal one and
+                      # their count within half a frame of its duration's: otherwise the decoder may repeat or drop
+                      # frames to keep a constant rate, and the seam isn't judged
 
 # ---------------------------------------------------------------- blank frames
-BLACK_LEVEL = 25.5   # near-black: the brightest 0.1% of the frame is under 10% gray (25.5 of 255), the
+BLACK_LEVEL = 25.5    # near-black: the brightest 0.1% of the frame is under 10% gray (25.5 of 255), the
                       # level ffmpeg's blackdetect uses; on most screens, phones outdoors above all, it reads
                       # as black
 DETAIL_LEVELS = 8.0   # detail: a cell that stands out from the mean of its surroundings (a window 1/14 of the
@@ -246,6 +256,10 @@ def stream_facts(path: Path, p: dict) -> tuple[dict, list[str]]:
         w, h = int(v.get("width", 0)), int(v.get("height", 0))
         fps = frac(v.get("avg_frame_rate")) or frac(v.get("r_frame_rate")) or 0.0
         vdur = num(v.get("duration")) or duration
+        nominal = frac(v.get("r_frame_rate")) or fps
+        count = int(v["nb_frames"]) if str(v.get("nb_frames", "")).isdigit() else None
+        even = bool(fps and nominal) and abs(fps - nominal) <= SEAM_RATE * nominal \
+            and (count is None or abs(count - vdur * nominal) <= 0.5)
         vbr = num(v.get("bit_rate")) or num(fmt.get("bit_rate"))
         rot = 0
         for sd in v.get("side_data_list", []) or []:
@@ -256,7 +270,7 @@ def stream_facts(path: Path, p: dict) -> tuple[dict, list[str]]:
         untagged = [k for k in ("primaries", "transfer", "matrix") if color[k] not in BT709]
         facts["video"] = {
             "codec": v.get("codec_name"), "profile": v.get("profile"), "width": w, "height": h, "rotation": rot,
-            "fps": round(fps, 3), "frames": int(v["nb_frames"]) if str(v.get("nb_frames", "")).isdigit() else None,
+            "fps": round(fps, 3), "frames": count, "even_rate": even, "index": v.get("index"),
             "duration": round(vdur, 3), "pix_fmt": v.get("pix_fmt"),
             "bitrate_kbps": round(vbr / 1000) if vbr else None,
             "bits_per_pixel": round(vbr / (w * h * fps), 3) if vbr and w and h and fps else None,
@@ -446,14 +460,17 @@ class Glance:
         return [(a, b, p) for a, b, p in spans if b - a >= GLANCE_MIN * self.fps]    # for the step after it)
 
 
-def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int | None, loop: bool = False) -> dict:
+def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int | None, loop: bool = False,
+                    stream: int | None = None) -> dict:
     if w >= h:
         aw, ah = ANALYSIS_LONG, max(2, round(ANALYSIS_LONG * h / w))
     else:
         aw, ah = max(2, round(ANALYSIS_LONG * w / h)), ANALYSIS_LONG
     fw, fh = FINE * aw, FINE * ah  # the sharp view; averaged FINE x FINE, it is the blurred view's grid
     radius = max(2, round(ANALYSIS_LONG / 30))  # the detail window: 17 cells of 240, 1/14 of the frame
-    cmd = [need("ffmpeg"), "-v", "error", "-nostdin", "-noautorotate", "-i", str(path), "-map", "0:v:0",
+    # (the stream the probe chose, which passes over cover art; 0:v:0 can be the cover)
+    cmd = [need("ffmpeg"), "-v", "error", "-nostdin", "-noautorotate", "-i", str(path), "-map",
+           f"0:{stream}" if isinstance(stream, int) else "0:v:0",
            "-an", "-sn", "-vf", f"scale={fw}:{fh}:flags=area,format=gray16le", "-f", "rawvideo", "-"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     errs: list[bytes] = []
@@ -468,8 +485,9 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
     glance = Glance(fps)
     detail, top, noise_s, noise_b, moved = [], [], [], [], []
     k999 = int(0.999 * (aw * ah - 1))
-    head: list[np.ndarray] = []  # --loop: the first and the last SEAM_STEPS + 1 frames, unblurred
-    tail: deque[np.ndarray] = deque(maxlen=SEAM_STEPS + 1)
+    first: np.ndarray | None = None  # --loop: frame 0 and the last frame, unblurred, and every step between frames
+    last: np.ndarray | None = None
+    steps: list[tuple[float, float]] = []
     n = 0
     step = max(1, (expect_frames or 0) // 10)
 
@@ -502,9 +520,11 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
             top.append(float(np.partition(yb.ravel(), k999)[k999]))
             recent.append((ys, yb, ym))
             if loop:
-                if len(head) <= SEAM_STEPS:
-                    head.append(ym)
-                tail.append(ym)
+                if last is None:
+                    first = ym
+                else:
+                    steps.append(seam_step(last, ym))
+                last = ym
             if len(recent) == 3:  # frame n-1, now that its successor is known
                 (s0, b0, m0), (s1, b1, m1), (s2, b2, m2) = recent
                 # what doesn't move smoothly (grain, flicker), in each view (every other sharp cell is plenty)
@@ -560,44 +580,69 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
             "noise": level_b, "change_levels": LADDER[k], "noise_sharp": level_s,
             "change_levels_sharp": SHARP_LADDER[j], "frozen": holds(FROZEN_AREA), "nearly": holds(NEARLY_AREA),
             "glance": glance.stretches(n, floor), "glance_floor": floor, "decoder_errors": b"".join(errs).decode("utf-8", "replace").strip(),
-            "seam_frames": list(tail) + head if loop else None}
+            "seam": (steps, seam_step(last, first)) if loop and first is not None and last is not None else None}
 
 
-def seam_report(frames: list[np.ndarray], total: int, notes: list[str]) -> dict | None:
-    """How the last frame leads into frame 0 (--loop), against the SEAM_STEPS steps on either side."""
-    if total < 2 * (SEAM_STEPS + 1):
-        notes.append(f"--loop: {total} frames are too few to measure the seam ({2 * (SEAM_STEPS + 1)} at least)")
+def seam_step(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
+    """One step between two analysis frames: the share of cells that changed and the strongest change (levels)."""
+    d = np.abs(b - a)
+    return float(np.count_nonzero(d > SEAM_LEVELS)) / d.size, float(np.percentile(d, 99.9))
+
+
+def seam_report(seam: tuple | None, total: int, even: bool, decoder_errors: str, notes: list[str]) -> dict | None:
+    """How the last frame leads into frame 0 (--loop): against the SEAM_STEPS steps on either side or, where those
+    are still, against the loop's other steps that move. A report for a look at the frames, not a verdict."""
+    if seam is None or total < 2 * SEAM_STEPS + 2:
+        notes.append(f"--loop: {total} frames are too few to measure the seam ({2 * SEAM_STEPS + 2} at least)")
         return None
-
-    def step(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
-        d = np.abs(b - a)
-        return float(np.count_nonzero(d > SEAM_LEVELS)) / d.size, float(np.percentile(d, 99.9))
-
-    steps = [step(frames[i], frames[i + 1]) for i in range(len(frames) - 1)]  # the last frames, then the first
-    (share, peak), before, after = steps[SEAM_STEPS], steps[:SEAM_STEPS], steps[SEAM_STEPS + 1:]
+    steps, (share, peak) = seam
+    before, after = steps[-SEAM_STEPS:], steps[:SEAM_STEPS]
     around = before + after
-    most, top = max(s for s, _ in around), max(p for _, p in around)
-    near = min(before[-1][0], after[0][0])
-    if near >= SEAM_MOVING and share < SEAM_REPEAT * near:
-        kind = "repeat"
-        notes.append("the loop shows one picture twice: the last frame is frame 0's picture, so the motion stops for a "
-                     "frame each time round. Draw a loop with the video's length as its period: the frame after the "
-                     "last is frame 0")
-    elif share >= SEAM_MOVING and (share > SEAM_JUMP * most or (peak > SEAM_JUMP_PEAK * top and peak > SEAM_LEVELS)):
-        kind = "jump"
-        notes.append(f"the loop jumps at its seam: {100 * share:.2f}% of the frame changes from the last frame into "
-                     f"frame 0, against {100 * most:.2f}% at most in the {SEAM_STEPS} steps either side (what doesn't "
-                     "come back by the end: a pose, the camera, a light; or a frame missing, or a cut there). Look at "
-                     "the frames either side")
-    else:
-        kind = "smooth"
 
     def pct(x: float) -> float:
         return round(100 * x, 3)
 
-    return {"kind": kind, "changed_pct": pct(share), "peak_levels": round(peak, 1),
-            "before_pct": [pct(s) for s, _ in before], "after_pct": [pct(s) for s, _ in after],
-            "around_peak_levels": round(top, 1)}
+    rep: dict = {"kind": "unjudged", "changed_pct": pct(share), "peak_levels": round(peak, 1),
+                 "before_pct": [pct(s) for s, _ in before], "after_pct": [pct(s) for s, _ in after],
+                 "against": None, "against_pct": None, "against_peak_levels": None, "why": None}
+    if decoder_errors or not even:
+        rep["why"] = ("the decoder reported errors" if decoder_errors else "the frames aren't evenly spaced (a variable "
+                      "frame rate, or a frame held longer), and the decoder repeats or drops frames to even them out")
+        notes.append(f"--loop: the seam isn't judged: {rep['why']}. Look at the frames either side")
+        return rep
+    if max(s for s, _ in around) >= SEAM_MOVING:
+        rep["against"] = f"the {SEAM_STEPS} steps either side"
+        most, top = max(s for s, _ in around), max(p for _, p in around)
+    else:  # still around the seam (held drawings, a pause): the loop's steps that move say what a step looks like
+        moving = [x for x in steps if x[0] >= SEAM_MOVING]
+        rep["against"] = (f"the loop's {len(moving)} moving steps (their {SEAM_STILL_REF}th percentile), the steps either "
+                          "side being still" if moving else "the loop's other steps, none of which changes past the line")
+        most = float(np.percentile([s for s, _ in moving], SEAM_STILL_REF)) if moving else 0.0
+        top = float(np.percentile([p for _, p in moving], SEAM_STILL_REF)) if moving else 0.0
+    rep["against_pct"], rep["against_peak_levels"] = pct(most), round(top, 1)
+    nxt = (before[-1], after[0])
+    if (min(s for s, _ in around) >= SEAM_MOVING and share < SEAM_REPEAT * min(s for s, _ in nxt)
+            and peak < SEAM_REPEAT * min(p for _, p in nxt)):
+        rep["kind"] = "repeat"
+        rep["why"] = (f"little changes ({100 * share:.2f}% of the frame, {peak:.1f} levels at most) while every step "
+                      f"around it moves ({100 * min(s for s, _ in nxt):.2f}% or more next to it): the last frame "
+                      "shows frame 0's picture")
+        notes.append(f"the loop may show one picture twice: from the last frame into frame 0 {rep['why']}, so the "
+                     "motion stops for a frame each time round. Look at the frames either side: a loop drawn with the "
+                     "video's length as its period closes by itself (the frame after the last is frame 0)")
+    elif share >= SEAM_MOVING and (share > SEAM_JUMP * most or (peak > SEAM_JUMP_PEAK * top and peak > SEAM_LEVELS)):
+        rep["kind"] = "jump"
+        rep["why"] = (f"{100 * share:.2f}% of the frame changes, against {100 * most:.2f}% at most in {rep['against']}"
+                      if share > SEAM_JUMP * most else
+                      f"its strongest change is {peak:.0f} levels, against {top:.0f} at most in {rep['against']}: "
+                      "a small part jumps")
+        notes.append(f"the loop may jump at its seam: from the last frame into frame 0 {rep['why']} (what doesn't come "
+                     "back by the end: a pose, the camera, a light; a frame missing; or a cut there). Look at the "
+                     "frames either side")
+    else:
+        rep["kind"] = "smooth"
+        rep["why"] = f"{100 * share:.2f}% of the frame changes, like {rep['against']} ({100 * most:.2f}% at most)"
+    return rep
 
 
 def ranges(mask: np.ndarray) -> list[tuple[int, int]]:
@@ -763,7 +808,7 @@ def run(path: Path, cuts: list[float], loop: bool = False) -> dict:
         w, h = (v["height"], v["width"]) if v["rotation"] % 180 else (v["width"], v["height"])
         expect = v["frames"] or round(duration * fps)
         say(f"decoding {path.name} ({expect} frames)")
-        pic = analyze_picture(path, v["width"], v["height"], fps, expect, loop)
+        pic = analyze_picture(path, v["width"], v["height"], fps, expect, loop, v["index"])
         if abs(pic["frames"] - duration * fps) > 1.5:
             notes.append(f"{pic['frames']} frames decoded for {duration:.3f} s at {fps:g} fps: a variable frame "
                          "rate? times below assume a constant one")
@@ -772,7 +817,8 @@ def run(path: Path, cuts: list[float], loop: bool = False) -> dict:
         report["motion"] = holds_report(pic, fps, duration, notes)
         report["blank"] = blank_frames(pic, fps, cuts)
         if loop:
-            report["seam"] = seam_report(pic["seam_frames"], pic["frames"], notes)
+            even = v["even_rate"] and abs(pic["frames"] - (v["frames"] or pic["frames"])) <= 1
+            report["seam"] = seam_report(pic["seam"], pic["frames"], even, pic["decoder_errors"], notes)
         facts["video"]["display"] = [w, h]
     else:
         notes.append("no video stream: only the sound was measured")
@@ -865,11 +911,8 @@ def text_report(rep: dict) -> str:
             out.append(f"          (+{len(b['ranges']) - 12} more: see --json)")
     sm = rep["seam"]
     if sm:
-        around = sm["before_pct"] + sm["after_pct"]
-        what = {"smooth": "like the steps around it", "jump": "a JUMP: more than any step around it",
-                "repeat": "a REPEATED picture: nothing changes while the frames around it move"}[sm["kind"]]
-        out.append(f"seam      last frame -> frame 0: {sm['changed_pct']:.2f}% of the frame changes, {what} "
-                   f"({min(around):.2f}-{max(around):.2f}% in the {SEAM_STEPS} steps either side)")
+        label = {"smooth": "smooth", "jump": "a JUMP?", "repeat": "a REPEAT?", "unjudged": "not judged"}[sm["kind"]]
+        out.append(f"seam      last frame -> frame 0: {label}: {sm['why']}")
     lo = rep["loudness"]
     if lo:
         out.append(f"loudness  {lo['integrated_lufs']} LUFS integrated, LRA {lo['lra_lu']} LU, true peak "

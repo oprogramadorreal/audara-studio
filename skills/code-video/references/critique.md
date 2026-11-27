@@ -210,7 +210,7 @@ out/<video>/critique/r<N>/; any script or data you write to measure goes under .
   times: <cuts>.
 - One scene alone (the rest renders black): add --only <entry id> (its id in the timeline).
 - A clip, for motion: bun scripts/render.ts video --video <video> --from 10 --to 14 --draft --out out/<video>/critique/r<N>/clip.mp4
-- Measured checks on any MP4 (holds, blank frames, loudness, color tags):
+- Measured checks on any MP4 (holds, blank frames, loudness, color tags; with --loop, a loop's seam):
   uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json   (on a clip, add --offset <its --from>;
   a still stretch the clip's start or end cuts under 1.5 s isn't listed, so a clip you make takes in 1.5 s
   more on each side;
@@ -382,13 +382,15 @@ looked at it.
 
 **`uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json`**, the QC report, on every render,
 whether from this engine, HyperFrames or Remotion (`--json` for JSON, `--out <file>` to keep the report,
-`--offset <s>` for a clip that starts `s` seconds in). It reports:
+`--offset <s>` for a clip that starts `s` seconds in, `--loop` on the whole of a video that plays as a loop).
+It reports:
 
 | | What it measures | Default bar |
 |---|---|---|
 | holds | frozen (nothing visibly changes) and nearly frozen (under 0.5% of the frame moves) stretches of half a second or more, measured so that grain can't hide a hold and a moving hairline isn't counted as one | no hold the treatment doesn't call for (the commercial preset's numbers are in `references/treatment-template.md`) |
 | glance | stretches of 1.5 s or more where under 2% of the frame visibly changes at a glance: moves under about 8 px, sway, grain and words changing colour in place don't count, so a picture that only breathes reads as still | none the treatment doesn't call for; a lyric or narrated piece that reads still most of the time is a finding even with no holds |
 | blank frames | near-black and near-empty ranges, flagged at a cut, at t=0 and at the end | none at a cut; frame 0 a finished composition, unless the piece fades in on purpose |
+| seam (`--loop`) | how the last frame leads into frame 0, against the three steps either side (or, where those are still, the loop's moving steps): smooth, a jump (more changes than in any of them: a pose, the camera or a light that doesn't come back, a frame missing) or a repeat (little changes while they move: a last frame drawn to equal the first); not judged when the frames aren't evenly spaced | smooth, unless the treatment says how it closes otherwise (a cut, an accent on frame 0). It reads brightness, and how much changes, not which way: a hue change, or a move that turns back at the seam, shows on the frames either side. The picture only: a loop's sound has a seam of its own |
 | loudness | integrated, range, true peak, short-term per second, first and last sound | about -14 LUFS for punchy pieces and -16 for calm ones (platforms play online video at about -14, as of 2026); true peak at or under -1 dBTP; sound as long as the picture |
 | stream | size, fps, frames, codec, pixel format, bitrate, color tags | tagged BT.709, yuv420p, the planned length to the frame |
 
@@ -407,8 +409,8 @@ reply gives the director, every time:
 
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
 - the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
-  reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines on the last
-  full-cut draft (by default `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of
+  reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines (and a loop's `seam`,
+  with `--loop`) on the last full-cut draft (by default `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of
   what it changed, each saying what it covers, with a `?t=` link to each hold the treatment doesn't mark;
   and what wasn't checked. Each flag the measured checks raised (qc.py, verify, the mix's measures, a
   transcript of the voice) is fixed, marked as meant with why, or listed here as open: one project measured
@@ -460,6 +462,7 @@ When the director says yes to a version they've previewed, or says not to wait:
    what's missing, while the scenes, data and assets are unchanged. Its progress lines give the rate over
    the last minute, a recent measurement rather than a forecast: early frames say little about the rest.
 4. `uv run <skill>/scripts/qc.py out/<video>/<video>.mp4 --cuts out/<video>/verify.json --out out/<video>/qc.json`
+   (`--loop` too for a video that plays as a loop)
 5. Sheets labelled with times: the whole video
    (`bun scripts/render.ts sheet --video <video> --n 24 --out out/<video>/sheet.png`) and frame 0, the
    last frame and the frames around every cut (`sheet --video <video> --cuts --out out/<video>/sheet-cuts.png`).

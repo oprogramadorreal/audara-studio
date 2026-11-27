@@ -20,7 +20,7 @@ The treatment grows with the piece, not with this template:
 
 - **A loop, a sting or a title card (up to ~15 s): a few lines.** The idea in a sentence or two, the
   format, a timed line per moment, the look in a line (palette and typeface), what you assumed. A loop also
-  says how it closes: its last frame leads back into its first. Its message fits in about 15 lines and
+  says how it closes: its last frame leads back into its first (`qc.py --loop` measures the seam). Its message fits in about 15 lines and
   250 words, the questions included, with Also considered in one line at most.
 - **A spot or a short explainer (~15–60 s): about fifteen lines.** The idea, format and sound (a song
   window with its start and end times and why that part), a row per moment with its time, what's seen and

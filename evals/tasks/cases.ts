@@ -154,7 +154,7 @@ const cases: Record<string, Case> = {
       { prompt: 'Approved.' },
     ],
     assertions: [
-      'An MP4 of 10.00 +/- 0.04 s exists, and the loop seam is clean: the mean absolute difference between the first and the last frame is at most about 1 level (8-bit).',
+      "An MP4 of 10.00 +/- 0.04 s exists, and its last frame leads into frame 0 like any frame into the next: `qc.py --loop`, run by the grader on that MP4, reports the seam as smooth, and its last few frames followed by its first few, looked at in order, carry on at the piece's pace with no stop (a last frame equal to frame 0) and no jump; unless the treatment or the reply says why the seam reads otherwise (it closes on a cut, an accent on frame 0, drawings held for several frames).",
       'The message that delivers the render reports frozen time measured with grain averaged out (qc.py) and the longest hold, or the treatment says why the piece holds.',
       'If a critic round ran, it was a fresh subagent given the user\'s words and the render, not the builder\'s reasoning, and its verdict appears in the message that delivers the render; a full-cut round wrote out/<name>/critique/r<N>/first-look.md before its critic opened TREATMENT.md.',
       'No cliché from the style template\'s avoid list (starfield, equalizer bars, lens flare, glitch, navy/ivory/amber with a travelling pulse, or its twin: warm paper, black ink and one red accent, flat) appears unless the treatment names it with a reason.',

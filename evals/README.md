@@ -525,11 +525,20 @@ no words.json line reaches (a stretch the lines leave out; a second voice file u
 listed and the file named), builds with no line over a bed (voice only, music only before the voice), plan
 mistakes as usage errors, and `measure` saying it needs the plan.
 
+`test_qc_seam.py` checks `qc.py --loop`, how a loop's last frame leads into frame 0, on loops drawn at the
+analysis size: a closed loop and a still picture smooth; a last frame equal to frame 0 a repeat, a slow one too;
+a move that doesn't come back, a small dot drifting, a frame missing and a drift too slow for any step to count
+a jump; drawings held four frames, a drawing held across the wrap on twos, a flash on frame 0 and a step smaller
+than the others (no cell past the line) none of those; too few frames and uneven frames not judged. Three are
+also encoded as a draft at 960 x 540 and read back through `run()`, with a file whose timestamps leave a gap
+(not judged) and a run without `--loop` (no seam). It needs ffmpeg for those, and takes a few seconds.
+
 ```sh
 uv run evals/tests/test_imagegen.py
 uv run evals/tests/test_eleven_pitch.py
 uv run evals/tests/test_mix_measure.py
 uv run evals/tests/test_dub.py
+uv run evals/tests/test_qc_seam.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
