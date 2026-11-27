@@ -49,6 +49,14 @@ the driver's revision.
 A free camera for capture only (orbit, follow, low and close, crane, a path through the scene) reads the state
 and moves nothing in it, so the same run films from any angle.
 
+A capture command that can draw any range of frames, each the same whichever run draws it (a replay stepped to
+the range's first tick in every run), can be a shot's recipe for `scripts/shot.ts` (contract.md, "Images and
+footage"): `make` films it again when the build or its inputs change, `check` holds it to the same pixels from a
+fresh start, and the preview reloads on it. Its shot folder is then the script's (the manifest names a version
+folder, which holds the frames, the contact sheet and the capture's other files, `events.json` included: a scene
+reads them from the version its Footage plays, `${clip.base}/camera.json`), so the manifest fields below go in the
+recipe's `"manifest"`.
+
 ## A shot
 
 ```

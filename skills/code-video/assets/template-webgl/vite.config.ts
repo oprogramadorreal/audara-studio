@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig, normalizePath, type Plugin } from 'vite';
 
 /**
@@ -11,7 +12,9 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   but those: the timelines load them by URL, not through import.meta.glob (see videos/example/timeline.ts).
  * - A new or changed file under videos/<video>/data/, audio/ or assets/ (fetched at boot, not imported)
  *   reloads the page, so fresh timing data, a new soundtrack or a changed image or model shows up without a
- *   manual reload.
+ *   manual reload. So does a shot's footage/<shot>/manifest.json, written last when scripts/shot.ts makes the
+ *   shot again (or a capture is written): of footage/, only that folder, each shot's folder and its manifest
+ *   are watched, never the frames (inFootageUnwatched).
  * - GET /__audara answers with the folder this server serves and its process: scripts/render.ts checks it
  *   before using a server given with --url, and `render.ts link` and `preview` ask every port for it to
  *   find this project's preview, so another project's preview is never rendered, linked or stopped by
@@ -23,6 +26,34 @@ import { defineConfig, normalizePath, type Plugin } from 'vite';
  *   Set-Content holds it for a moment) makes the watcher report EBUSY, which unhandled ends the preview.
  */
 const SCENE_FILE = /\/videos\/[^/]+\/scenes\/[^/]+\.ts$/;
+/**
+ * The served folder ('.', below: the one Vite starts in), as the watcher spells paths; configResolved sets it from
+ * the resolved root, which is the same folder.
+ */
+let ROOT = normalizePath(path.resolve('.'));
+const caseless = process.platform === 'win32' || process.platform === 'darwin';
+/** A path relative to ROOT, with / and, where the file system ignores case, in lower case; null outside it. */
+function underRoot(p: string) {
+  const f = normalizePath(p), at = `${ROOT}/`;
+  const inside = caseless ? f.toLowerCase().startsWith(at.toLowerCase()) : f.startsWith(at);
+  if (!inside) return null;
+  const rel = f.slice(at.length);
+  return caseless ? rel.toLowerCase() : rel;
+}
+/** A shot's footage/<shot>/manifest.json at the root: written last when a shot is made again, the one file of a shot watched. */
+const SHOT_MANIFEST = (p: string) => /^footage\/[^/]+\/manifest\.json$/.test(underRoot(p) ?? '');
+/**
+ * Whether the watcher leaves a path alone because of footage: under the root's footage/, everything but
+ * footage/<shot> and footage/<shot>/manifest.json; and any other folder named footage, with all it holds, as
+ * before. A shot's frames (tens of thousands of files that scenes fetch and never import) and its other files
+ * are never watched, nor are the folders that hold them looked into.
+ */
+function inFootageUnwatched(p: string) {
+  const rel = underRoot(p);
+  if (rel === null) return /(^|\/)footage\//.test(normalizePath(p));
+  if (rel.startsWith('footage/')) return !/^footage\/[^/]+(\/manifest\.json)?$/.test(rel);
+  return /(^|\/)footage\//.test(rel);
+}
 const isScene = (code: string) => /\bexport\s+default\s+class\b[^{]*\bextends\b/.test(code);
 
 /** { <video>: ['1080x1920', ...] }: the <W>x<H> folders in each out/<video>/ (none when out/ doesn't exist). */
@@ -41,7 +72,7 @@ function audara(): Plugin {
   let reloadTimer: ReturnType<typeof setTimeout> | undefined;
   return {
     name: 'audara',
-    configResolved(c) { root = normalizePath(c.root); },
+    configResolved(c) { root = normalizePath(c.root); ROOT = root; },
     configureServer(server) {
       server.watcher.on('error', (e) => server.config.logger.warn(`audara: the file watcher reported ${String((e as Error)?.message ?? e)}; the preview goes on`));
       // (before /__audara, which would answer it too: a path is matched by its prefix)
@@ -70,7 +101,7 @@ function audara(): Plugin {
     async hotUpdate({ file, modules, read }) {
       if (this.environment.name !== 'client') return;
       const f = normalizePath(file);
-      if (/\/videos\/[^/]+\/(data|audio|assets)\//.test(f)) {
+      if (/\/videos\/[^/]+\/(data|audio|assets)\//.test(f) || SHOT_MANIFEST(f)) {
         // (debounced: a file being written fires several changes)
         clearTimeout(reloadTimer);
         reloadTimer = setTimeout(() => this.environment.hot.send({ type: 'full-reload', path: '*' }), 400);
@@ -108,12 +139,13 @@ export default defineConfig({
     strictPort: false,
     // AUDARA_NO_HMR=1: no live reload (an export render must not reload mid-run when a file changes)
     hmr: process.env.AUDARA_NO_HMR ? false : undefined,
-    // never watched: the renders in out/, and .audara-cache/ (uv's cache, models, the preview's own log). On
-    // Windows a watched folder makes uv's renames inside it fail ("Access is denied (os error 5)"), which
-    // leaves half-extracted packages behind. Nor footage/: streamed shots (src/engine/footage.ts), tens of
-    // thousands of frames that scenes fetch and never import, served from the root as /footage/<shot>/...;
-    // a shot written while the preview runs shows when the page reloads
-    watch: { ignored: ['**/out/**', '**/.audara-cache/**', '**/footage/**'] },
+    // never watched: the renders in out/, and .audara-cache/ (uv's cache, models, the preview's own log, the
+    // frames scripts/shot.ts is making). On Windows a watched folder makes uv's renames inside it fail ("Access
+    // is denied (os error 5)"), which leaves half-extracted packages behind. Nor footage/'s frames: streamed
+    // shots (src/engine/footage.ts), served from the root as /footage/<shot>/..., of which only each shot's
+    // manifest is watched (inFootageUnwatched). render.ts's own server watches nothing (AUDARA_NO_HMR): a file
+    // saved mid-run can't reach the page it renders
+    watch: process.env.AUDARA_NO_HMR ? null : { ignored: ['**/out/**', '**/.audara-cache/**', inFootageUnwatched] },
   },
   build: { target: 'esnext', assetsInlineLimit: 0 },
 });

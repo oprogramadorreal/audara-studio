@@ -819,6 +819,9 @@ with the director and hard-won craft, never to narrow what it can make. So the s
     textures, changes to the engine itself.
   - Outside it, another approach when it serves the video better: HyperFrames, Remotion (with its license
     caveat), or one the model knows better for the job.
+  - Between the two, a picture another program draws (a renderer the model writes in Python, ModernGL, a path
+    tracer, Blender, Manim) played as a shot inside the template, which keeps the director's loop ("Any
+    program: a shot made outside the browser").
 
 How the skills could still limit it, and what prevents that:
 
@@ -1064,7 +1067,8 @@ it (`src/engine/footage.ts`):
 - A shot is a folder at the project root, `footage/<shot>/`: `full/` frames for the render (at the size
   they're shown, times the scale for a bigger master: "4K: drawn again, not enlarged"), `proxy/` frames at half the
   1× size for the preview, and a `manifest.json` with their count and rate. The dev server serves the
-  root, so the preview and render.ts's own server reach it alike; the preview doesn't watch it.
+  root, so the preview and render.ts's own server reach it alike. Of it the preview watches each shot's
+  `manifest.json` alone, which reloads the page at its moment, never the frames (below, "Any program").
 - Frames load ahead of need. A scene's `prepare(t0, t1)` asks for what a stretch shows (the frames its video
   frames show: a shot played fast loads only those), and the engine calls it for the entries on screen.
   render.ts waits for it before every frame it renders, with the next half second of the range loading
@@ -1094,6 +1098,80 @@ it (`src/engine/footage.ts`):
   verify call `prepare` only where the engine has it, so old projects render as before. Taking streamed footage
   is one port, which `contract.md` lists. Each footage frame is held whole: a project whose 24 fps clips juddered
   in a 60 fps video blends neighbouring frames in its scene, which two Footage of a shot can still do.
+
+### Any program: a shot made outside the browser
+
+The engine isn't the narrow part of what a model can make here; leaving it was. Opus 5.5 without the plugin
+rendered three of five tested prompts on the CPU in Python and one with ModernGL (history.md, 0.8.2), and a
+model that knows a better renderer for a shot (a path tracer, a simulation, Blender, Manim) could use one
+only by giving up what the director's loop rests on: the preview and its `?t=` links, verify, stills, sheets
+and the QC report's cut times. backends.md said it: "every note costs a full render". So a program's frames
+come into the template as a streamed shot, and everything around a scene works on them (history.md, 0.17.0):
+
+- **A recipe beside the program,** `shots/<shot>/shot.json`: the command as written (no shell), with
+  `{out}`, `{first}`, `{last}`, `{width}`, `{height}`, `{fps}`, `{scale}`, `{tmp}` in its arguments and the
+  same as environment variables, and the shot's rate, length and size at 1×. It lives outside `footage/`, so
+  editing a program changes nothing on screen until a make publishes.
+- **`scripts/shot.ts make`** runs the program only when what the frames are made from changed (a hash of the
+  command, the fields that change the frames and the inputs' bytes, the recipe read again before publishing;
+  the inputs are every file of the recipe folder unless the recipe names them, hidden ones included, since a
+  program reads its `.env` as it reads any file, and never a tool's folders or what a system or an editor
+  leaves beside a file; a recipe whose command is the whole program has none),
+  renders into a folder of that run's own under `.audara-cache/shots/` (a make that was ended can leave its
+  program running, still writing where that make told it to: no other run is given the folder, and the next
+  make removes what ended runs left, under the shot's lock), checks the frames (count, numbering, one file per
+  frame, size, decoding;
+  an alpha channel is named and dropped), hashes each frame's decoded pixels, encodes `full/` and `proxy/`, and
+  publishes: a version folder holding the frames, its record (`made.json`), a contact sheet and the program's
+  other files (those in folders too; a name of the script's own, in any case of letters, stops the make; a
+  link to a file is published as a copy of that file, and a link to a folder or to nothing stops the make,
+  since a version holds its own files and what a link leads to can change or go; a version with a link among
+  the files it recorded is stale, like one with a file missing),
+  moved in whole under a name never used before and never written again, then the manifest naming
+  it (`"dir"`, with `"made": "scripts/shot.ts"`), written last and atomically. The manifest alone says which
+  version is current: a failed run, a manifest that can't be replaced included, publishes nothing and leaves
+  every version the manifest names. The version before stays for a render that opened it; older ones go, but
+  only folders holding this script's record for the shot (a folder named like a version that it didn't make
+  stays), and one that can't be removed yet (a file open on Windows) is left, said, for the next make or clean,
+  its record removed last so it is still known as the script's. Where the folder can't be moved in (footage on
+  another volume) it is copied in as `<version>.partial`, its record first, then renamed: a copy that fails is
+  removed there, and one a dead run left is removed by the next make or clean, by that record. A scratch
+  folder that can't be removed when a run ends is said and left, never an error: the publish before it stands.
+  A version whose record is gone is made again at the scale its manifest gives, never smaller. Everything that
+  reads or writes a shot's state holds one lock per shot, made whole before it appears; a lock whose process
+  has ended is taken back under a second, short lock that re-reads it first, and a run releases its lock only
+  while it is still its own.
+- **Versions, not frames rewritten in place.** Frames at fixed paths would let a render reading the shot mix
+  two versions, and the browser revalidates a stable URL by size and time. A version folder per make gives
+  every frame of a version its own URL, and Windows can't rename a folder over a full one anyway.
+  `footage.ts` reads `"dir"` only from a manifest scripts/shot.ts wrote (a capture's, a project's own field or
+  any older shot reads `full/` and `proxy/` as before) and reads the manifest past the browser's cache. A
+  `--jobs` render opens the shot in each of its browsers, so render.ts compares the shots' manifests before the
+  join and stops if one was made again meanwhile (only what holds a manifest counts: a `.DS_Store` appearing
+  in `footage/` is no shot made again), and keeps them, as they were before any page opened, in its
+  `run.json`, so `--resume` refuses pieces of two versions; render.ts's page reads each shot's manifest once
+  (`footageInfo`, by the manifest's absolute URL), so two entries that open one shot, and a scene that reads its
+  manifest or a file kept beside its frames (through the Footage's `base`), see the same version.
+- **The preview reloads at its moment** when a shot's manifest is written, as it does for a video's data,
+  audio and assets: of the root's `footage/` the watcher sees each shot's folder and its manifest alone, so tens
+  of thousands of frames are never watched, and a folder named `footage` anywhere else stays unwatched as
+  before. render.ts's own server watches nothing (`watch: null` with `AUDARA_NO_HMR`, in the config file itself:
+  Vite drops a null given inline over the file's object).
+- **`check` is the f(t) rule for a program,** on a sample: frames rendered again, each alone in a run of its
+  own with a scratch folder of its own and two from mid-shot, compared with the shot's by decoded pixels, which
+  catches state carried from frame to frame, the clock and unseeded randomness in the frames it samples. A
+  program that must step from the start steps there in every run.
+- **What a shot doesn't do:** it is opaque (the streamed path is JPEG; a transparent layer stays on the
+  images path), its motion blur is its own, cuts drawn inside it are invisible to verify's cut checks, which
+  look at the timeline's, and each change is a make, not a hot swap. Its command must be free and offline,
+  since make runs it whenever the shot is stale and check runs it again.
+- **What a session reads by default gained facts, no lean.** SKILL.md and backends.md's order of choice are as
+  they were. The engine guide, which every build reads by sections, names a shot's manifest among what reloads
+  the page, and its Footage section (read when a scene shows footage) says how a shot is made. The rest is where
+  a session already looks when the engine doesn't suit or a scene shows footage: backends.md (a section beside
+  its order of choice), contract.md's "Images and footage", blender.md, math.md and filming-a-build.md. init's
+  AGENTS.md section gains a line only in a project that has a recipe. A project without shots gets the same
+  files as before but `scripts/shot.ts`, and the example renders the same pixels.
 
 ### The preview's frames: one a refresh
 
@@ -1589,6 +1667,7 @@ the formats the engine's `audio.ts` and `words.ts` read.
 ├── scripts/render.ts            # preview, link, stills, sheet, verify, perf, gpu, video, poster;
 │                                # --video <name>, --size <w>x<h> for a second format
 ├── scripts/font-instances.py    # static instances of a variable font, for a typeface a project adds
+├── scripts/shot.ts              # shots a program makes outside the browser: make, check, status, clean
 ├── public/fonts/                # the shared fonts, with their licenses
 ├── docs/ENGINE.md               # the engine guide; docs/STYLE.md, the shared look, comes with the first look;
 │                                # docs/CHANNEL.md, the channel's identity, with the first YouTube package;
@@ -1606,7 +1685,9 @@ the formats the engine's `audio.ts` and `words.ts` read.
 │                                # tags.txt, NOTES.md and what rebuilds the thumbnails (kept in git)
 ├── videos/_shared/              # optional, made when needed: what several videos use (scenes/,
 │                                # assets/ with SOURCES.md); no video.json, so it isn't a video
-├── footage/<shot>/              # optional: long footage streamed as frames (full/, proxy/, manifest.json)
+├── footage/<shot>/              # optional: long footage streamed as frames (full/, proxy/, manifest.json;
+│                                # a shot a program makes keeps them in a version folder the manifest names)
+├── shots/<shot>/                # optional: a program that draws a shot, and its recipe, shot.json
 ├── .audara-cache/               # caches and scratch work, git-ignored
 ├── out/<name>/                  # renders, sheets and reports, not committed
 └── docs/REPOSITORY.md           # once video-repo puts it in git: what's kept, what's left out and why

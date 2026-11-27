@@ -4,8 +4,8 @@ A backend is what draws and renders the frames. Read this before building with a
 or when a request seems to need HTML/CSS layout, React or cloud rendering. `references/…` and `<skill>/…`
 are this skill's files; every other path is in the project, where commands run.
 
-Contents: Order of choice · Switching · Keeping the method · Checked 2026-10-02 (install, commands, side
-effects, licenses, versions)
+Contents: Order of choice · A program's frames inside the template · Switching · Keeping the method ·
+Checked 2026-10-02 (install, commands, side effects, licenses, versions)
 
 ## Order of choice
 
@@ -25,7 +25,21 @@ effects, licenses, versions)
    wait for a yes before installing anything.
 4. **Something else you know better for the job** is fine: say why, keep the method below, and say what
    the director's loop loses. A renderer written from scratch usually has no live preview, so every note
-   costs a full render.
+   costs a full render, unless it writes frames the template plays (next section).
+
+## A program's frames inside the template
+
+A picture another program draws (a Python or NumPy renderer, ModernGL, a path tracer, Blender, Manim, a
+native GPU program, a HyperFrames or Remotion composition rendered to frames) can play as a shot in the
+template instead of replacing it: `scripts/shot.ts` runs the program from a recipe in `shots/<shot>/`,
+checks and publishes its frames, and the preview reloads on them. The director keeps the preview, its `?t=`
+links and notes by time; the shot sits on the timeline beside drawn scenes, under the same post, sound and
+data, and stills, sheets, verify, the render and the QC report see it. What it costs: a change to the program
+is a `make` of that shot (seconds to minutes, by the program) rather than a hot swap, its motion blur is its
+own, it is opaque, and cuts drawn inside it are invisible to verify's cut checks, which look at the timeline's. The
+program owes the f(t) rule as frames: frame k is the picture at `(k - 1) / fps`, whatever it drew before,
+which `shot.ts check` tests. The recipe, the protocol and the checks: `references/contract.md`, "Images and
+footage", and `bun scripts/shot.ts --help`.
 
 ## Switching
 

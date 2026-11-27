@@ -55,7 +55,9 @@
 //            it says what changed and stops.
 //            Without --resume, pieces of the same render stop the run instead of being thrown away. Where two
 //            pieces meet, the frame rendered after a jump is compared with the one rendered straight on: a
-//            difference means a scene there depends on what was drawn before it
+//            difference means a scene there depends on what was drawn before it. A streamed shot made again
+//            while the pieces render (scripts/shot.ts) stops the run before the join: each browser opened it
+//            when its page loaded, so pieces could show two versions of it
 //   perf:    bun scripts/render.ts perf --from 0 --to 5 [--only ids] [--samples 1]   (ms per frame: what the preview pays,
 //            on the scenes' preview path, the engine's own share of it, and what an export pays on their
 //            full-quality path, with the readback; a video frame also pays the transfer to ffmpeg and the encode)
@@ -378,6 +380,29 @@ async function link(video: string) {
     + `  ${what.length ? `On ${PREVIEW_HOST}, ${what.join('; ')}.` : `Nothing answers on ${PREVIEW_RANGE}.`}`);
 }
 
+/**
+ * Why no preview can start here, when every one of the preview's ports is taken, and by what; null while one is
+ * free. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports. With all
+ * of them held, Vite started on the next port up, where neither `preview` nor `link` looks: the start read as a
+ * 20-second timeout, and sessions went around it (Vite by hand on a port of their own, a wider range in the
+ * project's copy of this file). Which previews can go is the director's to say. The last line says it all by
+ * itself, after the list: this command's output is read through `| tail`, and the app shows its end.
+ */
+function portsTaken(said: Answer[]): string | null {
+  if (!said.length || said.some((a) => a === null)) return null;
+  // (nothing answered anywhere, only timeouts: this machine's own address may not be reachable from here, a
+  // sandbox say, which isn't ports taken; the start below says what it finds)
+  if (said.every((a) => a === 'no answer')) return null;
+  const previews = said.flatMap((a, i) => (a && typeof a === 'object' ? [`  ${PREVIEW_PORTS[i]}  ${a.root}`] : []));
+  const apps = said.length - previews.length;
+  const by = [...(previews.length ? [`${previews.length} by other projects' previews`] : []), ...(apps ? [`${apps} by other apps`] : [])].join(' and ');
+  const taken = `all ${said.length} of the preview's ports (${PREVIEW_RANGE}) are taken, ${by}`;
+  return previews.length
+    ? `the preview can't start: ${taken}. The previews, by port and the folder each serves:\n${previews.join('\n')}\n`
+      + `No preview was started: ${taken}. A preview keeps running until it is stopped, so the ones nobody watches any more hold the ports: tell the director which projects hold them (listed above) and ask which can stop; \`bun scripts/render.ts preview --stop\`, run in such a project's folder, frees its port. Then run this command again.`
+    : `the preview can't start: ${taken}. Ask the director which of those apps can close, then run this command again.`;
+}
+
 /** The last lines of a log, indented, for a message; stack frames left out (the error above them says more). */
 function logTail(file: string, n = 15) {
   let lines: string[] = [];
@@ -435,8 +460,12 @@ async function preview(video: string) {
     console.log('(For the agent at work here: post this link to the director in a message now; they watch the build grow there.)');
     console.log(linkTo(port, video, t));
   };
-  const found = await thisPreview();
+  const asked = askPorts();
+  const found = await thisPreview(asked);
   if (found) return share(found.port);
+  // (no port left for it: said now, with what holds them, instead of a Vite that starts where nothing looks)
+  const taken = portsTaken(await Promise.all(asked));
+  if (taken) fail(taken);
   const vite = path.join(PROJECT, 'node_modules', 'vite');
   let bin: unknown;
   try { bin = (JSON.parse(readFileSync(path.join(vite, 'package.json'), 'utf8')) as { bin?: unknown }).bin; }
@@ -1044,8 +1073,10 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   type Ends = { first?: string; after?: string; sha1?: string } | null;
   const endsOf = (x: [number, number]): Ends => { try { return JSON.parse(readFileSync(`${pieceFile(x)}.json`, 'utf8')) as Ends; } catch { return null; } };
   // what the pieces are made from: --resume reuses them only when all of it is the same (an edited scene,
-  // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ)
-  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version(), [out, `${out}.part`, dir]) };
+  // texture or soundtrack-timed data changes the fingerprint; --jobs itself may differ), the streamed shots'
+  // manifests as they were before any page opened among it (a shot made again before the fingerprint was taken
+  // would otherwise let pieces of two versions through)
+  const runOf = { video: name, fps, frames: [n0, n1], pieces, samples: SAMPLES, shutter: SHUTTER, x264: x264(), scale: SCALE, size: SIZE, only: ONLY, asPreview: AS_PREVIEW, timeline: info.timeline, inputs: inputsFingerprint(first.browser.version(), [out, `${out}.part`, dir]), shots: new Bun.CryptoHasher('sha1').update(SHOTS_AT_START).digest('hex') };
   const run = JSON.stringify(runOf, null, 1);
   let kept = 0;
   // (files a run.json doesn't vouch for, from an older render.ts or put there by hand, are never adopted)
@@ -1055,7 +1086,7 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     let before: Record<string, unknown> = {};
     try { before = JSON.parse(readFileSync(runFile, 'utf8')); } catch {}
     const differs = Object.keys(runOf).filter((k) => JSON.stringify(before[k]) !== JSON.stringify((runOf as Record<string, unknown>)[k]));
-    const changed = [...new Set(differs.map((k) => (k === 'inputs' ? 'the files (a scene, its data, an asset, the footage, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
+    const changed = [...new Set(differs.map((k) => (k === 'inputs' || k === 'shots' ? 'the files (a scene, its data, an asset, the footage, render.ts or the browser)' : k === 'frames' || k === 'pieces' ? 'the range' : k === 'x264' ? 'the encoder settings' : k === 'video' || k === 'timeline' ? `the ${k}` : `--${k === 'asPreview' ? 'as-preview' : k}`)))].join(', ');
     const has = pieces.filter((x) => existsSync(pieceFile(x))).length;
     // (hours of pieces aren't thrown away for a forgotten flag, nor kept for a render they don't belong to)
     if (!differs.length && !flag('resume') && has)
@@ -1154,6 +1185,10 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
     const done = pieces.filter((x) => existsSync(pieceFile(x))).length;
     fail(`${failure}\n${done} of ${pieces.length} pieces are done in ${dir}; once the cause is fixed, the same command with --resume renders only the rest (while what they're made from is unchanged)`);
   }
+  // (each browser opened the streamed shots when its page loaded: a shot made again meanwhile, scripts/shot.ts,
+  // could leave pieces showing two versions of it)
+  if (shotManifests() !== SHOTS_AT_START)
+    fail(`a shot was made again while the pieces rendered (a footage/<shot>/manifest.json changed), so they may show two versions of it; nothing was joined. Delete ${dir} and render again (--resume refuses these pieces)`);
   // the join: the pieces as they are, one after the other, each placed by its exact length (by its
   // container's rounded one, a 29.97 fps join lost a frame), then the soundtrack over the frames' own span
   const list = path.join(dir, 'pieces.txt'), part = `${out}.part`;
@@ -1191,6 +1226,19 @@ async function videoInPieces(first: { browser: Browser; page: Page; logs: string
   if (seams.length)
     console.log(`WARNING: where ${seams.length} of the ${checked} pieces meet, the first frame of a piece, rendered after a jump, differs from the same frame rendered straight on from the one before it: a scene there remembers what it drew before (docs/ENGINE.md: every frame a function of t), so the video may jump at ${seams.map((n) => `${(n / fps).toFixed(3)} s`).join(', ')}. Make that scene a function of t and render again.`);
 }
+/**
+ * Every shot's footage/<shot>/manifest.json as written, which scripts/shot.ts writes last when it makes a shot
+ * again. Only what holds a manifest counts: anything else that appears in footage/ during a render (Finder's
+ * .DS_Store, a shot's folder before its first manifest) says nothing about a shot the render shows.
+ */
+function shotManifests() {
+  const dir = path.join(PROJECT, 'footage');
+  let shots: string[] = [];
+  try { shots = readdirSync(dir).sort(); } catch { return ''; }
+  return shots.flatMap((s) => { try { return [`${s}\n${readFileSync(path.join(dir, s, 'manifest.json'), 'utf8')}`]; } catch { return []; } }).join('\n');
+}
+/** The shots' manifests when this run started, before any page opened (videoInPieces compares them before the join). */
+let SHOTS_AT_START = '';
 /** Browsers a --jobs run opened besides the first, closed when the run ends however it ends. */
 const extraBrowsers: Browser[] = [];
 
@@ -1668,6 +1716,7 @@ async function main() {
       console.log(`warning: --out ${opt('out')} is outside out/${name}/${sizeTag()}/, where --size keeps this format's files: if a file of the video's own format is there, this run replaces it`);
   }
 
+  SHOTS_AT_START = shotManifests();
   const server = await ensureServer();
   let browser: Browser | undefined;
   let ok = true;

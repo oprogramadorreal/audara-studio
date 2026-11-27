@@ -35,8 +35,9 @@ Toolbox · Typography · Output scale (4K) · Another format · Motion blur and 
 - **Saving files while it plays:** a scene, or a helper a scene imports, swaps in place and the rest
   keeps playing; a scene that fails (a syntax error, a bad import, a throw) lists its error on the page,
   with the dev server's message, and renders dark red until it is fixed. The timeline (`timeline.ts`),
-  `video.json`, `src/` (but a module only scenes import, like `src/realism/`, swaps those scenes) and a new
-  or changed file in the video's `data/`, `audio/` or `assets/` reload the page, at the moment it was
+  `video.json`, `src/` (but a module only scenes import, like `src/realism/`, swaps those scenes), a new
+  or changed file in the video's `data/`, `audio/` or `assets/` and a shot's `footage/<shot>/manifest.json`
+  (written last when a shot is made again: Footage) reload the page, at the moment it was
   showing, as does a GL context lost and restored (a GPU reset). An audio file the page didn't read when it
   opened (missing, not audio, or not read yet: no answer in 15 s, as on a cold first start) is listed on the
   page and read again until it is; then it plays from where the player is, or the page reloads at its moment
@@ -482,7 +483,24 @@ override dispose() { this.clip.dispose(); }
   be drawn. A shot that has played lets its last frame go too, with its GPU copy, and loads it again when
   it's shown again (the preview draws black until it's in). `dispose()` it in the scene's `dispose()`, or a
   hot-swapped scene's frames stay loaded.
-- The preview doesn't watch `footage/`: reload the page after writing a shot.
+- The preview reloads at its moment when a shot's `manifest.json` is written, and never watches the frames
+  (write the frames first, the manifest last). A project whose `vite.config.ts` predates this needs a reload
+  by hand.
+- **A shot made by a program.** A picture drawn outside the browser (a Python or NumPy renderer, ModernGL, a
+  path tracer, Blender, Manim, a native GPU program, another framework's composition rendered to frames)
+  plays as a shot: its recipe is `shots/<shot>/shot.json`, beside the program (the command, with `{out}`,
+  `{first}`, `{last}`, `{width}`, `{height}`, `{fps}` in its arguments, and the shot's `fps`, `frames` and
+  `size` at 1x), and `bun scripts/shot.ts make <shot>` runs the program, checks and encodes its frames and
+  publishes them in a folder of their own that the manifest names (`"dir"`): a running preview reloads on
+  them, and a render that opened the version before keeps it (a `--jobs` render stops before its join
+  instead). `make` runs again only a shot whose inputs changed; `status` says which are stale and why;
+  `check <shot>` renders a sample of frames again, each alone, and compares their pixels, the
+  frame-from-its-time rule for the program (a frame that depends on the frames drawn before it in the same
+  run fails it). The rest (the protocol, the scale, the program's other files) is in
+  `bun scripts/shot.ts --help`. A shot is opaque, its motion blur is the program's, and cuts drawn inside
+  one shot are invisible to verify's cut checks, which look at the timeline's. Its command must be free and
+  offline, since `make` runs it whenever the shot is stale and `check` runs it again. A project without
+  `scripts/shot.ts`: run the code-video skill's init again (it adds the file and replaces nothing).
 
 ## Toolbox
 

@@ -19,18 +19,20 @@ const helperSource = [
   seconds,
   declaration('function planPieces(', '\n}'),
   declaration('function inputsFingerprint(', '\n}'),
+  declaration('function shotManifests(', '\n}'),
 ].join('\n');
 const compiled = new Bun.Transpiler({ loader: 'ts' }).transformSync(helperSource);
 type Piece = [number, number];
 type Helpers = {
   inputsFingerprint(browser: string, skip: string[]): string;
+  shotManifests(): string;
   planPieces(from: number, to: number, fps: number, cuts: number[], stateful: Piece[], shutter: number): Piece[];
 };
-const makeHelpers = new Function('path', 'existsSync', 'lstatSync', 'readdirSync', 'PROJECT', 'Bun', 'process',
-  `${compiled}\nreturn { inputsFingerprint, planPieces };`) as (...args: unknown[]) => Helpers;
+const makeHelpers = new Function('path', 'existsSync', 'lstatSync', 'readdirSync', 'readFileSync', 'PROJECT', 'Bun', 'process',
+  `${compiled}\nreturn { inputsFingerprint, planPieces, shotManifests };`) as (...args: unknown[]) => Helpers;
 const tempRoot = realpathSync(os.tmpdir());
 const scratch = mkdtempSync(path.join(tempRoot, 'audara-render-inputs-test-'));
-const helpers = makeHelpers(path, existsSync, lstatSync, readdirSync, scratch, Bun,
+const helpers = makeHelpers(path, existsSync, lstatSync, readdirSync, readFileSync, scratch, Bun,
   { platform: process.platform, env: { CHROME_FLAGS: '' } });
 const out = path.join(scratch, 'videos', 'one', 'final.mp4');
 const skipped = [out, `${out}.part`, `${out}.pieces`];
@@ -83,6 +85,26 @@ test('a streamed footage frame captured again invalidates resume', () => {
   const before = fingerprint();
   edit('footage/shot/full/000001.jpg');
   check(fingerprint() !== before, 'footage/ was ignored');
+});
+test('a shot made again shows in the shots\' manifests (what a --jobs render compares before its join); its frames alone don\'t', () => {
+  write('footage/made/manifest.json', '{"frames":1,"fps":30,"dir":"g1-00000000","made":"scripts/shot.ts"}');
+  write('footage/made/g1-00000000/full/000001.jpg', 'a');
+  const before = helpers.shotManifests();
+  check(before.includes('g1-00000000'), `manifests read: ${before}`);
+  write('footage/made/g2-11111111/full/000001.jpg', 'b');
+  check(helpers.shotManifests() === before, 'a version folder written before its manifest counted');
+  // (what a system or another make leaves in footage/ while a render runs: none of it is a shot's manifest)
+  write('footage/.DS_Store', 'x');
+  write('footage/Thumbs.db', 'x');
+  write('footage/another/g1-22222222/full/000001.jpg', 'c');
+  check(helpers.shotManifests() === before, 'a file in footage/, or a shot\'s folder before its first manifest, counted as a shot made again');
+  write('footage/another/manifest.json', '{"frames":1,"fps":30,"dir":"g1-22222222","made":"scripts/shot.ts"}');
+  const both = helpers.shotManifests();
+  check(both !== before, 'a shot\'s first manifest was not seen');
+  rmSync(path.join(scratch, 'footage/another/manifest.json'));
+  check(helpers.shotManifests() === before, 'a manifest removed was not seen');
+  write('footage/made/manifest.json', '{"frames":1,"fps":30,"dir":"g2-11111111","made":"scripts/shot.ts"}');
+  check(helpers.shotManifests() !== before, 'a manifest rewritten was not seen');
 });
 test('video notes and its YouTube package stay excluded', () => {
   const before = fingerprint();

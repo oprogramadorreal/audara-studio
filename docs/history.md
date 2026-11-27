@@ -46,6 +46,8 @@ Contents
 - A 4K master: drawn again, and files made again where they can be (0.14.3, 2026-11-19)
 - devlog keeps the log and moments that run again; filming moves to code-video (0.15.0, 2026-11-19)
 - The opening hands over like any other moment (0.15.1, 2026-11-22)
+- Nutlight in 16-bit: a version of the style, not another skill (0.16.0, 2026-11-23)
+- Any program inside the loop: shots made outside the browser (0.17.0, 2026-11-25)
 
 ## Definition of done
 
@@ -5745,3 +5747,563 @@ part was one module that wraps the Stage, plus the craft of staging for it.
 is unchanged but for the one line, so the gate would be main's skills beside these on a 16-bit request, on Fable
 5.2, Opus 5.5, a smaller Claude model and Codex's default, judged blind and by the director. Those are whole
 builds, hours each, and wait for the user's yes. `ns-16bit` hasn't run, in either tool.
+
+## Any program inside the loop: shots made outside the browser (0.17.0, 2026-11-25)
+
+The user asked whether the approach (video drawn in the browser with three.js and GLSL) could be limiting what
+Opus 5.5, Fable 5.2 and later models make, to search the web, and to say what would make the plugin less
+constraining. Then, with a session of Codex as consultant: make the change, without losing anything the skills
+do now (the live preview above all) and without ever lowering what a current or future model makes with them:
+"when opus 6 was release, it must work at its full capacity out of the box".
+
+**What the reading found.** The medium is not the narrow part. The browser holds HTML, SVG, Canvas2D, WebGL and
+three.js, the code models have seen most of, and GLSL is the thin part of it (in a Shadertoy code-completion
+benchmark, ICSE LLM4Code 2025, the best models failed to produce working code 31% of the time), which the
+cookbook and the stills loop already work on. This history's own runs point the same way: in 0.8.2 four of five
+pictures came out about the same with the plugin and without it, and Opus 5.5 alone didn't choose the browser
+at all (three on the CPU in Python, one with ModernGL); in 0.13.0 Fable 5.2's video with the plugin was slightly
+preferred to its own. A practitioner's comparison had one model build the same scene with more content in
+Blender and better light and faster iteration in three.js (one run: 49 s from an edit to seeing it, against
+about 5 minutes). What did narrow the model was leaving: a renderer it knows better for a shot (a path tracer,
+a simulation, Blender, Manim, its own Python) cost the preview and its `?t=` links, verify, stills, sheets and
+the QC report's cut times, and backends.md said so ("every note costs a full render"). Of the candidates the
+reading listed, only this one adds what a model can do without adding a lean to what sessions read by default:
+the others (the order of choice's lean toward the template, AI clips offered rather than taken only when asked,
+look defaults opt-in, fewer references read, a scene API closer to plain three.js) change taste or what every
+session reads, and wait for the gate (below).
+
+**What changed.** A program's frames play in the template as a streamed shot (design.md, "Any program: a shot
+made outside the browser"):
+
+- `scripts/shot.ts` (template): `make`, `check`, `status`, `clean`. A recipe, `shots/<shot>/shot.json` beside the
+  program, gives the command with placeholders and the shot's rate, length and size at 1×; `make` runs it only
+  when the command, a field that changes the frames or an input's bytes changed, checks the frames, hashes their
+  decoded pixels, encodes them and publishes a version folder (the frames, its `made.json`, a contact sheet, the
+  program's other files) and then, last and atomically, the manifest naming it. `check` renders a sample of
+  frames again alone and from mid-shot and compares pixels.
+- `src/engine/footage.ts`: in a manifest scripts/shot.ts wrote (`"made": "scripts/shot.ts"`), `"dir"` (one folder
+  name, checked) is where `full/` and `proxy/` are; the manifest is read past the browser's cache. Any other
+  manifest reads as before, a `"dir"` of its own included.
+- `vite.config.ts`: a shot's `manifest.json` reloads the preview at its moment, as a video's data, audio and assets
+  do; of the root's `footage/` only each shot's folder and its manifest are watched, and other folders named
+  `footage` stay unwatched as before. render.ts's own server watches nothing.
+- `render.ts`: a `--jobs` render compares the shots' manifests before its join and stops if a shot was made again
+  while its pieces rendered, since each browser opened the shot when its page loaded.
+- The text, only where a session already looks when the engine doesn't suit or a scene shows footage: backends.md
+  (a section after the order of choice, which keeps its wording; item 4 gains a clause pointing to it),
+  contract.md's "Images and footage" (and the port for an older `footage.ts`), the engine guide's Footage section
+  (and its reload list, which every build reads), blender.md, math.md and filming-a-build.md (when their frames
+  can be a shot: opaque, free, the same pixels in every run). init's AGENTS.md section gains a line only in a
+  project with a recipe. SKILL.md is unchanged.
+- A new eval case, `cv-own-renderer`: a prompt that names the renderer (a path tracer the session writes in
+  Python), a note by time on its shot, and the render. It checks the capability; it says nothing about what a
+  session picks on an ordinary brief.
+
+**Codex's review of the plan** (read-only, before any code) changed it in these ways, each taken:
+
+- **No preflight in AGENTS.md.** The plan had init's section tell every session to run `make` before stills and
+  verify: an unqualified make can run other videos' programs, an expensive one, or change the cut just before
+  verify takes its baseline. The line now appears only where recipes exist, and `make <shot>` stays explicit.
+- **The order of choice stays as it was,** with its warning, and the capability is a fact where a session already
+  looks, not a menu in the build path.
+- **The recipe apart from what's published.** Editing a recipe kept in the watched manifest would have reloaded
+  the preview before any pixel changed; recipes live in `shots/`.
+- **Versions instead of a folder swapped in.** Windows can't rename a folder over a full one, a move aside leaves a
+  moment with no shot, and a render reading fixed frame paths could mix two makes; Vite's dev server revalidates
+  a stable URL by size and time, so equal-size frames written in the same millisecond could come back stale.
+- **A precise protocol** (inclusive 1-based frames, the time of frame k, absolute `{out}`, argv with no shell),
+  frames checked for count, numbering, size and decoding before anything is published, and `check` comparing
+  decoded pixels (an encoder's metadata can differ between runs) with the first run's hashes.
+- **The watcher.** The bundled chokidar calls the ignore test before and after it stats a path and prunes ignored
+  folders, so the predicate lets `footage/`, each shot's folder and its manifest through and nothing else.
+- **render.ts's own server.** It passed `watch: null` inline, and Vite 8 skips a null given over the config file's
+  object, so its private server had been watching; the config file now sets null under `AUDARA_NO_HMR`.
+- **Scale kept,** so a plain make after `--scale 2` keeps the 4K master and its proxies; the recipe's size is the
+  shot's at its largest on screen.
+
+**Codex's review of the implementation** found these, each fixed and tested:
+
+- **A failed publication could let `clean` delete the version on screen.** `made.json` was replaced at the shot's
+  root before the manifest: with the manifest held open, the manifest named the old version, `made.json` the new
+  one, and `clean` removed the old. The record now lives inside its version, the manifest alone says which
+  version is current, a manifest that can't be replaced takes back the new folder, and the program's other files
+  go in the version too (a program that writes `manifest.json`, `made.json` or `contact.jpg` is stopped).
+- **The lock didn't cover every decision.** `make` read the shot's state before taking it, the manifest-only path
+  wrote without it, `clean` read first, and a lock file made empty and filled after could be taken for abandoned.
+  Every mode now takes the lock first; the lock file appears whole (a hard link to a file already written); a
+  version's number is never used twice and no existing folder is removed to make room.
+- **A `--jobs` render could join pieces of two versions,** its browsers opening the shot at different times: it
+  now stops before the join (above), and the docs no longer promise more than a single page gives.
+- **A manifest with a `"dir"` of its own** (a capture's, before 0.17.0) would have been read as a version folder,
+  or refused for a slash: `"dir"` now counts only beside `"made": "scripts/shot.ts"`.
+- **A recipe edited while its program ran** published stale frames (the recheck reused the recipe read at the
+  start); it is read again before publishing. Inputs are hashed a piece at a time (a long clip read whole twice
+  took its size in memory).
+- **A version missing a proxy read as current;** both `full/` and `proxy/` are checked frame by frame. A contact
+  sheet that fails is said, never an older one kept.
+- **The frame protocol:** two files for one frame are refused, an extension keeps its case on a case-sensitive
+  drive, and each run of `check` has its own `{tmp}`, so a cache in it can't carry state between runs that are
+  meant to be independent; a pass is described as agreement on the sampled frames.
+- **The watcher's scope:** decisions are made against the served root, and a folder named `footage` elsewhere
+  stays unwatched, as the old pattern had it; only the root's shots' manifests reload the page.
+- **The text:** the default-reading claim narrowed (the engine guide every build reads gained a fact), "one shot
+  per entry" became the fact it stood for (verify's cut checks look at the timeline's), and three promises made
+  exact (make runs a command when the shot is stale, the preview reload is said by shot.ts where an older
+  `vite.config.ts` can't, proxies at 4K are encoded again at the same size, a Blender run that starts mid-shot
+  names its first file by `{first}`).
+
+**Its second review** found four more, each fixed and tested:
+
+- **make could remove a folder it never made:** a `g7-deadbeef/` put there by hand went with the next make, since
+  a name alone counted as a version. Only a folder holding this script's record for the shot is removed now; its
+  name is still never used for a new version. A version that can't be removed after a publish (a frame held open
+  on Windows had made make exit 1 after the manifest moved on) is left and said, for the next make or clean.
+- **`--resume` could join what the guard refused:** a shot made again after the first browser opened it but before
+  `run.json` took its fingerprint left pieces whose fingerprint matched the newer files. `run.json` now keeps the
+  shots' manifests as they were before any page opened, so those pieces are refused; and render.ts's page reads
+  each shot's manifest once, so two entries that open one shot can't land on either side of a make.
+- **Two runs could both take back one abandoned lock,** the slower then removing the faster's live lock (Codex
+  reproduced it with a delay after one run read the dead process). Taking a lock back now goes through a second,
+  short lock that re-reads the first before removing it, and a run removes its lock only while it is still its own.
+- **A version whose record was lost was made again at 1×,** replacing a 2× master, and a missing `events.json` left
+  the shot "current". The scale is read from the manifest's size against the recipe's (make stops for `--scale`
+  when that isn't a whole multiple), the version on screen is kept as the one before, and a sidecar the record
+  names counts toward a version being whole.
+
+**Its third review** found two more, fixed:
+
+- **On one export page, a scene's own lookup could see a newer version than its frames:** the manifest was cached
+  per call of `openFootage`, so `footageInfo` (or another spelling of the same URL) read the manifest again after
+  a make, and per-frame data read from it could be drawn over the older frames. `footageInfo` itself now caches on
+  render.ts's page, by the manifest's absolute URL, and a Footage gives its `base` (the version it plays) for the
+  files kept beside its frames.
+- **A removal stopped by a held proxy left an orphan:** removing a version recursively could take its `made.json`
+  before reaching the held file, and the next clean no longer knew the folder as the script's. The record now goes
+  last.
+
+One run of the whole test file had the two-runs lock check fail once, the winning run's program exiting with code 1
+(its output went uncaptured); four runs of the same race on their own and every run of the file since passed. The
+check now prints the program's output if it fails.
+
+**What was checked.**
+
+- `evals/tests/test_shot.ts`, new, 19/19: in a throwaway project whose path has a space, a program writing BMP
+  frames; make, status and current, with only the manifest and the version folder in the shot's folder; the
+  placeholders and environment variables; check passing with a scratch folder per run, and failing on a program
+  that carries state from frame to frame; an input changed (stale, named), the version before kept and older ones
+  removed, clean; a failed program, a missing frame, an extra frame and a wrong size each publishing nothing and
+  leaving no staging; `--scale 2` kept for later makes and checks, and back to 1; the recipe's own manifest fields
+  rewriting the manifest alone, and a sidecar kept in its version; an input written while the program runs
+  publishing nothing; footage a capture made left alone; an engine that can't read a version refused with the
+  port; a live lock refusing and a dead process's lock taken over; inputs from the project root, one naming
+  nothing, a bad size; a manifest that can't be replaced publishing nothing, with `clean` then keeping the version
+  on screen; a missing proxy read as stale; a recipe edited mid-make publishing nothing; two files for one frame
+  and a reserved name stopping a make, an upper-case extension working; a second make while one runs refused; a
+  folder named like a version but not made by the script surviving make and clean; on Windows, a frame of an old
+  version held open by another process, the make succeeding and saying the version was left, then clean removing
+  it; two runs started at once against one abandoned lock, one making the shot and the other refused; a lost
+  record made again at the manifest's 2× with the version on screen kept, and a missing sidecar read as stale (the
+  held-file check runs with a full frame held and with a proxy held).
+- `test_footage.ts`, three new checks (35/35, the export page's check also asking `footageInfo` by another spelling
+  of the URL after a make, and reading a Footage's `base`): frame URLs in a version folder, beside a manifest without one, and
+  beside a capture's manifest with a `"dir"` of its own; the manifest read with `cache: 'no-store'`; render.ts's
+  page reading a shot's manifest once while the preview reads it each time; a version folder that isn't one folder
+  name refused. `test_render_inputs`, one new check (20/20): the shots' manifests a
+  `--jobs` render compares change with a manifest rewritten, not with a version folder written before it.
+  `test_render_failures` 13/13, `test_init_gitignore` 3/3, `test_audit` 26/26.
+- In a project made by init from this branch, a scene playing a shot whose program is a bun script: make, status,
+  check (and check failing with carried state and with unseeded noise), an edited program reported stale and made
+  again, a failing program leaving the shot as it was, `--scale 2`; `bun run check` clean with `shot.ts` in it; the
+  live preview, driven by Playwright through its own Vite with the browser's cache on, read a pixel of the shot at
+  t = 1 (242,142,39), the program's colours changed, `make` ran, and the page reloaded once by itself, still at
+  t = 1, showing the new frames (28,141,235); render.ts verify passed and stills and a draft render showed the shot.
+  A 12-second draft with `--jobs 2`, the shot made again 6 s in: the three pieces rendered, the join was refused
+  (nothing written), and `--resume` then refused the pieces as made before a change of the files. (Codex's exact
+  order, a make between the first browser opening and `run.json`, wasn't timed by hand; the manifests kept from
+  before any page opened are what refuses it.)
+- Projects without shots: init from main and from this branch on empty folders wrote the same AGENTS.md (the
+  project's name aside), and the example video's verify gave the same 48 frame hashes in both.
+
+**Considered, left out, for the gate** (each a change of what sessions read or lean toward: one at a time, the old
+text beside the new on every supported model, judged blind; evals/README.md):
+
+- backends.md's lean toward the template ("Leave it only for something it can't do well ... a better-known
+  framework is not a reason"): a run should look at whether a session without it picks a medium the piece gains
+  from, or one it knows from habit.
+- AI video clips offered, with their cost, where the picture needs what code draws poorly; today they come only
+  when the director asks. A shot cut from a generated clip already works (the clip is its input).
+- Look defaults as opt-in (bloom 0.35 on, the four-family font shelf): 0.13.0's bundle, which named post as a look,
+  left Opus 5.5's picture sparser.
+- An ablation arm: SKILL.md and the scripts alone against the full references, on each supported model, to find
+  what the reading earns now that the models are stronger ("A new model starts with a baseline").
+- Transparent shots (PNG on the streamed path, with premultiplied alpha), and a scene API closer to plain
+  three.js: engine changes no run has asked for yet.
+
+**`cv-own-renderer`, one run in Claude Code** (2.1.329, Opus 5.5 at xhigh, started on this branch's first commits,
+so its project's `shot.ts` was the first version, with `made.json` at the shot's root, and it was graded against
+that version): the session wrote its own path tracer in Python (`shots/marble/render.py`, NumPy and Numba on the
+CPU, its dependencies in the script's header), found `shot.ts` through `backends.md` (its `--help` ran 45 s after
+the skill loaded), wrote its recipe in `shots/marble/shot.json` and played the shot through a timeline entry; it
+wrote the renderer's commands into the project's AGENTS.md for a later session. Three turns: 9,001 s (stopped at
+the case's 150 minutes), 7,541 s and 1,184 s. A fresh grader passed three of the six assertions:
+
+- **Passed.** The picture is the session's program played as a shot. Verify passes, and an 8.000 s, 16:9 MP4
+  with no audio stream exists (a draft, the only full-length one); nothing was spent. The marble reads as glass:
+  refraction of the squares, a highlight, bubbles, a shadow with a caustic.
+- **`shot.ts status` stale at the end.** Turn 3 changed `render.py` after the last make, so `check` refuses to
+  run. In a copy with the published version's `render.py` (its hash matching `made.json`), `check` passed on six
+  frames.
+- **Turn 1 never reached its hand-off.** None of its 20 replies had a link; no full render ran, and the marble
+  moves between 1 s and 6 s.
+- **Turn 2's note, made, missed the still at 4 s.** It came as a new version with a `&t=4` link, but as an
+  18-frame fade from 4.00 to 4.75 s, so a still at 4 s is unchanged. It also shipped a path change turn 1's critic
+  had asked for, which moved the marble 52 px from turn 1's published version.
+
+Where the time went: five makes, about 170 minutes of tracing. One remake was for a black frame at 1.58 s that
+`shot.ts make`, `check` and verify all passed and only `qc.py` caught. Turn 1 had 40 minutes with no tool call
+(seven API retries), and a version that passed `check` and verify at minute 94 was not shown before a critic
+round and a 55-minute remake. Other projects' previews held all of ports 5173-5199 on this machine, so `render.ts
+preview` couldn't start: in turn 1 a `| tail -3` hid the error, and in turn 2 the session ran Vite by hand on
+5240. On "Approved." turn 3 ran a second critic, patched `render.py` against glitter and floor grain, and asked
+again instead of rendering. The case's limit is 300 minutes now.
+
+What it shows: a fresh session found and used the shot path from the references, unprompted on how, and a note
+went through it (a new version, the preview, verify). What it doesn't: a hand-off on time, the render on
+approval, and a black frame caught by the shot's own checks. None of these failures is in the shot path's code.
+A warning in `shot.ts make` for a near-black frame is a candidate; holding a found fix until after the render
+on approval is a candidate for the gate.
+
+**The preview's ports, all taken: eval runs had left their previews running (2026-11-26).** A second review of
+the branch (Claude Fable 5.2, with the app's pull request beside it) asked each of 5173-5199 what it served
+(`/__audara`). All 27 answered: 22 with run folders of devlog's trigger evals of 2026-11-19, their processes
+started that afternoon, and five with video projects. So for a week no new project on this machine could start
+its preview, which is why the run above ran Vite by hand, and its turn 1 failed its hand-off for more than its
+own reasons. A video project made in those days carries the cost in its own files: its `render.ts` has the range
+widened to 64 ports, with a comment saying the 27 were held by other projects' previews.
+
+- **Why they stayed.** `render.ts preview` starts Vite in a process of its own so that it outlives the turn;
+  `trigger.ts` stopped the session's process tree and nothing else, and a near-miss run acts for several turns.
+  `task.ts` did stop its run's previews, but looked for them on 5173-5199 and by command lines that name the
+  run's folder: the Vite the run above started by hand (`node node_modules/vite/bin/vite.js --port 5240
+  --strictPort`, from the folder) names no folder and sat outside those ports, and was still serving the next day.
+- **What changed in the harness.** `evals/harness/left-running.ts`, used by both runners: when a run ends, every
+  process whose command line names its folder is stopped, and every dev server that answers `/__audara` with a
+  folder inside it, on whatever port (only ports a node or bun process listens on are asked); never this process
+  or the ones it descends from, and never a sibling folder whose name starts alike. `trigger.ts` does it run by
+  run, so later runs of the same eval find the ports.
+- **What changed in the template.** With every port held, Vite started on the next one up (5200), where neither
+  `preview` nor `link` looks, so the start read as "Vite didn't answer ... within 20 s" with the cause in a log
+  tail; the run above piped it through `tail -3` and saw none of it. `preview` now asks the ports first and, when
+  none is free, says so at once, with each port and the folder its preview serves, and that which of them can
+  stop is the director's to say (`preview --stop` in that folder). Its last line says all of it by itself: the
+  output is read through `| tail`, and the app shows the end of what the command printed. The range is as it
+  was, so what the app reads of it is too.
+- **What was checked.** `test_left_running.ts`, new, 5/5: a server started from the run's folder by a relative
+  path, on a port of its own, and a process whose command line names the folder are stopped; the same two for a
+  sibling folder go on. With the port sweep switched off the first fails, and with the name's boundary switched
+  off the second does. `test_render_failures.ts` 14/14, one new: what `preview` says with every port taken, and
+  nothing with one free. Against this machine as it was, all 27 held, `render.ts preview` in a scratch copy of
+  the template printed the message and its 27 lines and exited 1 without starting anything; a fetch of a port
+  nothing listens on is refused in 1 ms here, never a timeout, so a free port can't read as taken.
+- **Left for the user.** The 22 previews were still running when this was written: the session wasn't allowed to
+  stop processes it hadn't started. Whether a preview should end by itself after a long time unwatched, or the
+  range be wider, is undecided: both change what "it keeps running" promises the director and the app.
+
+**The same review, on what is left for the gate.** It ran this branch's tests again (the six files above, same
+counts) and the app's (560 passed, 0 failed), read the vendors' current guidance, and found nothing in it against
+this change: it adds a way to draw and a check on it, and no line about which way to lean. On the candidates
+above the guidance bears this way, as an order to try them in, not as a result:
+
+1. **The ablation arm first.** "Skills developed for prior models are often too prescriptive for Claude Fable 5
+   and can degrade output quality. Review and consider removing older instructions if default performance is
+   better" (Anthropic, "Prompting Claude Fable 5"); "removing one component at a time and reviewing what impact it
+   had on the final result" (Anthropic, "Harness design for long-running application development", 2026-03-24).
+   This history's own numbers say where to look: with the skills a video takes 1.5 to 4 times as long, and its
+   picture comes out about the same, slightly preferred on the newest model and once worse (0.8.2's music video),
+   so what the reading and the rounds cost is the open question, more than what they forbid. The saved sessions
+   (below) say which of the two: the rounds.
+2. **backends.md's "Leave it only for ... is not a reason".** "The model treats an instruction that contains
+   'never' as absolute", and the advice is to "rewrite absolute rules with their scope and reason" ("Prompting
+   Claude Fable 5.2"). A default with its reason and its way out is what the skill-authoring guide asks for
+   ("Provide a default (with escape hatch)"); a ranking a reader obeys to the letter is not. Since this release
+   the reason the line gave (leaving costs the director's loop) no longer holds for a shot.
+3. **Look defaults as opt-in.** The same guidance on instructions that "raised cost, caused side effects, or no
+   longer had an effect", and 0.13.0's own run, where naming post as a look left one model's picture sparser:
+   one change, one run a side at least.
+4. **The critic stays; its round at delivery is what the minutes point at.** "Separate, fresh-context verifier
+   subagents tend to outperform self-critique" ("Prompting Claude Fable 5"), and nothing read argues against the
+   round before the hand-off. The round after the director's yes is the narrower question (below).
+
+**Where a session's time goes, timed from the sessions already saved (2026-11-26).** Before running an ablation
+the review timed three sessions on disk from their session files: each tool call from its call to its result,
+and the model's own time (thinking and writing) given to what it did next. They are 0.13.0's baseline pair on
+Fable 5.2 (the 20-second sky video, with main's text and alone) and this release's `cv-own-renderer` run on
+Opus 5.5.
+
+| | Fable 5.2, with the skills | Fable 5.2, alone | Opus 5.5, with (own renderer) |
+|---|---|---|---|
+| The whole session | 102 min | 28 min | 295 min |
+| Critic rounds | two, 15.0 and 13.1 min (28%) | none | two, 12.8 and 16.1 min (10%) |
+| `render.ts video` and `verify` | 22.5 min (22%) | none | 4.6 min, beside about 170 min of the shot's own makes |
+| Reading the skill's references and `docs/ENGINE.md` | 0.3 min | none | 0.5 min |
+| Model calls in the main thread, and their median context | 109, 341K tokens | 36, 171K | 160, 289K |
+| Input tokens, cached ones included (main thread + subagents) | 36.6M + 14.9M | 5.5M | 43.6M + 9.2M |
+
+- **Reading is not where the minutes go:** under a minute in each run. Fewer references read would save
+  context, which these numbers can't split from the rest (the median call carried twice the alone run's), and no
+  time to speak of. So a copy of the skills without their craft references, the ablation this review first
+  named, was not run: it would have moved under 1% of the time, on a picture one run a side can't tell apart.
+- **The critic's rounds are the largest named cost,** 13 to 20 minutes each (a third session on Fable, on a
+  candidate text of 0.13.0's gate, ran one round of 19.7), then the renders and verify. The alone run has
+  neither: 24 of its 28 minutes were the model's own.
+- **The round at delivery, after the director's yes, went both ways.** On Fable, the round after "Go ahead. I
+  want the MP4" took 13 minutes and ended SHIP: one small defect "masked by the title's hit" and five matters
+  of taste, as critique.md records of a short piece's second round ("found only polish in four test runs out of
+  four"). On Opus, the round after "Approved." took 16 minutes and found glitter in the path-traced glass "worth
+  the 55-minute remake"; the session patched the renderer and asked again, so that turn ended without a render
+  (Delivery's step 2 sends such fixes back to the preview for a new yes). One round of polish and one real find
+  don't settle it. The candidate for the gate, then: on a short piece, whether a yes to
+  a previewed cut, changed since its round only by that round's fixes, renders without another round. It is a
+  change to the critic's bar, so it takes more than one run a side on each model, which this review did not
+  start: about 100 minutes a run with the skills on Fable.
+
+**Codex's fourth review, of the whole branch (2026-11-26).** Eight findings, all taken, and one more found
+while testing them.
+
+- **The harness stopped a process on a server's word.** `left-running.ts` asked each port's server for
+  `/__audara` and stopped the process its answer named, though it had the port's listener from the system: a
+  stale or wrong answer would end an unrelated process and everything under it. The process stopped is now one
+  the system says listens on that port: the one the answer names when it is among them, the only one when the
+  answer names none. Otherwise nothing is stopped, and the port is named.
+- **It stopped any process whose command line named the run's folder** (the sweep described above; `task.ts`
+  did the same before this branch, which brought it to `trigger.ts`, run by run). An editor opened on a file of
+  a run, a player on its draft or a grader's script reading its transcript would be closed with its tree when
+  the run ended. Now only a process that runs a program from the folder is stopped: its executable is inside
+  it, or it is a runner (node, bun, deno, python, uv) whose script is, with nothing before the script but
+  options. `render.ts preview`'s Vite has that shape: the five previews running on this machine matched both
+  rules, read without stopping any (`node <root>\node_modules\vite\bin\vite.js`, the answer's process the
+  listener of its port).
+- **Hidden files weren't inputs.** The default scan skipped dot-files, so a renderer's `.env` could change and
+  the shot read current. They count now, by a walk that doesn't enter a tool's folders. What a system or an
+  editor leaves is never an input (`.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, vim's swap file, Emacs's
+  lock, `.cache`, `.*_cache`, `.ipynb_checkpoints`): with hidden files counted, a swap file appearing during an
+  hour's make would otherwise stop it as an input changed.
+- **A recipe alone in its folder was refused** ("names no file"), and so was `"inputs": []`: a command that is
+  the whole program (an FFmpeg filter graph) has no file to name. Both work now. A pattern that finds no file
+  is still refused, as a path mistyped.
+- **Files a program wrote in a folder beside its frames were dropped without a word,** and the scene that read
+  one got a 404. They are published by their paths (`meta/camera.json`) and recorded, so one gone makes the
+  shot stale.
+- **A failed copy left `<version>.partial` behind** (the publish across volumes), where neither make nor clean
+  looked, holding the space its own retry needed. The copy's record goes in first; a copy that fails is removed
+  there; one a dead run left is removed by the next make or clean when its record says it is this script's (an
+  empty one too; one without that record stays). The name, the version pattern and a published version never
+  written again, which the app reads, are as they were.
+- **The upgrade note left out `render.ts`.** contract.md gave `footage.ts` and `shot.ts` as the port of a
+  project made before 0.17.0; the check a `--jobs` render makes before its join is in `render.ts`, and the
+  reload in `vite.config.ts`. It says so now, and `make` names an older `render.ts` as it named the reload.
+- **`CONTACT.JPG` passed as a program's own file,** and would replace the contact sheet where the file system
+  ignores case. The script's names are refused in any case of letters, and so are two names one case apart, so
+  a version reads the same on every machine.
+- **Found while testing the copy: a make that had published exited 1.** With a file of its scratch folder held
+  open (Windows), removing the folder threw after the publish: a stack trace for a shot that was made. The
+  scratch folder is removed with retries now, and one that can't be is said and left.
+
+Checked: `test_left_running.ts` 8/8, three new (with the answer's process trusted two fail, the process it
+named stopped; with any mention of the folder counted three fail). `test_shot.ts` 26/26, seven new, all seven
+failing on the script as it was. One of them forces the copy on Windows, where this machine has one volume: a
+PowerShell opens the staged version's last frame, shared for reading (the folder won't rename, the copy goes
+through, the make exits 0 and names the scratch folder it couldn't remove) and shared with nobody (the copy
+fails, no `.partial` is left and the shot is as it was). `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20,
+`test_render_failures.ts` 14/14, and `bun run check` in a scratch project. Not checked: a publish across two
+real volumes.
+
+**Codex's fifth review, of those fixes (2026-11-26).** Seven findings, all taken: three where a fix still
+reached past what it knew, four smaller.
+
+- **A path after an option was taken for the script.** `uv run --project <folder>/project grade.py` and `node
+  --require <folder>/hook.js elsewhere.js` read as programs of the run, though the program is a grader's from
+  elsewhere. Which options take a value differs by runner and version, so the rule is what stands right before
+  the path: the runner, its `run` (bun, uv, deno), or an option that carries its own value
+  (`--max-old-space-size=4096`). After any other option the process is left running (`python -u
+  <folder>/render.py` too: a miss on the safe side).
+- **The port's only listener was guessed at.** When an answer named no process, the port's one node or bun
+  listener was stopped; a proxy on 127.0.0.1 and an unrelated service on another address of the same port
+  would make that the wrong one. Nothing is guessed now: the process stopped is the one the answer names, when
+  it listens on that port at an address a request to 127.0.0.1 reaches, among listeners of every kind. Every
+  preview this template serves names its process, so nothing a run leaves is missed by it.
+- **A failed copy removed a folder it might not have made.** The name was checked free before the program ran;
+  a folder appearing under it meanwhile made the copy fail at its first step, and the cleanup removed that
+  folder. It removes only what this run created, and its record last, as any removal does, so a cleanup
+  stopped halfway by a held file is finished later.
+- **A dead copy was removed only after the next publish,** so one holding the space the new version needed kept
+  every make from reaching the cleanup, and a shot that was current kept it for good. Make removes them first,
+  under the lock, whatever it then does.
+- **A version made before folders were published could read current** while lacking the files its program
+  wrote. The protocol is 2: every shot made by this branch's earlier script is stale once. No release carried
+  protocol 1.
+- **A pattern with a wildcard still scanned a tool's folders** (`**/*.py` read a whole `.venv` to turn it down
+  file by file). Patterns are matched over the same walk as the default, from the folder their fixed start
+  names. With 20,000 files in a `.venv`, five makes each way took 0.15 to 0.8 s before and after: no difference
+  to measure here, and one rule instead of two.
+
+Checked: `test_left_running.ts` 10/10 (two new: command lines, and a table of listeners written out; the server
+whose answer names no process now goes on). `test_shot.ts` 28/28, two new and two extended; on the script of the
+fourth review three fail (a dead copy kept by a make with nothing to make; a version of protocol 1 read as
+current; a folder that took the copy's name removed). The five previews running on this machine still matched
+both rules. `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20, `test_render_failures.ts` 14/14.
+
+**Codex's sixth review (2026-11-26).** Five findings, all taken; the last two undo one of the fifth's fixes.
+
+- **The cleanup before a render could remove a published version.** It listed the versions to keep, then
+  listed them again to choose what to remove, and a listing that fails reads as none: one failed read and one
+  good one put the version on screen among the folders to remove (Codex injected the failure). It lists only
+  the copies cut short now, and never reads which versions there are.
+- **An option that carries its own value proves nothing about what follows.** `node --eval=... <folder>/turn-1.jsonl`
+  passes the path to a program given inline, a grader's. The forms taken as running a script of the folder are
+  the ones known to: the runner with the path right after it (`node`, `bun`, `deno`, `python`, `py`), or after
+  its `run` (`bun`, `uv`, `deno`). Any option before the path leaves the process running.
+- **Two processes on one port, one of them named.** With a listener on 127.0.0.1 and another on `::` (which
+  takes IPv4 or not by a setting the system's table doesn't show), only one can have answered, and the table
+  can't say which. A process is stopped only when it is the one process that could have answered.
+- **The matcher written for the fifth review chose other files than Bun's scan.** `!*.ts` at the template's root
+  went from 7 files to 95, `scripts\*.ts` from 2 to none on Windows, and a pattern with `./` or `../` inside it
+  to none. Patterns are Bun's to scan again, hidden files on; the walk that skips a tool's folders stays for a
+  folder and for the default. What the scan costs for entering them, measured this time: 100,000 files in a
+  `.venv` took it 90 ms (five runs, 81 to 102), twice a make.
+
+Checked: `test_left_running.ts` 10/10, with the command lines above and a table holding two listeners on one
+port. `test_shot.ts` 28/28; its pattern check now covers one level, a leading `!`, `../` and Windows'
+separators, and fails on the fifth review's matcher (`!*.md` took seven files for one). The five previews on
+this machine still match both rules. `test_footage.ts` 35/35, `test_render_inputs.ts` 20/20,
+`test_render_failures.ts` 14/14, `bun run check`. Not checked by a test: the listing that fails (the code no
+longer makes one).
+
+Codex's next pass, on that commit, found nothing and called the branch ready to merge. It injected the failed
+listing again (the published version stayed), ran the inline-program and two-listener cases, and agreed with
+keeping Bun's scan for patterns: which files a recipe selects is worth more than 81 to 102 ms.
+
+**Codex's seventh review, a new one of the whole branch (2026-11-26).** Five findings, all taken.
+
+- **A path that starts in the run's folder and leaves it.** `node <folder>/../sibling/grade.js` read as a
+  program of the folder, so the cleanup could stop a sibling run's grader and its tree. The path is taken as
+  written, to its closing quote or the next space, and counts by where it leads. Unquoted, with a `..` further
+  on, where it leads isn't known (`ps` joins a command's arguments with spaces, and Windows reads a program's
+  path past one): left running.
+- **Stopping a tree reached only a process's own children,** elsewhere than Windows: `pkill -P` signals those,
+  so a worker started by a shell the runner started outlived both, with no parent left to find it by. The tree
+  is read from the process table first and stopped the deepest first.
+- **A file in `footage/` read as a shot made again.** A `--jobs` render compares the shots' manifests before
+  its join; an entry with no manifest added an empty line to what it compares, so a `.DS_Store` that Finder
+  writes on opening the folder stopped the join and told the director to delete finished pieces. Only what
+  holds a manifest counts.
+- **Two makes, one scratch folder.** It was named by the version alone, and a make that dies publishes no
+  version, so the next make with the same inputs took the same name: with the first's program still running,
+  two programs wrote one `raw/`. Each make's folder is its own now (`<version>.<process>-<random>`), and what
+  ended runs left is removed by the next make under the shot's lock, a check's kept frames not. Measured here:
+  on Windows bun ends its children with itself (a direct child was gone after `kill` and after `taskkill /F`
+  on its parent), so there the case takes a program that detaches; elsewhere a child outlives its parent.
+- **A link published as a link.** `cpSync` copies a link as one, so a program that linked `{out}/camera.json`
+  to a file of `{tmp}` published a link to nothing, and one linked to an input published a file that changes
+  after the version is published. A link to a file is published as a copy of what it leads to; a link to a
+  folder or to nothing stops the make.
+
+Checked: `test_left_running.ts` 13/13, with the command lines above (the one Codex gave read true on the code
+before), a table of processes, and three node processes in a chain stopped by stopping the first.
+`test_render_inputs.ts` 20/20, failing on the render.ts before at the file in `footage/`. `test_shot.ts` 30/30;
+on the shot.ts before, both makes were given `.audara-cache/shots/bars/g1-f234ece0/raw` and a junction among
+the program's files ended the make with a stack trace. `test_footage.ts` 35/35, `test_render_failures.ts`
+14/14, `bun run check`. Not checked: a link to a file, which this Windows account can't make (the test says
+so, and checks a junction, one nested and one to nothing); the tree stopped on a system other than Windows,
+where the chain test runs the new code and here ran `taskkill` (no Linux or macOS, WSL or container on this
+machine).
+
+**Codex's pass on those fixes (2026-11-26).** Four findings, all taken; two are in the tests written for the
+seventh review.
+
+- **A path read as a stretch of the line, not as an argument.** `node /review/grade.js suite/run/log.txt` holds
+  the text of a folder named `/review/grade.js suite/run`, so cleaning that folder stopped the grader. The
+  command line is taken apart into arguments first: on Windows by the rules its programs read their quotes by,
+  every argument after the program's name whole; elsewhere as `ps` joins them, by spaces, none known to be
+  whole. A path counts only as one argument, so where nothing marks an argument's end a folder with a space in
+  its path matches nothing, and a run there keeps its processes (its servers are still found).
+- **The chain test could signal a group.** With nothing printed, the list of process numbers read as `[0]`,
+  and stopping 0 signals every process of the test's group. Only a process's own number is kept, in the tests
+  and in `stopTree`.
+- **And could wait for good,** on a read that never comes when a process stays up without printing. The read
+  has a deadline, and the chain is stopped however the check ends.
+- **A version published with a link stayed current.** Its inputs and protocol match, and the link reads as a
+  file that is there. A version with a link among the files it recorded is stale.
+
+Checked: `test_left_running.ts` 16/16, each command line read both ways; Codex's line reads false in both.
+`test_shot.ts` 30/30, failing on the shot.ts before at a junction put in a version's recorded file (`current`).
+The five previews on this machine still match. `bun run check`.
+
+Its next pass found one more, in that reading: **an empty argument dropped.** `node '' <folder>/log.txt` runs
+the program it is given on its input, with the path as that program's argument (Codex ran it); `ps` prints it
+with two spaces, and a split on any run of spaces read the path as the script. A line `ps` joined is split at
+each single space now, an empty argument kept as the nothing between two, and the line is taken from `ps`
+after the one space it puts between columns, so an empty first argument is kept too. Checked by
+`test_left_running.ts` (16/16) on written lines; which `ps` prints exactly this was read from its sources, not
+run.
+
+And the pass after that, one: **macOS's `ps` drops an empty first argument** (Codex read Apple's source: it
+skips every empty byte after the saved path, the empty argument's with them), so the line starts at the second
+argument, and a file of the run's folder there read as the run's executable. No reading of the line can tell.
+The first word is the program now only when the system's own name for what the process runs agrees: Windows'
+image name, the kernel's elsewhere (`comm`, `ucomm` on macOS), the one thing a process's arguments don't write.
+An executable of the folder has to carry that name, itself or through what it links to, and a runner has to be
+named a runner; a process the system gives no name for is left running. `test_left_running.ts` 17/17, with a
+grader's name against each form and a name cut at 15 characters; the five previews here are `node.exe` by both.
+Not run: the second `ps` call on a system that has one, and a link (a venv's python) followed to its name.
+
+Three more on that check, all taken. **Two runners are not one:** a line starting `python3 <folder>/log.txt`
+with the system naming the process `node` passed, each name a runner's; it is a node process running a script
+called python3. Both names have to be the same runner, by any name it goes by (python, python3.12, pythonw,
+py; node, nodejs). **A whole name read as one cut short:** `long-tool-prefix.exe`, 15 characters and more,
+matched `long-tool-prefix-more.exe` on Windows, which cuts nothing. A name is the start of a file's only at the
+length the system cuts at, 15 bytes on Linux and 16 on macOS. **A script started by its own first line was no
+longer the run's on Linux,** which names the process after the script while its line starts with the
+interpreter (`/usr/bin/python3 <folder>/render.py`, named `render.py`: a tool pip puts in a venv starts so). It
+counts again when the script carries the system's name and its first line puts exactly the words before its
+path. `test_left_running.ts` 18/18, the first-line form on real files read as Linux tells them; not run on
+Linux.
+
+**Then the reading of command lines was dropped (2026-11-26).** Codex's next pass found three more in what the
+last rounds had added: a file of the folder named as the program is, first on a line macOS started late,
+still passed by its name (and Claude had told Codex that case was left running when the code stopped it); the
+first-line check opened its file before knowing what it was, and a pipe opened for reading waits for a writer
+for good; and that check read a first line more kindly than Linux does. Six rounds had each mended the
+reading of a line somewhere new, and each mend was more reading. The rule now takes only what a system says
+outright: a process's arguments one by one, and the file it runs. Windows says both (the command line as
+given, read by its own quoting rules, and the executable's path) and so does Linux (`/proc/<pid>/cmdline` and
+`exe`). macOS's `ps` says neither, so the sweep by program stops nothing there, and a run's servers, the
+reason the cleanup exists, are still found by what they answer. A process runs a program of the folder when
+the file it runs is inside it, or its first argument leads there and is that same file (a venv's python), or
+the file is a runner, its first argument the same runner, and the next argument a path into the folder. Gone
+with the reading: the two readings of a line, the guess at where an unquoted path ends, the system's name and
+where it is cut, and the first-line check.
+
+Checked: `test_left_running.ts` 18/18 on arguments and files written out (each of Codex's lines from these
+rounds among them, as arguments), a link followed on real files (a junction here), and the live part, in a
+folder with a space again. The five previews on this machine match: `node.exe` by the file they run, Vite's
+script the argument after. Windows gave both a command line and a path for 475 of the 687 processes here; the
+rest are left alone. Not run: the `/proc` reading, on Linux.
+
+Codex's pass on that found three, all taken. **Windows' processes were read a line each,** so a command line
+with a line break in it (code given inline) read as more processes, their ids and files that command's own
+text: they are asked for as JSON now, a record each. Run live: a node process whose inline code holds a line
+break, tabs, a word with an accent and a second line spelled as a record came back as one process, its four
+arguments exact, and no process by the id spelled. **A line that starts with a space** has an empty program's
+name by Windows' rule, so ` node <folder>/input.txt` runs a script called node with the file as its input;
+the parser skipped the space. Run here: started with ` first second` as its command line, node looked for a
+script called `first`; with `first second`, for `second`. **And what the narrower rule no longer stops** is
+written down and tested as left running: a script a shell runs, and one whose first line gives its
+interpreter an option. `test_left_running.ts` 20/20.
+
+Codex's next pass, on that commit, found nothing, and asked about everything since the sixth review together
+it would merge. What neither of us could run on this machine stays open: the cleanup on Linux and macOS, and a
+link to a file among a program's files.
+
+**Not run:** a task eval in Codex; `cv-own-renderer` again at the 300-minute limit, and without the skills; the
+gate (what a default session reads gained facts and no lean).

@@ -16,6 +16,7 @@ function extract(start: string, end: string) {
 const encodeJS = extract('async function encodeFrames(', '\n/** About how long a piece');
 const checkJS = extract('function checkFfmpeg(', '\n/** x264');
 const piecesJS = extract('async function videoInPieces(', '\n/** Browsers a --jobs run');
+const portsJS = extract('function portsTaken(', '\n/** The last lines of a log');
 class Fail extends Error {}
 const fail = (message: string): never => { throw new Fail(message); };
 const makeEncode = new Function('Bun', 'x264', 'soundArgs', 'SAMPLES', 'SHUTTER', 'discard', 'fail', 'Fail', `${encodeJS}\nreturn encodeFrames;`);
@@ -168,6 +169,22 @@ const cases: [string, () => void | Promise<void>][] = [
       throw marker;
     });
     await assert.rejects(render(), (e: unknown) => e === marker);
+  }],
+  ['preview with every port taken says so, and by what; with one free it has nothing to say', () => {
+    const ports = [5173, 5174, 5175];
+    const taken = new Function('PREVIEW_PORTS', 'PREVIEW_RANGE', `${portsJS}\nreturn portsTaken;`)(ports, '127.0.0.1, ports 5173-5175') as (said: unknown[]) => string | null;
+    assert.equal(taken([{ root: 'C:/a' }, null, 'another app']), null, 'a free port: nothing to say');
+    assert.equal(taken([]), null);
+    const full = taken([{ root: 'C:/videos/one', pid: 7 }, 'another app', { root: 'C:/videos/two' }])!;
+    assert.match(full, /\n  5173  C:\/videos\/one\n  5175  C:\/videos\/two\n/, 'each preview by its port and folder');
+    // (read through `| tail -1`, and by the app, which shows the end of the output: the last line alone says it)
+    const last = full.split('\n').at(-1)!;
+    assert.match(last, /^No preview was started: all 3 of the preview's ports \(127\.0\.0\.1, ports 5173-5175\) are taken, 2 by other projects' previews and 1 by other apps\./);
+    assert.match(last, /preview --stop/);
+    assert.equal(taken(['no answer', 'no answer', 'no answer']), null, 'only timeouts: not known to be taken');
+    const apps = taken(['another app', 'no answer', 'another app'])!;
+    assert.match(apps, /taken, 3 by other apps\./);
+    assert.doesNotMatch(apps, /preview --stop/, 'no preview to stop where other apps hold them all');
   }],
 ];
 

@@ -9,6 +9,11 @@
 //   proxy/000001.jpg ...  the same frames at half that size: what the preview reads
 //   manifest.json         { "frames": <how many>, "fps": <their rate> } ("proxy": false: there is no proxy/,
 //                         and the preview reads full/ too)
+// A shot a program makes (scripts/shot.ts) keeps each version of its frames in a folder of its own, never
+// written again once it is there, and its manifest ("made": "scripts/shot.ts") names the current one ("dir":
+// "<folder>"): full/ and proxy/ are read from footage/<shot>/<dir>/, so a page that opened the shot before it
+// was made again goes on reading the frames it opened, and a new version never reaches a page under an old URL.
+// Any other manifest's "dir" (a project's own field) means nothing here.
 //
 // Frames load asynchronously (fetch, then createImageBitmap) and render() can't wait, so the engine calls each
 // scene's prepare(t0, t1) before it renders that stretch (Engine.prepare): render.ts waits for it before every
@@ -226,6 +231,8 @@ export class Footage {
   get frames() { return this.o.frames; }
   get fps() { return this.o.fps; }
   get start() { return this.o.start; }
+  /** The folder its frames come from: the version it plays, for a file the program kept beside them (`${clip.base}/events.json`). */
+  get base() { return this.o.base; }
   get full() { return this.o.full; }
   /** Seconds of video the shot fills from `start` at its rate, to its last frame. */
   get duration() { return (this.o.frames - this.o.offset) / (this.o.fps * this.o.rate); }
@@ -434,24 +441,50 @@ export interface FootageInfo {
   size: [number, number] | null;
   /** Whether the shot has proxy/ ("proxy": false says it hasn't: the preview reads full/). */
   proxy: boolean;
+  /** The folder of the shot's current frames ("dir" in a manifest scripts/shot.ts wrote), or null: full/ and proxy/ beside the manifest. */
+  dir: string | null;
   /** The manifest as written (a project may keep fields of its own there). */
   manifest: Record<string, unknown>;
 }
 
-/** The FootageInfo of a manifest already read: "frames" (or "duration" in seconds), "fps" (default 60), "size", "proxy". */
+/** The FootageInfo of a manifest already read: "frames" (or "duration" in seconds), "fps" (default 60), "size", "proxy", "dir". */
 export function infoOf(m: Record<string, any>, base = ''): FootageInfo {
   const fps = Number(m.fps ?? 60);
   if (!(fps > 0)) throw new Error(`footage ${base}: manifest.json's "fps" must be a number above 0`);
   const frames = Number(m.frames ?? Math.round(Number(m.duration ?? 0) * fps));
   if (!(Number.isInteger(frames) && frames > 0)) throw new Error(`footage ${base}: manifest.json needs "frames", how many files full/ holds`);
   const size: [number, number] | null = Array.isArray(m.size) && m.size.length === 2 ? [Number(m.size[0]), Number(m.size[1])] : null;
-  return { frames, fps, size, proxy: m.proxy !== false, manifest: m };
+  // (a version folder only in a manifest scripts/shot.ts wrote: a capture's or a project's own "dir" is left alone)
+  const dir = m.made === 'scripts/shot.ts' && m.dir != null ? String(m.dir) : null;
+  if (dir !== null && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(dir)) throw new Error(`footage ${base}: manifest.json's "dir" must be a folder name in the shot's folder (got ${JSON.stringify(m.dir)})`);
+  return { frames, fps, size, proxy: m.proxy !== false, dir, manifest: m };
 }
 
-/** Reads the manifest.json of the shot folder at `base`. */
-export async function footageInfo(base: string): Promise<FootageInfo> {
+/** The manifests render.ts's page has read, by the manifest's absolute URL (footageInfo). */
+const INFOS = new Map<string, Promise<FootageInfo>>();
+
+/**
+ * Reads the manifest.json of the shot folder at `base`. On render.ts's page each manifest is read once, whichever
+ * spelling of its URL asks, so every entry that opens a shot, and every scene that asks for its manifest (for a
+ * capture's per-frame data, say), sees the same version even if the shot is made again while the page renders;
+ * the preview reads it each time, and reloads when it changes.
+ */
+export function footageInfo(base: string): Promise<FootageInfo> {
   const b = base.replace(/\/+$/, ''), url = `${b}/manifest.json`;
-  const r = await fetch(url);
+  if (!RENDERING) return readInfo(b, url);
+  const key = typeof location !== 'undefined' && location.href ? new URL(url, location.href).href : url;
+  let read = INFOS.get(key);
+  if (!read) {
+    read = readInfo(b, url);
+    INFOS.set(key, read);
+    read.catch(() => INFOS.delete(key));
+  }
+  return read;
+}
+async function readInfo(b: string, url: string): Promise<FootageInfo> {
+  // (never from the browser's cache: a shot made again rewrites its manifest, and the page that reloads for it
+  // must read the new one)
+  const r = await fetch(url, { cache: 'no-store' });
   if (!r.ok) throw new Error(`footage ${b}: no manifest.json (HTTP ${r.status} for ${url})`);
   let m: unknown;
   // (text() decodes as UTF-8 and drops a byte-order mark, which Windows PowerShell 5.1 writes and JSON.parse refuses)
@@ -473,8 +506,9 @@ export const footageUrl = (shot: string) => projectUrl(`footage/${shot}`);
  * loads the frame the entry starts on, so the preview's first draw has a picture.
  */
 export async function openFootage(ctx: { start: number; export: boolean }, shot: string, o: Partial<Omit<FootageOptions, 'base' | 'frames'>> = {}) {
-  const base = /^(\/|[a-z][a-z0-9+.-]*:)/i.test(shot) ? shot : footageUrl(shot);
-  const info = await footageInfo(base);
+  const folder = (/^(\/|[a-z][a-z0-9+.-]*:)/i.test(shot) ? shot : footageUrl(shot)).replace(/\/+$/, '');
+  const info = await footageInfo(folder);
+  const base = info.dir ? `${folder}/${encodeURIComponent(info.dir)}` : folder;
   const f = new Footage({ ...o, base, frames: info.frames, fps: o.fps ?? info.fps, start: o.start ?? ctx.start, full: o.full ?? (ctx.export || !info.proxy) });
   try { await f.prepare(ctx.start, ctx.start); }
   catch (e) { f.dispose(); throw e; }

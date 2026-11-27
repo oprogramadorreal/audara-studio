@@ -2,8 +2,11 @@
 
 Two kinds, both run headless in fresh folders, in Claude Code and in Codex. Results go to
 `evals/results/` (git-ignored). The runners clean up after themselves: Codex's per-folder trust entries
-are removed from `~/.codex/config.toml`, and Claude Code sessions are not kept (trigger) or are moved
-next to their results (tasks).
+are removed from `~/.codex/config.toml`, Claude Code sessions are not kept (trigger) or are moved
+next to their results (tasks), and what a run left running from its folder is stopped when it ends
+(`evals/harness/left-running.ts`): a session's preview outlives it on purpose, and each one left holds one of
+the preview's 27 ports. One trigger eval left 22, and with five projects' own previews no new project's
+preview could start (history.md, 0.17.0).
 
 No session can reach the user's desktop or their own browser: with the user's own Codex config, one task
 run read the titles of their open Chrome tabs through Codex's computer-use plugin, pressed play in a
@@ -264,7 +267,23 @@ computer use and browser automation off; the final file list, git status, the as
 `previews` lists every port in 5173-5199 whose `/__audara` named a folder during the run, with that folder
 and whether it is this run's `work/`: a preview started in a background shell dies with its turn, one
 started by `render.ts preview` runs until the harness stops it at the end, and runs going at once can
-reach each other's. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
+reach each other's. At the end the harness stops every process that runs a program from `work/` (the file it
+runs is there, or it is a node, bun, deno, python or uv with a script of it) and every dev server that serves
+it, on whatever port: a session whose preview couldn't start has run Vite by hand outside those ports, where
+`previews` doesn't look. A process that only names a file of `work/` (an editor showing it, a player on its
+draft, a grader's script) is left alone, and so is a runner with any option before its path of `work/`, which
+may be that option's value or an inline program's argument (`uv run --project <work>/project grade.py`, `node
+--eval=... <work>/turn-1.jsonl`), and a path that starts in `work/` and leaves it again through `..`. Which
+program a process runs is taken from what the system itself says of it, its arguments one by one and the file
+it runs, never from its command line read as text: Windows gives both (the line as it was given, read by its
+own quoting rules, and the executable's path) and so does Linux (`/proc`). macOS's `ps` gives neither (it
+joins the arguments with spaces, and starts the line at the second when the first is empty), so there only
+the servers are stopped. Left running knowingly, of a run's own: a script a shell runs (`sh tool.sh`, or one
+that starts `#!/bin/sh`), and one whose first line gives its interpreter an option (`#!/usr/bin/python3 -u`).
+A process
+is stopped with everything that descends from it, read from the process table first. A server is stopped as the process its answer names, when the system says
+that one alone could have answered on the port at the address asked; any other answer stops nothing, and the
+port is printed for a person to look at. A Codex run also gets `codex-sessions/`, its session files from `~/.codex/sessions`
 (the main thread's and its sub-agents'), since `codex exec --json` leaves out calls such as spawn_agent
 and view_image. A grader reads them, checks each assertion with evidence (running ffprobe,
 `render.ts verify`, `qc.py` and the like) and writes PASS or FAIL per assertion.
@@ -381,9 +400,34 @@ older and individual forms; `--language` kept in the command eleven.py suggests;
 a sentence too long for its place left open, its track "incomplete"; and speech that would run past the end of a
 video cut close after its narration left open. It needs ffmpeg and uv, and takes about two and a half minutes.
 `test_render_failures.ts` checks encoder exits, socket write failures, cancellation and ffprobe preflight
-with in-memory peers and bounded waits. `test_render_inputs.ts` checks resume fingerprints (streamed footage
-included), piece boundaries around stateful scenes' shutter exposures, and which values of video.json's
-`shutter` a render takes or reports; neither needs Chrome or ffmpeg.
+with in-memory peers and bounded waits, and what `preview` says when every one of its ports is taken.
+`test_left_running.ts` checks what the runners stop when a run ends, with eight small node processes in a
+temp folder whose path has a space: a dev server started from the run's folder by a relative path (found by
+the folder it answers `/__audara` with, on a port of its own) and a process running a script of the folder by
+its full path are stopped (the script's only where the system says a process's arguments and the file it
+runs); the same two for a sibling folder whose name starts alike go on, and so do a process that only names
+a file of the run's folder, a server whose answer names no process, and one whose answer names a process that
+doesn't listen on its port, with the process it names. It also checks, on arguments, files and a table of
+listeners written out, how a Windows command line comes apart into arguments (its quoting rules, an empty
+argument kept, and an empty program's name for a line that starts with a space), that Windows' processes are
+read as records, a command line with line breaks and tabs in it still one process's, which processes run a
+program from a folder (none with an option before the path, none whose
+path leaves the folder again through `..`, none whose path is two arguments, as a grader's script and its
+argument are, and none whose first argument and running file disagree: a file of the folder first with a
+program from elsewhere running, two different runners, or no file the system will name), that a first argument
+which is the running file under another name counts (a link in the folder, on real files), what is left
+running knowingly (a script a shell runs, and one whose first line gives its interpreter an option), and which
+process an answer stops (none that listens
+on another address or port, and none where two processes could have answered); on a table of processes, that
+a tree is a process and all that descends from it, the deepest first; with three node processes each
+started by the one before, that stopping the first stops the child of its child; and that 0 and negative
+numbers, which name groups of processes, stop nothing. It needs node.
+`test_render_inputs.ts` checks resume fingerprints (streamed footage
+included), piece boundaries around stateful scenes' shutter exposures, which values of video.json's
+`shutter` a render takes or reports, and the shots' manifests a `--jobs` render compares before its join
+(changed by a manifest written, rewritten or removed, not by a version folder written before it, a file in
+`footage/` or a shot's folder before its first manifest); none of the three needs Chrome
+or ffmpeg.
 `test_judge_pick.ts` checks the gate's comparison tools on two one-second videos ffmpeg makes, with no judge
 started (a stand-in for the judge's CLI comes first on PATH, so no failure reaches a model): which video
 `judge.ts --dry` takes from a run, the packets it builds, uses again or refuses to touch, two runs told
@@ -405,7 +449,40 @@ look-ahead's; a scrub of five look-aheads leaves the first one's waiting frames 
 for one a scene's own prepare asked for too, and render.ts's page fetches them all; and a frame not decoded
 yet shows the latest one before it (one after it only when there is none), counted in `footageStats`; a frame
 that fails to load fails its prepare with its URL and frees its turn; a disposed Footage lets its waiting
-frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone.
+frames go while another fetches on; and a frame let go unfetched is fetched when asked again, its mark gone;
+and the version a manifest scripts/shot.ts wrote names (`"dir"`): frame URLs in that folder, the manifest read
+past the browser's cache (render.ts's page reads it once per shot, the preview each time), the URLs of a
+manifest without one, or with a `"dir"` of its own (a capture's), as before, and a version that isn't one
+folder name refused.
+`test_shot.ts` runs the template's `scripts/shot.ts` in a throwaway project whose path has a space, with a bun
+program writing BMP frames (ffmpeg and ffprobe on the PATH): make, status and current; the placeholders and
+their environment variables; check passing with a scratch folder per run, and failing on a program that carries
+state between frames; an input changed (stale, named), the version before kept and older ones removed, clean; a
+failed program, a missing or extra frame and a wrong size each publishing nothing; `--scale 2` kept for later
+makes and checks; the recipe's own manifest fields rewriting the manifest alone, a sidecar kept in its version;
+an input or the recipe changed while the program runs publishing nothing; a capture's footage left alone; an
+engine that can't read a version refused; a live lock refusing, a dead one taken over, and a second make while
+one runs refused; inputs from the project root, one naming nothing, a bad size; a manifest that can't be
+replaced publishing nothing, with clean keeping the version on screen; a missing proxy read as stale; two files
+for one frame and a reserved name refused, an upper-case extension taken; a folder named like a version that the
+script didn't make never removed; on Windows, an old version held open left for later while the make succeeds;
+two runs against one abandoned lock, one refused; a lost record made again at the manifest's scale, and a missing
+sidecar read as stale; a hidden file of the recipe folder counted as an input, a tool's folders and a system's
+or an editor's files not; a recipe alone in its folder made with no input file, by default and with
+`"inputs": []`, a pattern naming none still refused; files the program writes in folders published by their
+paths; a name of the script's own in another case refused, and two names one case apart where the file system
+tells them apart; a copy of a version cut short removed by clean and by the next make, before it renders
+anything and when it has nothing to make, when its record says it is the script's, kept otherwise; on Windows,
+with a staged frame held open, a version whose folder won't move copied in and renamed, the make succeeding
+with its scratch folder left and said, a copy that fails removed with the shot as it was, and a folder that took
+the copy's name while the program ran left alone; a pattern selecting what it names (hidden files too, its own
+levels and no deeper, a leading `!`, `../`, Windows' separators), never a tool's files; a version made under
+an earlier protocol read as stale; a make ended while its program sleeps and the make after it given scratch
+folders of their own, what ended runs left removed and a check's kept frames not; a link to a folder (a
+junction on Windows) or to nothing among the program's files refused, a version with a link among its recorded
+files read as stale and made again, and, where the account can make one, a
+link to a file published as a file of the version's own; and what make says of a
+`render.ts` older than the check a `--jobs` render makes.
 `test_soundtrack.ts` checks how the preview reads its soundtrack, with the browser's `Audio` and `fetch`
 stubbed: why a file isn't read (missing: a 404 or a page in its place; not audio, an empty file's 416
 included; not read yet: no answer, the read broken off, or a probe that fails) and the problem each gives;
@@ -457,9 +534,11 @@ bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
 bun evals/tests/test_render_failures.ts
+bun evals/tests/test_left_running.ts
 bun evals/tests/test_render_inputs.ts
 bun evals/tests/test_judge_pick.ts
 bun evals/tests/test_footage.ts
+bun evals/tests/test_shot.ts
 bun evals/tests/test_soundtrack.ts
 ```
 
