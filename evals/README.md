@@ -531,9 +531,10 @@ a move that doesn't come back, a small dot drifting, a frame missing, a hard cut
 for any step to count a jump, and a small part's jump found by its strength; drawings held four frames, a drawing
 held across the wrap on twos, a flash on frame 0, a step smaller than the others (no cell past the line) and a
 move that turns back at the wrap (which it can't see) none of those; too few frames and uneven frames not
-judged. The timing rules run on packet times as ffprobe prints them: even frames, a last frame whose duration
-isn't given (not judged), whole-millisecond times at 60 fps (even within a tick of the time base, uneven
-without it) and a count the decoder changed. Three loops are also encoded as a draft at 960 x 540 and read
+judged. The timing rules run on packet times as ffprobe prints them: even frames, whole-millisecond times at
+60 fps and 59.94 fps on a 1/90000 clock (gaps on the ticks either side of a frame's time: even); a last frame
+whose duration isn't given, a frame moved one tick on a clock of two ticks a frame, a last frame held two
+frames on a clock of one, and a count the decoder changed (not judged). Three loops are also encoded as a draft at 960 x 540 and read
 back through `run()`, with a file whose timestamps leave a gap and one whose frame 1 shows half a frame early
 while its count and length stay right (both not judged), a 60 fps Matroska file (judged) and a run without
 `--loop` (no seam). It needs ffmpeg for those, and takes a few seconds.

@@ -152,10 +152,28 @@ class Timing(unittest.TestCase):
         self.assertIn("last frame's duration couldn't be read", self.uneven(rows, 20, 0.001))
 
     def test_whole_millisecond_times_at_60_fps_are_even(self):
-        # a 60 fps Matroska file: times round to 1 ms, so frames alternate 17 and 16 ms
+        # a 60 fps Matroska file: times round to 1 ms, so frames alternate 17 and 16 ms (and last 16)
         rows = [f"{round(i * 1000 / 60) / 1000:.6f},0.016000" for i in range(120)]
         self.assertIsNone(self.uneven(rows, 120, 0.001))
-        self.assertIsNotNone(self.uneven(rows, 120, 0.0))  # the tick is what lets them through
+
+    def test_a_frame_moved_on_a_coarse_clock(self):
+        # 30 fps on a 1/60 s clock: a frame is two ticks, and frame 1 moved one tick early gives 1, 3, 2, 2...
+        # ticks, with the count and the last duration right. One tick of slack would let it through
+        tick = 1 / 60
+        rows = [f"{(2 * i - (i == 1)) * tick:.6f},{2 * tick:.6f}" for i in range(60)]
+        self.assertIn("aren't evenly spaced", self.uneven(rows, 60, tick))
+
+    def test_a_last_frame_held_twice_as_long_on_a_frame_clock(self):
+        # a time base of one frame (as some AVI and MOV files have): the last frame showing two frames
+        tick = 1 / 30
+        rows = [f"{i * tick:.6f},{tick:.6f}" for i in range(59)] + [f"{59 * tick:.6f},{2 * tick:.6f}"]
+        self.assertIn("aren't evenly spaced", self.uneven(rows, 60, tick))
+
+    def test_a_steady_rate_that_rounds_to_alternate_ticks(self):
+        # 59.94 fps on a 1/90000 clock: frames 1501 and 1502 ticks apart, all of it even
+        tick = 1 / 90000
+        rows = [f"{round(i * 90000 * 1001 / 60000) * tick:.6f},{1501.5 * tick:.6f}" for i in range(300)]
+        self.assertIsNone(self.uneven(rows, 300, tick))
 
     def test_a_count_the_decoder_changed(self):
         rows = [f"{i / 30:.6f},{1 / 30:.6f}" for i in range(20)]

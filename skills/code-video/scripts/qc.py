@@ -162,13 +162,16 @@ SEAM_REPEAT = 0.35    # a repeated picture: under 0.35x the two steps next to it
 SEAM_MOVING = 0.0002  # ...every step around changes 0.02% of the frame or more (6 cells of 240 x 135): motion
                       # under that hides a repeated frame anyway, a pause between moves is no repeat, and a jump
                       # has to change at least this much
-SEAM_EVEN = 0.05      # the seam is judged only when every frame of the file shows for the same time, within 5% of
-                      # a frame and one tick of the stream's time base (timestamps round to it: a 60 fps Matroska
-                      # file's frames alternate 16 and 17 ms), the last frame included, whose duration has to be
-                      # known (it says when the loop wraps), and the decoder gave one frame per frame in the file:
-                      # otherwise it repeats or drops frames to keep a constant rate, and a repeat it made would
-                      # read as the loop's (a file whose rates, length and count all read 60 fps can still show
-                      # two frames for 8 and 25 ms)
+# The seam is judged only when every frame of the file shows for a frame's time (the mean from the first frame to
+# the last), the last frame included, whose duration has to be known (it says when the loop wraps), and the
+# decoder gave one frame per frame in the file: otherwise it repeats or drops frames to keep a constant rate, and a
+# repeat it made would read as the loop's (a file whose rates, length and count all read 60 fps can still show two
+# frames for 8 and 25 ms). A steady rate rounded to the stream's time base gives the ticks either side of a
+# frame's time (a 60 fps Matroska file's frames 16 and 17 ms apart), never one further (a 30 fps file on a 1/60 s
+# clock whose gaps go 1, 3, 2 ticks has a frame moved).
+SEAM_TICKS = 0.99     # within a tick of a frame's time, less a hair (timestamps print to the microsecond)...
+SEAM_JITTER = 0.001   # ...plus 0.1% of a frame
+SEAM_EVEN = 0.05      # without a time base: within 5% of a frame
 
 # ---------------------------------------------------------------- blank frames
 BLACK_LEVEL = 25.5    # near-black: the brightest 0.1% of the frame is under 10% gray (25.5 of 255), the
@@ -600,9 +603,12 @@ def uneven_frames(path: Path, stream: int | None, decoded: int, tick: float = 0.
     last = num(rows[order[-1]][1]) if len(rows[order[-1]]) > 1 else None  # how long the last frame shows
     if not last or last <= 0:
         return "the last frame's duration couldn't be read, so when the loop wraps isn't known"
-    gaps = np.diff([pts[i] for i in order])
-    step = float(np.median(gaps)) if len(gaps) else last
-    odd = [g for g in gaps.tolist() + [last] if abs(g - step) > SEAM_EVEN * step + tick]
+    times = [pts[i] for i in order]
+    gaps = np.diff(times)
+    step = (times[-1] - times[0]) / len(gaps) if len(gaps) else last  # a frame's time, from first to last
+    # a steady rate rounded to the time base gives the ticks either side of a frame's time, never one further
+    odd = [g for g in gaps.tolist() + [last] if abs(g - step) > (SEAM_TICKS * tick + SEAM_JITTER * step if tick
+                                                               else SEAM_EVEN * step)]
     if odd:
         return (f"the frames aren't evenly spaced ({len(odd)} show for {1000 * min(odd):.1f}-{1000 * max(odd):.1f} ms "
                 f"instead of {1000 * step:.1f}): a variable frame rate, or a frame held longer")

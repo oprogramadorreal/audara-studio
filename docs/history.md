@@ -6318,7 +6318,7 @@ from both, without risking what already works, without anything that narrows a s
 simple. The article was read whole; four research agents read the repositories (taste-skill, impeccable,
 video-explainer, huashu-motion, mg-styles-15, kubai-icons, HyperFrames' and Remotion's agent skills,
 gsap-skills, motion2code, claude-video, three.quarks, idol-sdk, mcp-for-blender, blender-skills, Mediabunny,
-ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in four rounds, the first
+ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in five rounds, the first
 without this session's list or each other's.
 
 **Most of it was here already.** The film as a pure function of time with a seek check (the article's
@@ -6346,8 +6346,8 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   two measures on the analysis frame (8×8-px cells at 1080p): the share of cells whose mean moved more than 6
   levels, and the strongest change (the 99.9th-percentile cell). It reports smooth, a jump or a repeat with the
   measure that triggered it and asks for a look. It doesn't judge a stream with decoder errors, or one whose
-  frames, read from its packets' times, don't all show for the same time (within 5% and a tick of its time
-  base, the last frame included, whose duration has to be known) or that the decoder didn't give one for one.
+  frames, read from its packets' times, don't all show for a frame's time (within a tick of its time base, the
+  last frame included, whose duration has to be known) or that the decoder didn't give one for one.
   Without `--loop` the report is the same but for a `"seam": null` key and the video's
   `index`, and the decoder now reads the stream the probe chose (a file whose first video stream is cover art was
   analysed as the cover). On 34 synthetic loops this session made, as render.ts encodes a final (60 fps, CRF 16)
@@ -6379,11 +6379,15 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   the eval and in critique.md's bar, and that contract.md give the blur's amount rather than call it invisible.
   In the fourth, Codex found that a last frame whose duration a file doesn't give (a Matroska file without a
   default duration) passed, though it says when the loop wraps: it goes unjudged now. Both found that a 60 fps
-  Matroska or WebM file, whose times round to whole milliseconds, would always go unjudged; measured on one, its
-  frames 17 and 16 ms apart in a 1/1000 time base: the bar allows a tick of the time base besides the 5%, and
-  it reads smooth. `evals/tests/test_qc_seam.py` has 26 cases: the rules on frames drawn at the analysis size,
-  the timing on packet times as ffprobe prints them, and five tests on encoded files (seven drafts at 960×540,
-  one of them a 60 fps Matroska file).
+  Matroska or WebM file, whose times round to whole milliseconds, would always go unjudged (measured on one: its
+  frames 17 and 16 ms apart in a 1/1000 time base). A tick of slack on top of 5% fixed that, and in the fifth
+  round Codex found it let a moved frame back in where a frame is only two ticks (30 fps on a 1/60 s clock: gaps
+  of 1, 3 and 2 ticks), and Fable a last frame held twice as long where a frame is one tick. The rule now is the
+  one rounding gives: a steady rate rounded to the time base lands on the ticks either side of a frame's time
+  (the mean from the first frame to the last), never one further, so every gap and the last duration are within
+  a tick of it. `evals/tests/test_qc_seam.py` has 29 cases: the rules on frames drawn at the analysis size, the
+  timing on packet times as ffprobe prints them, and five tests on encoded files (seven drafts at 960×540, one of
+  them a 60 fps Matroska file).
 - **`cv-range-loop`** now has the grader run `qc.py --loop` and look at the last frames and the first, in order
   and at the piece's pace, whatever it reports: a flag is a reason to look closely, not a fail, and a treatment
   that says how the loop closes (a cut, an accent on frame 0, held drawings) says what to look for.
