@@ -6417,10 +6417,12 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
 - **Text:** contract.md ("Cuts and transitions") says how a loop wraps and closes, that `l` plays one entry
   round, and that frame 0's blur stops at `t = 0`; critique.md gains the check's row, `--loop` in the critic's
   tools and in Delivery, and the seam in the hand-off; the treatment template's loop line points to it.
-  SKILL.md's QC command gains `[--loop]` and its hand-off the `seam` line among qc.py's, with two phrases
-  shortened to stay under the limit ("all options: `scripts/render.ts`'s header" became "options: each script's
-  header", now that qc.py's options matter too; "frame 0 and every cut" lost its "and"): 7,998 bytes. The
-  critic's prompts gain no finding: the seam is a measured check, like the holds.
+  SKILL.md's QC command gains `[--loop]` and its hand-off "`seam` on loops" among the QC lines, with two
+  phrases shortened to stay under the limit ("all options: `scripts/render.ts`'s header" became "options: each
+  script's header", now that qc.py's options matter too; "frame 0 and every cut" lost its "and"): 7,997 bytes.
+  The hand-off says "on loops" because Fable showed that `seam` alone, in the text every session follows, would
+  have `--loop` run on videos that don't loop, whose end never meets their start: a "JUMP?" in every hand-off,
+  or an ending "fixed". The critic's prompts gain no finding: the seam is a measured check, like the holds.
 
 **A loop mode for the engine, left out.** That session's `"loop": true` in video.json did three things, each
 left out of the template on both consultants' advice:
