@@ -206,6 +206,16 @@ is craft: `references/motion.md`.
   the progress into the next scene's overlap.
 - Something carried across a cut takes its pose from one function both scenes call
   (`references/motion.md`, "Cuts and carried objects").
+- **A loop** wraps after its last frame: render.ts renders frames 0 to N−1 (N is D × fps rounded, so a length
+  that is a whole number of frames keeps every step the same), and the frame after the last is frame 0. A
+  continuous loop closes when the motion it draws has a period that divides D (a phase from `t / D`, whole
+  turns, a drift that travels a whole number of its pattern's periods), so its value at D is its value at 0
+  and nothing is matched by hand; a cut, a transition the treatment names, or a rest pose both ends share
+  close it too. A last frame drawn to equal the first shows one picture twice, a stop at every wrap. Two things
+  the engine does at the seam: the preview's `l` plays the current entry round, so a loop drawn in one entry
+  can be watched going round (the player otherwise stops at the end); and the render's motion blur stops at
+  `t = 0`, so frame 0's blur spans half the shutter of the frames after it (0.1 of a frame's motion instead of
+  0.2 at the default). `qc.py --loop` measures the seam on the MP4.
 
 ## three.js in this engine
 

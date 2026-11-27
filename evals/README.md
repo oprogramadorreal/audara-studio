@@ -525,11 +525,30 @@ no words.json line reaches (a stretch the lines leave out; a second voice file u
 listed and the file named), builds with no line over a bed (voice only, music only before the voice), plan
 mistakes as usage errors, and `measure` saying it needs the plan.
 
+`test_qc_seam.py` checks `qc.py --loop`, how a loop's last frame leads into frame 0, on loops drawn at the
+analysis size: a closed loop and a still picture smooth; a last frame equal to frame 0 a repeat, a slow one too;
+a move that doesn't come back, a small dot drifting, a frame missing, a hard cut at the wrap and a drift too slow
+for any step to count a jump, and a small part's jump found by its strength; drawings held four frames, a drawing
+held across the wrap on twos, a flash on frame 0, a step smaller than the others (no cell past the line) and a
+move that turns back at the wrap (which it can't see) none of those; too few frames and uneven frames not
+judged. The timing rules run on packet times as ffprobe prints them: even frames, whole-millisecond times at
+60 fps and 59.94 fps on a 1/90000 clock (gaps on the ticks either side of a frame's time: even); a last frame
+whose duration isn't given, a frame moved one tick on a clock of two ticks a frame, frames of one tick and
+then two (each gap within a tick of the mean, playback slowing to half), a last frame held two frames on a
+clock of one, two pictures a second apart that decode to 31 frames, and a count the decoder changed (not
+judged); packets flagged D (a clip cut by stream copy between keyframes) are left out of the count. A 16-px
+square sliding on a still ground, which no 99.9th-percentile change sees, reads smooth closed and a repeat with
+its last frame equal to frame 0 (the share alone tells it). Three loops are also encoded as a draft at 960 x
+540 and read back through `run()`, with a file whose timestamps leave a gap and one whose frame 1 shows half a
+frame early while its count and length stay right (both not judged), a 60 fps Matroska file (judged) and a run
+without `--loop` (no seam). It needs ffmpeg for those, and takes a few seconds.
+
 ```sh
 uv run evals/tests/test_imagegen.py
 uv run evals/tests/test_eleven_pitch.py
 uv run evals/tests/test_mix_measure.py
 uv run evals/tests/test_dub.py
+uv run evals/tests/test_qc_seam.py
 bun evals/tests/test_audit.ts
 bun evals/tests/test_init_gitignore.ts
 bun evals/tests/test_youtube.ts
