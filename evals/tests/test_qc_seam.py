@@ -40,11 +40,11 @@ def orbit(i: float, n: int = N, rad: float = 40, r: float = 12) -> np.ndarray:  
     return disc(W / 2 + rad * np.cos(th), H / 2 + rad * np.sin(th), r)
 
 
-def seam(frames: list[np.ndarray], even: bool = True) -> dict | None:
+def seam(frames: list[np.ndarray], uneven: str | None = None) -> dict | None:
     """qc.py's seam report on these frames, as analyze_picture collects them."""
     steps = [qc.seam_step(a, b) for a, b in zip(frames, frames[1:])]
     with contextlib.redirect_stderr(io.StringIO()):
-        return qc.seam_report((steps, qc.seam_step(frames[-1], frames[0])), len(frames), even, "", [])
+        return qc.seam_report((steps, qc.seam_step(frames[-1], frames[0])), len(frames), uneven, "", [])
 
 
 class Rules(unittest.TestCase):
@@ -72,9 +72,21 @@ class Rules(unittest.TestCase):
         # as much area as the steps around it, changed six times as strongly: a small part that jumps
         steps = [(0.001, 10.0)] * 20
         with contextlib.redirect_stderr(io.StringIO()):
-            r = qc.seam_report((steps, (0.0012, 60.0)), 21, True, "", [])
+            r = qc.seam_report((steps, (0.0012, 60.0)), 21, None, "", [])
         self.assertEqual(r["kind"], "jump")
-        self.assertIn("strongest change is 60 levels, against 10", r["why"])
+        self.assertIn("is 60 levels, against 10", r["why"])
+
+    def test_a_hard_cut_at_the_seam_jumps(self):
+        # two shots: the second cut back to the first at the wrap (the treatment says so when it's meant)
+        ground = GROUND[:, ::-1] * 0.6 + 50
+        frames = [orbit(i) for i in range(N // 2)] + [disc(70 + i, 40, 18, 230, ground) for i in range(N // 2)]
+        self.assertEqual(seam(frames)["kind"], "jump")
+
+    def test_a_move_that_turns_back_at_the_seam_reads_smooth(self):
+        # out and back: the position closes, the direction doesn't. The seam measures how much changes, not
+        # which way, so this one is for the frames either side
+        self.assertEqual(seam([disc(30 + 180 * (1 - abs(1 - 2 * i / N)), H / 2, 12) for i in range(N)])["kind"],
+                         "smooth")
 
     def test_a_frame_missing_before_the_wrap_jumps(self):
         # frames 0..N-2 of a period of N: the step into frame 0 covers two frames' motion
@@ -118,7 +130,7 @@ class Rules(unittest.TestCase):
         self.assertIsNone(seam([orbit(i) for i in range(2 * qc.SEAM_STEPS + 1)]))
 
     def test_uneven_frames_are_not_judged(self):
-        r = seam([orbit(i) for i in range(N + 1)], even=False)
+        r = seam([orbit(i) for i in range(N + 1)], uneven="the frames aren't evenly spaced")
         self.assertEqual(r["kind"], "unjudged")
 
 
@@ -162,6 +174,20 @@ class Encoded(unittest.TestCase):
         path = self.encode("vfr", [orbit(i, n=n) for i in range(n)],
                            ["-vf", "setpts='PTS+gte(N,30)*10'", "-fps_mode", "passthrough"])
         self.assertEqual(self.kind(path), "unjudged")
+
+    def test_two_frames_moved_keeping_the_count_and_length_are_not_judged(self):
+        # frame 1 half a frame early (in a time base fine enough to hold it): the length and the count still read
+        # 30 fps, but two frames show for half a frame and one and a half
+        n = 60
+        path = self.encode("moved", [orbit(i, n=n) for i in range(n)],
+                           ["-vf", "settb=1/15360,setpts='PTS-eq(N,1)*256'", "-fps_mode", "passthrough",
+                            "-enc_time_base", "filter"])
+        with contextlib.redirect_stderr(io.StringIO()):
+            r = qc.run(path, [], loop=True)
+        self.assertEqual(r["stream"]["video"]["frames"], n)
+        self.assertEqual(r["seam"]["kind"], "unjudged")
+        self.assertIn("aren't evenly spaced", r["seam"]["why"])
+        self.assertIn("16.7-50.0 ms instead of 33.3", r["seam"]["why"])
 
     def test_without_loop_no_seam(self):
         path = self.encode("plain", [orbit(i, n=60) for i in range(60)])

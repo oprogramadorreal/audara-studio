@@ -6318,7 +6318,7 @@ from both, without risking what already works, without anything that narrows a s
 simple. The article was read whole; four research agents read the repositories (taste-skill, impeccable,
 video-explainer, huashu-motion, mg-styles-15, kubai-icons, HyperFrames' and Remotion's agent skills,
 gsap-skills, motion2code, claude-video, three.quarks, idol-sdk, mcp-for-blender, blender-skills, Mediabunny,
-ai-portals, Manim). Codex (GPT-6.2 Astra) and a Fable 5.2 session were consulted in two rounds, the first
+ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in three rounds, the first
 without this session's list or each other's.
 
 **Most of it was here already.** The film as a pure function of time with a seek check (the article's
@@ -6345,16 +6345,17 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   where those are still (drawings held for several frames, a pause), against the loop's own moving steps, by
   two measures on the analysis frame (8×8-px cells at 1080p): the share of cells whose mean moved more than 6
   levels, and the strongest change (the 99.9th-percentile cell). It reports smooth, a jump or a repeat with the
-  measure that triggered it and asks for a look; it doesn't judge frames that aren't evenly spaced or a stream
-  with decoder errors. Without `--loop` the report is the same but for a `"seam": null` key and the video's
-  `even_rate` and `index`, and the decoder now reads the stream the probe chose (a file whose first video stream
-  is cover art was analysed as the cover). On synthetic loops, as render.ts encodes a final (60 fps, CRF 16)
-  and a draft (30 fps, CRF 23):
+  measure that triggered it and asks for a look. It doesn't judge a stream with decoder errors, or one whose
+  frames, read from its packets' times, don't all show for the same time (the last included) or that the decoder
+  didn't give one for one. Without `--loop` the report is the same but for a `"seam": null` key and the video's
+  `index`, and the decoder now reads the stream the probe chose (a file whose first video stream is cover art was
+  analysed as the cover). On 34 synthetic loops this session made, as render.ts encodes a final (60 fps, CRF 16)
+  and a draft (30 fps, CRF 23), each kind kept as a case in `evals/tests/test_qc_seam.py`:
 
   | Loop | The seam against the steps around it | Reads |
   |---|---|---|
   | closed: a disc orbiting, a small dot, a whole-frame pan, a slow drift, a grainy still | 0.9–1.1× | smooth |
-  | the last frame equal to frame 0 (the same kinds) | 0.000% of the frame against 0.1–86% | repeat |
+  | the last frame equal to frame 0 (the same kinds) | 0.003% of the frame or less, against 0.1–86% | repeat |
   | a move, a pan or a small dot that doesn't come back | 1.9–200×, by area or by strength | jump |
   | a hard cut at the seam | 91% against under 1% | jump |
   | one frame missing before the wrap | 1.6–1.7× | jump |
@@ -6363,19 +6364,23 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
 
   The two loops that session made (drafts at 1080p60) read smooth: the second at 4.52% against 4.04–4.51%, the
   first's slow flow never moving a cell past the line.
-- **Two reviews changed it before it merged.** Fable found that drawings held four frames left the steps around
+- **The reviews changed it before it merged.** Fable found that drawings held four frames left the steps around
   the seam still, so any change there read as a jump, and a period that divides the length puts a change
   exactly there: hence the loop's moving steps as the reference. Codex found that a seam step smaller than its
   neighbours but past no cell's line read as a repeat (whole-frame steps of 7 levels around a seam of 5), that
   ffmpeg's raw output repeats frames to even out a variable rate (10 source frames came out 15), and that the
   decoder could read cover art; a repeat now needs both measures under 0.35× the steps next to it and every step
-  around it moving (a hold between moves, on twos, is none), and uneven frames go unjudged. The 0.35: a draft's
-  frame 0, re-encoded as a keyframe, kept 0.29× its neighbours' share at 480×270, 0.11× at 720×405 and 0 at
-  1080p. `evals/tests/test_qc_seam.py` has 18 cases, the rules on frames drawn at the analysis size and three
+  around it moving (a hold between moves, on twos, is none). The 0.35: a draft's frame 0, re-encoded as a
+  keyframe, kept 0.29× its neighbours' share at 480×270, 0.11× at 720×405 and 0 at 1080p. In the third round
+  Codex found that a file can keep both its rates, its length and its count at 60 fps while two frames show for
+  8 and 25 ms, which the first guard (rates and counts) passed: the frames' own times decide now, with a case
+  that moves one frame half a frame and keeps the count. It also asked that the frames, not the label, decide in
+  the eval and in critique.md's bar, and that contract.md give the blur's amount rather than call it invisible.
+  `evals/tests/test_qc_seam.py` has 21 cases, the rules on frames drawn at the analysis size and four files
   encoded as a 960×540 draft.
-- **`cv-range-loop`** now asks for `qc.py --loop`'s seam, run by the grader, and a look at the last frames and
-  the first in order, unless the treatment or the reply says why the seam reads otherwise (a cut, an accent on
-  frame 0, held drawings).
+- **`cv-range-loop`** now has the grader run `qc.py --loop` and look at the last frames and the first, in order
+  and at the piece's pace, whatever it reports: a flag is a reason to look closely, not a fail, and a treatment
+  that says how the loop closes (a cut, an accent on frame 0, held drawings) says what to look for.
 - **Text:** contract.md ("Cuts and transitions") says how a loop wraps and closes, that `l` plays one entry
   round, and that frame 0's blur stops at `t = 0`; critique.md gains the check's row, `--loop` in the critic's
   tools and in Delivery, and the seam in the hand-off; the treatment template's loop line points to it.
@@ -6383,12 +6388,12 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   holds.
 
 **A loop mode for the engine, left out.** That session's `"loop": true` in video.json did three things, each
-taken out of the template on both consultants' advice:
+left out of the template on both consultants' advice:
 
 - **Blur across the seam** (sub-frames before 0 taken from the end when one entry spans the whole loop). Without
-  it frame 0's blur stops at `t = 0`, half the others' at the default 0.2 shutter, and no director has seen it on
-  a frame 0. Reopen when a loop's frame 0 shows it (a fast move at a wide shutter): `qc.py --loop` on finals
-  with and without it decides.
+  it frame 0's blur stops at `t = 0`, half the others' shutter (0.1 of a frame's motion at the default), and no
+  director has reported it on a frame 0. Reopen when a loop's frame 0 shows it (a fast move at a wide shutter):
+  finals with and without it, looked at frame by frame and measured with `qc.py --loop`, decide.
 - **One GOP for a whole-loop encode** (keyframe only at frame 0, no extra keyframe quality, no macroblock tree).
   Its gain, "from 1.5× its neighbours' to within their range", was on a frame-wide mean, which a re-encoded
   keyframe moves; the cell measure above reads a doubled frame's keyframe as 0 at 1080p. It doesn't carry to
@@ -6405,8 +6410,8 @@ That session made its loop without the template's help, as "engine changes inclu
 - **Effort settings, the "finishing work" and "ownership" blocks:** the harness's and the director's settings;
   no skill names a model, and SKILL.md already says what's theirs and not to end a turn mid-render.
 - **The ten-field numeric brief, a damping ratio per kind of subject, lens lists, a hero at least 170 px wide,
-  a Banned line:** each is a steer, a precise default for every video, and 0.13.0's six such changes failed the
-  gate. Small subjects have two hints here (a sunset that was "a small orange smudge", 0.3.0; "gameplay windows
+  a Banned line:** each is a steer, a precise default for every video; even 0.13.0's six changes, written as
+  checks, read as a lean on a model and didn't pass the gate. Small subjects have two hints here (a sunset that was "a small orange smudge", 0.3.0; "gameplay windows
   too small", 0.12.0), not a pattern: a baseline run on a prompt of the article's kind, with and without the
   skills, would come before any text, through the gate.
 - **Sound one frame after its picture** (the article and HyperFrames): a sync default with no failure recorded

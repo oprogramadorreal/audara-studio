@@ -390,7 +390,7 @@ It reports:
 | holds | frozen (nothing visibly changes) and nearly frozen (under 0.5% of the frame moves) stretches of half a second or more, measured so that grain can't hide a hold and a moving hairline isn't counted as one | no hold the treatment doesn't call for (the commercial preset's numbers are in `references/treatment-template.md`) |
 | glance | stretches of 1.5 s or more where under 2% of the frame visibly changes at a glance: moves under about 8 px, sway, grain and words changing colour in place don't count, so a picture that only breathes reads as still | none the treatment doesn't call for; a lyric or narrated piece that reads still most of the time is a finding even with no holds |
 | blank frames | near-black and near-empty ranges, flagged at a cut, at t=0 and at the end | none at a cut; frame 0 a finished composition, unless the piece fades in on purpose |
-| seam (`--loop`) | how the last frame leads into frame 0, against the three steps either side (or, where those are still, the loop's moving steps): smooth, a jump (more changes than in any of them: a pose, the camera or a light that doesn't come back, a frame missing) or a repeat (little changes while they move: a last frame drawn to equal the first); not judged when the frames aren't evenly spaced | smooth, unless the treatment says how it closes otherwise (a cut, an accent on frame 0). It reads brightness, and how much changes, not which way: a hue change, or a move that turns back at the seam, shows on the frames either side. The picture only: a loop's sound has a seam of its own |
+| seam (`--loop`) | how the last frame leads into frame 0, against the three steps either side (or, where those are still, the loop's moving steps): smooth, a jump (more changes than in any of them: a pose, the camera or a light that doesn't come back, a frame missing) or a repeat (little changes while they move: a last frame drawn to equal the first); not judged when the frames aren't evenly spaced | a flag sends you to the frames either side, which decide (a loop the treatment closes on a cut, or with an accent on frame 0, shows one there). It reads brightness, and how much changes, not which way: a hue change, or a move that turns back at the seam, shows only on those frames. The picture only: a loop's sound has a seam of its own |
 | loudness | integrated, range, true peak, short-term per second, first and last sound | about -14 LUFS for punchy pieces and -16 for calm ones (platforms play online video at about -14, as of 2026); true peak at or under -1 dBTP; sound as long as the picture |
 | stream | size, fps, frames, codec, pixel format, bitrate, color tags | tagged BT.709, yuv420p, the planned length to the frame |
 
@@ -409,9 +409,10 @@ reply gives the director, every time:
 
 - the preview link (a click or Space plays it), and a `?t=` link to the moment worth watching first;
 - the critic's verdict (the last round's, SHIP or ONE MORE PASS), the fixes made since it as not yet
-  reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines (and a loop's `seam`,
-  with `--loop`) on the last full-cut draft (by default `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of
-  what it changed, each saying what it covers, with a `?t=` link to each hold the treatment doesn't mark;
+  reviewed, and the findings left open; qc.py's `motion`, `glance` and `blank` lines (and, for a loop, the
+  `seam` line `--loop` gives on the whole loop, not a clip) on the last full-cut draft (by default
+  `out/<video>/<video>-draft.mp4`), and after a round of notes on the clips of what it changed, each saying
+  what it covers, with a `?t=` link to each hold the treatment doesn't mark;
   and what wasn't checked. Each flag the measured checks raised (qc.py, verify, the mix's measures, a
   transcript of the voice) is fixed, marked as meant with why, or listed here as open: one project measured
   169 words under 3 dB of the music, handed the cut over without them, and the director then named the same

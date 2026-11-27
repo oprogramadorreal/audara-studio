@@ -214,8 +214,8 @@ is craft: `references/motion.md`.
   close it too. A last frame drawn to equal the first shows one picture twice, a stop at every wrap. Two things
   the engine does at the seam: the preview's `l` plays the current entry round, so a loop drawn in one entry
   can be watched going round (the player otherwise stops at the end); and the render's motion blur stops at
-  `t = 0`, so frame 0 carries half the blur of the frames after it, too little to see at the default shutter.
-  `qc.py --loop` measures the seam on the MP4.
+  `t = 0`, so frame 0's blur spans half the shutter of the frames after it (0.1 of a frame's motion instead of
+  0.2 at the default). `qc.py --loop` measures the seam on the MP4.
 
 ## three.js in this engine
 
