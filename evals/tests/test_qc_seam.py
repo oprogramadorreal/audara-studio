@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -134,6 +135,33 @@ class Rules(unittest.TestCase):
         self.assertEqual(r["kind"], "unjudged")
 
 
+class Timing(unittest.TestCase):
+    """uneven_frames() on a file's packet times, given as ffprobe prints them (pts, duration)."""
+
+    def uneven(self, rows: list[str], decoded: int, tick: float) -> str | None:
+        done = subprocess.CompletedProcess([], 0, stdout="\n".join(rows) + "\n", stderr="")
+        with mock.patch.object(qc, "need", return_value="ffprobe"), mock.patch.object(qc.subprocess, "run", return_value=done):
+            return qc.uneven_frames(Path("loop.mkv"), 0, decoded, tick)
+
+    def test_even_frames(self):
+        self.assertIsNone(self.uneven([f"{i / 30:.6f},{1 / 30:.6f}" for i in range(20)], 20, 1 / 15360))
+
+    def test_an_unknown_last_duration_is_not_judged(self):
+        # regular gaps and the right count, but when the last frame ends (when the loop wraps) isn't in the file
+        rows = [f"{i / 10:.6f},0.100000" for i in range(19)] + ["1.900000,N/A"]
+        self.assertIn("last frame's duration couldn't be read", self.uneven(rows, 20, 0.001))
+
+    def test_whole_millisecond_times_at_60_fps_are_even(self):
+        # a 60 fps Matroska file: times round to 1 ms, so frames alternate 17 and 16 ms
+        rows = [f"{round(i * 1000 / 60) / 1000:.6f},0.016000" for i in range(120)]
+        self.assertIsNone(self.uneven(rows, 120, 0.001))
+        self.assertIsNotNone(self.uneven(rows, 120, 0.0))  # the tick is what lets them through
+
+    def test_a_count_the_decoder_changed(self):
+        rows = [f"{i / 30:.6f},{1 / 30:.6f}" for i in range(20)]
+        self.assertIn("decoder gave 21 frames", self.uneven(rows, 21, 1 / 15360))
+
+
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "needs ffmpeg and ffprobe")
 class Encoded(unittest.TestCase):
     """Encoded as render.ts encodes a draft (x264, CRF 23, yuv420p) at 960 x 540, read back through qc.py. (Smaller
@@ -148,10 +176,11 @@ class Encoded(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.dir, ignore_errors=True)
 
-    def encode(self, name: str, frames: list[np.ndarray], extra: list[str] | None = None) -> Path:
-        path = self.dir / f"{name}.mp4"
+    def encode(self, name: str, frames: list[np.ndarray], extra: list[str] | None = None, fps: int = 30,
+               ext: str = "mp4") -> Path:
+        path = self.dir / f"{name}.{ext}"
         big = [np.repeat(np.repeat(f, 4, 0), 4, 1) for f in frames]  # 960 x 540
-        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", "960x540", "-r", "30",
+        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", "960x540", "-r", str(fps),
                "-i", "-", *(extra or []), "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
                str(path)]
         data = b"".join(np.clip(f, 0, 255).astype(np.uint8).tobytes() for f in big)
@@ -188,6 +217,12 @@ class Encoded(unittest.TestCase):
         self.assertEqual(r["seam"]["kind"], "unjudged")
         self.assertIn("aren't evenly spaced", r["seam"]["why"])
         self.assertIn("16.7-50.0 ms instead of 33.3", r["seam"]["why"])
+
+    def test_a_60_fps_matroska_file_is_judged(self):
+        # its times round to whole milliseconds (17 and 16 ms apart): even, within a tick of its time base
+        n = 120
+        self.assertEqual(self.kind(self.encode("mkv60", [orbit(i, n=n) for i in range(n)], fps=60, ext="mkv")),
+                         "smooth")
 
     def test_without_loop_no_seam(self):
         path = self.encode("plain", [orbit(i, n=60) for i in range(60)])

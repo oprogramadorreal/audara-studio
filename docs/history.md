@@ -6318,7 +6318,7 @@ from both, without risking what already works, without anything that narrows a s
 simple. The article was read whole; four research agents read the repositories (taste-skill, impeccable,
 video-explainer, huashu-motion, mg-styles-15, kubai-icons, HyperFrames' and Remotion's agent skills,
 gsap-skills, motion2code, claude-video, three.quarks, idol-sdk, mcp-for-blender, blender-skills, Mediabunny,
-ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in three rounds, the first
+ai-portals, Manim). Codex (GPT-6.2-Astra) and a Fable 5.2 session were consulted in four rounds, the first
 without this session's list or each other's.
 
 **Most of it was here already.** The film as a pure function of time with a seek check (the article's
@@ -6346,8 +6346,9 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   two measures on the analysis frame (8×8-px cells at 1080p): the share of cells whose mean moved more than 6
   levels, and the strongest change (the 99.9th-percentile cell). It reports smooth, a jump or a repeat with the
   measure that triggered it and asks for a look. It doesn't judge a stream with decoder errors, or one whose
-  frames, read from its packets' times, don't all show for the same time (the last included) or that the decoder
-  didn't give one for one. Without `--loop` the report is the same but for a `"seam": null` key and the video's
+  frames, read from its packets' times, don't all show for the same time (within 5% and a tick of its time
+  base, the last frame included, whose duration has to be known) or that the decoder didn't give one for one.
+  Without `--loop` the report is the same but for a `"seam": null` key and the video's
   `index`, and the decoder now reads the stream the probe chose (a file whose first video stream is cover art was
   analysed as the cover). On 34 synthetic loops this session made, as render.ts encodes a final (60 fps, CRF 16)
   and a draft (30 fps, CRF 23), each kind kept as a case in `evals/tests/test_qc_seam.py`:
@@ -6376,8 +6377,13 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   8 and 25 ms, which the first guard (rates and counts) passed: the frames' own times decide now, with a case
   that moves one frame half a frame and keeps the count. It also asked that the frames, not the label, decide in
   the eval and in critique.md's bar, and that contract.md give the blur's amount rather than call it invisible.
-  `evals/tests/test_qc_seam.py` has 21 cases, the rules on frames drawn at the analysis size and four files
-  encoded as a 960×540 draft.
+  In the fourth, Codex found that a last frame whose duration a file doesn't give (a Matroska file without a
+  default duration) passed, though it says when the loop wraps: it goes unjudged now. Both found that a 60 fps
+  Matroska or WebM file, whose times round to whole milliseconds, would always go unjudged; measured on one, its
+  frames 17 and 16 ms apart in a 1/1000 time base: the bar allows a tick of the time base besides the 5%, and
+  it reads smooth. `evals/tests/test_qc_seam.py` has 26 cases: the rules on frames drawn at the analysis size,
+  the timing on packet times as ffprobe prints them, and five tests on encoded files (seven drafts at 960×540,
+  one of them a 60 fps Matroska file).
 - **`cv-range-loop`** now has the grader run `qc.py --loop` and look at the last frames and the first, in order
   and at the piece's pace, whatever it reports: a flag is a reason to look closely, not a fail, and a treatment
   that says how the loop closes (a cut, an accent on frame 0, held drawings) says what to look for.
@@ -6411,9 +6417,9 @@ That session made its loop without the template's help, as "engine changes inclu
   no skill names a model, and SKILL.md already says what's theirs and not to end a turn mid-render.
 - **The ten-field numeric brief, a damping ratio per kind of subject, lens lists, a hero at least 170 px wide,
   a Banned line:** each is a steer, a precise default for every video; even 0.13.0's six changes, written as
-  checks, read as a lean on a model and didn't pass the gate. Small subjects have two hints here (a sunset that was "a small orange smudge", 0.3.0; "gameplay windows
-  too small", 0.12.0), not a pattern: a baseline run on a prompt of the article's kind, with and without the
-  skills, would come before any text, through the gate.
+  checks, read as a lean on a model and didn't pass the gate. Small subjects have two hints here (a sunset that
+  was "a small orange smudge", 0.3.0; "gameplay windows too small", 0.12.0), not a pattern: a baseline run on a
+  prompt of the article's kind, with and without the skills, would come before any text, through the gate.
 - **Sound one frame after its picture** (the article and HyperFrames): a sync default with no failure recorded
   here; 0.3.0 left out checking sound against picture. **−2 dBTP:** qc.py's −1 is measured on the encoded file.
 - **Departments of agents and twelve approval stills:** round 4 measured what stops before the build cost.
@@ -6433,4 +6439,5 @@ That session made its loop without the template's help, as "engine changes inclu
 - **ai-portals' lesson stands as a caution:** a rulebook that only grew (204 sections, 87,500 words) took a
   team of agents from hundreds of worlds a day to about a dozen, until it was streamlined.
 
-**Not run:** `cv-range-loop` and the other task cases (an hour or more each per tool).
+**Not run:** `cv-range-loop` and the other task cases (an hour or more each per tool); `qc.py --loop` on a
+`--jobs` final, whose pieces are joined (an odd gap at a join would read as unjudged).

@@ -163,10 +163,12 @@ SEAM_MOVING = 0.0002  # ...every step around changes 0.02% of the frame or more 
                       # under that hides a repeated frame anyway, a pause between moves is no repeat, and a jump
                       # has to change at least this much
 SEAM_EVEN = 0.05      # the seam is judged only when every frame of the file shows for the same time, within 5% of
-                      # a frame (timestamps round to the stream's time base), the last frame included, and the
-                      # decoder gave one frame per frame in the file: otherwise it repeats or drops frames to keep
-                      # a constant rate, and a repeat it made would read as the loop's (a file whose rates, length
-                      # and count all read 60 fps can still show two frames for 8 and 25 ms)
+                      # a frame and one tick of the stream's time base (timestamps round to it: a 60 fps Matroska
+                      # file's frames alternate 16 and 17 ms), the last frame included, whose duration has to be
+                      # known (it says when the loop wraps), and the decoder gave one frame per frame in the file:
+                      # otherwise it repeats or drops frames to keep a constant rate, and a repeat it made would
+                      # read as the loop's (a file whose rates, length and count all read 60 fps can still show
+                      # two frames for 8 and 25 ms)
 
 # ---------------------------------------------------------------- blank frames
 BLACK_LEVEL = 25.5    # near-black: the brightest 0.1% of the frame is under 10% gray (25.5 of 255), the
@@ -584,8 +586,9 @@ def analyze_picture(path: Path, w: int, h: int, fps: float, expect_frames: int |
             "seam": (steps, seam_step(last, first)) if loop and first is not None and last is not None else None}
 
 
-def uneven_frames(path: Path, stream: int | None, decoded: int) -> str | None:
-    """Why the file's frames aren't evenly spaced (--loop), from its packets' times; None when they are."""
+def uneven_frames(path: Path, stream: int | None, decoded: int, tick: float = 0.0) -> str | None:
+    """Why the file's frames aren't evenly spaced (--loop), from its packets' times, where a timestamp rounds to
+    `tick` (the stream's time base); None when they are."""
     r = subprocess.run([need("ffprobe"), "-v", "error", "-select_streams", str(stream) if isinstance(stream, int) else "v:0",
                         "-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", str(path)],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -594,14 +597,15 @@ def uneven_frames(path: Path, stream: int | None, decoded: int) -> str | None:
     if r.returncode != 0 or not pts or any(t is None for t in pts):
         return "the frames' times couldn't be read"
     order = sorted(range(len(pts)), key=lambda i: pts[i])
+    last = num(rows[order[-1]][1]) if len(rows[order[-1]]) > 1 else None  # how long the last frame shows
+    if not last or last <= 0:
+        return "the last frame's duration couldn't be read, so when the loop wraps isn't known"
     gaps = np.diff([pts[i] for i in order])
-    if len(gaps):
-        step = float(np.median(gaps))
-        last = num(rows[order[-1]][1]) if len(rows[order[-1]]) > 1 else None  # how long the last frame shows
-        odd = [g for g in gaps.tolist() + ([last] if last else []) if abs(g - step) > SEAM_EVEN * step]
-        if odd:
-            return (f"the frames aren't evenly spaced ({len(odd)} show for {1000 * min(odd):.1f}-{1000 * max(odd):.1f} ms "
-                    f"instead of {1000 * step:.1f}): a variable frame rate, or a frame held longer")
+    step = float(np.median(gaps)) if len(gaps) else last
+    odd = [g for g in gaps.tolist() + [last] if abs(g - step) > SEAM_EVEN * step + tick]
+    if odd:
+        return (f"the frames aren't evenly spaced ({len(odd)} show for {1000 * min(odd):.1f}-{1000 * max(odd):.1f} ms "
+                f"instead of {1000 * step:.1f}): a variable frame rate, or a frame held longer")
     if len(pts) != decoded:
         return f"the decoder gave {decoded} frames for the file's {len(pts)}, repeating or dropping some to keep a constant rate"
     return None
@@ -840,7 +844,9 @@ def run(path: Path, cuts: list[float], loop: bool = False) -> dict:
         report["motion"] = holds_report(pic, fps, duration, notes)
         report["blank"] = blank_frames(pic, fps, cuts)
         if loop:
-            report["seam"] = seam_report(pic["seam"], pic["frames"], uneven_frames(path, v["index"], pic["frames"]),
+            tick = next((frac(s.get("time_base")) for s in p.get("streams", []) if s.get("index") == v["index"]), None)
+            report["seam"] = seam_report(pic["seam"], pic["frames"],
+                                         uneven_frames(path, v["index"], pic["frames"], tick or 0.0),
                                          pic["decoder_errors"], notes)
         facts["video"]["display"] = [w, h]
     else:
