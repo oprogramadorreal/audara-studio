@@ -6392,11 +6392,17 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
   for what could still pass from a real encoder rather than hand-edited times, Codex found a sparse file (frames
   kept only when the picture changes: two packets a second apart, from ffmpeg's `mpdecimate`) that skipped the
   count check, decoded to 31 frames and read smooth across a white-to-black wrap: the decoder's count is checked
-  first now.
-  It also found that both real 1080p loop drafts decode to the same pictures with and without passthrough, all
-  360 frames. `evals/tests/test_qc_seam.py` has 31 cases: the rules on frames drawn at the analysis size, the
-  timing on packet times as ffprobe prints them, and five tests on encoded files (drafts at 960×540, one a 60 fps
-  Matroska file).
+  first now. It also found that both real 1080p loop drafts decode to the same pictures with and without
+  passthrough, all 360 frames. Codex's review of the opened PR found two more and a gap in the text. A clip cut
+  by stream copy between keyframes keeps the packets from the keyframe before its start, flagged D, decoded and
+  dropped (measured: 15 of 60, the decoder giving 45 frames), and the count took them for frames: they are left
+  out now, and such a clip of a loop reads, rightly, as a jump. A subject under 0.1% of the frame (a 16-px square
+  on a still ground) leaves the 99.9th-percentile cell unchanged on every step, so a repeat needed 0 under 0.35 ×
+  0: where the strongest change next to the seam isn't past the line, the share alone tells a repeat. And
+  SKILL.md's checklist, which sessions follow, ran qc.py without `--loop` and asked for no seam line (below).
+  `evals/tests/test_qc_seam.py` has 33 cases: the rules on frames drawn at the analysis size, the timing on
+  packet times as ffprobe prints them, and five tests on encoded files (drafts at 960×540, one a 60 fps Matroska
+  file).
 - **A note on a loop's sound, tried and left out.** Fable found that a loop with sound can stall at the wrap when
   the sound runs past the picture, since a player may loop at the end of the longer stream. A note under
   `--loop` for sound longer than the picture by half a frame was added and taken out in the next round: Codex
@@ -6411,8 +6417,10 @@ loop (a 6-second title card, 2026-11-06) built loop support into its own project
 - **Text:** contract.md ("Cuts and transitions") says how a loop wraps and closes, that `l` plays one entry
   round, and that frame 0's blur stops at `t = 0`; critique.md gains the check's row, `--loop` in the critic's
   tools and in Delivery, and the seam in the hand-off; the treatment template's loop line points to it.
-  SKILL.md is unchanged, and the critic's prompts gain no finding: the seam is a measured check, like the
-  holds.
+  SKILL.md's QC command gains `[--loop]` and its hand-off the `seam` line among qc.py's, with two phrases
+  shortened to stay under the limit ("all options: `scripts/render.ts`'s header" became "options: each script's
+  header", now that qc.py's options matter too; "frame 0 and every cut" lost its "and"): 7,998 bytes. The
+  critic's prompts gain no finding: the seam is a measured check, like the holds.
 
 **A loop mode for the engine, left out.** That session's `"loop": true` in video.json did three things, each
 left out of the template on both consultants' advice:

@@ -156,7 +156,8 @@ SEAM_LEVELS = 6.0     # levels: a cell changed when its mean moved by more than 
 SEAM_JUMP = 1.5       # a jump: more of the frame changes across the seam than 1.5x the most in any step around it...
 SEAM_JUMP_PEAK = 2.0  # ...or its strongest change is twice the strongest around it: a small thing jumping
 SEAM_STILL_REF = 90   # where the steps around are still: against the 90th percentile of the loop's moving steps
-SEAM_REPEAT = 0.35    # a repeated picture: under 0.35x the two steps next to it by both measures (a draft's frame 0,
+SEAM_REPEAT = 0.35    # a repeated picture: under 0.35x the two steps next to it by both measures (by share alone
+                      # where their strongest change isn't past SEAM_LEVELS: a small subject) (a draft's frame 0,
                       # re-encoded as a keyframe, measured 0.29x by share at 480 x 270, 0.11 at 720 x 405, 0 at
                       # 1080p; closed loops 0.9-1.1x), while...
 SEAM_MOVING = 0.0002  # ...every step around changes 0.02% of the frame or more (6 cells of 240 x 135): motion
@@ -594,9 +595,12 @@ def uneven_frames(path: Path, stream: int | None, decoded: int, tick: float = 0.
     """Why the file's frames aren't evenly spaced (--loop), from its packets' times, where a timestamp rounds to
     `tick` (the stream's time base); None when they are."""
     r = subprocess.run([need("ffprobe"), "-v", "error", "-select_streams", str(stream) if isinstance(stream, int) else "v:0",
-                        "-show_entries", "packet=pts_time,duration_time", "-of", "csv=p=0", str(path)],
+                        "-show_entries", "packet=pts_time,duration_time,flags", "-of", "csv=p=0", str(path)],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     rows = [line.strip().strip(",").split(",") for line in r.stdout.splitlines() if line.strip()]
+    # (packets flagged D are decoded and discarded, never shown: a clip cut by stream copy between keyframes
+    # keeps the ones from the keyframe before its start)
+    rows = [x for x in rows if not (len(x) > 2 and "D" in x[2])]
     pts = [num(x[0]) for x in rows if x]
     if r.returncode != 0 or not pts or any(t is None for t in pts):
         return "the frames' times couldn't be read"
@@ -664,8 +668,10 @@ def seam_report(seam: tuple | None, total: int, uneven: str | None, decoder_erro
         top = float(np.percentile([p for _, p in moving], SEAM_STILL_REF)) if moving else 0.0
     rep["against_pct"], rep["against_peak_levels"] = pct(most), round(top, 1)
     nxt = (before[-1], after[0])
+    near = min(p for _, p in nxt)  # the strongest change next to the seam says something only past the line: a
+    # subject under 0.1% of the frame leaves the 99.9th-percentile cell unchanged on every step
     if (min(s for s, _ in around) >= SEAM_MOVING and share < SEAM_REPEAT * min(s for s, _ in nxt)
-            and peak < SEAM_REPEAT * min(p for _, p in nxt)):
+            and (near <= SEAM_LEVELS or peak < SEAM_REPEAT * near)):
         rep["kind"] = "repeat"
         rep["why"] = (f"little changes ({100 * share:.2f}% of the frame, its strongest cell {peak:.1f} levels) while "
                       f"every step around it moves ({100 * min(s for s, _ in nxt):.2f}% or more next to it): the last "

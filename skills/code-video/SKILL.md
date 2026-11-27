@@ -29,24 +29,24 @@ Keep this checklist in your notes.
 - [ ] **Sound.** A song: beats, sections, lyrics and its window (references/treatment-template.md). Sound nobody gave or ruled out is yours, aimed as high as the look: music and effects synthesized in code are free; generated voice or music is asked for, with a free stand-in meanwhile (the soundtrack skill). The picture never waits: `"audio": null` and a `duration`.
 - [ ] **Build.** First read `docs/ENGINE.md` (by sections), the first two sections of references/contract.md and those your scenes touch. Many scenes: a subagent per scene, on your own model (Scene briefs, references/treatment-template.md). Look at each scene's stills as a viewer would.
 - [ ] **Critic.** Before the build is done: a fresh full-cut critic (references/critique.md), waited for, and past 30 s its verification; later, when the director asks, and before a render. A plain picture nobody asked for is a finding, not taste.
-- [ ] **Hand-off.** A build ends in the preview, even if a render was asked for: offer it and wait. Replies give the critic's verdict, qc.py's `motion`, `glance` and `blank` lines and a `?t=` link to each hold the treatment doesn't mark.
+- [ ] **Hand-off.** A build ends in the preview, even if a render was asked for: offer it and wait. Replies give the critic's verdict, qc.py's `motion`, `glance`, `blank`, `seam` lines and a `?t=` link to each hold the treatment doesn't mark.
 - [ ] **Direct.** Notes come by time ("at 0:23 land the title on the snare"). Change what the note names and what it forces, check the frames around it and what verify says changed, answer with the link and what moved (old → new). A note that reads two ways: take one, offer the other. Each decision and rejection goes, in the director's words, into the treatment's Decisions (project-wide: `docs/STYLE.md`); read them, the Promise and Never claim before every change.
 - [ ] **Final render** on their yes to a version they previewed, or their word not to wait, adding MP4, sheets, poster. Don't end your turn while a render or critic runs: both die with it.
 
 Also owed: a status line in long work, with the time left; stills, sheets, numbers.
 
 ## Commands
-In the project folder (`<skill>`: this skill's folder); all options: `scripts/render.ts`'s header.
+In the project folder (`<skill>`: this skill's folder); options: each script's header.
 
 | Step | Command |
 |---|---|
 | New project, video | `bun <skill>/scripts/init.ts . --video <video>` |
 | Preview | `bun scripts/render.ts preview --video <video> --t 12.5` (starts it if needed; it outlives your turn) |
 | Stills | `bun scripts/render.ts stills --video <video> --t 1.5,4 [--only <id>]` |
-| Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0 and every cut) |
+| Contact sheet | `bun scripts/render.ts sheet --video <video> --n 24` (`--cuts`: frame 0, every cut) |
 | Check | `bun scripts/render.ts verify --video <video>` |
 | Clip, render, poster | `bun scripts/render.ts video --video <video> [--from 8 --to 12 --draft]`; `... poster --video <video> --t <s>` |
-| QC report | `uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json` |
+| QC report | `uv run <skill>/scripts/qc.py <mp4> --cuts out/<video>/verify.json [--loop]` |
 
 ## Read when
 - references/treatment-template.md, style-template.md: brief, look.

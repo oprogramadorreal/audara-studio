@@ -59,6 +59,19 @@ class Rules(unittest.TestCase):
     def test_a_slow_drift_that_repeats(self):
         self.assertEqual(seam([orbit(i, rad=4) for i in range(N + 1)])["kind"], "repeat")
 
+    def test_a_small_square_that_repeats(self):
+        # a 2x2-cell square (16 px at 1080p) sliding 2 cells a frame round the frame's width, nothing else moving,
+        # no noise: 8 cells change a step, under the 0.1% the strongest-change percentile sees, so that measure
+        # reads 0 everywhere and the share alone has to tell the repeat
+        ground = np.full((H, W), 60, np.float32)
+        ground[60:62, 0:2] = 250
+
+        def frame(i: int) -> np.ndarray:
+            return np.roll(ground, 2 * i, axis=1)
+
+        self.assertEqual(seam([frame(i) for i in range(N)])["kind"], "smooth")  # 2 x 120 = 240: it closes
+        self.assertEqual(seam([frame(i) for i in range(N + 1)])["kind"], "repeat")
+
     def test_a_move_that_does_not_come_back_jumps(self):
         r = seam([disc(30 + 180 * i / N, H / 2, 12) for i in range(N)])
         self.assertEqual(r["kind"], "jump")
@@ -182,6 +195,14 @@ class Timing(unittest.TestCase):
         tick = 1 / 90000
         rows = [f"{round(i * 90000 * 1001 / 60000) * tick:.6f},{1501.5 * tick:.6f}" for i in range(300)]
         self.assertIsNone(self.uneven(rows, 300, tick))
+
+    def test_packets_decoded_and_discarded_are_not_frames(self):
+        # a clip cut by stream copy between keyframes: 15 packets from the keyframe before its start, flagged D,
+        # that the decoder decodes and drops, then 45 frames shown
+        tick = 1 / 15360
+        rows = [f"{(i - 15) / 30:.6f},{1 / 30:.6f},{'KD_' if i == 0 else '_D_'}" for i in range(15)]
+        rows += [f"{i / 30:.6f},{1 / 30:.6f},{'K__' if i == 0 else '___'}" for i in range(45)]
+        self.assertIsNone(self.uneven(rows, 45, tick))
 
     def test_two_pictures_a_second_apart(self):
         # a sparse file (frames kept only when the picture changes): two packets, which the decoder turns into 31
